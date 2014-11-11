@@ -2,11 +2,11 @@
 //  SwiftFlow.h
 //  SwiftFlow
 //
-//  Created by Marc Prud'hommeaux on 11/7/14.
-//  Copyright (c) 2014 glimpse.io. All rights reserved.
+//  Created by Marc Prud'hommeaux <mwp1@cornell.edu>
+//  License: MIT (or whatever)
 //
 
-#import <UIKit/UIKit.h>
+@import Foundation;
 
 //! Project version number for SwiftFlow.
 FOUNDATION_EXPORT double SwiftFlowVersionNumber;

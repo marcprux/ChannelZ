@@ -10,6 +10,14 @@
 		7E30DC361A0D6A510050EC52 /* SwiftFlow.h in Headers */ = {isa = PBXBuildFile; fileRef = 7E30DC351A0D6A510050EC52 /* SwiftFlow.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7E30DC3C1A0D6A510050EC52 /* SwiftFlow.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E30DC301A0D6A510050EC52 /* SwiftFlow.framework */; };
 		7E30DC431A0D6A510050EC52 /* SwiftFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC421A0D6A510050EC52 /* SwiftFlowTests.swift */; };
+		7E30DC5B1A0D6B1B0050EC52 /* SwiftFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC571A0D6B1B0050EC52 /* SwiftFlow.swift */; };
+		7E30DC5C1A0D6B1B0050EC52 /* Operators.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC581A0D6B1B0050EC52 /* Operators.swift */; };
+		7E30DC5D1A0D6B1B0050EC52 /* SwiftFlow+Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC591A0D6B1B0050EC52 /* SwiftFlow+Foundation.swift */; };
+		7E43C2CB1A1072A4003747B6 /* Funnels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CA1A1072A4003747B6 /* Funnels.swift */; };
+		7E43C2CD1A1072AC003747B6 /* Channels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CC1A1072AC003747B6 /* Channels.swift */; };
+		7E43C2CF1A1073CA003747B6 /* Outlets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CE1A1073CA003747B6 /* Outlets.swift */; };
+		7E43C2D31A1075D0003747B6 /* SwiftFlow+AppKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D21A1075D0003747B6 /* SwiftFlow+AppKit.swift */; };
+		7E43C2D71A10763D003747B6 /* SwiftFlow+UIKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D61A10763D003747B6 /* SwiftFlow+UIKit.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +37,16 @@
 		7E30DC3B1A0D6A510050EC52 /* SwiftFlowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftFlowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E30DC411A0D6A510050EC52 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7E30DC421A0D6A510050EC52 /* SwiftFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftFlowTests.swift; sourceTree = "<group>"; };
+		7E30DC571A0D6B1B0050EC52 /* SwiftFlow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SwiftFlow.swift; sourceTree = "<group>"; };
+		7E30DC581A0D6B1B0050EC52 /* Operators.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Operators.swift; sourceTree = "<group>"; };
+		7E30DC591A0D6B1B0050EC52 /* SwiftFlow+Foundation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "SwiftFlow+Foundation.swift"; sourceTree = "<group>"; };
+		7E30DC5F1A0D6B230050EC52 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		7E30DC611A0D73690050EC52 /* SwiftFlowUI.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = SwiftFlowUI.playground; sourceTree = "<group>"; };
+		7E43C2CA1A1072A4003747B6 /* Funnels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Funnels.swift; sourceTree = "<group>"; };
+		7E43C2CC1A1072AC003747B6 /* Channels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Channels.swift; sourceTree = "<group>"; };
+		7E43C2CE1A1073CA003747B6 /* Outlets.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Outlets.swift; sourceTree = "<group>"; };
+		7E43C2D21A1075D0003747B6 /* SwiftFlow+AppKit.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "SwiftFlow+AppKit.swift"; sourceTree = "<group>"; };
+		7E43C2D61A10763D003747B6 /* SwiftFlow+UIKit.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "SwiftFlow+UIKit.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,6 +71,8 @@
 		7E30DC261A0D6A510050EC52 = {
 			isa = PBXGroup;
 			children = (
+				7E30DC5F1A0D6B230050EC52 /* README.md */,
+				7E30DC611A0D73690050EC52 /* SwiftFlowUI.playground */,
 				7E30DC321A0D6A510050EC52 /* SwiftFlow */,
 				7E30DC3F1A0D6A510050EC52 /* SwiftFlowTests */,
 				7E30DC311A0D6A510050EC52 /* Products */,
@@ -72,6 +92,14 @@
 			isa = PBXGroup;
 			children = (
 				7E30DC351A0D6A510050EC52 /* SwiftFlow.h */,
+				7E30DC571A0D6B1B0050EC52 /* SwiftFlow.swift */,
+				7E43C2CE1A1073CA003747B6 /* Outlets.swift */,
+				7E43C2CA1A1072A4003747B6 /* Funnels.swift */,
+				7E43C2CC1A1072AC003747B6 /* Channels.swift */,
+				7E30DC581A0D6B1B0050EC52 /* Operators.swift */,
+				7E30DC591A0D6B1B0050EC52 /* SwiftFlow+Foundation.swift */,
+				7E43C2D21A1075D0003747B6 /* SwiftFlow+AppKit.swift */,
+				7E43C2D61A10763D003747B6 /* SwiftFlow+UIKit.swift */,
 				7E30DC331A0D6A510050EC52 /* Supporting Files */,
 			);
 			path = SwiftFlow;
@@ -209,6 +237,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7E30DC5D1A0D6B1B0050EC52 /* SwiftFlow+Foundation.swift in Sources */,
+				7E43C2D31A1075D0003747B6 /* SwiftFlow+AppKit.swift in Sources */,
+				7E43C2D71A10763D003747B6 /* SwiftFlow+UIKit.swift in Sources */,
+				7E43C2CF1A1073CA003747B6 /* Outlets.swift in Sources */,
+				7E43C2CB1A1072A4003747B6 /* Funnels.swift in Sources */,
+				7E30DC5C1A0D6B1B0050EC52 /* Operators.swift in Sources */,
+				7E43C2CD1A1072AC003747B6 /* Channels.swift in Sources */,
+				7E30DC5B1A0D6B1B0050EC52 /* SwiftFlow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -269,7 +305,8 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 8.1;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
+				OTHER_SWIFT_FLAGS = "-DDEBUG_SWIFTFLOW";
+				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -308,7 +345,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 8.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -319,6 +356,7 @@
 		7E30DC471A0D6A510050EC52 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -334,6 +372,7 @@
 		7E30DC481A0D6A510050EC52 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -349,16 +388,12 @@
 		7E30DC4A1A0D6A510050EC52 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(SDKROOT)/Developer/Library/Frameworks",
-					"$(inherited)",
-				);
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = SwiftFlowTests/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -366,12 +401,8 @@
 		7E30DC4B1A0D6A510050EC52 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(SDKROOT)/Developer/Library/Frameworks",
-					"$(inherited)",
-				);
 				INFOPLIST_FILE = SwiftFlowTests/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -395,6 +426,7 @@
 				7E30DC481A0D6A510050EC52 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		7E30DC491A0D6A510050EC52 /* Build configuration list for PBXNativeTarget "SwiftFlowTests" */ = {
 			isa = XCConfigurationList;
@@ -403,6 +435,7 @@
 				7E30DC4B1A0D6A510050EC52 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
