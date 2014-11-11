@@ -147,3 +147,7 @@ public func map<Source : BaseFunnelType, TransformedType>(source: Source, transf
     return mapFunnel(source)(transform)
 }
 
+
+///// A CombinedFunnel merges two funnels and delivers signals as a tuple to the attached outlets
+//public struct CombinedFunnel<S1 : BaseFunnelType, S2 : BaseFunnelType> : FunnelType {
+//}

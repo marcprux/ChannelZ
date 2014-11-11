@@ -2,6 +2,10 @@
 SwiftFlow - DataFlow Functional Reactive Programming for Swift
 
 TODO: Re-name to:
+  ChannelZ (0 GH repos)
+  Channel°Z
+  Chatter (1,309 GH repos)
+  Stately (30 GH repos)
   Reifly (0 GH repos) (swift, reify, reactify)
   Reiflow (0 GH repos) (dataflow, reify, reactive)
   SwiftFlow (0 GH repos)

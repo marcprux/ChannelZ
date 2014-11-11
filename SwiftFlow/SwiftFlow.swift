@@ -8,25 +8,6 @@
 
 
 
-/// Creates a state pipeline between two channels with equivalent source and output types; changes made to either side will push the transformed value to the the other side
-///
-/// :param: a one side of the pipeline
-/// :param: b the other side of the pipeline
-/// :return: a tuple of the connected outlets
-public func pipe<A : BaseChannelType, B : BaseChannelType where A.SourceType == B.OutputType, B.SourceType == A.OutputType>(var a: A, var b: B) -> Outlet {
-    let asink = a.attach({ b.push($0); return })
-    let bsink = b.attach({ a.push($0); return })
-
-    let outlet = OutletOf<(A.OutputType, B.OutputType)>(receiver: { _ in }, detacher: {
-        asink.detach()
-        bsink.detach()
-    })
-
-    return outlet
-}
-
-
-
 /// MARK: ChannelType & Conduit Support
 
 /// A change encapsulates whether a state change can occur to the given type

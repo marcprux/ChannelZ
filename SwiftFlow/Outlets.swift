@@ -55,26 +55,29 @@ public struct OutletOf<Element> : OutletType {
     }
 }
 
+/// How many levels of re-entrancy is permitted when flowing state observations
+public var SwiftFlowOutletReentrancyGuard: UInt = 1
 
 final class OutletListReference<T> {
     private var outlets: [(index: UInt, outlet: OutletOf<T>)] = []
-    internal var flowing = false
+    internal var entrancy: UInt = 0
     private var outletIndex: UInt = 0
 
     func receive(element: T) {
-        if !flowing {
-            flowing = true
+        if entrancy++ > SwiftFlowOutletReentrancyGuard {
+            #if DEBUG_SWIFTFLOW
+                NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(SwiftFlowOutletReentrancyGuard) reached for outlets")
+            #endif
+        } else {
             for (index, outlet) in outlets {
                 outlet.receive(element)
             }
-            flowing = false
-        } else {
-            println("re-entrant source changes prohibited")
+            entrancy--
         }
     }
 
     func addOutlet(outlet: (T)->())->Outlet {
-        assert(!flowing, "cannot add to outlets while they are flowing")
+        assert(entrancy == 0, "cannot add to outlets while they are flowing")
         let index: UInt = outletIndex++
         let outlet = OutletOf<T>(receiver: outlet, detacher: { [weak self] in self?.removeOutlet(index); return })
         self.outlets += [(index, outlet)]

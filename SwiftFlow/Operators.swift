@@ -40,7 +40,7 @@ postfix operator |> { }
 /// Operator for setting Channel.value that returns the value itself
 infix operator <- {}
 public func <-<T : ChannelType>(var lhs: T, rhs: T.SourceType) -> T.SourceType {
-    lhs.value = rhs
+    lhs.push(rhs)
     return rhs
 }
 

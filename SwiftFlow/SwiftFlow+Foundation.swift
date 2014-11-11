@@ -33,18 +33,13 @@ public struct KeyValueChannel<T>: ChannelType {
         }
     }
 
-    public var value: SourceType {
-        get {
-            return self.observed.valueForKeyPath(self.keyPath) as SourceType
-        }
-
-        set {
-            push(newValue)
-        }
-    }
-
     public func push(value: SourceType) {
         self.observed.setValue(value as NSObject, forKeyPath: self.keyPath)
+    }
+
+    public func pull() -> OutputType {
+        let v = self.observed.valueForKeyPath(self.keyPath) as SourceType
+        return StateEvent(lastValue: v, nextValue: v)
     }
 
     /// Attaches an outlet to receive change notifications from the state pipeline
@@ -62,8 +57,9 @@ public struct KeyValueChannel<T>: ChannelType {
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<ThisChannel> { return filterChannel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedChannel<ThisChannel, TransformedType> { return mapChannel(self)(transform) }
-    public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<ThisChannel, WithChannel> { return combineChannel(self)(source2: channel) }
+    public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<ThisChannel, OutputTransformedType, ThisChannel.SourceType> { return mapOutput(self, transform) }
+    public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<ThisChannel, ThisChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+    public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<ThisChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
 
@@ -86,13 +82,13 @@ public struct KeyValueOptionalChannel<T>: ChannelType {
         let nsnull = NSNull()
     }
 
-    public var value: SourceType {
-        get { return self.observed.valueForKeyPath(self.keyPath) as SourceType }
-        set { push(newValue) }
-    }
-
     public func push(newValue: SourceType) {
         self.observed.setValue(newValue is NSNull ? nil : (newValue as? NSObject), forKeyPath: self.keyPath)
+    }
+
+    public func pull() -> OutputType {
+        let v = self.observed.valueForKeyPath(self.keyPath) as SourceType
+        return StateEvent(lastValue: v, nextValue: v)
     }
 
     /// Attaches an outlet to receive change notifications from the state pipeline
@@ -109,13 +105,14 @@ public struct KeyValueOptionalChannel<T>: ChannelType {
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<ThisChannel> { return filterChannel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedChannel<ThisChannel, TransformedType> { return mapChannel(self)(transform) }
-    public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<ThisChannel, WithChannel> { return combineChannel(self)(source2: channel) }
+    public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<ThisChannel, OutputTransformedType, ThisChannel.SourceType> { return mapOutput(self, transform) }
+    public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<ThisChannel, ThisChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+    public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<ThisChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
 
 /// How many levels of re-entrancy is permitted when flowing state observations
-public var SwiftFlowKeyValueReentrancyLimit: UInt = 1
+public var SwiftFlowKeyValueReentrancyGuard: UInt = 1
 
 #if DEBUG_SWIFTFLOW
     /// Track how many observers we have created and released; useful for ensuring that outlets correctly clean up
@@ -142,7 +139,6 @@ private class KeyValueOutlet: NSObject, Outlet {
 
     func attach() {
         if OSAtomicTestAndSet(0, &attached) == false {
-    //        objc_setAssociatedObject(observee, &ctx, self, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN)) // or OBJC_ASSOCIATION_ASSIGN?
             observee.addObserver(self, forKeyPath: keyPath, options: .Old | .New, context: &ctx)
             #if DEBUG_SWIFTFLOW
                 SwiftFlowKeyValueObserverCount++
@@ -167,9 +163,9 @@ private class KeyValueOutlet: NSObject, Outlet {
         if context == &ctx {
             assert(object === observee)
 
-            if entrancy++ > SwiftFlowKeyValueReentrancyLimit {
+            if entrancy++ > SwiftFlowKeyValueReentrancyGuard {
                 #if DEBUG_SWIFTFLOW
-                    NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(SwiftFlowKeyValueReentrancyLimit) reached for «\(observee).\(keyPath)»")
+                    NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(SwiftFlowKeyValueReentrancyGuard) reached for «\(observee).\(keyPath)»")
                 #endif
             } else {
                 let oldValue: AnyObject? = change[NSKeyValueChangeOldKey]
