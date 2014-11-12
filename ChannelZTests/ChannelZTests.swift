@@ -1,13 +1,13 @@
 //
-//  SwiftFlowTests.swift
-//  SwiftFlowTests
+//  ChannelZTests.swift
+//  ChannelZTests
 //
 //  Created by Marc Prud'hommeaux <mwp1@cornell.edu>
 //  License: MIT (or whatever)
 //
 
 import XCTest
-import SwiftFlow
+import ChannelZ
 
 #if os(OSX)
     import AppKit
@@ -17,14 +17,14 @@ import SwiftFlow
     import UIKit
 #endif
 
-public class SwiftFlowTests: XCTestCase {
+public class ChannelZTests: XCTestCase {
     override public func tearDown() {
         super.tearDown()
 
         // ensure that all the bindings and observers are properly cleaned up
-        #if DEBUG_SWIFTFLOW
+        #if DEBUG_CHANNELZ
 //        XCTAssertEqual(0, ConduitCount, "bindings were not cleaned up")
-        XCTAssertEqual(0, SwiftFlowKeyValueObserverCount, "KV observers were not cleaned up")
+        XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
         #endif
     }
 
@@ -61,16 +61,16 @@ public class SwiftFlowTests: XCTestCase {
         let cob = StatefulObject()
         cob.optionalStringField = "sval1"
 
-        #if DEBUG_SWIFTFLOW
-        let startObserverCount = SwiftFlowKeyValueObserverCount
+        #if DEBUG_CHANNELZ
+        let startObserverCount = ChannelZKeyValueObserverCount
         #endif
 
         autoreleasepool {
             let intFieldObserver = cob.sieve(cob.intField, keyPath: "intField")
             let intFieldOutlet = intFieldObserver.attach { _ in intFieldChanges += 1 }
 
-            #if DEBUG_SWIFTFLOW
-            XCTAssertEqual(SwiftFlowKeyValueObserverCount, startObserverCount + 1)
+            #if DEBUG_CHANNELZ
+            XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1)
             #endif
 
             var stringFieldObserver = cob.sieve(cob.optionalStringField, keyPath: "optionalStringField")
@@ -95,13 +95,13 @@ public class SwiftFlowTests: XCTestCase {
             cob.optionalStringField = ""; XCTAssertEqual(0, stringFieldChanges)
             cob.optionalStringField = "foo"; XCTAssertEqual(0, --stringFieldChanges)
 
-            #if DEBUG_SWIFTFLOW
-            XCTAssertEqual(SwiftFlowKeyValueObserverCount, startObserverCount + 3, "observers should still be around before cleanup")
+            #if DEBUG_CHANNELZ
+            XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 3, "observers should still be around before cleanup")
             #endif
         }
 
-        #if DEBUG_SWIFTFLOW
-        XCTAssertEqual(SwiftFlowKeyValueObserverCount, startObserverCount, "observers should have been cleared after cleanup")
+        #if DEBUG_CHANNELZ
+        XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount, "observers should have been cleared after cleanup")
         #endif
     }
 
@@ -533,9 +533,9 @@ public class SwiftFlowTests: XCTestCase {
 
         let deepOutlet = deepNest.attach({ _ in })
 
-        XCTAssertEqual("SwiftFlow.FilteredFunnel", _stdlib_getDemangledTypeName(deepNest))
-        XCTAssertEqual("SwiftFlow.FunnelOf", _stdlib_getDemangledTypeName(flatNest))
-        XCTAssertEqual("SwiftFlow.OutletOf", _stdlib_getDemangledTypeName(deepOutlet))
+        XCTAssertEqual("ChannelZ.FilteredFunnel", _stdlib_getDemangledTypeName(deepNest))
+        XCTAssertEqual("ChannelZ.FunnelOf", _stdlib_getDemangledTypeName(flatNest))
+        XCTAssertEqual("ChannelZ.OutletOf", _stdlib_getDemangledTypeName(deepOutlet))
     }
 
     func testDeepNestedChannel() {
@@ -566,10 +566,10 @@ public class SwiftFlowTests: XCTestCase {
 
         let deepOutlet = deepNest.attach({ _ in })
 
-        XCTAssertEqual("SwiftFlow.FilteredChannel", _stdlib_getDemangledTypeName(deepNest))
-        XCTAssertEqual("SwiftFlow.FunnelOf", _stdlib_getDemangledTypeName(flatFunnel))
-        XCTAssertEqual("SwiftFlow.ChannelOf", _stdlib_getDemangledTypeName(flatChannel))
-        XCTAssertEqual("SwiftFlow.OutletOf", _stdlib_getDemangledTypeName(deepOutlet))
+        XCTAssertEqual("ChannelZ.FilteredChannel", _stdlib_getDemangledTypeName(deepNest))
+        XCTAssertEqual("ChannelZ.FunnelOf", _stdlib_getDemangledTypeName(flatFunnel))
+        XCTAssertEqual("ChannelZ.ChannelOf", _stdlib_getDemangledTypeName(flatChannel))
+        XCTAssertEqual("ChannelZ.OutletOf", _stdlib_getDemangledTypeName(deepOutlet))
     }
 
     func testSimpleConduits() {
@@ -962,8 +962,8 @@ public class SwiftFlowTests: XCTestCase {
     func testOptionalFunnels() {
         let ob = StatefulObject()
 
-        #if DEBUG_SWIFTFLOW
-        let startObserverCount = SwiftFlowKeyValueObserverCount
+        #if DEBUG_CHANNELZ
+        let startObserverCount = ChannelZKeyValueObserverCount
         #endif
 
         var requiredNSStringField: NSString = ""
@@ -976,8 +976,8 @@ public class SwiftFlowTests: XCTestCase {
         let a1 = ob.channel(ob.requiredNSStringField, keyPath: "requiredNSStringField")
         var a1a = a1.attach({ requiredNSStringField = $0 })
 
-        #if DEBUG_SWIFTFLOW
-        XCTAssertEqual(SwiftFlowKeyValueObserverCount, startObserverCount + 1, "observer should not have been cleaned up")
+        #if DEBUG_CHANNELZ
+        XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1, "observer should not have been cleaned up")
         #endif
 
         ob.requiredNSStringField = "foo"

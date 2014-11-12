@@ -1,6 +1,6 @@
 //
 //  Channels.swift
-//  SwiftFlow
+//  ChannelZ
 //
 //  Created by Marc Prud'hommeaux <mwp1@cornell.edu>
 //  License: MIT (or whatever)
@@ -435,14 +435,12 @@ public func <∞<<T: FunnelType>(lhs: (T.OutputType)->Void, var rhs: T)->Outlet 
 
 
 
-// FIXME: we need to keep this operator in SwiftFlow.swift instead of SwiftFlowZ.swift due to compiler crash “While emitting SIL for '<∞' at SwiftFlowZ.swift:37:15”
+// FIXME: we need to keep this operator in ChannelZ.swift instead of ChannelZZ.swift due to compiler crash “While emitting SIL for '<∞' at ChannelZZ.swift:37:15”
 //prefix operator <∞ { }
 //public prefix func <∞ <T: Equatable>(rhs: T)->FilteredChannel<FieldChannel<T>> {
 //    return sievefield(rhs)
 //}
 
-
-// œ ∑ ´ ® † ¥ ¨ ˆ ø π “ ‘ « å ß ∂ ƒ © ˙ ∆ ˚ ¬ … æ Ω ≈ ç √ ∫ ˜ µ ≤ ≥ ÷ ¡ ™ £ ¢ ∞ § ¶ • ª º – ≠ §∞
 
 /// Trailing operator for creating a field funnel
 public postfix func ∞> <T>(lhs: T)->T {
@@ -450,7 +448,7 @@ public postfix func ∞> <T>(lhs: T)->T {
 }
 postfix operator ∞> { }
 
-// FIXME: we need to keep this operator in SwiftFlow.swift instead of Operators.swift due to compiler crash “While emitting SIL for '<∞' at SwiftFlowZ.swift:37:15”
+// FIXME: we need to keep this operator in ChannelZ.swift instead of Operators.swift due to compiler crash “While emitting SIL for '<∞' at ChannelZ.swift:37:15”
 prefix operator <∞ { }
 public prefix func <∞ <T : Equatable>(rhs: T)->ChannelOf<T, T> {
     return sieveField(rhs)

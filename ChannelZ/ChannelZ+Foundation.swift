@@ -1,5 +1,5 @@
 //
-//  SwiftFlow+Foundation.swift
+//  ChannelZ+Foundation.swift
 //  GlimpseCore
 //
 //  Created by Marc Prud'hommeaux <mwp1@cornell.edu>
@@ -112,11 +112,11 @@ public struct KeyValueOptionalChannel<T>: ChannelType {
 
 
 /// How many levels of re-entrancy is permitted when flowing state observations
-public var SwiftFlowKeyValueReentrancyGuard: UInt = 1
+public var ChannelZKeyValueReentrancyGuard: UInt = 1
 
-#if DEBUG_SWIFTFLOW
+#if DEBUG_CHANNELZ
     /// Track how many observers we have created and released; useful for ensuring that outlets correctly clean up
-    public var SwiftFlowKeyValueObserverCount = 0
+    public var ChannelZKeyValueObserverCount = 0
 #endif
 
 /// outlet for Cocoa KVO changes; cannot be embedded within KeyValueChannel because Objective-C classes cannot use generics
@@ -140,8 +140,8 @@ private class KeyValueOutlet: NSObject, Outlet {
     func attach() {
         if OSAtomicTestAndSet(0, &attached) == false {
             observee.addObserver(self, forKeyPath: keyPath, options: .Old | .New, context: &ctx)
-            #if DEBUG_SWIFTFLOW
-                SwiftFlowKeyValueObserverCount++
+            #if DEBUG_CHANNELZ
+                ChannelZKeyValueObserverCount++
             #endif
         }
     }
@@ -149,8 +149,8 @@ private class KeyValueOutlet: NSObject, Outlet {
     func detach() {
         if OSAtomicTestAndClear(0, &attached) {
             observee.removeObserver(self, forKeyPath: keyPath, context: &ctx)
-            #if DEBUG_SWIFTFLOW
-                SwiftFlowKeyValueObserverCount--
+            #if DEBUG_CHANNELZ
+                ChannelZKeyValueObserverCount--
             #endif
         }
     }
@@ -163,9 +163,9 @@ private class KeyValueOutlet: NSObject, Outlet {
         if context == &ctx {
             assert(object === observee)
 
-            if entrancy++ > SwiftFlowKeyValueReentrancyGuard {
-                #if DEBUG_SWIFTFLOW
-                    NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(SwiftFlowKeyValueReentrancyGuard) reached for «\(observee).\(keyPath)»")
+            if entrancy++ > ChannelZKeyValueReentrancyGuard {
+                #if DEBUG_CHANNELZ
+                    NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(ChannelZKeyValueReentrancyGuard) reached for «\(observee).\(keyPath)»")
                 #endif
             } else {
                 let oldValue: AnyObject? = change[NSKeyValueChangeOldKey]

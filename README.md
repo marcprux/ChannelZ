@@ -1,5 +1,5 @@
 
-SwiftFlow - DataFlow Functional Reactive Programming for Swift
+ChannelZ - DataFlow Functional Reactive Programming for Swift
 
 TODO: Re-name to:
   ChannelZ (0 GH repos)
@@ -8,7 +8,7 @@ TODO: Re-name to:
   Stately (30 GH repos)
   Reifly (0 GH repos) (swift, reify, reactify)
   Reiflow (0 GH repos) (dataflow, reify, reactive)
-  SwiftFlow (0 GH repos)
+  ChannelZ (0 GH repos)
   Bindage (1 GH repo)
   Flowerz (0 GH repos)
   InterFlow (1 small GH repo)

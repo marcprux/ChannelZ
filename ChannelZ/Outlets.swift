@@ -1,6 +1,6 @@
 //
 //  Outlets.swift
-//  SwiftFlow
+//  ChannelZ
 //
 //  Created by Marc Prud'hommeaux <mwp1@cornell.edu>
 //  License: MIT (or whatever)
@@ -56,7 +56,7 @@ public struct OutletOf<Element> : OutletType {
 }
 
 /// How many levels of re-entrancy is permitted when flowing state observations
-public var SwiftFlowOutletReentrancyGuard: UInt = 1
+public var ChannelZOutletReentrancyGuard: UInt = 1
 
 final class OutletListReference<T> {
     private var outlets: [(index: UInt, outlet: OutletOf<T>)] = []
@@ -64,9 +64,9 @@ final class OutletListReference<T> {
     private var outletIndex: UInt = 0
 
     func receive(element: T) {
-        if entrancy++ > SwiftFlowOutletReentrancyGuard {
-            #if DEBUG_SWIFTFLOW
-                NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(SwiftFlowOutletReentrancyGuard) reached for outlets")
+        if entrancy++ > ChannelZOutletReentrancyGuard {
+            #if DEBUG_CHANNELZ
+                NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(ChannelZOutletReentrancyGuard) reached for outlets")
             #endif
         } else {
             for (index, outlet) in outlets {
