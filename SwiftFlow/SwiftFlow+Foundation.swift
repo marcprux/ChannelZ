@@ -53,13 +53,13 @@ public struct KeyValueChannel<T>: ChannelType {
 
 
     // Boilerplate funnel/channel/filter/map
-    public typealias ThisChannel = KeyValueChannel
+    public typealias SelfChannel = KeyValueChannel
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredChannel<ThisChannel> { return filterChannel(self)(predicate) }
-    public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<ThisChannel, OutputTransformedType, ThisChannel.SourceType> { return mapOutput(self, transform) }
-    public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<ThisChannel, ThisChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
-    public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<ThisChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
+    public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+    public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
+    public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+    public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
 
@@ -101,13 +101,13 @@ public struct KeyValueOptionalChannel<T>: ChannelType {
     }
 
     // Boilerplate funnel/channel/filter/map
-    public typealias ThisChannel = KeyValueOptionalChannel
+    public typealias SelfChannel = KeyValueOptionalChannel
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredChannel<ThisChannel> { return filterChannel(self)(predicate) }
-    public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<ThisChannel, OutputTransformedType, ThisChannel.SourceType> { return mapOutput(self, transform) }
-    public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<ThisChannel, ThisChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
-    public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<ThisChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
+    public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+    public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
+    public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+    public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
 
@@ -253,7 +253,12 @@ public func sieveOptional<T : Equatable>(receivee: NSObject, keyPath: String, va
 /// A Funnel for events of type Void
 public struct EventFunnel<T>: FunnelType {
     public typealias OutputType = T
+    internal var dispatchTarget: NSObject? // object to be retained for as long as someone holds the EventFunnel
     internal var outlets = OutletListReference<OutputType>()
+
+    public init(_ dispatchTarget: NSObject?) {
+        self.dispatchTarget = dispatchTarget
+    }
 
     /// Attaches an outlet to receive change notifications from the state pipeline
     ///

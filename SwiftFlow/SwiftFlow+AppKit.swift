@@ -9,9 +9,6 @@
 #if os(OSX)
     import AppKit
 
-    // FIXME: static reference since targets are not retained
-    public var observers : [ClosureDispatch] = []
-
     public extension NSControl {
 
         public var enabledChannel: ChannelOf<Bool, Bool> {
@@ -23,29 +20,22 @@
         }
 
         public func funnelCommand() -> EventFunnel<Void> {
-            let funnel = EventFunnel<Void>()
-            let observer = ClosureDispatch({ funnel.outlets.receive() })
+            // TODO: if the control already has an action, make it into an action list that we can add/remove to
+            var funnel = EventFunnel<Void>(nil)
+            let observer = DispatchTarget({ funnel.outlets.receive() })
+            funnel.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
             self.target = observer
             self.action = Selector("execute")
-
-            // FIXME: static reference since targets are not retained
-            observers += [observer]
             return funnel
-
-            fatalError("FIXME: remove the need to reference observers")
         }
 
     }
 
 
-    @objc public class ClosureDispatch : NSObject {
+    @objc public class DispatchTarget : NSObject {
         public init(f:()->()) { self.action = f }
         public func execute() -> () { action() }
         public let action: () -> ()
-
-        deinit {
-
-        }
     }
 
 
