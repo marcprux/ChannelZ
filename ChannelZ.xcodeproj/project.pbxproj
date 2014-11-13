@@ -7,17 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7E30DC361A0D6A510050EC52 /* ChannelZ.h in Headers */ = {isa = PBXBuildFile; fileRef = 7E30DC351A0D6A510050EC52 /* ChannelZ.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7E30DC3C1A0D6A510050EC52 /* ChannelZ.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E30DC301A0D6A510050EC52 /* ChannelZ.framework */; };
 		7E30DC431A0D6A510050EC52 /* ChannelZTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC421A0D6A510050EC52 /* ChannelZTests.swift */; };
-		7E30DC5B1A0D6B1B0050EC52 /* ChannelZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC571A0D6B1B0050EC52 /* ChannelZ.swift */; };
-		7E30DC5C1A0D6B1B0050EC52 /* Operators.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC581A0D6B1B0050EC52 /* Operators.swift */; };
-		7E30DC5D1A0D6B1B0050EC52 /* ChannelZ+Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC591A0D6B1B0050EC52 /* ChannelZ+Foundation.swift */; };
-		7E43C2CB1A1072A4003747B6 /* Funnels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CA1A1072A4003747B6 /* Funnels.swift */; };
-		7E43C2CD1A1072AC003747B6 /* Channels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CC1A1072AC003747B6 /* Channels.swift */; };
-		7E43C2CF1A1073CA003747B6 /* Outlets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CE1A1073CA003747B6 /* Outlets.swift */; };
-		7E43C2D31A1075D0003747B6 /* ChannelZ+AppKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D21A1075D0003747B6 /* ChannelZ+AppKit.swift */; };
-		7E43C2D71A10763D003747B6 /* ChannelZ+UIKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D61A10763D003747B6 /* ChannelZ+UIKit.swift */; };
+		7E30DC5D1A0D6B1B0050EC52 /* FoundationZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC591A0D6B1B0050EC52 /* FoundationZ.swift */; };
+		7E43C2CB1A1072A4003747B6 /* FunnelZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CA1A1072A4003747B6 /* FunnelZ.swift */; };
+		7E43C2CD1A1072AC003747B6 /* ChannelZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CC1A1072AC003747B6 /* ChannelZ.swift */; };
+		7E43C2CF1A1073CA003747B6 /* OutletZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CE1A1073CA003747B6 /* OutletZ.swift */; };
+		7E43C2D31A1075D0003747B6 /* AppKitZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D21A1075D0003747B6 /* AppKitZ.swift */; };
+		7E43C2D71A10763D003747B6 /* UIKitZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D61A10763D003747B6 /* UIKitZ.swift */; };
+		7E7E35461A152CCD00777D72 /* CoreDataZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7E35451A152CCD00777D72 /* CoreDataZ.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,20 +31,18 @@
 /* Begin PBXFileReference section */
 		7E30DC301A0D6A510050EC52 /* ChannelZ.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ChannelZ.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E30DC341A0D6A510050EC52 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		7E30DC351A0D6A510050EC52 /* ChannelZ.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChannelZ.h; sourceTree = "<group>"; };
 		7E30DC3B1A0D6A510050EC52 /* ChannelZTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChannelZTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E30DC411A0D6A510050EC52 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7E30DC421A0D6A510050EC52 /* ChannelZTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelZTests.swift; sourceTree = "<group>"; };
-		7E30DC571A0D6B1B0050EC52 /* ChannelZ.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChannelZ.swift; sourceTree = "<group>"; };
-		7E30DC581A0D6B1B0050EC52 /* Operators.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Operators.swift; sourceTree = "<group>"; };
-		7E30DC591A0D6B1B0050EC52 /* ChannelZ+Foundation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "ChannelZ+Foundation.swift"; sourceTree = "<group>"; };
+		7E30DC591A0D6B1B0050EC52 /* FoundationZ.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FoundationZ.swift; sourceTree = "<group>"; };
 		7E30DC5F1A0D6B230050EC52 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		7E30DC611A0D73690050EC52 /* ChannelZUI.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = ChannelZUI.playground; sourceTree = "<group>"; };
-		7E43C2CA1A1072A4003747B6 /* Funnels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Funnels.swift; sourceTree = "<group>"; };
-		7E43C2CC1A1072AC003747B6 /* Channels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Channels.swift; sourceTree = "<group>"; };
-		7E43C2CE1A1073CA003747B6 /* Outlets.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Outlets.swift; sourceTree = "<group>"; };
-		7E43C2D21A1075D0003747B6 /* ChannelZ+AppKit.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "ChannelZ+AppKit.swift"; sourceTree = "<group>"; };
-		7E43C2D61A10763D003747B6 /* ChannelZ+UIKit.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "ChannelZ+UIKit.swift"; sourceTree = "<group>"; };
+		7E43C2CA1A1072A4003747B6 /* FunnelZ.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FunnelZ.swift; sourceTree = "<group>"; };
+		7E43C2CC1A1072AC003747B6 /* ChannelZ.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChannelZ.swift; sourceTree = "<group>"; };
+		7E43C2CE1A1073CA003747B6 /* OutletZ.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OutletZ.swift; sourceTree = "<group>"; };
+		7E43C2D21A1075D0003747B6 /* AppKitZ.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppKitZ.swift; sourceTree = "<group>"; };
+		7E43C2D61A10763D003747B6 /* UIKitZ.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIKitZ.swift; sourceTree = "<group>"; };
+		7E7E35451A152CCD00777D72 /* CoreDataZ.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CoreDataZ.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,18 +87,15 @@
 		7E30DC321A0D6A510050EC52 /* ChannelZ */ = {
 			isa = PBXGroup;
 			children = (
-				7E30DC351A0D6A510050EC52 /* ChannelZ.h */,
-				7E30DC571A0D6B1B0050EC52 /* ChannelZ.swift */,
-				7E43C2CE1A1073CA003747B6 /* Outlets.swift */,
-				7E43C2CA1A1072A4003747B6 /* Funnels.swift */,
-				7E43C2CC1A1072AC003747B6 /* Channels.swift */,
-				7E30DC581A0D6B1B0050EC52 /* Operators.swift */,
-				7E30DC591A0D6B1B0050EC52 /* ChannelZ+Foundation.swift */,
-				7E43C2D21A1075D0003747B6 /* ChannelZ+AppKit.swift */,
-				7E43C2D61A10763D003747B6 /* ChannelZ+UIKit.swift */,
+				7E43C2CC1A1072AC003747B6 /* ChannelZ.swift */,
+				7E43C2CE1A1073CA003747B6 /* OutletZ.swift */,
+				7E43C2CA1A1072A4003747B6 /* FunnelZ.swift */,
+				7E30DC591A0D6B1B0050EC52 /* FoundationZ.swift */,
+				7E7E35451A152CCD00777D72 /* CoreDataZ.swift */,
+				7E43C2D21A1075D0003747B6 /* AppKitZ.swift */,
+				7E43C2D61A10763D003747B6 /* UIKitZ.swift */,
 				7E30DC331A0D6A510050EC52 /* Supporting Files */,
 			);
-			name = ChannelZ;
 			path = ChannelZ;
 			sourceTree = "<group>";
 		};
@@ -120,7 +113,6 @@
 				7E30DC421A0D6A510050EC52 /* ChannelZTests.swift */,
 				7E30DC401A0D6A510050EC52 /* Supporting Files */,
 			);
-			name = ChannelZTests;
 			path = ChannelZTests;
 			sourceTree = "<group>";
 		};
@@ -139,7 +131,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7E30DC361A0D6A510050EC52 /* ChannelZ.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -239,14 +230,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7E30DC5D1A0D6B1B0050EC52 /* ChannelZ+Foundation.swift in Sources */,
-				7E43C2D31A1075D0003747B6 /* ChannelZ+AppKit.swift in Sources */,
-				7E43C2D71A10763D003747B6 /* ChannelZ+UIKit.swift in Sources */,
-				7E43C2CF1A1073CA003747B6 /* Outlets.swift in Sources */,
-				7E43C2CB1A1072A4003747B6 /* Funnels.swift in Sources */,
-				7E30DC5C1A0D6B1B0050EC52 /* Operators.swift in Sources */,
-				7E43C2CD1A1072AC003747B6 /* Channels.swift in Sources */,
-				7E30DC5B1A0D6B1B0050EC52 /* ChannelZ.swift in Sources */,
+				7E30DC5D1A0D6B1B0050EC52 /* FoundationZ.swift in Sources */,
+				7E43C2D31A1075D0003747B6 /* AppKitZ.swift in Sources */,
+				7E43C2D71A10763D003747B6 /* UIKitZ.swift in Sources */,
+				7E7E35461A152CCD00777D72 /* CoreDataZ.swift in Sources */,
+				7E43C2CF1A1073CA003747B6 /* OutletZ.swift in Sources */,
+				7E43C2CB1A1072A4003747B6 /* FunnelZ.swift in Sources */,
+				7E43C2CD1A1072AC003747B6 /* ChannelZ.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -289,6 +279,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
+				EMBEDDED_CONTENT_CONTAINS_SWIFT = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
@@ -305,9 +296,10 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 8.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks @loader_path/Frameworks @executable_path/Frameworks @loader_path/../Frameworks";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_SWIFT_FLAGS = "-DDEBUG_SWIFTFLOW";
+				OTHER_SWIFT_FLAGS = "-DDEBUG_CHANNELZ";
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -336,6 +328,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				EMBEDDED_CONTENT_CONTAINS_SWIFT = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -346,6 +339,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 8.1;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks @loader_path/Frameworks @executable_path/Frameworks @loader_path/../Frameworks";
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
 				TARGETED_DEVICE_FAMILY = "1,2";

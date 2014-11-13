@@ -57,11 +57,11 @@ public struct FunnelOf<OutputType> : FunnelType {
     }
 
     // Boilerplate funnel/filter/map
-    private typealias ThisFunnel = FunnelOf
+    public typealias SelfFunnel = FunnelOf
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<ThisFunnel> { return FilteredFunnel(source: self, predicate: predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<ThisFunnel, TransformedType> { return MappedFunnel(source: self, transform: transform) }
-    // public func combine<WithFunnel>(funnel: WithFunnel)->CombinedFunnel<ThisFunnel, WithFunnel> { return CombinedFunnel(source1: self, source2: funnel) }
+    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return FilteredFunnel(source: self, predicate: predicate) }
+    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return MappedFunnel(source: self, transform: transform) }
+    // public func combine<WithFunnel>(funnel: WithFunnel)->CombinedFunnel<SelfFunnel, WithFunnel> { return CombinedFunnel(source1: self, source2: funnel) }
 
 }
 
@@ -86,11 +86,11 @@ public struct FilteredFunnel<S : BaseFunnelType> : FunnelType {
     }
 
     // Boilerplate funnel/filter/map
-    private typealias ThisFunnel = FilteredFunnel
+    public typealias SelfFunnel = FilteredFunnel
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<ThisFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<ThisFunnel, TransformedType> { return mapFunnel(self)(transform) }
-    // public func combine<WithFunnel>(funnel: WithFunnel)->CombinedFunnel<ThisFunnel, WithFunnel> { return CombinedFunnel(source1: self, source2: funnel) }
+    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
+    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    // public func combine<WithFunnel>(funnel: WithFunnel)->CombinedFunnel<SelfFunnel, WithFunnel> { return CombinedFunnel(source1: self, source2: funnel) }
 }
 
 
@@ -130,11 +130,11 @@ public struct MappedFunnel<Source : BaseFunnelType, TransformedType> : FunnelTyp
     }
 
     // Boilerplate funnel/filter/map
-    private typealias ThisFunnel = MappedFunnel
+    public typealias SelfFunnel = MappedFunnel
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<ThisFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<ThisFunnel, TransformedType> { return mapFunnel(self)(transform) }
-    // public func combine<WithFunnel>(funnel: WithFunnel)->CombinedFunnel<ThisFunnel, WithFunnel> { return CombinedFunnel(source1: self, source2: funnel) }
+    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
+    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    // public func combine<WithFunnel>(funnel: WithFunnel)->CombinedFunnel<SelfFunnel, WithFunnel> { return CombinedFunnel(source1: self, source2: funnel) }
 }
 
 /// Internal MappedFunnel curried creation

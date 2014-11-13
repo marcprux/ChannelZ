@@ -66,7 +66,7 @@ final class OutletListReference<T> {
     func receive(element: T) {
         if entrancy++ > ChannelZOutletReentrancyGuard {
             #if DEBUG_CHANNELZ
-                NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(ChannelZOutletReentrancyGuard) reached for outlets")
+                println("re-entrant value change limit of \(ChannelZOutletReentrancyGuard) reached for outlets")
             #endif
         } else {
             for (index, outlet) in outlets {

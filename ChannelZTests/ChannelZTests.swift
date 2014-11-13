@@ -8,6 +8,7 @@
 
 import XCTest
 import ChannelZ
+import CoreData
 
 #if os(OSX)
     import AppKit
@@ -23,14 +24,16 @@ public class ChannelZTests: XCTestCase {
 
         // ensure that all the bindings and observers are properly cleaned up
         #if DEBUG_CHANNELZ
-//        XCTAssertEqual(0, ConduitCount, "bindings were not cleaned up")
         XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
+        XCTAssertEqual(0, ChannelZNotificationObserverCount, "Notification observers were not cleaned up")
+        #else
+        XCTFail("Why are you running tests with debugging off?")
         #endif
     }
 
     func testFunnels() {
         var observedBool = <∞false∞>
-        observedBool.push(false)
+        observedBool.value = false
 
         var changeCount: Int = 0
 
@@ -89,7 +92,7 @@ public class ChannelZTests: XCTestCase {
             cob.intField++; XCTAssertEqual(0, --intFieldChanges)
             cob.optionalStringField = cob.optionalStringField ?? "" + ""; XCTAssertEqual(0, stringFieldChanges)
             cob.optionalStringField! += "x"; XCTAssertEqual(0, --stringFieldChanges)
-            stringFieldObserver.push("y"); XCTAssertEqual(0, --stringFieldChanges)
+            stringFieldObserver.value = "y"; XCTAssertEqual(0, --stringFieldChanges)
             cob.optionalStringField = nil; XCTAssertEqual(0, --stringFieldChanges)
             cob.optionalStringField = ""; XCTAssertEqual(0, --stringFieldChanges)
             cob.optionalStringField = ""; XCTAssertEqual(0, stringFieldChanges)
@@ -118,6 +121,7 @@ public class ChannelZTests: XCTestCase {
         var aa = a.attach { strlen = $0 }
 
         a.push("XXX")
+
         XCTAssertEqual(3, strlen)
 
         // TODO: need to re-implement .value for FieldChannels, etc.
@@ -864,7 +868,6 @@ public class ChannelZTests: XCTestCase {
         y.push(y.pull() + 0.5)
         XCTAssertEqual(T1(18), x.pull())
         XCTAssertEqual(T2(18.5), y.pull())
-
     }
 
     func testConversionConduits() {
@@ -1043,12 +1046,12 @@ public class ChannelZTests: XCTestCase {
 
         var text = ""
 
-        let textChannel = textField.stringValueChannel.map( { $0 } )
+        let textChannel = textField.stringValueZ.map( { $0 } )
         var textOutlet = textChannel.attach({ text = $0 })
 //        let textOutlet = textField.stringValueChannel.attach({ text = $0 })
 
         var enabled = true
-        let enabledChannel = textField.enabledChannel
+        let enabledChannel = textField.enabledZ
         var enabledOutlet = enabledChannel.attach({ enabled = $0 })
 
         textField.stringValue = "ABC"
@@ -1076,6 +1079,105 @@ public class ChannelZTests: XCTestCase {
 
     #endif
 
+    #if os(iOS)
+    func testButtonCommand() {
+        let button = UIButton()
+
+        var taps = 0 // track the number of taps on the button
+
+        XCTAssertEqual(taps, 0)
+
+        let eventType: UIControlEvents = .TouchUpInside
+        let cmd = button.funnelControlEvents(events: eventType)
+        XCTAssertEqual(0, button.allTargets().count)
+
+        // sadly, this only seems to work when the button is in a running UIApplication
+        // let tap: ()->() = { button.sendActionsForControlEvents(.TouchUpInside) }
+
+        // so we need to fake it by directly invoking the target's action
+        let tap: ()->() = {
+            let event = UIEvent()
+
+            for target in button.allTargets().allObjects as [UIEventObserver] {
+                // button.sendAction also doesn't work from a test case
+                for action in button.actionsForTarget(target, forControlEvent: eventType) as [String] {
+//                    button.sendAction(Selector(action), to: target, forEvent: event)
+                    XCTAssertEqual("handleControlEvent:", action)
+                    target.handleControlEvent(event)
+                }
+            }
+        }
+
+        let buttonTapsHappen = true // false && false // or else compiler warning about blocks never executing
+
+        var outlet1 = cmd.attach({ _ in taps += 1 })
+        XCTAssertEqual(1, button.allTargets().count)
+
+        if buttonTapsHappen {
+            tap(); taps -= 1; XCTAssertEqual(taps, 0)
+            tap(); taps -= 1; XCTAssertEqual(taps, 0)
+        }
+
+        var outlet2 = cmd.attach({ _ in taps += 1 })
+        XCTAssertEqual(2, button.allTargets().count)
+        if buttonTapsHappen {
+            tap(); taps -= 2; XCTAssertEqual(taps, 0)
+            tap(); taps -= 2; XCTAssertEqual(taps, 0)
+        }
+
+        outlet1.detach()
+        XCTAssertEqual(1, button.allTargets().count)
+        if buttonTapsHappen {
+            tap(); taps -= 1; XCTAssertEqual(taps, 0)
+            tap(); taps -= 1; XCTAssertEqual(taps, 0)
+        }
+
+        outlet2.detach()
+        XCTAssertEqual(0, button.allTargets().count)
+        if buttonTapsHappen {
+            tap(); taps -= 0; XCTAssertEqual(taps, 0)
+            tap(); taps -= 0; XCTAssertEqual(taps, 0)
+        }
+    }
+
+    func testTextFieldProperties() {
+        let textField = UITextField()
+
+
+        var text = ""
+
+        let textChannel = textField.textChannel.map( { $0 } )
+        var textOutlet = textChannel.attach({ text = $0 })
+
+        var enabled = true
+        let enabledChannel = textField.enabledChannel
+        var enabledOutlet = enabledChannel.attach({ enabled = $0 })
+
+        textField.text = "ABC"
+        XCTAssertEqual("ABC", textField.text)
+        XCTAssertEqual("ABC", text)
+
+        textField.enabled = false
+        XCTAssertEqual(false, textField.enabled)
+        XCTAssertEqual(false, enabled)
+
+        textField.enabled = true
+        XCTAssertEqual(true, enabled)
+
+        textOutlet.detach()
+
+        textField.text = "XYZ"
+        XCTAssertEqual("ABC", text)
+        
+        enabledOutlet.detach()
+        
+        textField.enabled = false
+        XCTAssertEqual(true, enabled)
+        
+    }
+
+    #endif
+
     func testValueToReference() {
         let startCount = StatefulObjectCount
         let countObs: () -> (Int) = { StatefulObjectCount - startCount }
@@ -1095,6 +1197,98 @@ public class ChannelZTests: XCTestCase {
         XCTAssert(holder2 != nil)
         holder2 = nil
         XCTAssertEqual(0, countObs())
+    }
+
+
+    /// Demonstrates using bindings with Core Data
+    func testManagedObjectContext() {
+        var error: NSError?
+
+        let attrName = NSAttributeDescription()
+        attrName.name = "fullName"
+        attrName.attributeType = .StringAttributeType
+        attrName.defaultValue = "John Doe"
+        attrName.optional = true
+
+        let attrAge = NSAttributeDescription()
+        attrAge.name = "age"
+        attrAge.attributeType = .Integer16AttributeType
+        attrAge.optional = false
+
+        let personEntity = NSEntityDescription()
+        personEntity.name = "Person"
+        personEntity.properties = [attrName, attrAge]
+
+        let model = NSManagedObjectModel()
+        model.entities = [personEntity]
+
+        let psc = NSPersistentStoreCoordinator(managedObjectModel: model)
+        let store = psc.addPersistentStoreWithType(NSInMemoryStoreType, configuration: nil, URL: nil, options: nil, error: &error)
+
+        let ctx = NSManagedObjectContext(concurrencyType: NSManagedObjectContextConcurrencyType.MainQueueConcurrencyType)
+        ctx.persistentStoreCoordinator = psc
+
+        var saveCount = 0
+        let saveCountOutlet = ctx.funnel(NSManagedObjectContextDidSaveNotification).attach { _ in saveCount = saveCount + 1 }
+
+        var inserted = [NSManagedObject]()
+        let insertedOutlet = ctx.changedInsertedZ.attach { inserted = $0 }
+
+        var updated = [NSManagedObject]()
+        let updatedOutlet = ctx.changedUpdatedZ.attach { updated = $0 }
+
+        var deleted = [NSManagedObject]()
+        let deletedOutlet = ctx.changedDeletedZ.attach { deleted = $0 }
+
+        var refreshed = [NSManagedObject]()
+        let refreshedOutlet = ctx.changedRefreshedZ.attach { refreshed = $0 }
+
+        var invalidated = [NSManagedObject]()
+        let invalidatedOutlet = ctx.chagedInvalidatedZ.attach { invalidated = $0 }
+
+
+//        let changeOutlet = ctx.funnel(NSManagedObjectContextObjectsDidChangeNotification).attach { (note: NSNotification) -> () in
+//            let mobs4key = { (note.userInfo?[$0] as? NSSet)?.allObjects as? [NSManagedObject] ?? [] }
+//
+//            inserted = mobs4key(NSInsertedObjectsKey)
+//            updated = mobs4key(NSUpdatedObjectsKey)
+//            deleted = mobs4key(NSDeletedObjectsKey)
+//            refreshed = mobs4key(NSInvalidatedObjectsKey)
+//            invalidated = mobs4key(NSInvalidatedAllObjectsKey)
+//        }
+
+        XCTAssertNil(error)
+
+        let ob = NSManagedObject(entity: personEntity, insertIntoManagedObjectContext: ctx)
+        ob.setValue("Bob Jones", forKey: "fullName")
+        ob.setValue(65, forKey: "age")
+
+        XCTAssertEqual(0, saveCount)
+
+        ctx.save(&error)
+        XCTAssertNil(error)
+        XCTAssertEqual(1, saveCount)
+        XCTAssertEqual(1, inserted.count)
+        XCTAssertEqual(0, updated.count)
+        XCTAssertEqual(0, deleted.count)
+
+        ob.setValue("Frank Underwood", forKey: "fullName")
+
+        ctx.save(&error)
+        XCTAssertNil(error)
+        XCTAssertEqual(2, saveCount)
+        XCTAssertEqual(0, inserted.count)
+        XCTAssertEqual(1, updated.count)
+        XCTAssertEqual(0, deleted.count)
+
+        ctx.deleteObject(ob)
+
+        ctx.save(&error)
+        XCTAssertNil(error)
+        XCTAssertEqual(3, saveCount)
+        XCTAssertEqual(0, inserted.count)
+        XCTAssertEqual(0, updated.count)
+        XCTAssertEqual(1, deleted.count)
     }
 }
 
@@ -1130,3 +1324,8 @@ public class StatefulObject : NSObject {
     }
 }
 
+extension NSNumber {
+    public func reflect(from: String = __FUNCTION__) {
+        println("from: \(from)")
+    }
+}
