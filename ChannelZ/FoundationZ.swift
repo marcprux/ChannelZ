@@ -6,7 +6,7 @@
 //  License: MIT (or whatever)
 //
 
-/// Support for Foundation channels and funnels, such as KVO-based channels and NSManagedObjectContext notifications
+/// Support for Foundation channels and funnels, such as KVO-based channels
 import Foundation
 
 /// A Channel for Cocoa properties that support key-value path observation/coding

@@ -11,14 +11,14 @@
     import UIKit
 
     public extension UIView {
-        public var hiddenChannel: ChannelOf<Bool, Bool> { return self.sieve(hidden, keyPath: "hidden").channelOf }
-        public var opaqueChannel: ChannelOf<Bool, Bool> { return self.sieve(opaque, keyPath: "opaque").channelOf }
-        public var alphaChannel: ChannelOf<CGFloat, CGFloat> { return self.sieve(alpha, keyPath: "alpha").channelOf }
-        public var tintColorChannel: ChannelOf<UIColor, UIColor> { return self.sieve(tintColor, keyPath: "tintColor").channelOf }
+        public var hiddenZ: ChannelZ<Bool> { return self.sieve(hidden, keyPath: "hidden") }
+        public var opaqueZ: ChannelZ<Bool> { return self.sieve(opaque, keyPath: "opaque") }
+        public var alphaZ: ChannelZ<CGFloat> { return self.sieve(alpha, keyPath: "alpha") }
+        public var tintColorZ: ChannelZ<UIColor> { return self.sieve(tintColor, keyPath: "tintColor") }
     }
 
     public extension UIControl {
-        public var enabledChannel: ChannelOf<Bool, Bool> { return self.sieve(enabled, keyPath: "enabled").channelOf }
+        public var enabledZ: ChannelZ<Bool> { return self.sieve(enabled, keyPath: "enabled") }
 
         public func funnelControlEvents(events: UIControlEvents = .AllEvents) -> UIEventFunnel {
             return UIEventFunnel(control: self, events: events)
@@ -26,16 +26,16 @@
     }
 
     public extension UISlider {
-        public var valueChannel: ChannelOf<Float, Float> { return self.sieve(value, keyPath: "value").channelOf }
-        public var maximumValueChannel: ChannelOf<Float, Float> { return self.sieve(maximumValue, keyPath: "maximumValue").channelOf }
-        public var minimumValueChannel: ChannelOf<Float, Float> { return self.sieve(minimumValue, keyPath: "minimumValue").channelOf }
+        public var valueZ: ChannelZ<Float> { return self.sieve(value, keyPath: "value") }
+        public var maximumValueZ: ChannelZ<Float> { return self.sieve(maximumValue, keyPath: "maximumValue") }
+        public var minimumValueZ: ChannelZ<Float> { return self.sieve(minimumValue, keyPath: "minimumValue") }
     }
 
 
     public extension UITextField {
-        public var textChannel: ChannelOf<String, String> { return self.sieve(text, keyPath: "text").channelOf }
-        public var fontChannel: ChannelOf<UIFont, UIFont> { return self.sieve(font, keyPath: "font").channelOf }
-        public var textColorChannel: ChannelOf<UIColor, UIColor> { return self.sieve(textColor, keyPath: "textColor").channelOf }
+        public var textZ: ChannelZ<String> { return self.sieve(text, keyPath: "text") }
+        public var fontZ: ChannelZ<UIFont> { return self.sieve(font, keyPath: "font") }
+        public var textColorZ: ChannelZ<UIColor> { return self.sieve(textColor, keyPath: "textColor") }
     }
 
     @objc public class EventTarget : NSObject {

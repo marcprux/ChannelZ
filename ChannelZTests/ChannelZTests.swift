@@ -61,42 +61,42 @@ public class ChannelZTests: XCTestCase {
         var intFieldChanges: Int = 0
         var doubleFieldChanges: Int = 0
 
-        let cob = StatefulObject()
-        cob.optionalStringField = "sval1"
+        let state = StatefulObject()
+        state.optionalStringField = "sval1"
 
         #if DEBUG_CHANNELZ
         let startObserverCount = ChannelZKeyValueObserverCount
         #endif
 
         autoreleasepool {
-            let intFieldObserver = cob.sieve(cob.intField, keyPath: "intField")
+            let intFieldObserver = state.sieve(state.intField, keyPath: "intField")
             let intFieldOutlet = intFieldObserver.attach { _ in intFieldChanges += 1 }
 
             #if DEBUG_CHANNELZ
             XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1)
             #endif
 
-            var stringFieldObserver = cob.sieve(cob.optionalStringField, keyPath: "optionalStringField")
+            var stringFieldObserver = state.sieve(state.optionalStringField, keyPath: "optionalStringField")
             let stringFieldOutlet = stringFieldObserver.attach { _ in stringFieldChanges += 1 }
 
-            let doubleFieldObserver = cob.sieve(cob.doubleField, keyPath: "doubleField")
+            let doubleFieldObserver = state.sieve(state.doubleField, keyPath: "doubleField")
 
             let doubleFieldOutlet = doubleFieldObserver.attach { _ in doubleFieldChanges += 1 }
 
             XCTAssertEqual(0, stringFieldChanges)
-            XCTAssertEqual("sval1", cob.optionalStringField!)
+            XCTAssertEqual("sval1", state.optionalStringField!)
 
-            cob.intField++; XCTAssertEqual(0, --intFieldChanges)
-            cob.intField = cob.intField + 0; XCTAssertEqual(0, intFieldChanges)
-            cob.intField = cob.intField + 1 - 1; XCTAssertEqual(0, intFieldChanges)
-            cob.intField++; XCTAssertEqual(0, --intFieldChanges)
-            cob.optionalStringField = cob.optionalStringField ?? "" + ""; XCTAssertEqual(0, stringFieldChanges)
-            cob.optionalStringField! += "x"; XCTAssertEqual(0, --stringFieldChanges)
+            state.intField++; XCTAssertEqual(0, --intFieldChanges)
+            state.intField = state.intField + 0; XCTAssertEqual(0, intFieldChanges)
+            state.intField = state.intField + 1 - 1; XCTAssertEqual(0, intFieldChanges)
+            state.intField++; XCTAssertEqual(0, --intFieldChanges)
+            state.optionalStringField = state.optionalStringField ?? "" + ""; XCTAssertEqual(0, stringFieldChanges)
+            state.optionalStringField! += "x"; XCTAssertEqual(0, --stringFieldChanges)
             stringFieldObserver.value = "y"; XCTAssertEqual(0, --stringFieldChanges)
-            cob.optionalStringField = nil; XCTAssertEqual(0, --stringFieldChanges)
-            cob.optionalStringField = ""; XCTAssertEqual(0, --stringFieldChanges)
-            cob.optionalStringField = ""; XCTAssertEqual(0, stringFieldChanges)
-            cob.optionalStringField = "foo"; XCTAssertEqual(0, --stringFieldChanges)
+            state.optionalStringField = nil; XCTAssertEqual(0, --stringFieldChanges)
+            state.optionalStringField = ""; XCTAssertEqual(0, --stringFieldChanges)
+            state.optionalStringField = ""; XCTAssertEqual(0, stringFieldChanges)
+            state.optionalStringField = "foo"; XCTAssertEqual(0, --stringFieldChanges)
 
             #if DEBUG_CHANNELZ
             XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 3, "observers should still be around before cleanup")
@@ -233,8 +233,8 @@ public class ChannelZTests: XCTestCase {
     }
 
     func testKeyValueSieve() {
-        var xs = StatefulObject()
-        var c = xs.sieve(xs.requiredStringField, keyPath: "requiredStringField")
+        var state = StatefulObject()
+        var c = state.sieve(state.requiredStringField, keyPath: "requiredStringField")
 
         var changes = 0
         let outlet = c.attach { _ in changes += 1 }
@@ -247,8 +247,8 @@ public class ChannelZTests: XCTestCase {
     }
 
     func testKeyValueSieveUnretainedOutlet() {
-        var xs = StatefulObject()
-        var c = xs.sieve(xs.requiredStringField, keyPath: "requiredStringField")
+        var state = StatefulObject()
+        var c = state.sieve(state.requiredStringField, keyPath: "requiredStringField")
 
         var changes = 0
         c.attach { _ in changes += 1 } // note we do not assign it locally, so it should immediately get cleaned up
@@ -259,8 +259,8 @@ public class ChannelZTests: XCTestCase {
     }
 
     func testOptionalNSKeyValueSieve() {
-        var xs = StatefulObject()
-        var c = xs.sieve(xs.optionalNSStringField, keyPath: "optionalNSStringField")
+        var state = StatefulObject()
+        var c = state.sieve(state.optionalNSStringField, keyPath: "optionalNSStringField")
 
         var changes = 0
         var outlet = c.attach { _ in changes += 1 }
@@ -279,8 +279,8 @@ public class ChannelZTests: XCTestCase {
     }
 
     func testOptionalSwiftSieve() {
-        var xs = StatefulObject()
-        var c = xs.sieve(xs.optionalStringField, keyPath: "optionalStringField")
+        var state = StatefulObject()
+        var c = state.sieve(state.optionalStringField, keyPath: "optionalStringField")
 
         var changes = 0
         var outlet = c.attach { _ in changes += 1 }
@@ -579,8 +579,8 @@ public class ChannelZTests: XCTestCase {
     func testSimpleConduits() {
         let n1 = <∞Int(0)∞>
 
-        let n2o = StatefulObject()
-        let n2 = n2o.sieve(n2o.intField as NSNumber, keyPath: "intField")
+        let state = StatefulObject()
+        let n2 = state.sieve(state.intField as NSNumber, keyPath: "intField")
 
         let n3 = <∞Int(0)∞>
 
@@ -617,8 +617,8 @@ public class ChannelZTests: XCTestCase {
     func testTransformableConduits() {
 
         var num = <∞0∞>
-        let str = StatefulObject()
-        let strProxy = str.sieve(str.optionalStringField as String?, keyPath: "optionalStringField")
+        let state = StatefulObject()
+        let strProxy = state.sieve(state.optionalStringField as String?, keyPath: "optionalStringField")
         let dict = NSMutableDictionary()
 
         dict["stringKey"] = "foo"
@@ -641,9 +641,9 @@ public class ChannelZTests: XCTestCase {
 //        dump(reflect(str.optionalStringField).value)
 
         num <- 10
-        XCTAssertEqual("10", str.optionalStringField ?? "<nil>")
+        XCTAssertEqual("10", state.optionalStringField ?? "<nil>")
 
-        str.optionalStringField = "123"
+        state.optionalStringField = "123"
         XCTAssertEqual(123, num.pull())
         
         num <- 456
@@ -679,161 +679,161 @@ public class ChannelZTests: XCTestCase {
     func testEquivalenceConduits() {
 
         /// Test equivalence conduits
-        let qob = StatefulObject()
+        let state = StatefulObject()
 
 
         var qn1 = <∞0∞>
-//        let qn2 = (observee: qob, keyPath: "intField", value: qob.intField as NSNumber)===>
-        let qn2 = qob.sieve(qob.intField as NSNumber, keyPath: "intField")
+//        let qn2 = (observee: state, keyPath: "intField", value: state.intField as NSNumber)===>
+        let qn2 = state.sieve(state.intField as NSNumber, keyPath: "intField")
 
         let qn1_qn2 = qn1 <!∞!> qn2
 
         qn1.push(qn1.pull() + 1)
-        XCTAssertEqual(1, qob.intField)
+        XCTAssertEqual(1, state.intField)
 
         qn1.push(qn1.pull() - 1)
-        XCTAssertEqual(0, qob.intField)
+        XCTAssertEqual(0, state.intField)
 
         qn1.push(qn1.pull() + 1)
-        XCTAssertEqual(1, qob.intField)
+        XCTAssertEqual(1, state.intField)
 
-        qob.intField += 10
+        state.intField += 10
         XCTAssertEqual(11, qn1.pull())
 
         qn1.push(qn1.pull() + 1)
-        XCTAssertEqual(12, qob.intField)
+        XCTAssertEqual(12, state.intField)
 
         var qs1 = <∞""∞>
 
         XCTAssertEqual("", qs1.pull())
 
-        let qs2 = qob.sieve(qob.optionalStringField, keyPath: "optionalStringField")
+        let qs2 = state.sieve(state.optionalStringField, keyPath: "optionalStringField")
 
         // TODO: fix bindings
 //        let qsb = qs1 <?∞?> qs2
 //
 //        qs1.value += "X"
-//        XCTAssertEqual("X", qob.optionalStringField ?? "<nil>")
+//        XCTAssertEqual("X", state.optionalStringField ?? "<nil>")
 //
 //        qs1.value += "X"
-//        XCTAssertEqual("XX", qob.optionalStringField ?? "<nil>")
+//        XCTAssertEqual("XX", state.optionalStringField ?? "<nil>")
 //
 //        /// Test that disconnecting the binding actually removes the observers
 //        qsb.disconnect()
 //        qs1.value += "XYZ"
-//        XCTAssertEqual("XX", qob.optionalStringField ?? "<nil>")
+//        XCTAssertEqual("XX", state.optionalStringField ?? "<nil>")
     }
 
     func testOptionalToPrimitiveConduits() {
         /// Test equivalence bindings
-        let ob = StatefulObject()
+        let state = StatefulObject()
 
-        let obzn1 = ob.sieve(ob.numberField1, keyPath: "numberField1")
-        let obzn2 = ob.sieve(ob.numberField2, keyPath: "numberField2")
+        let obzn1 = state.sieve(state.numberField1, keyPath: "numberField1")
+        let obzn2 = state.sieve(state.numberField2, keyPath: "numberField2")
 
         let obzn1_obzn2 = pipe(obzn1, obzn2)
 
-        ob.numberField2 = 44.56
-        XCTAssert(ob.numberField1 === ob.numberField2, "change the other side")
-        XCTAssertNotNil(ob.numberField1)
-        XCTAssertNotNil(ob.numberField2)
+        state.numberField2 = 44.56
+        XCTAssert(state.numberField1 === state.numberField2, "change the other side")
+        XCTAssertNotNil(state.numberField1)
+        XCTAssertNotNil(state.numberField2)
 
-        ob.numberField1 = 1
-        XCTAssert(ob.numberField1 === ob.numberField2, "change one side")
-        XCTAssertNotNil(ob.numberField1)
-        XCTAssertNotNil(ob.numberField2)
+        state.numberField1 = 1
+        XCTAssert(state.numberField1 === state.numberField2, "change one side")
+        XCTAssertNotNil(state.numberField1)
+        XCTAssertNotNil(state.numberField2)
 
-        ob.numberField2 = 12.34567
-        XCTAssert(ob.numberField1 === ob.numberField2, "change the other side")
-        XCTAssertNotNil(ob.numberField1)
-        XCTAssertNotNil(ob.numberField2)
+        state.numberField2 = 12.34567
+        XCTAssert(state.numberField1 === state.numberField2, "change the other side")
+        XCTAssertNotNil(state.numberField1)
+        XCTAssertNotNil(state.numberField2)
 
-        ob.numberField1 = 2
-        XCTAssert(ob.numberField1 === ob.numberField2, "change back the first side")
-        XCTAssertNotNil(ob.numberField1)
-        XCTAssertNotNil(ob.numberField2)
+        state.numberField1 = 2
+        XCTAssert(state.numberField1 === state.numberField2, "change back the first side")
+        XCTAssertNotNil(state.numberField1)
+        XCTAssertNotNil(state.numberField2)
 
 
 
-        ob.numberField1 = nil
-        XCTAssert(ob.numberField1 === ob.numberField2, "binding to nil")
-        XCTAssertNil(ob.numberField2)
+        state.numberField1 = nil
+        XCTAssert(state.numberField1 === state.numberField2, "binding to nil")
+        XCTAssertNil(state.numberField2)
 
-        ob.numberField1 = NSNumber(unsignedInt: arc4random())
-        XCTAssert(ob.numberField1 === ob.numberField2, "binding to random")
-        XCTAssertNotNil(ob.numberField2)
+        state.numberField1 = NSNumber(unsignedInt: arc4random())
+        XCTAssert(state.numberField1 === state.numberField2, "binding to random")
+        XCTAssertNotNil(state.numberField2)
 
 
         // binding optional numberField1 to non-optional numberField3
-        let obzn3 = ob.sieve(ob.numberField3, keyPath: "numberField3")
+        let obzn3 = state.sieve(state.numberField3, keyPath: "numberField3")
 
         let bind2 = (obzn3, { $0 as NSNumber? }) <~∞~> (obzn1, { $0 })
 
-        ob.numberField1 = 67823
-        XCTAssert(ob.numberField1 === ob.numberField3)
-        XCTAssertNotNil(ob.numberField3)
+        state.numberField1 = 67823
+        XCTAssert(state.numberField1 === state.numberField3)
+        XCTAssertNotNil(state.numberField3)
 
-        ob.numberField1 = nil
-        XCTAssertEqual(67823, ob.numberField3)
-        XCTAssertNotNil(ob.numberField3, "non-optional field should not be nil")
-        XCTAssertNil(ob.numberField1)
+        state.numberField1 = nil
+        XCTAssertEqual(67823, state.numberField3)
+        XCTAssertNotNil(state.numberField3, "non-optional field should not be nil")
+        XCTAssertNil(state.numberField1)
 
-        let obzd = ob.sieve(ob.doubleField, keyPath: "doubleField")
+        let obzd = state.sieve(state.doubleField, keyPath: "doubleField")
 
         // FIXME: crash with the cast
 
 //        let bind3 = obzn1 <?∞?> obzd
 //
-//        ob.doubleField = 5
-//        XCTAssertEqual(ob.doubleField, ob.numberField1?.doubleValue ?? -999)
+//        state.doubleField = 5
+//        XCTAssertEqual(state.doubleField, state.numberField1?.doubleValue ?? -999)
 //
-//        ob.numberField1 = nil
-//        XCTAssertEqual(5, ob.doubleField, "niling optional field should not alter bound non-optional field")
+//        state.numberField1 = nil
+//        XCTAssertEqual(5, state.doubleField, "niling optional field should not alter bound non-optional field")
 //
-//        ob.doubleField++
-//        XCTAssertEqual(ob.doubleField, ob.numberField1?.doubleValue ?? -999)
+//        state.doubleField++
+//        XCTAssertEqual(state.doubleField, state.numberField1?.doubleValue ?? -999)
 //
-//        ob.numberField1 = 9.9
-//        XCTAssertEqual(9.9, ob.doubleField)
+//        state.numberField1 = 9.9
+//        XCTAssertEqual(9.9, state.doubleField)
 //
 //        // ensure that assigning nil to the numberField1 doesn't clobber the doubleField
-//        ob.numberField1 = nil
-//        XCTAssertEqual(9.9, ob.doubleField)
+//        state.numberField1 = nil
+//        XCTAssertEqual(9.9, state.doubleField)
 //
-//        ob.doubleField = 9876
-//        XCTAssertEqual(9876, ob.numberField1?.doubleValue ?? -999)
+//        state.doubleField = 9876
+//        XCTAssertEqual(9876, state.numberField1?.doubleValue ?? -999)
 //
-//        ob.numberField1 = 123
-//        XCTAssertEqual(123, ob.doubleField)
+//        state.numberField1 = 123
+//        XCTAssertEqual(123, state.doubleField)
 //
-//        ob.numberField2 = 456 // numberField2 <~=~> numberField1 <?=?> doubleField
-//        XCTAssertEqual(456, ob.doubleField)
+//        state.numberField2 = 456 // numberField2 <~=~> numberField1 <?=?> doubleField
+//        XCTAssertEqual(456, state.doubleField)
     }
 
     func testLossyConduits() {
-        let ob = StatefulObject()
+        let state = StatefulObject()
 
-        let obzi = ob.sieve(ob.intField, keyPath: "intField")
+        let obzi = state.sieve(state.intField, keyPath: "intField")
 
-        let obzd = ob.sieve(ob.doubleField, keyPath: "doubleField")
+        let obzd = state.sieve(state.doubleField, keyPath: "doubleField")
 
         let obzi_obzd = obzi <!∞!> obzd
 
-        ob.intField = 1
-        XCTAssertEqual(1, ob.intField)
-        XCTAssertEqual(1.0, ob.doubleField)
+        state.intField = 1
+        XCTAssertEqual(1, state.intField)
+        XCTAssertEqual(1.0, state.doubleField)
 
-        ob.doubleField++
-        XCTAssertEqual(2, ob.intField)
-        XCTAssertEqual(2.0, ob.doubleField)
+        state.doubleField++
+        XCTAssertEqual(2, state.intField)
+        XCTAssertEqual(2.0, state.doubleField)
 
-        ob.doubleField += 0.8
-        XCTAssertEqual(2, ob.intField)
-        XCTAssertEqual(2.8, ob.doubleField)
+        state.doubleField += 0.8
+        XCTAssertEqual(2, state.intField)
+        XCTAssertEqual(2.8, state.doubleField)
 
-        ob.intField--
-        XCTAssertEqual(1, ob.intField)
-        XCTAssertEqual(1.0, ob.doubleField)
+        state.intField--
+        XCTAssertEqual(1, state.intField)
+        XCTAssertEqual(1.0, state.doubleField)
     }
 
     func testHaltingConduits() {
@@ -880,9 +880,9 @@ public class ChannelZTests: XCTestCase {
         let toDecimal: (Double)->(String?) = { decimalFormatter.stringFromNumber($0) }
         let fromDecimal: (String?)->(Double?) = { $0 == nil ? nil : decimalFormatter.numberFromString($0!)?.doubleValue }
 
-        let ob1 = StatefulObject()
-        let ob1s = ob1.sieve(ob1.optionalStringField, keyPath: "optionalStringField")
-        let b1 = (num, toDecimal) <~∞~> (ob1s, fromDecimal)
+        let state1 = StatefulObject()
+        let state1s = state1.sieve(state1.optionalStringField, keyPath: "optionalStringField")
+        let b1 = (num, toDecimal) <~∞~> (state1s, fromDecimal)
 
 
         let percentFormatter = NSNumberFormatter()
@@ -891,79 +891,79 @@ public class ChannelZTests: XCTestCase {
         let toPercent: (Double)->(NSString?) = { percentFormatter.stringFromNumber($0) }
         let fromPercent: (NSString?)->(Double?) = { percentFormatter.numberFromString($0 ?? "XXX")?.doubleValue }
 
-        let ob2 = StatefulObject()
-        let ob2s = ob2.sieve(ob2.optionalNSStringField, keyPath: "optionalNSStringField")
-        let b2 = (num, toPercent) <~∞~> (ob2s, fromPercent)
+        let state2 = StatefulObject()
+        let state2s = state2.sieve(state2.optionalNSStringField, keyPath: "optionalNSStringField")
+        let b2 = (num, toPercent) <~∞~> (state2s, fromPercent)
 
 
         let spellingFormatter = NSNumberFormatter()
         spellingFormatter.numberStyle = .SpellOutStyle
 
-        let ob3 = StatefulObject()
-        let ob3s = ob3.sieve(ob3.requiredStringField, keyPath: "requiredStringField")
+        let state3 = StatefulObject()
+        let state3s = state3.sieve(state3.requiredStringField, keyPath: "requiredStringField")
 
         let toSpelled: (Double)->(String?) = { spellingFormatter.stringFromNumber($0) as String? }
         let fromSpelled: (String)->(Double?) = { spellingFormatter.numberFromString($0)?.doubleValue }
-        let b3 = (num, toSpelled) <~∞~> (ob3s, fromSpelled)
+        let b3 = (num, toSpelled) <~∞~> (state3s, fromSpelled)
 
         num.push(num.pull() + 1)
         XCTAssertEqual(1, num.pull())
-        XCTAssertEqual("1", ob1.optionalStringField ?? "<nil>")
-        XCTAssertEqual("100%", ob2.optionalNSStringField ?? "<nil>")
-        XCTAssertEqual("one", ob3.requiredStringField)
+        XCTAssertEqual("1", state1.optionalStringField ?? "<nil>")
+        XCTAssertEqual("100%", state2.optionalNSStringField ?? "<nil>")
+        XCTAssertEqual("one", state3.requiredStringField)
 
         num.push(num.pull() + 1)
         XCTAssertEqual(2, num.pull())
-        XCTAssertEqual("2", ob1.optionalStringField ?? "<nil>")
-        XCTAssertEqual("200%", ob2.optionalNSStringField ?? "<nil>")
-        XCTAssertEqual("two", ob3.requiredStringField)
+        XCTAssertEqual("2", state1.optionalStringField ?? "<nil>")
+        XCTAssertEqual("200%", state2.optionalNSStringField ?? "<nil>")
+        XCTAssertEqual("two", state3.requiredStringField)
 
-        ob1.optionalStringField = "3"
+        state1.optionalStringField = "3"
         XCTAssertEqual(3, num.pull())
-        XCTAssertEqual("3", ob1.optionalStringField ?? "<nil>")
-        XCTAssertEqual("300%", ob2.optionalNSStringField ?? "<nil>")
-        XCTAssertEqual("three", ob3.requiredStringField)
+        XCTAssertEqual("3", state1.optionalStringField ?? "<nil>")
+        XCTAssertEqual("300%", state2.optionalNSStringField ?? "<nil>")
+        XCTAssertEqual("three", state3.requiredStringField)
 
-        ob2.optionalNSStringField = "400%"
+        state2.optionalNSStringField = "400%"
         XCTAssertEqual(4, num.pull())
-        XCTAssertEqual("4", ob1.optionalStringField ?? "<nil>")
-        XCTAssertEqual("400%", ob2.optionalNSStringField ?? "<nil>")
-        XCTAssertEqual("four", ob3.requiredStringField)
+        XCTAssertEqual("4", state1.optionalStringField ?? "<nil>")
+        XCTAssertEqual("400%", state2.optionalNSStringField ?? "<nil>")
+        XCTAssertEqual("four", state3.requiredStringField)
 
-        ob3.requiredStringField = "five"
+        state3.requiredStringField = "five"
         XCTAssertEqual(5, num.pull())
-        XCTAssertEqual("5", ob1.optionalStringField ?? "<nil>")
-        XCTAssertEqual("500%", ob2.optionalNSStringField ?? "<nil>")
-        XCTAssertEqual("five", ob3.requiredStringField)
+        XCTAssertEqual("5", state1.optionalStringField ?? "<nil>")
+        XCTAssertEqual("500%", state2.optionalNSStringField ?? "<nil>")
+        XCTAssertEqual("five", state3.requiredStringField)
 
-        ob3.requiredStringField = "gibberish" // won't parse, so numbers should remain unchanged
+        state3.requiredStringField = "gibberish" // won't parse, so numbers should remain unchanged
         XCTAssertEqual(5, num.pull())
-        XCTAssertEqual("5", ob1.optionalStringField ?? "<nil>")
-        XCTAssertEqual("500%", ob2.optionalNSStringField ?? "<nil>")
-        XCTAssertEqual("gibberish", ob3.requiredStringField)
+        XCTAssertEqual("5", state1.optionalStringField ?? "<nil>")
+        XCTAssertEqual("500%", state2.optionalNSStringField ?? "<nil>")
+        XCTAssertEqual("gibberish", state3.requiredStringField)
 
-        ob2.optionalNSStringField = nil
+        state2.optionalNSStringField = nil
         XCTAssertEqual(5, num.pull())
-        XCTAssertEqual("5", ob1.optionalStringField ?? "<nil>")
-        XCTAssertNil(ob2.optionalNSStringField)
-        XCTAssertEqual("gibberish", ob3.requiredStringField)
+        XCTAssertEqual("5", state1.optionalStringField ?? "<nil>")
+        XCTAssertNil(state2.optionalNSStringField)
+        XCTAssertEqual("gibberish", state3.requiredStringField)
 
         num <- 5.4321
         XCTAssertEqual(5.4321, num.pull())
-        XCTAssertEqual("5.432", ob1.optionalStringField ?? "<nil>")
-        XCTAssertEqual("543%", ob2.optionalNSStringField ?? "<nil>")
-        XCTAssertEqual("five point four three two one", ob3.requiredStringField)
+        XCTAssertEqual("5.432", state1.optionalStringField ?? "<nil>")
+        XCTAssertEqual("543%", state2.optionalNSStringField ?? "<nil>")
+        XCTAssertEqual("five point four three two one", state3.requiredStringField)
 
-        ob2.optionalNSStringField = "18.3%"
+        state2.optionalNSStringField = "18.3%"
         XCTAssertEqual(0.183, num.pull())
-        XCTAssertEqual("0.183", ob1.optionalStringField ?? "<nil>")
-        XCTAssertEqual("18%", ob2.optionalNSStringField ?? "<nil>")
-        XCTAssertEqual("zero point one eight three", ob3.requiredStringField)
+        XCTAssertEqual("0.183", state1.optionalStringField ?? "<nil>")
+        XCTAssertEqual("18%", state2.optionalNSStringField ?? "<nil>")
+        XCTAssertEqual("zero point one eight three", state3.requiredStringField)
 
     }
 
     func testOptionalFunnels() {
-        let ob = StatefulObject()
+        let state = StatefulObject()
 
         #if DEBUG_CHANNELZ
         let startObserverCount = ChannelZKeyValueObserverCount
@@ -971,19 +971,19 @@ public class ChannelZTests: XCTestCase {
 
         var requiredNSStringField: NSString = ""
         // TODO: funnel immediately gets deallocated unless we hold on to it
-//        let a1a = ob.funnel(ob.requiredNSStringField, keyPath: "requiredNSStringField").attach({ requiredNSStringField = $0 })
+//        let a1a = state.funnel(state.requiredNSStringField, keyPath: "requiredNSStringField").attach({ requiredNSStringField = $0 })
 
         // FIXME: this seems to hold on to an extra allocation
-        // let a1 = sieve(ob.funnel(ob.requiredNSStringField, keyPath: "requiredNSStringField"))
+        // let a1 = sieve(state.funnel(state.requiredNSStringField, keyPath: "requiredNSStringField"))
 
-        let a1 = ob.channel(ob.requiredNSStringField, keyPath: "requiredNSStringField")
+        let a1 = state.channel(state.requiredNSStringField, keyPath: "requiredNSStringField")
         var a1a = a1.attach({ requiredNSStringField = $0 })
 
         #if DEBUG_CHANNELZ
         XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1, "observer should not have been cleaned up")
         #endif
 
-        ob.requiredNSStringField = "foo"
+        state.requiredNSStringField = "foo"
         XCTAssert(requiredNSStringField == "foo", "failed: \(requiredNSStringField)")
 
 //        let preDetachCount = countElements(a1.outlets)
@@ -991,24 +991,24 @@ public class ChannelZTests: XCTestCase {
 //        let postDetachCount = countElements(a1.outlets)
 //        XCTAssertEqual(postDetachCount, preDetachCount - 1, "detaching the outlet should have removed it from the outlet list")
 
-        ob.requiredNSStringField = "foo1"
+        state.requiredNSStringField = "foo1"
         XCTAssertNotEqual(requiredNSStringField, "foo1", "detached funnel should not have fired")
 
         var optionalNSStringField: NSString?
-        let a2 = ob.sieve(ob.optionalNSStringField, keyPath: "optionalNSStringField")
+        let a2 = state.sieve(state.optionalNSStringField, keyPath: "optionalNSStringField")
         let outlet = a2.attach({
             optionalNSStringField = $0
         })
         
         XCTAssert(optionalNSStringField == nil)
 
-        ob.optionalNSStringField = nil
+        state.optionalNSStringField = nil
         XCTAssertNil(optionalNSStringField)
 
-        ob.optionalNSStringField = "foo"
+        state.optionalNSStringField = "foo"
         XCTAssert(optionalNSStringField?.description == "foo", "failed: \(optionalNSStringField)")
 
-        ob.optionalNSStringField = nil
+        state.optionalNSStringField = nil
         XCTAssertNil(optionalNSStringField)
     }
 
@@ -1290,6 +1290,42 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(0, updated.count)
         XCTAssertEqual(1, deleted.count)
     }
+
+    #if os(OSX) // bindings are only available on OSX
+    public func testBindings() {
+        let objc = NSObjectController(content: NSNumber(integer: 1))
+        XCTAssertEqual(1, objc.content as? NSNumber ?? -999)
+
+        let state1 = StatefulObject()
+        state1.numberField3 = 0
+
+        XCTAssertEqual(0, state1.numberField3)
+        objc.bind("content", toObject: state1, withKeyPath: "numberField3", options: nil)
+        XCTAssertEqual(0, state1.numberField3)
+
+        objc.content = 2
+        XCTAssertEqual(2, objc.content as? NSNumber ?? -999)
+
+        state1.numberField3 = 3
+        XCTAssertEqual(3, objc.content as? NSNumber ?? -999)
+        XCTAssertEqual(3, state1.numberField3)
+
+
+        let state2 = StatefulObject()
+        state2.numberField3 = 0
+        state2.bind("numberField3", toObject: state1, withKeyPath: "numberField3", options: nil)
+
+        let state2sieve = state2.sieve(state2.numberField3, keyPath: "numberField3").attach { num in
+            // println("changing number to: \(num)")
+        }
+        state1.numberField3 = 4
+
+        XCTAssertEqual(4, objc.content as? NSNumber ?? -999)
+        XCTAssertEqual(4, state1.numberField3)
+        XCTAssertEqual(4, state2.numberField3)
+
+    }
+    #endif
 }
 
 public struct StatefulObjectHolder {
