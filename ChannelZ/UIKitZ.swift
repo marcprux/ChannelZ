@@ -10,32 +10,10 @@
 #if os(iOS)
     import UIKit
 
-    public extension UIView {
-        public var hiddenZ: ChannelZ<Bool> { return self.sieve(hidden, keyPath: "hidden") }
-        public var opaqueZ: ChannelZ<Bool> { return self.sieve(opaque, keyPath: "opaque") }
-        public var alphaZ: ChannelZ<CGFloat> { return self.sieve(alpha, keyPath: "alpha") }
-        public var tintColorZ: ChannelZ<UIColor> { return self.sieve(tintColor, keyPath: "tintColor") }
-    }
-
     public extension UIControl {
-        public var enabledZ: ChannelZ<Bool> { return self.sieve(enabled, keyPath: "enabled") }
-
-        public func funnelControlEvents(events: UIControlEvents = .AllEvents) -> UIEventFunnel {
+        public func funnelCommand(events: UIControlEvents = .AllEvents) -> UIEventFunnel {
             return UIEventFunnel(control: self, events: events)
         }
-    }
-
-    public extension UISlider {
-        public var valueZ: ChannelZ<Float> { return self.sieve(value, keyPath: "value") }
-        public var maximumValueZ: ChannelZ<Float> { return self.sieve(maximumValue, keyPath: "maximumValue") }
-        public var minimumValueZ: ChannelZ<Float> { return self.sieve(minimumValue, keyPath: "minimumValue") }
-    }
-
-
-    public extension UITextField {
-        public var textZ: ChannelZ<String> { return self.sieve(text, keyPath: "text") }
-        public var fontZ: ChannelZ<UIFont> { return self.sieve(font, keyPath: "font") }
-        public var textColorZ: ChannelZ<UIColor> { return self.sieve(textColor, keyPath: "textColor") }
     }
 
     @objc public class EventTarget : NSObject {

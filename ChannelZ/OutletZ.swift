@@ -55,6 +55,12 @@ public struct OutletOf<Element> : OutletType {
     }
 }
 
+/// A no-op outlet that warns that an attempt was made to attach to a deallocated weak target
+struct DeallocatedTargetOutlet : Outlet {
+    func detach() { }
+}
+
+
 /// How many levels of re-entrancy is permitted when flowing state observations
 public var ChannelZOutletReentrancyGuard: UInt = 1
 

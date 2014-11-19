@@ -9,6 +9,7 @@
 import XCTest
 import ChannelZ
 import CoreData
+import ObjectiveC
 
 #if os(OSX)
     import AppKit
@@ -18,14 +19,19 @@ import CoreData
     import UIKit
 #endif
 
+
 public class ChannelZTests: XCTestCase {
     override public func tearDown() {
         super.tearDown()
 
         // ensure that all the bindings and observers are properly cleaned up
         #if DEBUG_CHANNELZ
+        XCTAssertEqual(0, StatefulObjectCount, "all StatefulObject instances should have been deallocated")
+        StatefulObjectCount = 0
         XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
+        ChannelZKeyValueObserverCount = 0
         XCTAssertEqual(0, ChannelZNotificationObserverCount, "Notification observers were not cleaned up")
+        ChannelZNotificationObserverCount = 0
         #else
         XCTFail("Why are you running tests with debugging off?")
         #endif
@@ -61,29 +67,27 @@ public class ChannelZTests: XCTestCase {
         var intFieldChanges: Int = 0
         var doubleFieldChanges: Int = 0
 
-        let state = StatefulObject()
-        state.optionalStringField = "sval1"
 
         #if DEBUG_CHANNELZ
         let startObserverCount = ChannelZKeyValueObserverCount
         #endif
 
         autoreleasepool {
-            let intFieldObserver = state.sieve(state.intField, keyPath: "intField")
-            let intFieldOutlet = intFieldObserver.attach { _ in intFieldChanges += 1 }
+            let state = StatefulObject()
+            state.optionalStringField = "sval1"
+
+            state.sieve(state.intField).attach { _ in intFieldChanges += 1 }
 
             #if DEBUG_CHANNELZ
             XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1)
             #endif
 
-            var stringFieldObserver = state.sieve(state.optionalStringField, keyPath: "optionalStringField")
-            let stringFieldOutlet = stringFieldObserver.attach { _ in stringFieldChanges += 1 }
+            var stringFieldObserver = state.sieve(state.optionalStringField)
+            stringFieldObserver.attach { _ in stringFieldChanges += 1 }
 
-            let doubleFieldObserver = state.sieve(state.doubleField, keyPath: "doubleField")
+            state.sieve(state.doubleField).attach { _ in doubleFieldChanges += 1 }
 
-            let doubleFieldOutlet = doubleFieldObserver.attach { _ in doubleFieldChanges += 1 }
-
-            XCTAssertEqual(0, stringFieldChanges)
+            XCTAssertEqual(0, --stringFieldChanges) // initial value of optional is primed
             XCTAssertEqual("sval1", state.optionalStringField!)
 
             state.intField++; XCTAssertEqual(0, --intFieldChanges)
@@ -234,10 +238,10 @@ public class ChannelZTests: XCTestCase {
 
     func testKeyValueSieve() {
         var state = StatefulObject()
-        var c = state.sieve(state.requiredStringField, keyPath: "requiredStringField")
+        var c = state.sieve(state.requiredStringField)
 
         var changes = 0
-        let outlet = c.attach { _ in changes += 1 }
+        c.attach { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
         c.push(""); XCTAssertEqual(0, changes, "default to default should not change")
@@ -248,22 +252,22 @@ public class ChannelZTests: XCTestCase {
 
     func testKeyValueSieveUnretainedOutlet() {
         var state = StatefulObject()
-        var c = state.sieve(state.requiredStringField, keyPath: "requiredStringField")
+        var c = state.sieve(state.requiredStringField)
 
         var changes = 0
         c.attach { _ in changes += 1 } // note we do not assign it locally, so it should immediately get cleaned up
 
         XCTAssertEqual(0, changes)
-        c.push(""); XCTAssertEqual(0, changes, "freed outlet should not be listening")
-        c.push("A"); XCTAssertEqual(0, changes, "freed outlet should not be listening")
+        c.push("A"); XCTAssertEqual(1, changes, "unretained outlet should still listen")
+        c.push(""); XCTAssertEqual(2, changes, "unretained outlet should still listen")
     }
 
     func testOptionalNSKeyValueSieve() {
         var state = StatefulObject()
-        var c = state.sieve(state.optionalNSStringField, keyPath: "optionalNSStringField")
+        var c = state.sieve(state.optionalNSStringField)
 
         var changes = 0
-        var outlet = c.attach { _ in changes += 1 }
+        c.attach { _ in changes += 1 }
 
         for _ in 0...5 {
             XCTAssertEqual(0, changes)
@@ -280,10 +284,10 @@ public class ChannelZTests: XCTestCase {
 
     func testOptionalSwiftSieve() {
         var state = StatefulObject()
-        var c = state.sieve(state.optionalStringField, keyPath: "optionalStringField")
+        var c = state.sieve(state.optionalStringField)
 
         var changes = 0
-        var outlet = c.attach { _ in changes += 1 }
+        c.attach { _ in changes += 1 }
 
         for _ in 0...5 {
             XCTAssertEqual(0, changes)
@@ -296,6 +300,30 @@ public class ChannelZTests: XCTestCase {
             // this one is tricky, since with KVC, previous values are often cached as NSNull(), which != nil
             c.push(nil); c.push(nil); XCTAssertEqual(0, changes, "nil to nil should not change")
         }
+    }
+
+    func testDictionaryChannels() {
+        let dict = NSMutableDictionary()
+        var fooChanges = 0
+
+        XCTAssertEqual(0, fooChanges)
+
+        dict["foo"] = "bar"
+
+        dict.sieve(dict["foo"] as? NSString, keyPath: "foo").attach { _ in fooChanges += 1 }
+        XCTAssertEqual(0, --fooChanges)
+
+        dict["foo"] = "bar"
+        XCTAssertEqual(0, fooChanges)
+
+        dict["foo"] = NSNumber(float: 1.234)
+        XCTAssertEqual(0, --fooChanges)
+
+        dict["foo"] = NSNull()
+        XCTAssertEqual(0, fooChanges) // note that setting to null does not pass the sieve
+
+        dict["foo"] = "bar"
+        XCTAssertEqual(0, --fooChanges)
     }
 
     func testFieldChannelFunnel() {
@@ -419,7 +447,7 @@ public class ChannelZTests: XCTestCase {
         let pipeline = pipe(af, b)
 //        let pipeline = af.pipe(b)
 
-        a <- 2
+        a.value = 2
         XCTAssertEqual(2, a.pull())
         XCTAssertEqual(3, b.pull())
 
@@ -456,7 +484,7 @@ public class ChannelZTests: XCTestCase {
 
         var combo2 = combo1.combine(d)
 
-        let outlet = combo2.attach({ (firstTuple: (floatChange: Float, uintChange: UInt), stringChange: String) in
+        combo2.attach({ (firstTuple: (floatChange: Float, uintChange: UInt), stringChange: String) in
             lastString = stringChange
         })
 
@@ -580,7 +608,7 @@ public class ChannelZTests: XCTestCase {
         let n1 = <∞Int(0)∞>
 
         let state = StatefulObject()
-        let n2 = state.sieve(state.intField as NSNumber, keyPath: "intField")
+        let n2 = state.sieve(state.intField as NSNumber)
 
         let n3 = <∞Int(0)∞>
 
@@ -618,7 +646,7 @@ public class ChannelZTests: XCTestCase {
 
         var num = <∞0∞>
         let state = StatefulObject()
-        let strProxy = state.sieve(state.optionalStringField as String?, keyPath: "optionalStringField")
+        let strProxy = state.sieve(state.optionalStringField as String?)
         let dict = NSMutableDictionary()
 
         dict["stringKey"] = "foo"
@@ -684,7 +712,7 @@ public class ChannelZTests: XCTestCase {
 
         var qn1 = <∞0∞>
 //        let qn2 = (observee: state, keyPath: "intField", value: state.intField as NSNumber)===>
-        let qn2 = state.sieve(state.intField as NSNumber, keyPath: "intField")
+        let qn2 = state.sieve(state.intField as NSNumber)
 
         let qn1_qn2 = qn1 <!∞!> qn2
 
@@ -707,7 +735,7 @@ public class ChannelZTests: XCTestCase {
 
         XCTAssertEqual("", qs1.pull())
 
-        let qs2 = state.sieve(state.optionalStringField, keyPath: "optionalStringField")
+        let qs2 = state.sieve(state.optionalStringField)
 
         // TODO: fix bindings
 //        let qsb = qs1 <?∞?> qs2
@@ -728,8 +756,8 @@ public class ChannelZTests: XCTestCase {
         /// Test equivalence bindings
         let state = StatefulObject()
 
-        let obzn1 = state.sieve(state.numberField1, keyPath: "numberField1")
-        let obzn2 = state.sieve(state.numberField2, keyPath: "numberField2")
+        let obzn1 = state.sieve(state.numberField1)
+        let obzn2 = state.sieve(state.numberField2)
 
         let obzn1_obzn2 = pipe(obzn1, obzn2)
 
@@ -765,7 +793,7 @@ public class ChannelZTests: XCTestCase {
 
 
         // binding optional numberField1 to non-optional numberField3
-        let obzn3 = state.sieve(state.numberField3, keyPath: "numberField3")
+        let obzn3 = state.sieve(state.numberField3)
 
         let bind2 = (obzn3, { $0 as NSNumber? }) <~∞~> (obzn1, { $0 })
 
@@ -778,7 +806,7 @@ public class ChannelZTests: XCTestCase {
         XCTAssertNotNil(state.numberField3, "non-optional field should not be nil")
         XCTAssertNil(state.numberField1)
 
-        let obzd = state.sieve(state.doubleField, keyPath: "doubleField")
+        let obzd = state.sieve(state.doubleField)
 
         // FIXME: crash with the cast
 
@@ -813,9 +841,9 @@ public class ChannelZTests: XCTestCase {
     func testLossyConduits() {
         let state = StatefulObject()
 
-        let obzi = state.sieve(state.intField, keyPath: "intField")
+        let obzi = state.sieve(state.intField)
 
-        let obzd = state.sieve(state.doubleField, keyPath: "doubleField")
+        let obzd = state.sieve(state.doubleField)
 
         let obzi_obzd = obzi <!∞!> obzd
 
@@ -881,7 +909,7 @@ public class ChannelZTests: XCTestCase {
         let fromDecimal: (String?)->(Double?) = { $0 == nil ? nil : decimalFormatter.numberFromString($0!)?.doubleValue }
 
         let state1 = StatefulObject()
-        let state1s = state1.sieve(state1.optionalStringField, keyPath: "optionalStringField")
+        let state1s = state1.sieve(state1.optionalStringField)
         let b1 = (num, toDecimal) <~∞~> (state1s, fromDecimal)
 
 
@@ -892,7 +920,7 @@ public class ChannelZTests: XCTestCase {
         let fromPercent: (NSString?)->(Double?) = { percentFormatter.numberFromString($0 ?? "XXX")?.doubleValue }
 
         let state2 = StatefulObject()
-        let state2s = state2.sieve(state2.optionalNSStringField, keyPath: "optionalNSStringField")
+        let state2s = state2.sieve(state2.optionalNSStringField)
         let b2 = (num, toPercent) <~∞~> (state2s, fromPercent)
 
 
@@ -900,7 +928,7 @@ public class ChannelZTests: XCTestCase {
         spellingFormatter.numberStyle = .SpellOutStyle
 
         let state3 = StatefulObject()
-        let state3s = state3.sieve(state3.requiredStringField, keyPath: "requiredStringField")
+        let state3s = state3.sieve(state3.requiredStringField)
 
         let toSpelled: (Double)->(String?) = { spellingFormatter.stringFromNumber($0) as String? }
         let fromSpelled: (String)->(Double?) = { spellingFormatter.numberFromString($0)?.doubleValue }
@@ -976,7 +1004,7 @@ public class ChannelZTests: XCTestCase {
         // FIXME: this seems to hold on to an extra allocation
         // let a1 = sieve(state.funnel(state.requiredNSStringField, keyPath: "requiredNSStringField"))
 
-        let a1 = state.channel(state.requiredNSStringField, keyPath: "requiredNSStringField")
+        let a1 = state.channel(state.requiredNSStringField)
         var a1a = a1.attach({ requiredNSStringField = $0 })
 
         #if DEBUG_CHANNELZ
@@ -995,10 +1023,8 @@ public class ChannelZTests: XCTestCase {
         XCTAssertNotEqual(requiredNSStringField, "foo1", "detached funnel should not have fired")
 
         var optionalNSStringField: NSString?
-        let a2 = state.sieve(state.optionalNSStringField, keyPath: "optionalNSStringField")
-        let outlet = a2.attach({
-            optionalNSStringField = $0
-        })
+        let a2 = state.sieve(state.optionalNSStringField)
+        a2.attach({ optionalNSStringField = $0 })
         
         XCTAssert(optionalNSStringField == nil)
 
@@ -1046,17 +1072,20 @@ public class ChannelZTests: XCTestCase {
 
         var text = ""
 
-        let textChannel = textField.stringValueZ.map( { $0 } )
+        let textChannel = textField.sieve(textField.stringValue)
         var textOutlet = textChannel.attach({ text = $0 })
-//        let textOutlet = textField.stringValueChannel.attach({ text = $0 })
 
         var enabled = true
-        let enabledChannel = textField.enabledZ
+        let enabledChannel = textField.sieve(textField.enabled)
         var enabledOutlet = enabledChannel.attach({ enabled = $0 })
 
         textField.stringValue = "ABC"
         XCTAssertEqual("ABC", textField.stringValue)
         XCTAssertEqual("ABC", text)
+
+        textChannel.value = "XYZ"
+        XCTAssertEqual("XYZ", textField.stringValue)
+        XCTAssertEqual("XYZ", text)
 
         textField.enabled = false
         XCTAssertEqual(false, textField.enabled)
@@ -1067,8 +1096,8 @@ public class ChannelZTests: XCTestCase {
 
         textOutlet.detach()
 
-        textField.stringValue = "XYZ"
-        XCTAssertEqual("ABC", text)
+        textField.stringValue = "QRS"
+        XCTAssertEqual("XYZ", text)
 
         enabledOutlet.detach()
 
@@ -1088,7 +1117,7 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(taps, 0)
 
         let eventType: UIControlEvents = .TouchUpInside
-        let cmd = button.funnelControlEvents(events: eventType)
+        let cmd = button.funnelCommand(events: eventType)
         XCTAssertEqual(0, button.allTargets().count)
 
         // sadly, this only seems to work when the button is in a running UIApplication
@@ -1145,13 +1174,11 @@ public class ChannelZTests: XCTestCase {
 
 
         var text = ""
-
-        let textChannel = textField.textChannel.map( { $0 } )
-        var textOutlet = textChannel.attach({ text = $0 })
+        let textOutlet = textField.sieve(textField.text).map( { $0 } ).attach({ text = $0 })
 
         var enabled = true
-        let enabledChannel = textField.enabledChannel
-        var enabledOutlet = enabledChannel.attach({ enabled = $0 })
+        let enabledOutlet = textField.channel(textField.enabled).attach({ enabled = $0 })
+
 
         textField.text = "ABC"
         XCTAssertEqual("ABC", textField.text)
@@ -1202,93 +1229,91 @@ public class ChannelZTests: XCTestCase {
 
     /// Demonstrates using bindings with Core Data
     func testManagedObjectContext() {
-        var error: NSError?
+        autoreleasepool {
+            var error: NSError?
 
-        let attrName = NSAttributeDescription()
-        attrName.name = "fullName"
-        attrName.attributeType = .StringAttributeType
-        attrName.defaultValue = "John Doe"
-        attrName.optional = true
+            let attrName = NSAttributeDescription()
+            attrName.name = "fullName"
+            attrName.attributeType = .StringAttributeType
+            attrName.defaultValue = "John Doe"
+            attrName.optional = true
 
-        let attrAge = NSAttributeDescription()
-        attrAge.name = "age"
-        attrAge.attributeType = .Integer16AttributeType
-        attrAge.optional = false
+            let attrAge = NSAttributeDescription()
+            attrAge.name = "age"
+            attrAge.attributeType = .Integer16AttributeType
+            attrAge.optional = false
 
-        let personEntity = NSEntityDescription()
-        personEntity.name = "Person"
-        personEntity.properties = [attrName, attrAge]
+            let personEntity = NSEntityDescription()
+            personEntity.name = "Person"
+            personEntity.properties = [attrName, attrAge]
 
-        let model = NSManagedObjectModel()
-        model.entities = [personEntity]
+            let model = NSManagedObjectModel()
+            model.entities = [personEntity]
 
-        let psc = NSPersistentStoreCoordinator(managedObjectModel: model)
-        let store = psc.addPersistentStoreWithType(NSInMemoryStoreType, configuration: nil, URL: nil, options: nil, error: &error)
+            let psc = NSPersistentStoreCoordinator(managedObjectModel: model)
+            let store = psc.addPersistentStoreWithType(NSInMemoryStoreType, configuration: nil, URL: nil, options: nil, error: &error)
 
-        let ctx = NSManagedObjectContext(concurrencyType: NSManagedObjectContextConcurrencyType.MainQueueConcurrencyType)
-        ctx.persistentStoreCoordinator = psc
+            let ctx = NSManagedObjectContext(concurrencyType: NSManagedObjectContextConcurrencyType.MainQueueConcurrencyType)
+            ctx.persistentStoreCoordinator = psc
 
-        var saveCount = 0
-        let saveCountOutlet = ctx.funnel(NSManagedObjectContextDidSaveNotification).attach { _ in saveCount = saveCount + 1 }
-
-        var inserted = [NSManagedObject]()
-        let insertedOutlet = ctx.changedInsertedZ.attach { inserted = $0 }
-
-        var updated = [NSManagedObject]()
-        let updatedOutlet = ctx.changedUpdatedZ.attach { updated = $0 }
-
-        var deleted = [NSManagedObject]()
-        let deletedOutlet = ctx.changedDeletedZ.attach { deleted = $0 }
-
-        var refreshed = [NSManagedObject]()
-        let refreshedOutlet = ctx.changedRefreshedZ.attach { refreshed = $0 }
-
-        var invalidated = [NSManagedObject]()
-        let invalidatedOutlet = ctx.chagedInvalidatedZ.attach { invalidated = $0 }
+            var saveCount = 0
+            let saveCountOutlet = ctx.notificationFunnel(NSManagedObjectContextDidSaveNotification).attach { _ in saveCount = saveCount + 1 }
 
 
-//        let changeOutlet = ctx.funnel(NSManagedObjectContextObjectsDidChangeNotification).attach { (note: NSNotification) -> () in
-//            let mobs4key = { (note.userInfo?[$0] as? NSSet)?.allObjects as? [NSManagedObject] ?? [] }
-//
-//            inserted = mobs4key(NSInsertedObjectsKey)
-//            updated = mobs4key(NSUpdatedObjectsKey)
-//            deleted = mobs4key(NSDeletedObjectsKey)
-//            refreshed = mobs4key(NSInvalidatedObjectsKey)
-//            invalidated = mobs4key(NSInvalidatedAllObjectsKey)
-//        }
 
-        XCTAssertNil(error)
+            var inserted = 0
+            ctx.changedInsertedZ.attach { inserted = $0.count }
 
-        let ob = NSManagedObject(entity: personEntity, insertIntoManagedObjectContext: ctx)
-        ob.setValue("Bob Jones", forKey: "fullName")
-        ob.setValue(65, forKey: "age")
+            var updated = 0
+            ctx.changedUpdatedZ.attach { updated = $0.count }
 
-        XCTAssertEqual(0, saveCount)
+            var deleted = 0
+            ctx.changedDeletedZ.attach { deleted = $0.count }
 
-        ctx.save(&error)
-        XCTAssertNil(error)
-        XCTAssertEqual(1, saveCount)
-        XCTAssertEqual(1, inserted.count)
-        XCTAssertEqual(0, updated.count)
-        XCTAssertEqual(0, deleted.count)
+            var refreshed = 0
+            ctx.changedRefreshedZ.attach { refreshed = $0.count }
 
-        ob.setValue("Frank Underwood", forKey: "fullName")
+            var invalidated = 0
+            ctx.chagedInvalidatedZ.attach { invalidated = $0.count }
 
-        ctx.save(&error)
-        XCTAssertNil(error)
-        XCTAssertEqual(2, saveCount)
-        XCTAssertEqual(0, inserted.count)
-        XCTAssertEqual(1, updated.count)
-        XCTAssertEqual(0, deleted.count)
 
-        ctx.deleteObject(ob)
+            XCTAssertNil(error)
 
-        ctx.save(&error)
-        XCTAssertNil(error)
-        XCTAssertEqual(3, saveCount)
-        XCTAssertEqual(0, inserted.count)
-        XCTAssertEqual(0, updated.count)
-        XCTAssertEqual(1, deleted.count)
+            let ob = NSManagedObject(entity: personEntity, insertIntoManagedObjectContext: ctx)
+            ob.setValue("Bob Jones", forKey: "fullName")
+            ob.setValue(65, forKey: "age")
+
+            XCTAssertEqual(0, saveCount)
+
+            ctx.save(&error)
+            XCTAssertNil(error)
+            XCTAssertEqual(1, saveCount)
+            XCTAssertEqual(1, inserted)
+            XCTAssertEqual(0, updated)
+            XCTAssertEqual(0, deleted)
+
+            ob.setValue("Frank Underwood", forKey: "fullName")
+
+            ctx.save(&error)
+            XCTAssertNil(error)
+            XCTAssertEqual(2, saveCount)
+            XCTAssertEqual(0, inserted)
+            XCTAssertEqual(1, updated)
+            XCTAssertEqual(0, deleted)
+
+            ctx.deleteObject(ob)
+
+            ctx.save(&error)
+            XCTAssertNil(error)
+            XCTAssertEqual(3, saveCount)
+            XCTAssertEqual(0, inserted)
+            XCTAssertEqual(0, updated)
+            XCTAssertEqual(1, deleted)
+
+            ctx.reset()
+        }
+
+        XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
     }
 
     #if os(OSX) // bindings are only available on OSX
@@ -1324,13 +1349,199 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(4, state1.numberField3)
         XCTAssertEqual(4, state2.numberField3)
 
+        // need to manually unbind in order to release memory
+        objc.unbind("content")
+        state2.unbind("numberField3")
     }
     #endif
+
+
+    public func testTargetAssociatedObserver() {
+        let startCount = ChannelZKeyValueObserverCount
+        autoreleasepool {
+            let ob = StatefulObject()
+            TargetAssociatedObserver(target: ob, keyPath: "optionalStringField", kvoptions: .New, callback: { _ in TargetAssociatedObserverChanges += 1 })
+
+            XCTAssertEqual(1, ChannelZKeyValueObserverCount - startCount)
+
+            XCTAssertEqual(0, TargetAssociatedObserverChanges)
+            ob.optionalStringField = "abc"
+            XCTAssertEqual(1, TargetAssociatedObserverChanges)
+        }
+
+        XCTAssertEqual(0, ChannelZKeyValueObserverCount - startCount)
+    }
+
+    public func testDetachedOutlet() {
+        var outlet: Outlet?
+        autoreleasepool {
+            let state = StatefulObject()
+            outlet = state.channel(state.requiredNSStringField).attach({ _ in })
+            XCTAssertEqual(1, StatefulObjectCount)
+        }
+
+        XCTAssertEqual(0, StatefulObjectCount)
+        outlet!.detach() // ensure that the outlet doesn't try to access a bad pointer
+    }
+
+    public func test1stFieldRemoval() {
+        let startCount = ChannelZKeyValueObserverCount
+        let startObCount = StatefulObjectCount
+        autoreleasepool {
+            var changes = 0
+            let ob = StatefulObject()
+            XCTAssertEqual(0, ob.intField)
+            ob.sieve(ob.intField).attach { _ in changes += 1 }
+            XCTAssertEqual(1, ChannelZKeyValueObserverCount - startCount)
+
+            XCTAssertEqual(0, changes)
+            ob.intField++
+            XCTAssertEqual(1, changes)
+        }
+
+        XCTAssertEqual(0, ChannelZKeyValueObserverCount - startCount)
+        XCTAssertEqual(0, StatefulObjectCount - startObCount)
+    }
+
+    public func testManyObservers() {
+        for j in 1...10 {
+            autoreleasepool {
+                let op = NSBlockOperation { () -> Void in
+                }
+
+                // crash with many attachments
+                for i in 1...10 {
+                    let attachment = op.sieve(op.cancelled).attach { _ in }
+                }
+            }
+        }
+    }
+
+    public func testFoundationExtensions() {
+        var counter = 0
+
+        let prog = NSProgress(totalUnitCount: 100)
+        prog.sieve(prog.totalUnitCount).attach({ _ in counter += 1 })
+        XCTAssertEqual(0, counter)
+        prog.totalUnitCount = 200
+        XCTAssertEqual(0, --counter)
+
+        prog.sieve(prog.fractionCompleted).attach({ _ in counter += 1 })
+        XCTAssertEqual(0, counter)
+        prog.completedUnitCount++
+        XCTAssertEqual(0, --counter)
+
+
+        for (doCancel, doStart) in [(true, false), (false, true)] {
+            let op = NSBlockOperation { () -> Void in }
+//             let op = NSOperation()
+
+            let cancelChannel = op.channel(op.cancelled)
+//            cancelChannel.push(false) // “caught "NSUnknownKeyException", "[<NSBlockOperation 0x100159100> setValue:forUndefinedKey:]: this class is not key value coding-compliant for the key isCancelled."”
+
+            var cancelled: Bool = false
+            op.channel(op.cancelled).attach { cancelled = $0 }
+            var asynchronous: Bool = false
+            op.channel(op.asynchronous).attach { asynchronous = $0 }
+            var executing: Bool = false
+
+            op.channel(op.executing).attach { [unowned op] in
+                executing = $0
+                let str = ("executing=\(executing) op: \(op)")
+            }
+
+            op.channel(op.executing).map({ !$0 }).filter({ $0 }).attach { [unowned op] in
+                let str = ("executing=\($0) op: \(op)")
+            }
+
+            var finished: Bool = false
+            op.channel(op.finished).attach { finished = $0 }
+            var ready: Bool = false
+            op.channel(op.ready).attach { ready = $0 }
+
+
+//            for i in 1...200 {
+//                op.sieve(op.cancelled).attach { _ in }
+//                op.sieve(op.executing).attach { _ in }
+//                op.sieve(op.asynchronous).attach { _ in }
+//                op.sieve(op.finished).attach { _ in }
+//                op.sieve(op.ready).attach { _ in }
+//            }
+
+            flatten(op.channel(op.cancelled).combine(op.channel(op.asynchronous)).combine(op.channel(op.executing))).attach({
+                let str = ("cancelled=\($0) asynchronous=\($1) executing=\($2)")
+            })
+
+            flatten(op.channel(op.cancelled).combine(op.channel(op.asynchronous)).combine(op.channel(op.ready))).attach({
+                let str = ("cancelled=\($0) asynchronous=\($1) ready=\($2)")
+            })
+
+            flatten(op.channel(op.cancelled).combine(op.channel(op.asynchronous)).combine(op.channel(op.ready))).attach({
+                let str = ("cancelled=\($0) asynchronous=\($1) ready=\($2)")
+            })
+
+            op.channel(op.cancelled).combine(op.channel(op.asynchronous)).combine(op.channel(op.executing)).combine(op.channel(op.finished)).combine(op.channel(op.ready)).attach({
+                let str = ("combined: \($0)")
+            })
+
+            flatten(op.channel(op.cancelled).combine(op.channel(op.asynchronous)).combine(op.channel(op.executing)).combine(op.channel(op.finished)).combine(op.channel(op.ready))).attach({
+                let str = ("cancelled=\($0) asynchronous=\($1) executing=\($2) finished=\($3) ready=\($4)")
+            })
+
+            XCTAssertEqual(false, cancelled)
+            XCTAssertEqual(false, asynchronous)
+            XCTAssertEqual(false, executing)
+            XCTAssertEqual(false, finished)
+            XCTAssertEqual(true, ready)
+
+            if doCancel {
+                op.cancel()
+            } else if doStart {
+                op.start()
+            }
+
+            XCTAssertEqual(doCancel, cancelled)
+            XCTAssertEqual(false, asynchronous)
+            XCTAssertEqual(false, executing)
+            XCTAssertEqual(doStart, finished)
+            XCTAssertEqual(true, ready)
+        }
+    }
+
+    public func testAutoKVOIdentification() {
+        var control = NSProgress(totalUnitCount: 100)
+        var count = 0
+        control.sieve(control.completedUnitCount).attach { _ in count += 1 }
+        control.sieve(control.totalUnitCount).attach { _ in count += 1 }
+        control.sieve(control.fractionCompleted).attach { _ in count += 1 }
+        XCTAssertEqual(0, count)
+        control.completedUnitCount++
+        XCTAssertEqual(2, count)
+
+        let state = StatefulObjectSubclass()
+        state.channel(state.optionalStringField).attach { _ in count += 1 }
+        state.channel(state.requiredStringField).attach { _ in count += 1 }
+        state.channel(state.optionalNSStringField).attach { _ in count += 1 }
+        state.channel(state.requiredNSStringField).attach { _ in count += 1 }
+        state.channel(state.intField).attach { _ in count += 1 }
+        state.channel(state.doubleField).attach { _ in count += 1 }
+        state.channel(state.numberField1).attach { _ in count += 1 }
+        state.channel(state.numberField2).attach { _ in count += 1 }
+        state.channel(state.numberField3).attach { _ in count += 1 }
+        state.channel(state.numberField3).attach { _ in count += 1 }
+        state.channel(state.requiredObjectField).attach { _ in count += 1 }
+        state.channel(state.optionaldObjectField).attach { _ in count += 1 }
+    }
+
 }
+
+
+var TargetAssociatedObserverChanges = 0
 
 public struct StatefulObjectHolder {
     let ob: StatefulObject
 }
+
 
 var StatefulObjectCount = 0
 
@@ -1341,7 +1552,7 @@ public class StatefulObject : NSObject {
     dynamic var optionalNSStringField: NSString?
     dynamic var requiredNSStringField: NSString = ""
 
-    // “property cannot be marked as dynamic because its type cannoy be represented in Objective-C”
+    // “property cannot be marked as dynamic because its type cannot be represented in Objective-C”
     // dynamic var optionalIntField: Int?
 
     dynamic var intField: Int = 0
@@ -1349,6 +1560,9 @@ public class StatefulObject : NSObject {
     dynamic var numberField1: NSNumber?
     dynamic var numberField2: NSNumber?
     dynamic var numberField3: NSNumber = 9
+
+    dynamic var requiredObjectField: NSObject = NSObject()
+    dynamic var optionaldObjectField: StatefulObject? = nil
 
     public override init() {
         super.init()
@@ -1360,8 +1574,6 @@ public class StatefulObject : NSObject {
     }
 }
 
-extension NSNumber {
-    public func reflect(from: String = __FUNCTION__) {
-        println("from: \(from)")
-    }
+public class StatefulObjectSubclass : StatefulObject {
 }
+

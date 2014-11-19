@@ -10,16 +10,16 @@ import CoreData
 
 /// Extension for funneling notications for various Core Data events
 extension NSManagedObjectContext {
-    private func mobs4key(note: NSNotification, keys: [NSString]) -> [NSManagedObject] {
+    private class func mobs4key(note: [NSObject : AnyObject], keys: [NSString]) -> [NSManagedObject] {
         var mobs = [NSManagedObject]()
         for key in keys {
-            mobs += (note.userInfo?[key] as? NSSet)?.allObjects as? [NSManagedObject] ?? []
+            mobs += (note[key] as? NSSet)?.allObjects as? [NSManagedObject] ?? []
         }
         return mobs
     }
 
     private func typeChangeFunnel(noteType: NSString, changeTypes: NSString...) -> FunnelOf<[NSManagedObject]> {
-        return self.funnel(noteType).map { self.mobs4key($0, keys: changeTypes) }.funnelOf
+        return self.notificationFunnel(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }.funnelOf
     }
 
     /// Funnels notifications of inserted objects after the changes have been processed in the context

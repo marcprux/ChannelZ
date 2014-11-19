@@ -24,7 +24,7 @@ public protocol BaseChannelType : BaseFunnelType {
 /// A DirectChannelType allows direct access to the underlying source value
 public protocol DirectChannelType : BaseChannelType {
     /// The current underlying value of the channel source
-    var value: Self.SourceType { get set }
+    var value: Self.SourceType { get nonmutating set }
 }
 
 /// A channel with support for filtering, mapping, etc.
@@ -117,7 +117,7 @@ public struct ChannelZ<T> : ChannelType, DirectChannelType {
     /// DirectChannelType access to the underlying source value
     public var value : SourceType {
         get { return pull() }
-        set(v) { push(v) }
+        nonmutating set(v) { push(v) }
     }
 
     public func push(value: SourceType) {
