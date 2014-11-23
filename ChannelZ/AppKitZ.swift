@@ -10,30 +10,71 @@
 #if os(OSX)
     import AppKit
 
-    /// ChannelZ extensions for NSView with convenience channels for commonly-altered keys
-    public extension NSView {
-        public var hiddenZ: ChannelZ<Bool> { return self.sieve(hidden, keyPath: "hidden") }
-    }
+    extension NSControl : KeyValueChannelSupplementing {
 
-    /// ChannelZ extensions for NSControl with convenience channels for commonly-altered keys
-    public extension NSControl {
+        public func controlz() -> EventFunnel<Void> {
 
-        public func funnelCommand() -> EventFunnel<Void> {
-            // FIXME: we currently only support a single action for a control, and calling this method multiple times will clobber the last action; if the control already has an action, we need to make it into an action list that we can modify
-            var funnel = EventFunnel<Void>(nil)
-            let observer = DispatchTarget({ funnel.outlets.receive() })
-            funnel.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
+            if self.target != nil && !(self.target is DispatchTarget) {
+                fatalError("controlz event handling overrides existing target/action for control; if this is really what you want to do, explicitly nil the target & action of the control")
+            }
+
+            let observer = self.target as? DispatchTarget ?? DispatchTarget() // use the existing dispatch target if it exists
             self.target = observer
             self.action = Selector("execute")
+
+            var funnel = EventFunnel<Void>(nil)
+            funnel.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
+            observer.actions += [{ funnel.outlets.pump() }]
+
             return funnel
+        }
+
+        public func supplementKeyValueChannel(forKeyPath: String, outlet: (AnyObject?)->()) -> (()->())? {
+            // NSControl action events do not trigger KVO notifications, so we manually supplement any outlets with control events
+
+            if forKeyPath == "doubleValue" {
+                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.doubleValue) })
+                return { outlet.detach() }
+            }
+
+            if forKeyPath == "floatValue" {
+                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.floatValue) })
+                return { outlet.detach() }
+            }
+
+            if forKeyPath == "integerValue" {
+                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.integerValue) })
+                return { outlet.detach() }
+            }
+
+            if forKeyPath == "stringValue" {
+                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.stringValue) })
+                return { outlet.detach() }
+            }
+
+            if forKeyPath == "attributedStringValue" {
+                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.attributedStringValue) })
+                return { outlet.detach() }
+            }
+
+            if forKeyPath == "objectValue" {
+                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.objectValue) })
+                return { outlet.detach() }
+            }
+
+            return nil
         }
 
     }
 
     @objc public class DispatchTarget : NSObject {
-        public init(f:()->()) { self.action = f }
-        public func execute() -> () { action() }
-        public let action: () -> ()
+        public var actions : [(Void)->(Void)] = []
+
+        public func execute() {
+            for action in actions {
+                action()
+            }
+        }
     }
 
 

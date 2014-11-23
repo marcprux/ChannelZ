@@ -16,7 +16,7 @@ public protocol OutletType : Outlet {
     typealias Element
 
     /// Receives the state element
-    func receive(value: Element)
+    func pump(value: Element)
 }
 
 
@@ -25,28 +25,28 @@ public protocol OutletType : Outlet {
 /// Forwards operations to an arbitrary underlying outlet with the same
 /// `Element` type, hiding the specifics of the underlying outlet.
 public struct OutletOf<Element> : OutletType {
-    let receiver: (Element)->()
+    let pumper: (Element)->()
     let detacher: ()->()
 
     public init<O : OutletType where Element == O.Element>(_ base: O) {
-        self.receiver = { base.receive($0) }
+        self.pumper = { base.pump($0) }
         self.detacher = { base.detach() }
     }
 
     public init<S : SinkType where Element == S.Element>(sink: S) {
-        self.receiver = { SinkOf(sink).put($0) }
+        self.pumper = { SinkOf(sink).put($0) }
         self.detacher = { }
     }
 
-    public init(receiver: (Element)->(), detacher: ()->()) {
-        self.receiver = receiver
+    public init(pumper: (Element)->(), detacher: ()->()) {
+        self.pumper = pumper
         self.detacher = detacher
     }
 
 
     /// Receives the state element
-    public func receive(value: Element) {
-        self.receiver(value)
+    public func pump(value: Element) {
+        self.pumper(value)
     }
 
     /// Disconnects this outlet from the source funnel
@@ -69,14 +69,14 @@ final class OutletListReference<T> {
     internal var entrancy: UInt = 0
     private var outletIndex: UInt = 0
 
-    func receive(element: T) {
+    func pump(element: T) {
         if entrancy++ > ChannelZOutletReentrancyGuard {
             #if DEBUG_CHANNELZ
                 println("re-entrant value change limit of \(ChannelZOutletReentrancyGuard) reached for outlets")
             #endif
         } else {
             for (index, outlet) in outlets {
-                outlet.receive(element)
+                outlet.pump(element)
             }
             entrancy--
         }
@@ -85,7 +85,7 @@ final class OutletListReference<T> {
     func addOutlet(outlet: (T)->())->Outlet {
         assert(entrancy == 0, "cannot add to outlets while they are flowing")
         let index: UInt = outletIndex++
-        let outlet = OutletOf<T>(receiver: outlet, detacher: { [weak self] in self?.removeOutlet(index); return })
+        let outlet = OutletOf<T>(pumper: outlet, detacher: { [weak self] in self?.removeOutlet(index); return })
         self.outlets += [(index, outlet)]
         return OutletOf(outlet)
     }

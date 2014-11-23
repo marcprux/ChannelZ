@@ -6,17 +6,85 @@
 //  License: MIT (or whatever)
 //
 
-/// Support for Foundation channels and funnels, such as KVO-based channels
+/// Support for Foundation channels and funnels, such as KVO-based channels and NSNotificationCenter funnels
 import Foundation
 
 
+/// Extension on NSObject that permits creating a channel from a key-value compliant property
+extension NSObject {
+
+    /// Creates a channel for all state operations for the given key-value-coding compliant property
+    ///
+    /// :param: getter      an autoclosure accessor for the value of the property
+    /// :param: keyPath     the keyPath for the value; if ommitted, auto-discovery will be attempted
+    public func channelz<T>(getter: @autoclosure ()->T, keyPath: String = "")->ChannelZ<T> {
+        return channelRequired(self, getter, keyPath: keyPath)
+    }
+
+    /// Creates a sieve for all state changes for the given key-value-coding compliant property
+    ///
+    /// :param: getter     an autoclosure accessor for the value of the property
+    /// :param: keyPath    the keyPath for the value; if ommitted, auto-discovery will be attempted
+    public func sievez<T : Equatable>(getter: @autoclosure ()->T, keyPath: String = "")->ChannelZ<T> {
+        return sieveRequired(self, getter, keyPath: keyPath)
+    }
+
+    /// Creates a channel for all state operations for the given key-value-coding compliant optional property
+    ///
+    /// :param: getter     an autoclosure accessor for the value of the optional
+    /// :param: keyPath    the keyPath for the value; if ommitted, auto-discovery will be attempted
+    public func channelz<T>(getter: @autoclosure ()->Optional<T>, keyPath: String = "")->ChannelZ<Optional<T>> {
+        return channelOptional(self, getter, keyPath: keyPath)
+    }
+
+    /// Creates a sieve for all state changes for the given key-value-coding compliant optional property
+    ///
+    /// :param: getter     an autoclosure accessor for the value of the optional
+    /// :param: keyPath    the keyPath for the value; if ommitted, auto-discovery will be attempted
+    public func sievez<T : Equatable>(getter: @autoclosure ()->Optional<T>, keyPath: String = "")->ChannelZ<Optional<T>> {
+        return sieveOptional(self, getter, keyPath: keyPath)
+    }
+}
+
+private func channelRequired<T>(target: NSObject, getter: @autoclosure ()->T, keyPath: String = "")->ChannelZ<T> {
+    return ChannelZ(channelRequiredKeyValue(target, keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, getter()).map({ $0.nextValue }))
+}
+
+/// Separate function to help the compiler distinguish signatures
+private func sieveRequired<T : Equatable>(target: NSObject, getter: @autoclosure ()->T, keyPath: String = "")->ChannelZ<T> {
+    return channelStateChanges(channelRequiredKeyValue(target, keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, getter()))
+}
+
+private func channelOptional<T>(target: NSObject, getter: @autoclosure ()->Optional<T>, keyPath: String = "")->ChannelZ<Optional<T>> {
+    return ChannelZ(channelStateValues(KeyValueOptionalChannel(target: target, keyPath: keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, value: getter()).channelOf))
+}
+
+/// Separate function to help the compiler distinguish signatures
+private func sieveOptional<T : Equatable>(target: NSObject, getter: @autoclosure ()->Optional<T>, keyPath: String = "")->ChannelZ<Optional<T>> {
+    return ChannelZ(channelOptionalStateChanges(KeyValueOptionalChannel(target: target, keyPath: keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, value: getter()).channelOf))
+}
+
+
+private func channelRequiredKeyValue<T>(target: NSObject, keyPath: String, value: T)->KeyValueRequiredChannel<T> {
+    return KeyValueRequiredChannel(target: target, keyPath: keyPath, value: value)
+}
+
+/// Root protocol for required and optional key-value-observing channels
+public protocol KeyValueChannel: ChannelType, DirectChannelType {
+    /// The keyPath for this channel
+    var keyPath: String { get }
+
+    /// The target object of this channel
+    var target: NSObject? { get }
+}
+
 /// A Channel for Cocoa properties that support key-value path observation/coding
-public struct KeyValueChannel<T>: ChannelType, DirectChannelType {
+public struct KeyValueRequiredChannel<T>: KeyValueChannel {
     public typealias SourceType = T
     public typealias OutputType = StateEvent<T>
 
-    private weak var target: NSObject?
-    private let keyPath: String
+    public private(set) weak var target: NSObject?
+    public let keyPath: String
 
     public init(target: NSObject, keyPath: String, value: T) {
         self.target = target
@@ -37,7 +105,7 @@ public struct KeyValueChannel<T>: ChannelType, DirectChannelType {
     }
 
     /// DirectChannelType access to the underlying source value
-    public var value : SourceType {
+    public var value: SourceType {
         get { return pull().nextValue }
         nonmutating set(v) { push(v) }
     }
@@ -49,10 +117,16 @@ public struct KeyValueChannel<T>: ChannelType, DirectChannelType {
     public func pull() -> OutputType {
         if let target = target {
             let v = target.valueForKeyPath(self.keyPath) as SourceType
-            return StateEvent(lastValue: v, nextValue: v)
+            return StateEvent(lastValue: nil, nextValue: v)
         } else {
             preconditionFailure("attempt to pull from keyPath «\(keyPath)» of a deallocated instance; channels do not retain their targets")
         }
+    }
+
+    /// Requests that the channel emit an event
+    public func pump()->Void {
+        self.target?.willChangeValueForKey(self.keyPath)
+        self.target?.didChangeValueForKey(self.keyPath)
     }
 
     func coerce(ob: AnyObject?) -> SourceType? {
@@ -96,16 +170,15 @@ public struct KeyValueChannel<T>: ChannelType, DirectChannelType {
     ///
     /// :param: outlet      the outlet closure to which state will be sent
     public func attach(outlet: (OutputType)->())->Outlet {
-        let kp = keyPath
         if let target = target {
+            let kp = keyPath
             return KeyValueOutlet(target: target, keyPath: keyPath, handler: { (oldv, newv) in
                 // for example, we are watching a NSMutableDictionary's key that is set to an NSString and then an NSNumber
                 if let newv = self.coerce(newv) {
                     // option type check is because Initial option sends oldValue as nil
-                    outlet(StateEvent(lastValue: self.coerce(oldv) ?? newv, nextValue: newv))
-
+                    outlet(StateEvent(lastValue: self.coerce(oldv), nextValue: newv))
                 } else {
-                    assert(newv is SourceType, "required value for «\(kp)» changed type; use an optional channel if value type can change")
+                    assert(newv is SourceType, "required value for «\(kp)» changed type from \(oldv) to \(newv); use an optional channel if value type can change")
                 }
             })
         } else {
@@ -116,24 +189,38 @@ public struct KeyValueChannel<T>: ChannelType, DirectChannelType {
 
 
     // Boilerplate funnel/channel/filter/map
-    public typealias SelfChannel = KeyValueChannel
+    public typealias SelfChannel = KeyValueRequiredChannel
+
+    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+
+    /// Returns a type-erasing channel wrapper around the current channel
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+
+    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
     public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
+
+    /// Returns a mapped channel that transforms source elements through the given transform before pushing them back to the source
     public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+
+    /// Returned a combined channel where signals from either channel will be combined into a signal for the combined channel's receivers
     public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
 
 /// A Channel for optional Cocoa properties that support key-value path observation/coding
-/// We need separate handling for this because the briding between Swift Optionals and Cocoa has some subtle differences
-public struct KeyValueOptionalChannel<T>: ChannelType, DirectChannelType {
+public struct KeyValueOptionalChannel<T>: KeyValueChannel {
+
+    // We need separate handling for optionals because the briding between Swift Optionals and Cocoa has some subtle differences
+
     public typealias SourceType = Optional<T>
     public typealias OutputType = StateEvent<Optional<T>>
 
-    private weak var target: NSObject?
-    private let keyPath: String
+    public private(set) weak var target: NSObject?
+    public let keyPath: String
 
     public init(target: NSObject, keyPath: String, value: Optional<T>) {
         self.target = target
@@ -145,7 +232,7 @@ public struct KeyValueOptionalChannel<T>: ChannelType, DirectChannelType {
     }
 
     /// DirectChannelType access to the underlying source value
-    public var value : SourceType {
+    public var value: SourceType {
         get { return pull().nextValue }
         nonmutating set(v) { push(v) }
     }
@@ -157,10 +244,16 @@ public struct KeyValueOptionalChannel<T>: ChannelType, DirectChannelType {
     public func pull() -> OutputType {
         if let target = target {
             let v = target.valueForKeyPath(self.keyPath) as SourceType
-            return StateEvent(lastValue: v, nextValue: v)
+            return StateEvent(lastValue: nil, nextValue: v)
         } else {
             return StateEvent(lastValue: nil, nextValue: nil)
         }
+    }
+
+    /// Requests that the channel emit an event
+    public func pump()->Void {
+        self.target?.willChangeValueForKey(self.keyPath)
+        self.target?.didChangeValueForKey(self.keyPath)
     }
 
     /// Attaches an outlet to receive change notifications from the state pipeline
@@ -169,7 +262,7 @@ public struct KeyValueOptionalChannel<T>: ChannelType, DirectChannelType {
     public func attach(outlet: (OutputType)->())->Outlet {
         if let target = target {
             return KeyValueOutlet(target: target, keyPath: keyPath, handler: { (oldv, newv) in
-                outlet(StateEvent(lastValue: oldv as? SourceType ?? nil, nextValue: newv as? SourceType ?? nil))
+                outlet(StateEvent(lastValue: oldv as? SourceType, nextValue: newv as? SourceType ?? nil))
             })
         } else {
             NSLog("ChannelZ warning: attempt to attach to a deallocated target keyPath «\(keyPath)»; channels do not retain their targets")
@@ -179,11 +272,23 @@ public struct KeyValueOptionalChannel<T>: ChannelType, DirectChannelType {
 
     // Boilerplate funnel/channel/filter/map
     public typealias SelfChannel = KeyValueOptionalChannel
+
+    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+
+    /// Returns a type-erasing channel wrapper around the current channel
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+
+    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
     public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
+
+    /// Returns a mapped channel that transforms source elements through the given transform before pushing them back to the source
     public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+
+    /// Returned a combined channel where signals from either channel will be combined into a signal for the combined channel's receivers
     public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
@@ -196,47 +301,64 @@ public var ChannelZKeyValueReentrancyGuard: UInt = 1
     public var ChannelZKeyValueObserverCount = 0
 #endif
 
+/// Optional protocol for target objects to implement when they need to supplement key-value observing with additional events
+@objc public protocol KeyValueChannelSupplementing {
+    /// Add additional observers for the specified keyPath, returning the detacher for any supplements
+    func supplementKeyValueChannel(forKeyPath: String, outlet: (AnyObject?)->()) -> (()->())?
+}
+
 /// outlet for Cocoa KVO changes
 private struct KeyValueOutlet: Outlet {
     typealias HandlerType = ((oldv: AnyObject?, newv: AnyObject?)->Void)
     weak var observer: TargetAssociatedObserver?
+    var supplementaryDetachable: (()->())?
 
     init(target: NSObject, keyPath: String, handler: HandlerType) {
         var entrancy: UInt = 0
 
-        self.observer = TargetAssociatedObserver(target: target, keyPath: keyPath, kvoptions: NSKeyValueObservingOptions(NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue | NSKeyValueObservingOptions.Initial.rawValue), callback: { (change: [NSObject : AnyObject]) -> () in
+        self.observer = TargetAssociatedObserver(target: target, keyPath: keyPath, kvoptions: NSKeyValueObservingOptions(NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue), callback: { (change: [NSObject : AnyObject]) -> () in
 
             if entrancy++ > ChannelZKeyValueReentrancyGuard {
                 #if DEBUG_CHANNELZ
                     NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(ChannelZKeyValueReentrancyGuard) reached for «\(keyPath)»")
                 #endif
             } else {
-                let oldValue: AnyObject? = change[NSKeyValueChangeOldKey]
-                let newValue: AnyObject? = change[NSKeyValueChangeNewKey]
-                handler(oldv: oldValue, newv: newValue)
+                handler(oldv: change[NSKeyValueChangeOldKey], newv: change[NSKeyValueChangeNewKey])
                 entrancy--
             }
         })
+
+        // If the target object supports supplementing the KVO, install their outlets here
+        if let supplementable = target as? KeyValueChannelSupplementing {
+            supplementaryDetachable = supplementable.supplementKeyValueChannel(keyPath) { value in
+                // we don't have access to the previous value here, so send nil to force it to pass any sieves
+                handler(oldv: nil, newv: value)
+            }
+        }
+
     }
 
     func detach() {
         observer?.deactivate()
+        supplementaryDetachable?()
     }
 }
 
 /// Am observer that is stored as an associated object in the target and is automatically removed when the target is deallocated; can be with either for KVO or NSNotificationCenter depending on the constructor arguments
-public class TargetAssociatedObserver : NSObject {
-    private var assocctx = UnsafePointer<Void>()
-    private var kvoctx = UnsafePointer<Void>()
-    public private(set) var active : UInt32 = 0
-    public let keyPath: NSString
-    private let center: NSNotificationCenter?
-    public let callback: ([NSObject : AnyObject])->()
+final class TargetAssociatedObserver : NSObject {
+    var assocctx = UnsafePointer<Void>()
+    var kvoctx = UnsafePointer<Void>()
+    var active : UInt32 = 0
+    let keyPath: NSString
+    let center: NSNotificationCenter?
+    let callback: ([NSObject : AnyObject])->()
 
     weak var target: NSObject?
-    private let targetPtr: Unmanaged<NSObject>
+    let targetPtr: Unmanaged<NSObject>
+    var infoPtr: UnsafeMutablePointer<Void>?
+    var instrumentedKVO = true
 
-    public init(target: NSObject, keyPath: String, kvoptions: NSKeyValueObservingOptions? = nil, center: NSNotificationCenter? = nil, callback: ([NSObject : AnyObject])->()) {
+    init(target: NSObject, keyPath: String, kvoptions: NSKeyValueObservingOptions? = nil, center: NSNotificationCenter? = nil, callback: ([NSObject : AnyObject])->()) {
         self.keyPath = keyPath
         self.callback = callback
         self.center = center
@@ -254,6 +376,8 @@ public class TargetAssociatedObserver : NSObject {
                 center.addObserver(self, selector: Selector("notificationReceived:"), name: keyPath, object: target)
             } else if let kvoptions = kvoptions {
                 target.addObserver(self, forKeyPath: keyPath, options: kvoptions, context: &kvoctx)
+                self.infoPtr = target.observationInfo
+                self.instrumentedKVO = NSStringFromClass(target.dynamicType).hasPrefix(ChannelZKVOSwizzledISAPrefix)
             } else {
                 preconditionFailure("either NSKeyValueObservingOptions or NSNotificationCenter must be specified")
             }
@@ -261,53 +385,26 @@ public class TargetAssociatedObserver : NSObject {
     }
 
     /// Callback when in NSNotificationCenter mode
-    public func notificationReceived(note: NSNotification) {
+    func notificationReceived(note: NSNotification) {
         self.callback(note.userInfo ?? [:])
     }
 
     /// Callback when in Key-Value Observation mode
-    public override func observeValueForKeyPath(keyPath: String, ofObject object: AnyObject, change: [NSObject : AnyObject], context: UnsafeMutablePointer<Void>) {
+    override func observeValueForKeyPath(keyPath: String, ofObject object: AnyObject, change: [NSObject : AnyObject], context: UnsafeMutablePointer<Void>) {
         assert(object === target)
         assert(keyPath == self.keyPath)
         self.callback(change)
     }
 
     /// Removes this object as an observer of the target
-    public func deactivate() {
+    private func deactivate() {
         let this = self
         if OSAtomicTestAndClear(0, &active) {
             let object = (target ?? targetPtr.takeUnretainedValue())
             if let center = center { // NSNotificationCenter mode
                 center.removeObserver(this, name: keyPath, object: object)
             } else { // KVO mode
-
-                /** FIXME: we get a crash when there are a lot of observers on a single instance; internet seems to suggest this is a known issue when an object has many observers; one workaround seems to be to just skip the removal of notifications if the class is not the swizzled NSKVONotifying_ subclass, which doesn't seem to trigger the usually dealloc exception.
-
-                #0	0x0000000102951cc9 in CFArrayGetCount ()
-                #1	0x00000001022d272c in _NSKeyValueObservationInfoCreateByRemoving ()
-                #2	0x00000001022d249e in -[NSObject(NSKeyValueObserverRegistration) _removeObserver:forProperty:] ()
-                #3	0x00000001022d230c in -[NSObject(NSKeyValueObserverRegistration) removeObserver:forKeyPath:] ()
-                #4	0x00000001022e026b in -[NSObject(NSKeyValueObserverRegistration) removeObserver:forKeyPath:context:] ()
-                #5	0x0000000104296daf in ChannelZ.TargetAssociatedObserver.deactivate (ChannelZ.TargetAssociatedObserver)() -> () at /opt/src/impathic/glimpse/ChannelZ/ChannelZ/FoundationZ.swift:283
-                #6	0x0000000104296fac in ChannelZ.TargetAssociatedObserver.__deallocating_deinit at /opt/src/impathic/glimpse/ChannelZ/ChannelZ/FoundationZ.swift:290
-                #7	0x0000000104297002 in @objc ChannelZ.TargetAssociatedObserver.__deallocating_deinit ()
-                #8	0x000000010272828e in objc_object::sidetable_release(bool) ()
-                #9	0x0000000102716426 in _object_remove_assocations ()
-                #10	0x00000001027209be in objc_destructInstance ()
-                #11	0x00000001027209e4 in object_dispose ()
-                #12	0x000000010228bd0d in -[NSOperation dealloc] ()
-                #13	0x000000010229c6e5 in -[NSBlockOperation dealloc] ()
-                #14	0x000000010272828e in objc_object::sidetable_release(bool) ()
-                #15	0x0000000106b6cfb7 in ChannelZTests.ChannelZTests.(testManyObservers (ChannelZTests.ChannelZTests) -> () -> ()).(closure #1) at /opt/src/impathic/glimpse/ChannelZ/ChannelZTests/ChannelZTests.swift:1421
-                #16	0x00000001043e7f86 in ObjectiveC.autoreleasepool (() -> ()) -> () ()
-                #17	0x0000000106b07063 in ChannelZTests.ChannelZTests.testManyObservers (ChannelZTests.ChannelZTests)() -> () at /opt/src/impathic/glimpse/ChannelZ/ChannelZTests/ChannelZTests.swift:1408
-                #18	0x0000000106b070a2 in @objc ChannelZTests.ChannelZTests.testManyObservers (ChannelZTests.ChannelZTests)() -> () ()
-                */
-
-                let className = NSStringFromClass(object.dynamicType)
-                if className.hasPrefix("NSKVONotifying_") {
-                    object.removeObserver(this, forKeyPath: keyPath, context: &kvoctx)
-                }
+                object.removeObserver(this, forKeyPath: keyPath, context: &kvoctx)
             }
             ChannelZKeyValueObserverCount--
         }
@@ -318,52 +415,23 @@ public class TargetAssociatedObserver : NSObject {
     }
 }
 
-extension NSObject {
+/// The class prefix that Cocoa prepends to the generated subclass that is swizzled in for KVO handling
+let ChannelZKVOSwizzledISAPrefix = "NSKVONotifying_"
 
-    /// Creates a channel for all state operations for the given key-value-coding compliant property
-    ///
-    /// :param: getter      an autoclosure accessor for the value of the property
-    /// :param: keyPath     the keyPath for the value; if ommitted, auto-discovery will be attempted
-    public func channel<T>(initialValue: @autoclosure ()->T, keyPath: String = "")->ChannelZ<T> {
-        return channelRequired(self, keyPath != "" ? keyPath : keyPathForAutoclosure(self, initialValue, true)!, initialValue())
-    }
+/// The class prefix that ChannelZ appends to the generated subclass that is swizzled in for automatic keyPath identification
+let ChannelZInstrumentorSwizzledISASuffix = "_ChannelZKeyInspection"
 
-    /// Creates a sieve for all mutating state operations for the given key-value-coding compliant property
-    ///
-    /// :param: initialValue     an autoclosure accessor for the value of the property
-    /// :param: keyPath          the keyPath for the value; if ommitted, auto-discovery will be attempted
-    public func sieve<T : Equatable>(initialValue: @autoclosure ()->T, keyPath: String = "")->ChannelZ<T> {
-        return sieveRequired(self, keyPath != "" ? keyPath : keyPathForAutoclosure(self, initialValue, true)!, initialValue())
-    }
-
-    /// Creates a channel for all state operations for the given key-value-coding compliant optional property
-    ///
-    /// :param: initialValue     an autoclosure accessor for the value of the optional
-    /// :param: keyPath          the keyPath for the value; if ommitted, auto-discovery will be attempted
-    public func channel<T>(initialValue: @autoclosure ()->Optional<T>, keyPath: String = "")->KeyValueOptionalChannel<T> {
-        return channelOptional(self, keyPath != "" ? keyPath : keyPathForAutoclosure(self, initialValue, true)!, initialValue())
-    }
-
-    /// Creates a sieve for all mutating state operations for the given key-value-coding compliant optional property
-    ///
-    /// :param: initialValue     an autoclosure accessor for the value of the optional
-    /// :param: keyPath          the keyPath for the value; if ommitted, auto-discovery will be attempted
-    public func sieve<T : Equatable>(initialValue: @autoclosure ()->Optional<T>, keyPath: String = "")->ChannelZ<Optional<  T>> {
-        return sieveOptional(self, keyPath != "" ? keyPath : keyPathForAutoclosure(self, initialValue, true)!, initialValue())
-    }
-}
-
-
+/// The shared lock used for swizzling in for instrumentation subclass creation
 let ChannelZKeyPathForAutoclosureLock = NSLock()
 
-/// Attempts to determine the properties that are accessed by the given autoclosure; does so by temporarily swizzling the object's isa pointer to a generated subclass that instruments access to all the properties; note that this is not thread-safe
+/// Attempts to determine the properties that are accessed by the given autoclosure; does so by temporarily swizzling the object's isa pointer to a generated subclass that instruments access to all the properties; note that this is not thread-safe in the unlikely event that another method (e.g., KVO swizzling) is being used at the same time for the class on another thread
 private func keyPathForAutoclosure<T>(target: NSObject, accessor: ()->T, required: Bool) -> String? {
     var keyPath: String?
 
     let origclass : AnyClass = object_getClass(target)
     var className = NSStringFromClass(origclass)
 
-    let subclassName = className + "_ChannelZKeyInspection" // unique subclass name
+    let subclassName = className + ChannelZInstrumentorSwizzledISASuffix // unique subclass name
     let subclass : AnyClass = objc_allocateClassPair(origclass, subclassName, 0)
     var propSelIMPs: [IMP] = []
 
@@ -456,39 +524,6 @@ private func keyPathForAutoclosure<T>(target: NSObject, accessor: ()->T, require
 }
 
 
-internal func channelRequiredKeyValue<T>(target: NSObject, keyPath: String, value: T)->KeyValueChannel<T> {
-    return KeyValueChannel(target: target, keyPath: keyPath, value: value)
-}
-
-internal func channelRequired<T>(target: NSObject, keyPath: String, value: T)->ChannelZ<T> {
-    return ChannelZ(channelRequiredKeyValue(target, keyPath, value).map({ $0.nextValue }))
-}
-
-/// Separate function to help the compiler distinguish signatures
-public func sieveRequired<T : Equatable>(target: NSObject, keyPath: String, value: T)->ChannelZ<T> {
-    return channelStateChanges(channelRequiredKeyValue(target, keyPath, value))
-}
-
-public func channelfield<T>(target: NSObject, keyPath: String, value: T)->KeyValueChannel<T> {
-    return channelRequiredKeyValue(target, keyPath, value)
-}
-
-internal func channelOptional<T>(target: NSObject, keyPath: String, value: Optional<T>)->KeyValueOptionalChannel<T> {
-    return KeyValueOptionalChannel(target: target, keyPath: keyPath, value: value)
-}
-
-public func channelfield<T>(target: NSObject, keyPath: String, value: Optional<T>)->KeyValueOptionalChannel<T> {
-    return channelOptional(target, keyPath, value)
-}
-
-
-/// Separate function to help the compiler distinguish signatures
-public func sieveOptional<T : Equatable>(target: NSObject, keyPath: String, value: Optional<T>)->ChannelZ<Optional<T>> {
-    return ChannelZ(channelOptionalStateChanges(channelOptional(target, keyPath, value).channelOf))
-}
-
-
-
 /// A Funnel for events of a custom type
 public struct EventFunnel<T>: FunnelType {
     public typealias OutputType = T
@@ -551,7 +586,7 @@ public struct NotificationFunnel: FunnelType {
     public var ChannelZNotificationObserverCount = 0
 #endif
 
-/// Observer for NSNotification changes; cannot be embedded within KeyValueChannel because Objective-C classes cannot use generics
+/// Observer for NSNotification changes; cannot be embedded within KeyValueRequiredChannel because Objective-C classes cannot use generics
 public struct NotificationObserver: Outlet {
     private weak var observer : TargetAssociatedObserver?
 
@@ -581,34 +616,83 @@ public func funnel(center: NSNotificationCenter = NSNotificationCenter.defaultCe
 extension NSObject {
     /// Registers with the NSNotificationCenter to funnel event notications of the given name for this object
     ///
-    /// :param: name    the name of the notification to register
-    /// :param: center  the NSNotificationCenter to register with (defaults to defaultCenter())
-    public func notificationFunnel(name: String, center: NSNotificationCenter = NSNotificationCenter.defaultCenter())->NotificationFunnel {
-        return funnelNotification(center: center, self, name)
+    /// :param: notificationName    the name of the notification to register
+    /// :param: center              the NSNotificationCenter to register with (defaults to defaultCenter())
+    public func notifyz(notificationName: String, center: NSNotificationCenter = NSNotificationCenter.defaultCenter())->NotificationFunnel {
+        return funnelNotification(center: center, self, notificationName)
     }
 }
 
+/// Operator for getting a keypath channel from an NSObject
+infix operator ∞ { precedence 255 }
+
+/// Infix operator for creating a channel from an auto-discovered keyPath to a non-optional property
+///
+/// :returns: a ChannelZ wrapper for the objects KVO field
+public func ∞ <T>(lhs: NSObject, rhs: @autoclosure ()->T)->ChannelZ<T> { return channelRequired(lhs, rhs) }
+
+/// Infix operator for creating a channel from an auto-discovered keyPath to an equatable non-optional property
+///
+/// :returns: a ChannelZ wrapper for the objects KVO field
+public func ∞ <T : Equatable>(lhs: NSObject, rhs: @autoclosure ()->T)->ChannelZ<T> { return sieveRequired(lhs, rhs) }
+
+/// Infix operator for creating a channel from an auto-discovered keyPath to an optional property
+///
+/// :returns: a ChannelZ wrapper for the objects KVO field
+public func ∞ <T>(lhs: NSObject, rhs: @autoclosure ()->Optional<T>)->ChannelZ<Optional<T>> { return channelOptional(lhs, rhs) }
+
+/// Infix operator for creating a channel from an auto-discovered keyPath to an equatable optional property
+///
+/// :returns: a ChannelZ wrapper for the objects KVO field
+public func ∞ <T : Equatable>(lhs: NSObject, rhs: @autoclosure ()->Optional<T>)->ChannelZ<Optional<T>> { return sieveOptional(lhs, rhs) }
+
+/// Infix operator for creating a channel from the specified keyPath to a non-optional property
+///
+/// :returns: a ChannelZ wrapper for the objects KVO field
+public func ∞ <T>(lhs: NSObject, rhs: (getter: @autoclosure ()->T, keyPath: String))->ChannelZ<T> { return channelRequired(lhs, rhs.getter, keyPath: rhs.keyPath) }
+
+/// Infix operator for creating a channel from the specified keyPath to an equatable non-optional property
+///
+/// :returns: a ChannelZ wrapper for the objects KVO field
+public func ∞ <T : Equatable>(lhs: NSObject, rhs: (getter: @autoclosure ()->T, keyPath: String))->ChannelZ<T> { return sieveRequired(lhs, rhs.getter, keyPath: rhs.keyPath) }
+
+/// Infix operator for creating a channel from the specified keyPath to an optional property
+///
+/// :returns: a ChannelZ wrapper for the objects KVO field
+public func ∞ <T>(lhs: NSObject, rhs: (getter: @autoclosure ()->Optional<T>, keyPath: String))->ChannelZ<Optional<T>> { return channelOptional(lhs, rhs.getter, keyPath: rhs.keyPath) }
+
+/// Infix operator for creating a channel from the specified keyPath to an equatable optional property
+///
+/// :returns: a ChannelZ wrapper for the objects KVO field
+public func ∞ <T : Equatable>(lhs: NSObject, rhs: (getter: @autoclosure ()->Optional<T>, keyPath: String))->ChannelZ<Optional<T>> { return sieveOptional(lhs, rhs.getter, keyPath: rhs.keyPath) }
+
+
+///// Operator for getting an optional keypath channel from an NSObject
+//infix operator ∞? { precedence 255 }
+//
+///// Infix operator for creating a channel from an auto-discovered keyPath to a forced optional property
+/////
+///// :returns: a ChannelZ wrapper for the objects KVO field
+//public func ∞? <T>(lhs: NSObject, rhs: @autoclosure ()->Optional<T>)->ChannelZ<Optional<T>> { return channelOptional(lhs, rhs) }
+//
+//
+
 
 /// Conduit operator with coersion via foundation types
+infix operator <~∞~> { }
 
-infix operator <!∞!> { }
-public func <!∞!><T : ChannelType, U : ChannelType where T.OutputType: StringLiteralConvertible, U.OutputType: StringLiteralConvertible>(lhs: T, rhs: U)->Outlet {
-    let lhsm = lhs.map({ $0 as NSString as U.SourceType })
-    let rhsm = rhs.map({ $0 as NSString as T.SourceType })
+/// Convert (possibly lossily) between two string types by casting them through NSNumber
+public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: StringLiteralConvertible, L.OutputType: StringLiteralConvertible, R.SourceType: StringLiteralConvertible, R.OutputType: StringLiteralConvertible>(lhs: L, rhs: R)->Outlet {
+    let lhsm = lhs.map({ $0 as NSString as R.SourceType })
+    let rhsm = rhs.map({ $0 as NSString as L.SourceType })
 
-    return pipe(lhsm, rhsm)
+    return conduit(lhsm, rhsm)
 }
 
-public func <!∞!><T : ChannelType, U : ChannelType where T.OutputType: IntegerLiteralConvertible, U.OutputType: IntegerLiteralConvertible>(lhs: T, rhs: U)->Outlet {
-    let lhsm = lhs.map({ $0 as NSNumber as U.SourceType })
-    let rhsm = rhs.map({ $0 as NSNumber as T.SourceType })
+/// Convert (possibly lossily) between two numeric types by casting them through NSNumber
+public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: IntegerLiteralConvertible, L.OutputType: IntegerLiteralConvertible, R.SourceType: IntegerLiteralConvertible, R.OutputType: IntegerLiteralConvertible>(lhs: L, rhs: R)->Outlet {
+    let lhsm = lhs.map({ $0 as NSNumber as R.SourceType })
+    let rhsm = rhs.map({ $0 as NSNumber as L.SourceType })
 
-    return pipe(lhsm, rhsm)
-}
-
-public func <!∞!><T : ChannelType, U : ChannelType where T.OutputType: FloatLiteralConvertible, U.OutputType: FloatLiteralConvertible>(lhs: T, rhs: U)->Outlet {
-    let lhsm = lhs.map({ $0 as NSNumber as U.SourceType })
-    let rhsm = rhs.map({ $0 as NSNumber as T.SourceType })
-
-    return pipe(lhsm, rhsm)
+    return conduit(lhsm, rhsm)
 }

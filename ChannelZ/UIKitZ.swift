@@ -11,8 +11,33 @@
     import UIKit
 
     public extension UIControl {
-        public func funnelCommand(events: UIControlEvents = .AllEvents) -> UIEventFunnel {
+        /// Creates a funnel for various control event such as button pressed or editing changes
+        public func controlz(_ events: UIControlEvents = .AllEvents) -> UIEventFunnel {
             return UIEventFunnel(control: self, events: events)
+        }
+    }
+
+    extension UISlider : KeyValueChannelSupplementing {
+        public func supplementKeyValueChannel(forKeyPath: String, outlet: (AnyObject?)->()) -> (()->())? {
+            if forKeyPath == "value" {
+                // since the slider's "value" field is not completely KVO-compliant, supplement the channel with the value changed contol event
+                let outlet = self.controlz(.ValueChanged).attach({ [weak self] _ in outlet(self?.value) })
+                return { outlet.detach() }
+            }
+
+            return nil
+        }
+    }
+
+    extension UITextField : KeyValueChannelSupplementing {
+        public func supplementKeyValueChannel(forKeyPath: String, outlet: (AnyObject?)->()) -> (()->())? {
+            if forKeyPath == "text" {
+                // since the field's "text" field is not completely KVO-compliant, supplement the channel with the editing changed contol event
+                let outlet = self.controlz(.EditingChanged).attach({ [weak self] _ in outlet(self?.text) })
+                return { outlet.detach() }
+            }
+
+            return nil
         }
     }
 
@@ -61,6 +86,7 @@
             super.init()
 
             control.addTarget(self, action: Selector("handleControlEvent:"), forControlEvents: events)
+            objc_setAssociatedObject(control, &ctx, self, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
             self.attached = true
 
         }
@@ -70,8 +96,11 @@
         }
 
         public func detach() {
-            control.removeTarget(self, action: Selector("handleControlEvent:"), forControlEvents: events)
-            self.attached = false
+            if self.attached {
+                control.removeTarget(self, action: Selector("handleControlEvent:"), forControlEvents: events)
+                objc_setAssociatedObject(control, &ctx, nil, objc_AssociationPolicy(OBJC_ASSOCIATION_ASSIGN))
+                self.attached = false
+            }
         }
 
         public func handleControlEvent(event: UIEvent) {

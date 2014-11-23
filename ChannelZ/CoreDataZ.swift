@@ -19,7 +19,7 @@ extension NSManagedObjectContext {
     }
 
     private func typeChangeFunnel(noteType: NSString, changeTypes: NSString...) -> FunnelOf<[NSManagedObject]> {
-        return self.notificationFunnel(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }.funnelOf
+        return self.notifyz(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }.funnelOf
     }
 
     /// Funnels notifications of inserted objects after the changes have been processed in the context

@@ -6,7 +6,6 @@
 //  License: MIT (or whatever)
 //
 
-
 /// A Channel is a funnel that can also receive back source value changes
 public protocol BaseChannelType : BaseFunnelType {
     /// The type of element produced by the source of the Funnel
@@ -19,11 +18,12 @@ public protocol BaseChannelType : BaseFunnelType {
 
     /// Pulls the current source value through the channel pipeline
     func pull()->Self.OutputType
+
 }
 
 /// A DirectChannelType allows direct access to the underlying source value
 public protocol DirectChannelType : BaseChannelType {
-    /// The current underlying value of the channel source
+    /// The current underlying value of the channel source; nonmutating since channels are always rooted in a reference type
     var value: Self.SourceType { get nonmutating set }
 }
 
@@ -32,7 +32,7 @@ public protocol ExtendedChannelType : BaseChannelType {
 
     /// NOTE: the following methods need to be a separate protocol or else client code cannot reify the types (possibly because FilteredChannel itself implements ChannelType, and so is regarded as a circular protocol declaration)
 
-    /// Returns a type-erasing funnel wrapper around the current channel, making the channel read-only to subsequent pipeline stages
+    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
     var funnelOf: FunnelOf<OutputType> { get }
 
     /// Returns a type-erasing channel wrapper around the current channel
@@ -52,9 +52,8 @@ public protocol ExtendedChannelType : BaseChannelType {
 
 }
 
-
-public protocol ChannelType : BaseChannelType, ExtendedChannelType {
-}
+/// A channel combines basic channel functionality (attach/push/pull) with extended functionality (filer/map/combine)
+public protocol ChannelType : BaseChannelType, ExtendedChannelType { }
 
 
 /// A type-erased channel with potentially different source and output types
@@ -89,11 +88,23 @@ public struct ChannelOf<SourceType, OutputType> : ChannelType {
 
     // Boilerplate funnel/channel/filter/map
     public typealias SelfChannel = ChannelOf
+
+    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+
+    /// Returns a type-erasing channel wrapper around the current channel
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+
+    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
     public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
+
+    /// Returns a mapped channel that transforms source elements through the given transform before pushing them back to the source
     public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+
+    /// Returned a combined channel where signals from either channel will be combined into a signal for the combined channel's receivers
     public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
@@ -135,11 +146,23 @@ public struct ChannelZ<T> : ChannelType, DirectChannelType {
 
     // Boilerplate funnel/channel/filter/map
     public typealias SelfChannel = ChannelZ
+
+    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+
+    /// Returns a type-erasing channel wrapper around the current channel
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+
+    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
     public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
+
+    /// Returns a mapped channel that transforms source elements through the given transform before pushing them back to the source
     public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+
+    /// Returned a combined channel where signals from either channel will be combined into a signal for the combined channel's receivers
     public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
@@ -154,7 +177,7 @@ public final class FieldChannel<T> : ChannelType {
     /// The underlying value of the funnel source
     public var value : SourceType {
         didSet(oldValue) {
-            outlets.receive(StateEvent(lastValue: oldValue, nextValue: value))
+            outlets.pump(StateEvent(lastValue: oldValue, nextValue: value))
         }
     }
 
@@ -177,11 +200,23 @@ public final class FieldChannel<T> : ChannelType {
 
     // Boilerplate funnel/channel/filter/map
     public typealias SelfChannel = FieldChannel
+
+    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+
+    /// Returns a type-erasing channel wrapper around the current channel
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+
+    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
     public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
+
+    /// Returns a mapped channel that transforms source elements through the given transform before pushing them back to the source
     public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+
+    /// Returned a combined channel where signals from either channel will be combined into a signal for the combined channel's receivers
     public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
@@ -230,11 +265,23 @@ public struct FilteredChannel<Source : BaseChannelType> : ChannelType {
 
     // Boilerplate funnel/channel/filter/map
     public typealias SelfChannel = FilteredChannel
+
+    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+
+    /// Returns a type-erasing channel wrapper around the current channel
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+
+    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
     public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
+
+    /// Returns a mapped channel that transforms source elements through the given transform before pushing them back to the source
     public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+
+    /// Returned a combined channel where signals from either channel will be combined into a signal for the combined channel's receivers
     public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
@@ -286,11 +333,23 @@ public struct MappedChannel<Source : BaseChannelType, OutputTransformedType, Sou
 
     // Boilerplate funnel/channel/filter/map
     public typealias SelfChannel = MappedChannel
+
+    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+
+    /// Returns a type-erasing channel wrapper around the current channel
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+
+    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
     public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
+
+    /// Returns a mapped channel that transforms source elements through the given transform before pushing them back to the source
     public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+
+    /// Returned a combined channel where signals from either channel will be combined into a signal for the combined channel's receivers
     public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
@@ -344,7 +403,7 @@ public struct CombinedChannel<C1 : BaseChannelType, C2 : BaseChannelType> : Chan
         let sk1 = channel1.attach({ v1 in outlet((v1, self.channel2.pull())) })
         let sk2 = channel2.attach({ v2 in outlet((self.channel1.pull(), v2)) })
 
-        let outlet = OutletOf<OutputType>(receiver: { (v1, v2) in }, detacher: {
+        let outlet = OutletOf<OutputType>(pumper: { (v1, v2) in }, detacher: {
             sk1.detach()
             sk2.detach()
         })
@@ -353,11 +412,23 @@ public struct CombinedChannel<C1 : BaseChannelType, C2 : BaseChannelType> : Chan
 
     // Boilerplate funnel/channel/filter/map
     public typealias SelfChannel = CombinedChannel
+
+    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
     public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+
+    /// Returns a type-erasing channel wrapper around the current channel
     public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+
+    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
     public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
+
+    /// Returns a mapped channel that transforms source elements through the given transform before pushing them back to the source
     public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
+
+    /// Returned a combined channel where signals from either channel will be combined into a signal for the combined channel's receivers
     public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
 }
 
@@ -371,27 +442,27 @@ internal func combine<C1 : BaseChannelType, C2 : BaseChannelType>(channel1: C1, 
     return combineChannel(channel1)(channel2: channel2)
 }
 
-///// Flattens N nested CombinedChannels into a single channel that passes all the elements as a single tuple of N elements
+/// Flattens N nested CombinedChannels into a single channel that passes all the elements as a single tuple of N elements
 public func flatten<E1, E2>(channel: CombinedChannel<E1, E2>)->ChannelOf<(E1.SourceType, E2.SourceType), (E1.OutputType, E2.OutputType)> {
     return mapChannel(channel)({ ($0.0, $0.1) })({ ($0, $1) }).channelOf
 }
 
-///// Flattens N nested CombinedChannels into a single channel that passes all the elements as a single tuple of N elements
+/// Flattens N nested CombinedChannels into a single channel that passes all the elements as a single tuple of N elements
 public func flatten<E1, E2, E3>(channel: CombinedChannel<CombinedChannel<E1, E2>, E3>)->ChannelOf<(E1.SourceType, E2.SourceType, E3.SourceType), (E1.OutputType, E2.OutputType, E3.OutputType)> {
     return mapChannel(channel)({ ($0.0.0, $0.0.1, $0.1) })({ (($0, $1), $2) }).channelOf
 }
 
-///// Flattens N nested CombinedChannels into a single channel that passes all the elements as a single tuple of N elements
+/// Flattens N nested CombinedChannels into a single channel that passes all the elements as a single tuple of N elements
 public func flatten<E1, E2, E3, E4>(channel: CombinedChannel<CombinedChannel<CombinedChannel<E1, E2>, E3>, E4>)->ChannelOf<(E1.SourceType, E2.SourceType, E3.SourceType, E4.SourceType), (E1.OutputType, E2.OutputType, E3.OutputType, E4.OutputType)> {
     return mapChannel(channel)({ ($0.0.0.0, $0.0.0.1, $0.0.1.0, $0.1.0.0) })({ ((($0, $1), $2), $3) }).channelOf
 }
 
-///// Flattens N nested CombinedChannels into a single channel that passes all the elements as a single tuple of N elements
+/// Flattens N nested CombinedChannels into a single channel that passes all the elements as a single tuple of N elements
 public func flatten<E1, E2, E3, E4, E5>(channel: CombinedChannel<CombinedChannel<CombinedChannel<CombinedChannel<E1, E2>, E3>, E4>, E5>)->ChannelOf<(E1.SourceType, E2.SourceType, E3.SourceType, E4.SourceType, E5.SourceType), (E1.OutputType, E2.OutputType, E3.OutputType, E4.OutputType, E5.OutputType)> {
     return mapChannel(channel)({ ($0.0.0.0.0, $0.0.0.0.1, $0.0.0.1.0, $0.0.1.0.0, $0.1.0.0.0) })({ (((($0, $1), $2), $3), $4) }).channelOf
 }
 
-///// Flattens N nested CombinedChannels into a single channel that passes all the elements as a single tuple of N elements
+/// Flattens N nested CombinedChannels into a single channel that passes all the elements as a single tuple of N elements
 public func flatten<E1, E2, E3, E4, E5, E6>(channel: CombinedChannel<CombinedChannel<CombinedChannel<CombinedChannel<CombinedChannel<E1, E2>, E3>, E4>, E5>, E6>)->ChannelOf<(E1.SourceType, E2.SourceType, E3.SourceType, E4.SourceType, E5.SourceType, E6.SourceType), (E1.OutputType, E2.OutputType, E3.OutputType, E4.OutputType, E5.OutputType, E6.OutputType)> {
     return mapChannel(channel)({ ($0.0.0.0.0.0, $0.0.0.0.0.1, $0.0.0.0.1.0, $0.0.0.1.0.0, $0.0.1.0.0.0, $0.1.0.0.0.0) })({ ((((($0, $1), $2), $3), $4), $5) }).channelOf
 }
@@ -402,7 +473,10 @@ public func flatten<E1, E2, E3, E4, E5, E6>(channel: CombinedChannel<CombinedCha
 public protocol StateEventType {
     typealias Element
 
-    var lastValue: Element { get }
+    /// The previous value for the state
+    var lastValue: Optional<Element> { get }
+
+    /// The new value for the state
     var nextValue: Element { get }
 }
 
@@ -410,24 +484,27 @@ public protocol StateEventType {
 public struct StateEvent<T> : StateEventType {
     typealias Element = T
 
-    public let lastValue: T
+    /// The previous value for the state
+    public let lastValue: Optional<T>
+
+    /// The new value for the state
     public let nextValue: T
 }
 
 
 /// Channels a StateEventType into just the new values
-public func channelStateValues<T where T : BaseChannelType, T.OutputType : StateEventType, T.SourceType == T.OutputType.Element>(source: T)->ChannelZ<T.SourceType> {
+internal func channelStateValues<T where T : BaseChannelType, T.OutputType : StateEventType, T.SourceType == T.OutputType.Element>(source: T)->ChannelZ<T.SourceType> {
     return ChannelZ(mapOutput(source, { $0.nextValue }))
 }
 
 /// Channels a StateEventType whose elements are Equatable and passes through only the new values of elements that have changed
-public func channelStateChanges<T where T : BaseChannelType, T.OutputType : StateEventType, T.SourceType == T.OutputType.Element, T.OutputType.Element : Equatable>(source: T)->ChannelZ<T.SourceType> {
+internal func channelStateChanges<T where T : BaseChannelType, T.OutputType : StateEventType, T.SourceType == T.OutputType.Element, T.OutputType.Element : Equatable>(source: T)->ChannelZ<T.SourceType> {
     return channelStateValues(filterChannel(source)({ $0.nextValue != $0.lastValue }))
 }
 
 //public func flattenChannel
 
-public func channelOptionalStateChanges<T where T : Equatable>(source: ChannelOf<Optional<T>, StateEvent<Optional<T>>>)->ChannelZ<Optional<T>> {
+internal func channelOptionalStateChanges<T where T : Equatable>(source: ChannelOf<Optional<T>, StateEvent<Optional<T>>>)->ChannelZ<Optional<T>> {
     let filterChanges = source.filter({ (event: StateEvent<Optional<T>>) -> Bool in
         if let lastValue = event.lastValue {
             if let nextValue = event.nextValue {
@@ -442,18 +519,18 @@ public func channelOptionalStateChanges<T where T : Equatable>(source: ChannelOf
 }
 
 
-
-
-/// Creates a state pipeline between two channels with equivalent source and output types; changes made to either side will push the transformed value to the the other side
+/// Creates a state pipeline between two channels with equivalent source and output types; changes made to either side will push the transformed value to the the other side.
+///
+/// Note that the SourceType of either side must be identical to the OutputType of the other side, which is usually accomplished by adding maps and combinations to the pipelines until they achieve parity.
 ///
 /// :param: a one side of the pipeline
 /// :param: b the other side of the pipeline
-/// :return: a tuple of the connected outlets
-public func pipe<A : BaseChannelType, B : BaseChannelType where A.SourceType == B.OutputType, B.SourceType == A.OutputType>(var a: A, var b: B) -> Outlet {
-    let asink = a.attach({ b.push($0); return })
-    let bsink = b.attach({ a.push($0); return })
+/// :returns: a detachable outlet for the conduit
+public func conduit<A : BaseChannelType, B : BaseChannelType where A.SourceType == B.OutputType, B.SourceType == A.OutputType>(var a: A, var b: B) -> Outlet {
+    let asink = a.attach({ b.push($0) })
+    let bsink = b.attach({ a.push($0) })
 
-    let outlet = OutletOf<(A.OutputType, B.OutputType)>(receiver: { _ in }, detacher: {
+    let outlet = OutletOf<(A.OutputType, B.OutputType)>(pumper: { _ in }, detacher: {
         asink.detach()
         bsink.detach()
     })
@@ -462,34 +539,24 @@ public func pipe<A : BaseChannelType, B : BaseChannelType where A.SourceType == 
 }
 
 
+prefix operator ∞ { }
+postfix operator ∞ { }
 
+/// Prefix operator for creating a Swift field sieve reference to the underlying equatable type
+/// 
+/// :param: arg the trailing argument (without a separating space) will be used to initialize a field refence
+///
+/// :returns: a ChannelZ wrapper for the Swift field
+public prefix func ∞ <T : Equatable>(rhs: T)->ChannelZ<T> { return sieveField(rhs) }
 
-infix operator >∞> { associativity left precedence 120 }
+/// Prefix operator for creating a Swift field channel reference to the underlying type
+///
+/// :param: arg the trailing argument (without a separating space) will be used to initialize a field refence
+///
+/// :returns: a ChannelZ wrapper for the Swift field
+public prefix func ∞ <T>(rhs: T)->ChannelZ<T> { return channelField(rhs) }
 
-/// Operator for Funnel.outlet
-public func >∞><T: FunnelType>(var lhs: T, rhs: (T.OutputType)->Void)->Outlet {
-    return lhs.attach(rhs)
-}
-
-infix operator <∞< { associativity right precedence 120 }
-
-/// Operator for Funnel.outlet
-public func <∞<<T: FunnelType>(lhs: (T.OutputType)->Void, var rhs: T)->Outlet {
-    return rhs.attach(lhs)
-}
-
-
-/// Trailing operator for creating a field funnel
-public postfix func ∞> <T>(lhs: T)->T {
-    return lhs
-}
-postfix operator ∞> { }
-
-// FIXME: we need to keep this operator in ChannelZ.swift instead of Operators.swift due to compiler crash “While emitting SIL for '<∞' at ChannelZ.swift:37:15”
-prefix operator <∞ { }
-public prefix func <∞ <T : Equatable>(rhs: T)->ChannelZ<T> {
-    return sieveField(rhs)
-}
+public postfix func ∞ <T>(lhs: T)->T { return lhs }
 
 
 /// Operator for setting Channel.value that returns the value itself
@@ -499,97 +566,187 @@ public func <-<T : ChannelType>(var lhs: T, rhs: T.SourceType) -> T.SourceType {
     return rhs
 }
 
-/// Conduit operator with natural equivalence between two identical types
-infix operator <=∞=> { }
-public func <=∞=><T : ChannelType, U : ChannelType where T.OutputType == U.SourceType, T.SourceType == U.OutputType>(lhs: T, rhs: U)->Outlet {
-    return pipe(lhs, rhs)
+///// Attachment operation
+//public func += <T : BaseFunnelType>(lhs: T, rhs: T.OutputType->Void)->Outlet { return lhs.attach(rhs) }
+//
+///// Alternate attachment operation
+//public func => <T : BaseFunnelType>(lhs: T, rhs: T.OutputType->Void)->Outlet { return lhs.attach(rhs) }
+//infix operator => { }
+
+/// Alternate attachment operation
+public func -∞> <T : BaseFunnelType>(lhs: T, rhs: T.OutputType->Void)->Outlet { return lhs.attach(rhs) }
+infix operator -∞> { }
+
+
+/// Channel combination & flattening operations
+public func + <L : BaseChannelType, R : BaseChannelType>(lhs: L, rhs: R)->ChannelOf<(L.SourceType, R.SourceType), (L.OutputType, R.OutputType)> {
+    return flatten(combineChannel(lhs)(channel2: rhs))
 }
 
-/// Conduit operator with checked custom transformer
-infix operator <~∞~> { }
-public func <~∞~><T : ChannelType, U : ChannelType>(lhs: (o: T, f: T.OutputType->Optional<U.SourceType>), rhs: (o: U, f: U.OutputType->Optional<T.SourceType>))->Outlet {
+public func + <E1, E2, C : BaseChannelType>(lhs: CombinedChannel<E1, E2>, rhs: C)->ChannelOf<(E1.SourceType, E2.SourceType, C.SourceType), (E1.OutputType, E2.OutputType, C.OutputType)> {
+    return flatten(combineChannel(lhs)(channel2: rhs))
+}
+
+
+/// Bi-directional conduit operator with natural equivalence between two identical types
+public func <=∞=><L : ChannelType, R : ChannelType where L.OutputType == R.SourceType, L.SourceType == R.OutputType>(lhs: L, rhs: R)->Outlet {
+    return conduit(lhs, rhs)
+}
+infix operator <=∞=> { }
+
+
+/// One-sided conduit operator with natural equivalence between two identical types
+public func ∞=><L : BaseFunnelType, R : ChannelType where L.OutputType == R.SourceType>(lhs: L, rhs: R)->Outlet {
+    let lsink = lhs.attach { rhs.push($0) }
+    return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: { lsink.detach() })
+}
+infix operator ∞=> { }
+
+
+/// One-sided conduit operator with natural equivalence between two identical types
+public func <=∞<L : ChannelType, R : BaseFunnelType where L.SourceType == R.OutputType>(lhs: L, rhs: R)->Outlet {
+    let rsink = rhs.attach { lhs.push($0) }
+    return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: { rsink.detach() })
+}
+infix operator <=∞ { }
+
+
+/// Conduit operator that filters out nil values with a custom transformer
+public func <~∞~><L : ChannelType, R : ChannelType>(lhs: (o: L, f: L.OutputType->Optional<R.SourceType>), rhs: (o: R, f: R.OutputType->Optional<L.SourceType>))->Outlet {
     let lhsm = lhs.o.map({ lhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
     let rhsm = rhs.o.map({ rhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
 
-    return pipe(lhsm, rhsm)
+    return conduit(lhsm, rhsm)
 }
-
-/// Conduit operator with unchecked transformer
-infix operator <|∞|> { }
-public func <|∞|> <T : ChannelType, U : ChannelType>(lhs: (o: T, f: T.OutputType->U.SourceType), rhs: (o: U, f: U.OutputType->T.SourceType))->Outlet {
-    let lhsm = lhs.o.map({ lhs.f($0) })
-    let rhsm = rhs.o.map({ rhs.f($0) })
-
-    return pipe(lhsm, rhsm)
-}
-
-/// Conduit operator with unchecked left transformer and checked right transformer
-infix operator <|∞~> { }
-public func <|∞~> <T : ChannelType, U : ChannelType>(lhs: (o: T, f: T.OutputType->U.SourceType), rhs: (o: U, f: U.OutputType->Optional<T.SourceType>))->Outlet {
-    let lhsm = lhs.o.map({ lhs.f($0) as U.SourceType })
-    let rhsm = unwrap(rhs.o.map({ rhs.f($0) ?? nil }).channelOf)
-
-    return pipe(lhsm, rhsm)
-
-}
-
-/// Conduit operator with checked left transformer and unchecked right transformer
-infix operator <~∞|> { }
-public func <~∞|> <T : ChannelType, U : ChannelType>(lhs: (o: T, f: T.OutputType->Optional<U.SourceType>), rhs: (o: U, f: U.OutputType->T.SourceType))->Outlet {
-    let lhsm = unwrap(lhs.o.map({ lhs.f($0) ?? nil }).channelOf)
-    let rhsm = rhs.o.map({ rhs.f($0) })
-
-    return pipe(lhsm, rhsm)
-
-}
+infix operator <~∞~> { }
 
 
-/// Conduit operator for optional type coersion
-infix operator <?∞?> { }
-public func <?∞?><T : ChannelType, U : ChannelType>(lhs: T, rhs: U)->Outlet {
-    let lhsm = lhs.map({ $0 as U.SourceType })
-    let rhsm = rhs.map({ $0 as T.SourceType })
-
-    return pipe(lhsm, rhsm)
-}
-
-/// Conduit operator for coerced left and checked right
-infix operator <?∞~> { }
-public func <?∞~><T : ChannelType, U : ChannelType>(lhs: T, rhs: (o: U, f: U.OutputType->Optional<T.OutputType>))->Outlet {
-    let lhsm = lhs.map({ $0 as U.SourceType })
-    let rhsm = rhs.o.map({ rhs.f($0) as T.SourceType })
-
-    return pipe(lhsm, rhsm)
-}
-
-/// Conduit operator for checked left and coerced right
-infix operator <~∞?> { }
-public func <~∞?><T : ChannelType, U : ChannelType>(lhs: (o: T, f: T.OutputType->Optional<U.OutputType>), rhs: U)->Outlet {
-    let lhsm = lhs.o.map({ lhs.f($0) as U.SourceType })
-    let rhsm = rhs.map({ $0 as T.SourceType })
-
-    return pipe(lhsm, rhsm)
-}
-
-
-
-/// Conduit operator for equated left and checked right
-infix operator <=∞~> { }
-public func <=∞~><T : ChannelType, U : ChannelType where U.SourceType == T.OutputType>(lhs: T, rhs: (o: U, f: U.OutputType->Optional<T.SourceType>))->Outlet {
-    let lhsm = lhs.map({ $0 })
-    let rhsm = unwrap(rhs.o.map({ rhs.f($0) ?? nil }).channelOf)
-
-    return pipe(lhsm, rhsm)
-
-}
-
-/// Conduit operator for checked left and equated right
-infix operator <~∞=> { }
-public func <~∞=><T : ChannelType, U : ChannelType where T.SourceType == U.OutputType>(lhs: (o: T, f: T.OutputType->Optional<U.SourceType>), rhs: U)->Outlet {
-    let lhsm = unwrap(lhs.o.map({ lhs.f($0) ?? nil }).channelOf)
-    let rhsm = rhs.map({ $0 })
-
-    return pipe(lhsm, rhsm)
-
-}
-
+//public func <~∞~><L : ChannelType, R : ChannelType, LS : ConduitNumericConvertable, RS : ConduitNumericConvertable where L.OutputType: ConduitNumericConvertable, R.OutputType: ConduitNumericConvertable, LS == L.SourceType, RS == R.SourceType>(lhs: L, rhs: R)->Outlet {
+//    let lhsm = lhs.map { $0.convertToConduitNumeric(RS.self) }
+//    let rhsm = rhs.map { $0.convertToConduitNumeric(LS.self) }
+//    return conduit(lhsm, rhsm)
+//}
+//
+//public protocol ConduitNumericConvertable : IntegerLiteralConvertible {
+//    typealias NumericType
+//
+//    func convertToConduitNumeric<T : ConduitNumericConvertable>(type: T.Type) -> T
+//}
+//
+////extension Bool : ConduitNumericConvertable {
+////    typealias NumericType = Bool
+////
+////    public func convertToConduitNumeric<T : ConduitNumericConvertable>(type: T.Type) -> T {
+////        switch type {
+////        case Bool.self: break
+////        }
+////
+////        fatalError("")
+////    }
+////
+////}
+//
+//extension Int : ConduitNumericConvertable {
+//    typealias NumericType = Int
+//
+//    public func convertToConduitNumeric<T : ConduitNumericConvertable>(type: T.Type) -> T {
+//        if self is T {
+//            return self as T
+//        }
+//
+//        if T.self is Int.Type {
+//
+//        }
+//
+//        fatalError("")
+//    }
+//    
+//}
+//
+//extension Double : ConduitNumericConvertable {
+//    typealias NumericType = Double
+//
+//    public func convertToConduitNumeric<T : ConduitNumericConvertable>(type: T.Type) -> T {
+//        if self is T {
+//            return self as T
+//        }
+//
+//        if T.self is Double.Type {
+//
+//        }
+//
+//        fatalError("")
+//    }
+//    
+//}
+//
+////extension UInt8 : ConduitNumericConvertable {
+////    typealias NumericType = UInt8
+////}
+////
+////extension Int16 : ConduitNumericConvertable {
+////    typealias NumericType = Int16
+////}
+////
+////extension UInt16 : ConduitNumericConvertable {
+////    typealias NumericType = UInt16
+////}
+////
+////extension Int32 : ConduitNumericConvertable {
+////    typealias NumericType = Int32
+////}
+////
+////extension UInt32 : ConduitNumericConvertable {
+////    typealias NumericType = UInt32
+////}
+////
+////extension Int64 : ConduitNumericConvertable {
+////    typealias NumericType = Int64
+////}
+////
+////extension UInt64 : ConduitNumericConvertable {
+////    typealias NumericType = UInt64
+////}
+////
+////extension Float : ConduitNumericConvertable {
+////    typealias NumericType = Float
+////}
+////
+////extension Float80 : ConduitNumericConvertable {
+////    typealias NumericType = Float80
+////}
+////
+////extension Double : ConduitNumericConvertable {
+////    typealias NumericType = Double
+////}
+////
+//
+//
+//
+/////// Conduit operator that transforms lossily between like numeric types
+////public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: IntegerLiteralConvertible, R.SourceType: IntegerLiteralConvertible, L.OutputType == R.SourceType.IntegerLiteralType, R.OutputType == L.SourceType.IntegerLiteralType>(lhs: L, rhs: R)->Outlet {
+////    let lhsm = lhs.map { R.SourceType(integerLiteral: $0) }
+////    let rhsm = rhs.map { L.SourceType(integerLiteral: $0) }
+////    return conduit(lhsm, rhsm)
+////}
+////
+/////// Conduit operator that transforms lossily between like numeric types
+////public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: FloatLiteralConvertible, R.SourceType: FloatLiteralConvertible, L.OutputType == R.SourceType.FloatLiteralType, R.OutputType == L.SourceType.FloatLiteralType>(lhs: L, rhs: R)->Outlet {
+////    let lhsm = lhs.map { R.SourceType(floatLiteral: $0) }
+////    let rhsm = rhs.map { L.SourceType(floatLiteral: $0) }
+////    return conduit(lhsm, rhsm)
+////}
+////
+/////// Conduit operator that transforms lossily between like numeric types
+////public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: IntegerLiteralConvertible, R.SourceType: FloatLiteralConvertible, L.OutputType == R.SourceType.FloatLiteralType, R.OutputType == L.SourceType.IntegerLiteralType>(lhs: L, rhs: R)->Outlet {
+////    let lhsm = lhs.map { R.SourceType(floatLiteral: $0) }
+////    let rhsm = rhs.map { L.SourceType(integerLiteral: $0) }
+////    return conduit(lhsm, rhsm)
+////}
+////
+/////// Conduit operator that transforms lossily between like numeric types
+////public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: FloatLiteralConvertible, R.SourceType: IntegerLiteralConvertible, L.OutputType == R.SourceType.IntegerLiteralType, R.OutputType == L.SourceType.FloatLiteralType>(lhs: L, rhs: R)->Outlet {
+////    let lhsm = lhs.map { R.SourceType(integerLiteral: $0) }
+////    let rhsm = rhs.map { L.SourceType(floatLiteral: $0) }
+////    return conduit(lhsm, rhsm)
+////}

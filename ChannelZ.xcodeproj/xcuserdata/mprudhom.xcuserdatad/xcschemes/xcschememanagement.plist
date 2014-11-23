@@ -4,10 +4,20 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
+		<key>BrowserZ.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>2</integer>
+		</dict>
+		<key>CalcZ.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
 		<key>ChannelZ.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>7</integer>
+			<integer>0</integer>
 		</dict>
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
@@ -18,6 +28,36 @@
 			<true/>
 		</dict>
 		<key>7E30DC3A1A0D6A510050EC52</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>7E594B961A1FC66A008FB7B1</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>7E594BA51A1FC66B008FB7B1</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>7E79E48A1A1FBB1100FD2EEA</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>7E79E4991A1FBB1200FD2EEA</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>7E9C1B491A1E8E0300F83246</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>7E9C1B5D1A1E8E0300F83246</key>
 		<dict>
 			<key>primary</key>
 			<true/>
