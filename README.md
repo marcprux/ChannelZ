@@ -20,7 +20,7 @@ a1.value // …will automatically set a1 to that same value!
 
 assert(a1.value == 42)
 assert(a2.value == 42)
-``` `
+```
 
 ### Operators & Fuctions
 
@@ -42,7 +42,7 @@ assert(b1.value == 99)
 assert(b2.value == 99)
 
 b1b2.detach() // you can manually disconnect the conduit if you like
-``` `
+```
 
 
 ### Objective-C, KVO, and ChannelZ
@@ -70,7 +70,7 @@ sc1.intField += 123
 sc2.intField
 
 assert(sc1.intField == sc2.intField)
-``` `
+```
 
 ### KVO Details
 
@@ -94,7 +94,7 @@ sc4.intField += 789
 sc3.intField
 
 assert(sc3.intField == sc4.intField)
-``` `
+```
 
 ### Mixing Swift & Objective-C
 
@@ -122,7 +122,7 @@ ojc.stringField += "ABC"
 swc.stringChannel.value
 
 assert(swc.stringChannel.value == ojc.stringField)
-``` `
+```
 
 ### Channeling between Different Types
 
