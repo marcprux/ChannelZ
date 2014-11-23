@@ -6,6 +6,8 @@
 
 ChannelZ is a pure Swift framework for simplifying state and event management in iOS and Mac apps. You can create `Channels` to both native Swift properties and Objective-C properties, and connect those `Channels` using `Conduits`, enabling the underlying values of the properties to be automatically synchronized.
 
+Following is an overview of the API. To get started using ChannelZ in your own project, jump straight to [Setting up ChannelZ](#settingup).
+
 #### Example: Basic Usage
 
 ```swift

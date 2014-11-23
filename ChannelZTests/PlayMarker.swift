@@ -160,8 +160,11 @@ class PlayMarker {
             if contains(line, "<") {
                 // maybe HTML: parse it and add it as a child node
                 var error: NSError?
-                if let parsed = NSXMLElement(XMLString: line, error: &error) {
-                    child.addChild(parsed)
+                if let parsed = NSXMLDocument(XMLString: line, options: Int(NSXMLNodePreserveWhitespace), error: &error) {
+                    if let root = parsed.rootElement() {
+                        root.detach()
+                        child.addChild(root)
+                    }
                 } else {
                     child.stringValue = line
                 }
@@ -236,7 +239,7 @@ class PlayMarker {
     func toXHTML(element: NSXMLElement) -> String {
         var xhtml = "<!DOCTYPE html>\n"
         if let root = createDocument(element).rootElement() {
-            xhtml += root.XMLStringWithOptions(Int(NSXMLNodePrettyPrint))
+            xhtml += root.XMLStringWithOptions(Int(NSXMLNodePrettyPrint | NSXMLNodeCompactEmptyElement))
         }
         return xhtml
     }
