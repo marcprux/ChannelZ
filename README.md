@@ -24,7 +24,8 @@ println(a1.value) // …will automatically set a1 to that same value!
 
 assert(a1.value == 42)
 assert(a2.value == 42)
-``` <!-- extra backtick to fix Xcode's faulty syntax highlighting `  -->
+```
+<!-- extra backtick to fix Xcode's faulty syntax highlighting `  -->
 
 > **Note**: this documentation is also available as an executable Playground within the ChannelZ framework.
 
@@ -48,7 +49,8 @@ assert(b1.value == 99)
 assert(b2.value == 99)
 
 b1b2.detach() // you can manually disconnect the conduit if you like
-``` <!--`-->
+```
+<!--`-->
 
 ### Objective-C, KVO, and ChannelZ
 
@@ -75,7 +77,8 @@ sc1.intField += 123
 sc2.intField
 
 assert(sc1.intField == sc2.intField)
-``` <!--`-->
+```
+<!--`-->
 
 ### KVO Details
 
@@ -99,7 +102,8 @@ sc4.intField += 789
 sc3.intField
 
 assert(sc3.intField == sc4.intField)
-``` <!--`-->
+```
+<!--`-->
 
 ### Mixing Swift & Objective-C
 
@@ -127,7 +131,8 @@ scl1.stringField += "ABC"
 sst1.stringChannel.value
 
 assert(sst1.stringChannel.value == scl1.stringField)
-``` <!--`-->
+```
+<!--`-->
 
 The above is an example if a bi-directional conduit using the `<=∞=>` operator. You can also create a uni-directional conduit that only synchronizes state changes in one direction using the `∞=>` and `<=∞` operators.
 
@@ -144,7 +149,8 @@ assert(sst2.stringChannel.value == scl2.stringField, "stringField conduit to str
 
 sst2.stringChannel.value = "QRS"
 assert(sst2.stringChannel.value != scl2.stringField, "conduit is unidirectional")
-``` <!--`-->
+```
+<!--`-->
 
 ### Channeling between Different Types
 
@@ -172,7 +178,8 @@ swsc.stringChannel.value // will be "55"
 swsc.stringChannel.value = "89"
 ojic.intField // will be 89
 
-``` <!--`-->
+```
+<!--`-->
 
 ### Channels and Funnels
 
@@ -185,7 +192,8 @@ import UIKit
 
 let button = UIButton()
 button.controlz() -∞> { (event: UIEvent) in println("Tapped Button!") }
-``` <!--`-->
+```
+<!--`-->
 
 Note that `controlz()` method on `UIButton`. This is a category method added by `ChannelZ` to all `UIControl` instances on iOS' `UIKit` and `NSControl` instances on Mac's `AppKit`. The extensions of UIKit and AppKit also permit channeling other control events, which are not normally observable through KVO.
 
@@ -207,7 +215,8 @@ slider.value += 30.0
 assert(stepper.value == 55.0)
 
 println("slider: \(slider.value) stepper: \(stepper.value)")
-``` <!--`-->
+```
+<!--`-->
 
 > The `<~∞~>` operator a variant of the `<=∞=>` operator that coerces between different numeric types. It is used above because `UIStepper.value` is a `Double` and `UISlider.value` is a `Float`. The `<=∞=>` operator respects Swift's design decision to prohibit automatic numeric type coersion and is generally recommended.
 
@@ -227,7 +236,8 @@ assert(stepper.value == 75.0)
 assert(progbar.progress == 0.75)
 
 println("slider: \(slider.value) stepper: \(stepper.value) progress: \(progbar.progress)")
-``` <!--`-->
+```
+<!--`-->
 
 There is no limit to the number of outlets that can be attached to channels and funnels. 
 
@@ -243,7 +253,8 @@ progress∞progress.localizedDescription ∞=> textField∞textField.text
 progress.completedUnitCount += 12
 
 println("progress: \(textField.text)")
-``` <!--`-->
+```
+<!--`-->
 
 ### Memory Management
 
