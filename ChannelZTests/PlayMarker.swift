@@ -125,6 +125,7 @@ class PlayMarker {
         (NSRegularExpression(pattern: "`(.*?)`", options: nil, error: nil)!, "<code class='code-voice'>$1</code>", 1),
         (NSRegularExpression(pattern: "\\*\\*(.*?)\\*\\*", options: nil, error: nil)!, "<strong>$1</strong>", 1),
         (NSRegularExpression(pattern: "\\*(.*?)\\*", options: nil, error: nil)!, "<em>$1</em>", 1),
+        (NSRegularExpression(pattern: "\\[(.*?)\\]\\(#(.*?)\\)", options: nil, error: nil)!, "<em>$1</em>", 1), // no support for intra-Playground anchor links
         (NSRegularExpression(pattern: "\\[(.*?)\\]\\((.*?)\\)", options: nil, error: nil)!, "<a href='$2'>$1</a>", 1),
     ]
 
@@ -239,7 +240,8 @@ class PlayMarker {
     func toXHTML(element: NSXMLElement) -> String {
         var xhtml = "<!DOCTYPE html>\n"
         if let root = createDocument(element).rootElement() {
-            xhtml += root.XMLStringWithOptions(Int(NSXMLNodePrettyPrint | NSXMLNodeCompactEmptyElement))
+            let options = NSXMLNodeCompactEmptyElement // | NSXMLNodePrettyPrint
+            xhtml += root.XMLStringWithOptions(Int(options))
         }
         return xhtml
     }

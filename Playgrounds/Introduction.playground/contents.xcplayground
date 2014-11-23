@@ -14,5 +14,15 @@
         <documentation relative-path="fragment-10.html"></documentation>
         <code source-file-name="section-11.swift"></code>
         <documentation relative-path="fragment-12.html"></documentation>
+        <code source-file-name="section-13.swift"></code>
+        <documentation relative-path="fragment-14.html"></documentation>
+        <code source-file-name="section-15.swift"></code>
+        <documentation relative-path="fragment-16.html"></documentation>
+        <code source-file-name="section-17.swift"></code>
+        <documentation relative-path="fragment-18.html"></documentation>
+        <code source-file-name="section-19.swift"></code>
+        <documentation relative-path="fragment-20.html"></documentation>
+        <code source-file-name="section-21.swift"></code>
+        <documentation relative-path="fragment-22.html"></documentation>
     </sections>
 </playground>

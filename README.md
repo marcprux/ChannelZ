@@ -6,7 +6,7 @@
 
 ChannelZ is a pure Swift framework for simplifying state and event management in iOS and Mac apps. You can create `Channels` to both native Swift properties and Objective-C properties, and connect those `Channels` using `Conduits`, enabling the underlying values of the properties to be automatically synchronized.
 
-Following is an overview of the API. To get started using ChannelZ in your own project, jump straight to [Setting up ChannelZ](#settingup).
+Following is an overview of the API. To get started using ChannelZ in your own project, jump straight to [Setting up ChannelZ](#Setting up ChannelZ).
 
 #### Example: Basic Usage
 
@@ -18,17 +18,19 @@ let a2 = ∞(Int(0))∞ // create another field channel
 
 a1 <=∞=> a2 // create a two-way conduit between the properties
 
-a1.value // the underlying value of the field channel is accessed with the `value` property
-a2.value = 42 // changing a2's value…
-a1.value // …will automatically set a1 to that same value!
+println(a1.value) // the underlying value of the field channel is accessed with the `value` property
+a2.value = 42 // then changing a2's value…
+println(a1.value) // …will automatically set a1 to that same value!
 
 assert(a1.value == 42)
 assert(a2.value == 42)
 ```
 
+> **Note**: this documentation is also available as an executable Playground within the ChannelZ framework.
+
 ### Operators & Fuctions
 
-ChannelZ defines the operator **∞**, which can be entered with `Option-5` on the Mac keyboard. You can alternatively use functions for all of ChannelZ's operations.
+ChannelZ's central operator is **∞**, which can be entered with `Option-5` on the Mac keyboard. Variants of this operator are used throughout the framework, but you can alternatively use functions for all of ChannelZ's operations. The major operators are listed in section [Operator Glossary](#Operator Glossary).
 
 #### Example: Usings Functions Instead of ∞
 
@@ -107,26 +109,44 @@ ChannelZ allows synchronization between properties in Swift and Objective-C inst
 #### Example: Creating a Conduit between a Swift property and Objective-C property
 
 ```swift
-class ObjcStringClass : NSObject {
+class StringClass : NSObject {
     dynamic var stringField = ""
 }
 
-struct SwiftStringStruct {
+struct StringStruct {
     let stringChannel = ∞("")∞
 }
 
-let ojc = ObjcStringClass()
-let swc = SwiftStringStruct()
+let scl1 = StringClass()
+let sst1 = StringStruct()
 
-ojc∞ojc.stringField <=∞=> swc.stringChannel
+scl1∞scl1.stringField <=∞=> sst1.stringChannel
 
 
-swc.stringChannel.value
-ojc.stringField += "ABC"
-swc.stringChannel.value
+sst1.stringChannel.value
+scl1.stringField += "ABC"
+sst1.stringChannel.value
 
-assert(swc.stringChannel.value == ojc.stringField)
+assert(sst1.stringChannel.value == scl1.stringField)
 ```
+
+The above is an example if a bi-directional conduit using the `<=∞=>` operator. You can also create a uni-directional conduit that only synchronizes state changes in one direction using the `∞=>` and `<=∞` operators.
+
+#### Example: A Unidirectional Condit
+
+```swift
+let scl2 = StringClass()
+let sst2 = StringStruct()
+
+scl2∞scl2.stringField ∞=> sst2.stringChannel
+
+scl2.stringField += "XYZ"
+assert(sst2.stringChannel.value == scl2.stringField, "stringField conduit to stringChannel")
+
+sst2.stringChannel.value = "QRS"
+assert(sst2.stringChannel.value != scl2.stringField, "conduit is unidirectional")
+```
+
 
 ### Channeling between Different Types
 
@@ -155,6 +175,98 @@ swsc.stringChannel.value = "89"
 ojic.intField // will be 89
 
 ```
+
+### Channels and Funnels
+
+A `Channel` is bi-directional access to some underlying state. It is always backed by a reference type, either a class in Objective-C or a reference wrapper around a Swift value type. A `Channel` is a specialization of a `Funnel`, which provides uni-directional flow of events. Events are not limited to state changes. For example, you funnel button tap events to a custom attached outlet using the `-∞>` operator.
+
+#### Example: Funneling Button Taps
+
+```swift
+import UIKit
+
+let button = UIButton()
+button.controlz() -∞> { (event: UIEvent) in println("Tapped Button!") }
+```
+
+Note that `controlz()` method on `UIButton`. This is a category method added by `ChannelZ` to all `UIControl` instances on iOS' `UIKit` and `NSControl` instances on Mac's `AppKit`. The extensions of UIKit and AppKit also permit channeling other control events, which are not normally observable through KVO.
+
+#### Example: Sychronizing a Slider and a Stepper
+
+```swift
+let stepper = UIStepper()
+stepper.maximumValue = 100.0
+
+let slider = UISlider()
+slider.maximumValue = 100.0
+
+stepper∞stepper.value <~∞~> slider∞slider.value
+
+stepper.value += 25.0
+assert(slider.value == 25.0)
+
+slider.value += 30.0
+assert(stepper.value == 55.0)
+
+println("slider: \(slider.value) stepper: \(stepper.value)")
+```
+
+> The `<~∞~>` operator a variant of the `<=∞=>` operator that coerces between different numeric types. It is used above because `UIStepper.value` is a `Double` and `UISlider.value` is a `Float`. The `<=∞=>` operator respects Swift's design decision to prohibit automatic numeric type coersion and is generally recommended.
+
+Note that channels and funnels are not restricted to a single conduit or outlet. We can supplement the above example with a progress indicator.
+
+#### Example: Adding a UIProgressView channel
+
+```swift
+let progbar = UIProgressView()
+// UIProgressView goes from 0.0-1.0, so map the slider's percentage complete to the progress value 
+(slider∞slider.value).map({ $0 / slider.maximumValue }) ∞=> progbar∞progbar.progress
+
+slider.value += 20
+
+assert(slider.value == 75.0)
+assert(stepper.value == 75.0)
+assert(progbar.progress == 0.75)
+
+println("slider: \(slider.value) stepper: \(stepper.value) progress: \(progbar.progress)")
+
+```
+
+There is no limit to the number of outlets that can be attached to channels and funnels. 
+
+#### Example: Adding an NSProgress and NSTextField
+
+```swift
+let progress = NSProgress(totalUnitCount: 100)
+let textField = UITextField()
+
+// whenever the progress updates its description, set it in the text field
+progress∞progress.localizedDescription ∞=> textField∞textField.text
+
+progress.completedUnitCount += 12
+
+println("progress: \(textField.text)")
+```
+
+
+### Memory Management
+
+Outlets are weakly associated with their target objects, so when the objects are released, their outlets are also released. Note that when using closures, the standard practice of declaring `[unowned self]` is recommended in order to avert retain cycles in your own code.
+
+
+
+### Operator Glossary
+
+Following is a list of the variants of the ∞ operator that is used throughout the ChannelZ framework:
+
+* `∞(SWTYPE)∞`: Wraps the given Swift reference type in a field channel
+* `OBJC ∞ OBJC.PROPERTY`: Creates a channel to the given Objective-C object's auto-detected KVO-compliant key.
+* `OBJC ∞ (OBJC.PROPERTY, "PROPNAME")`: Creates a channel to the given Objective-C's property with a manually specified keypath.
+* `FUNL -∞> { (ARG: TYPE) in VOID }`: Attaches an outlet to the given funnel or channel.
+* `C1 ∞=> C2`: Unidirectionally synchronizes state from channel C1 to channel C2
+* `C1 <=∞ C2`: Unidirectionally synchronizes state from channel C2 to channel C1
+* `C1 <=∞=> C2`: Bidirectionally synchronizes state between channels C1 and C2
+* `C1 <~∞~> C2`: Bidirectionally synchronizes state between channels C1 and C2 by coercing numeric types
 
 ### Setting up ChannelZ
 
