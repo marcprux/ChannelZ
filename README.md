@@ -25,7 +25,7 @@ println(a1.value) // …will automatically set a1 to that same value!
 assert(a1.value == 42)
 assert(a2.value == 42)
 ```
-`````````
+` ` `
 
 > **Note**: this documentation is also available as an executable Playground within the ChannelZ framework.
 
