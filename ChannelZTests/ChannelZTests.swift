@@ -1810,11 +1810,22 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(state2.intField, 2 + (off * 3))
     }
 
-    public func testWebView() {
-        let webView = WKWebView()
-
-//        webView.load
+    public func testMemory() {
+        autoreleasepool {
+            let md1 = MemoryDemo()
+            let md2 = MemoryDemo()
+            md1∞md1.stringField <=∞=> md2∞md2.stringField
+            md1.stringField += "Hello "
+            md2.stringField += "World"
+            XCTAssertEqual(md1.stringField, "Hello World")
+            XCTAssertEqual(md2.stringField, "Hello World")
+            XCTAssertEqual(2, MemoryDemoCount)
+        }
+        
+        // outlets are retained by the channel sources
+        XCTAssertEqual(0, MemoryDemoCount)
     }
+
 
     public func testAutoKVOIdentification() {
         let state = StatefulObjectSubSubclass()
@@ -1914,5 +1925,14 @@ class InstanceTrackingUndoManager : NSUndoManager {
 public class CoreDataPerson : NSManagedObject {
     dynamic var fullName: String?
     @NSManaged var age: Int16
+}
+
+var MemoryDemoCount = 0
+class MemoryDemo : NSObject {
+    dynamic var stringField : String = ""
+
+    // track creates and releases
+    override init() { MemoryDemoCount++ }
+    deinit { MemoryDemoCount-- }
 }
 

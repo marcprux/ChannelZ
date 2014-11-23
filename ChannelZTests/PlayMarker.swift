@@ -177,6 +177,12 @@ class PlayMarker {
         }
     }
 
+    func appendHeader(level: UInt8) {
+        while let parent = node.parent as? NSXMLElement { node = parent }
+        let attrs = level <= 2 ? ("class", "chapter-name") : ("class", "section-name")
+        scanChild(element(toRoot(), "h\(level)", attrs))
+    }
+
     /// High-level conversion of blocks to code
     func convertBlocks() {
         var string: NSString?
@@ -190,22 +196,17 @@ class PlayMarker {
                 pushXHTMLContent()
                 pushSwiftContent(swiftCode.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet()))
             } else if scan("\n###### ") {
-                scanChild(element(toRoot(), "h6", ("class", "section-name")))
+                appendHeader(6)
             } else if scan("\n##### ") {
-                while let parent = node.parent as? NSXMLElement { node = parent }
-                scanChild(element(toRoot(), "h5", ("class", "section-name")))
+                appendHeader(5)
             } else if scan("\n#### ") {
-                while let parent = node.parent as? NSXMLElement { node = parent }
-                scanChild(element(toRoot(), "h4", ("class", "section-name")))
+                appendHeader(4)
             } else if scan("\n### ") {
-                while let parent = node.parent as? NSXMLElement { node = parent }
-                scanChild(element(toRoot(), "h3", ("class", "section-name")))
+                appendHeader(3)
             } else if scan("\n## ") {
-                while let parent = node.parent as? NSXMLElement { node = parent }
-                scanChild(element(toRoot(), "h2", ("class", "chapter-name")))
+                appendHeader(2)
             } else if scan("\n# ") {
-                while let parent = node.parent as? NSXMLElement { node = parent }
-                scanChild(element(toRoot(), "h1", ("class", "chapter-name")))
+                appendHeader(1)
             } else if scan("\n* ") || scan("\n- ") {
                 // start an unordered list if needed
                 if node.name != "ul" { node = element(node, "ul", ("class", "list-bullet")) }
