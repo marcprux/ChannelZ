@@ -1,4 +1,6 @@
-## **∞ChannelZ∞** *Declarative & Typesafe Dataflow Programming in Swift*
+# ∞ChannelZ∞
+
+*Declarative & Typesafe Dataflow Programming in Swift*
 
 ### Introduction
 
@@ -24,7 +26,7 @@ assert(a2.value == 42)
 
 ### Operators & Fuctions
 
-ChannelZ defines the operator `∞`, which can be entered with `Option-5` on the Mac keyboard. You can alternatively use functions for all of ChannelZ's operations.
+ChannelZ defines the operator **∞**, which can be entered with `Option-5` on the Mac keyboard. You can alternatively use functions for all of ChannelZ's operations.
 
 #### Example: Usings Functions Instead of ∞
 
@@ -152,6 +154,28 @@ ojic.intField // will be 89
 
 ```
 
+### Setting up ChannelZ
+
+`ChannelZ` is a single cross-platform iOS & Mac Framework. To set it up in your project, simply add it as a github submodule, drag the `ChannelZ.xcodeproj` into your own project file, add `ChannelZ.framework` to your target's dependencies, and `import ChannelZ` from any Swift file that should use it.
+
+**Set up Git submodule**
+
+1. Open a Terminal window
+1. Change to your projects directory `cd /path/to/MyProject`
+1. If this is a new project, initialize Git: `git init`
+1. Add the submodule: `git submodule add https://github.com/mprudhom/ChannelZ.git ChannelZ`.
+
+**Set up Xcode**
+
+1. Find the `ChannelZ.xcodeproj` file inside of the cloned ChannelZ project directory.
+1. Drag & Drop it into the `Project Navigator` (⌘+1).
+1. Select your project in the `Project Navigator` (⌘+1).
+1. Select your target.
+1. Select the tab `Build Phases`.
+1. Expand `Link Binary With Libraries`.
+1. Add `ChannelZ.framework`
+1. Add `import ChannelZ` to the top of your Swift source files.
+
 
 ### Concepts
 
@@ -163,9 +187,6 @@ ChannelZ has four major components:
 * **Conduit**: a connection between two channels in order to keep their data in sync
 
 
-### Setting Up ChannelZ
-
-`ChannelZ` is a single cross-platform iOS & Mac Framework. To set it up in your project, simply add it as a github sub-module, drag the .xcproject into your own project file, and import the `ChannelZ` module.
 
 
 ### FAQ:
@@ -182,8 +203,8 @@ ChannelZ has four major components:
 1. Unstable bindings & reentrancy?
 1. Threading?
 1. What classes support KVO?
-1. Core Data properties?
-
+1. Core Data?
+1. Problems? Please [file an issue](https://github.com/mprudhom/ChannelZ/issues/new).
 
 ## References
 
