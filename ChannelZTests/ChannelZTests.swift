@@ -1083,209 +1083,130 @@ public class ChannelZTests: XCTestCase {
         XCTAssertNil(optionalNSStringField)
     }
 
+    func testNumericConversion() {
+        let fl: Float = convertNumericType(Double(2.34))
+        XCTAssertEqual(fl, Float(2.34))
 
-    #if os(OSX)
-    func testButtonCommand() {
-        let button = NSButton()
+        let intN : Int = convertNumericType(Double(2.34))
+        XCTAssertEqual(intN, Int(2))
 
-        /// seems to be needed or else the button won't get clicked
-        NSWindow().contentView!.addSubview(button)
+        let uint64 : UInt64 = convertNumericType(Double(-2.34))
+        XCTAssertEqual(uint64, UInt64(0))
 
-        var stateChanges = 0
-
-        button∞button.state -∞> { x in
-            stateChanges += 1
-//            println("state change: \(x)")
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.doubleField <=∞=> c∞c.doubleField
+            c.doubleField++
+            XCTAssertEqual(s.doubleField.value, c.doubleField)
+            s.doubleField.value++
+            XCTAssertEqual(s.doubleField.value, c.doubleField)
         }
 
-        button.state = NSOnState
-        button.state = NSOffState
-        button.state = NSOnState
-        button.state = NSOffState
-        XCTAssertEqual(stateChanges, 4)
-
-        var clicks = 0 // track the number of clicks on the button
-
-        XCTAssertEqual(clicks, 0)
-
-        let cmd = button.controlz()
-        var outlet = cmd.attach({ _ in clicks += 1 })
-
-        button.performClick(self); XCTAssertEqual(--clicks, 0)
-        button.performClick(self); XCTAssertEqual(--clicks, 0)
-
-        outlet.detach()
-
-        button.performClick(self); XCTAssertEqual(clicks, 0)
-        button.performClick(self); XCTAssertEqual(clicks, 0)
-
-
-    }
-
-    func testTextFieldProperties() {
-        let textField = NSTextField()
-
-        /// seems to be needed or else the button won't get clicked
-        NSWindow().contentView!.addSubview(textField)
-
-        var text = ""
-
-        let textChannel = textField∞(textField.stringValue)
-        var textOutlet = textChannel.attach({ text = $0 })
-
-        var enabled = true
-        let enabledChannel = textField∞(textField.enabled)
-        var enabledOutlet = enabledChannel.attach({ enabled = $0 })
-
-        textField.stringValue = "ABC"
-        XCTAssertEqual("ABC", textField.stringValue)
-        XCTAssertEqual("ABC", text)
-
-        textChannel.value = "XYZ"
-        XCTAssertEqual("XYZ", textField.stringValue)
-        XCTAssertEqual("XYZ", text)
-
-        textField.enabled = false
-        XCTAssertEqual(false, textField.enabled)
-        XCTAssertEqual(false, enabled)
-
-        textField.enabled = true
-        XCTAssertEqual(true, enabled)
-
-        textOutlet.detach()
-
-        textField.stringValue = "QRS"
-        XCTAssertEqual("XYZ", text)
-
-        enabledOutlet.detach()
-
-        textField.enabled = false
-        XCTAssertEqual(true, enabled)
-
-    }
-
-    #endif
-
-    #if os(iOS)
-    func testButtonCommand() {
-        let button = UIButton()
-
-//        var stateChanges = 0
-//
-        // TODO: implement proper enum tracking
-//        button∞button.state -∞> { x in
-//            stateChanges += 1
-//        }
-//
-//        XCTAssertEqual(stateChanges, 1)
-//        button.highlighted = true
-//        button.selected = true
-//        button.enabled = false
-//        XCTAssertEqual(stateChanges, 3)
-
-        var selectedChanges = 0
-        button∞button.selected -∞> { x in
-            selectedChanges += 1
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.floatField <=∞=> c∞c.floatField
+            c.floatField++
+            XCTAssertEqual(s.floatField.value, c.floatField)
+            s.floatField.value++
+            XCTAssertEqual(s.floatField.value, c.floatField)
         }
 
-        XCTAssertEqual(selectedChanges, 0)
-        button.selected = true
-        XCTAssertEqual(selectedChanges, 1)
-        button.selected = false
-        XCTAssertEqual(selectedChanges, 2)
-
-        var taps = 0 // track the number of taps on the button
-
-        XCTAssertEqual(taps, 0)
-
-        let eventType: UIControlEvents = .TouchUpInside
-        let cmd = button.controlz(eventType)
-        XCTAssertEqual(0, button.allTargets().count)
-
-        // sadly, this only seems to work when the button is in a running UIApplication
-        // let tap: ()->() = { button.sendActionsForControlEvents(.TouchUpInside) }
-
-        // so we need to fake it by directly invoking the target's action
-        let tap: ()->() = {
-            let event = UIEvent()
-
-            for target in button.allTargets().allObjects as [UIEventObserver] {
-                // button.sendAction also doesn't work from a test case
-                for action in button.actionsForTarget(target, forControlEvent: eventType) as [String] {
-//                    button.sendAction(Selector(action), to: target, forEvent: event)
-                    XCTAssertEqual("handleControlEvent:", action)
-                    target.handleControlEvent(event)
-                }
-            }
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.intField <=∞=> c∞c.intField
+            c.intField++
+            XCTAssertEqual(s.intField.value, c.intField)
+            s.intField.value++
+            XCTAssertEqual(s.intField.value, c.intField)
         }
 
-        let buttonTapsHappen = true // false && false // or else compiler warning about blocks never executing
-
-        var outlet1 = cmd.attach({ _ in taps += 1 })
-        XCTAssertEqual(1, button.allTargets().count)
-
-        if buttonTapsHappen {
-            tap(); taps -= 1; XCTAssertEqual(taps, 0)
-            tap(); taps -= 1; XCTAssertEqual(taps, 0)
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.uInt32Field <=∞=> c∞c.uInt32Field
+            c.uInt32Field++
+            XCTAssertEqual(s.uInt32Field.value, c.uInt32Field)
+            s.uInt32Field.value++
+            // FIXME: this fails; maybe the Obj-C conversion is not exact?
+            // XCTAssertEqual(s.uInt32Field.value, c.uInt32Field)
         }
 
-        var outlet2 = cmd.attach({ _ in taps += 1 })
-        XCTAssertEqual(2, button.allTargets().count)
-        if buttonTapsHappen {
-            tap(); taps -= 2; XCTAssertEqual(taps, 0)
-            tap(); taps -= 2; XCTAssertEqual(taps, 0)
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.intField <~∞~> c∞c.numberField
+            c.numberField = c.numberField.integerValue + 1
+            XCTAssertEqual(s.intField.value, c.numberField.integerValue)
+            s.intField.value++
+            XCTAssertEqual(s.intField.value, c.numberField.integerValue)
         }
 
-        outlet1.detach()
-        XCTAssertEqual(1, button.allTargets().count)
-        if buttonTapsHappen {
-            tap(); taps -= 1; XCTAssertEqual(taps, 0)
-            tap(); taps -= 1; XCTAssertEqual(taps, 0)
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.numberField <~∞~> c∞c.intField
+            c.intField++
+            XCTAssertEqual(s.intField.value, c.numberField.integerValue)
+            s.numberField.value = s.numberField.value.integerValue + 1
+            XCTAssertEqual(s.intField.value, c.numberField.integerValue)
         }
 
-        outlet2.detach()
-        XCTAssertEqual(0, button.allTargets().count)
-        if buttonTapsHappen {
-            tap(); taps -= 0; XCTAssertEqual(taps, 0)
-            tap(); taps -= 0; XCTAssertEqual(taps, 0)
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.numberField <~∞~> c∞c.doubleField
+            c.doubleField++
+            XCTAssertEqual(s.doubleField.value, c.numberField.doubleValue)
+            s.numberField.value = s.numberField.value.doubleValue + 1
+            XCTAssertEqual(s.doubleField.value, c.numberField.doubleValue)
+        }
+
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.numberField <~∞~> c∞c.int8Field
+            // FIXME: crash!
+//            c.int8Field++
+            XCTAssertEqual(s.int8Field.value, c.numberField.charValue)
+//            s.numberField.value = NSNumber(char: s.numberField.value.charValue + 1)
+            XCTAssertEqual(s.int8Field.value, c.numberField.charValue)
+        }
+
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.numberField <~∞~> c∞c.intField
+            c.intField++
+            XCTAssertEqual(s.intField.value, c.numberField.integerValue)
+            s.numberField.value = s.numberField.value.integerValue + 1
+            XCTAssertEqual(s.intField.value, c.numberField.integerValue)
+        }
+
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.doubleField <~∞~> c∞c.floatField
+            c.floatField++
+            XCTAssertEqual(s.doubleField.value, Double(c.floatField))
+            s.doubleField.value++
+            XCTAssertEqual(s.doubleField.value, Double(c.floatField))
+        }
+
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.doubleField <~∞~> c∞c.intField
+            c.intField++
+            XCTAssertEqual(s.doubleField.value, Double(c.intField))
+            s.doubleField.value++
+            XCTAssertEqual(s.doubleField.value, Double(c.intField))
+            s.doubleField.value += 0.5
+            XCTAssertNotEqual(s.doubleField.value, Double(c.intField)) // will be rounded
         }
     }
-
-    func testTextFieldProperties() {
-        let textField = UITextField()
-
-
-        var text = ""
-        let textOutlet = (textField∞textField.text).map( { $0 } ).attach({ text = $0 })
-
-        var enabled = true
-        let enabledOutlet = textField.channelz(textField.enabled).attach({ enabled = $0 })
-
-
-        textField.text = "ABC"
-        XCTAssertEqual("ABC", textField.text)
-        XCTAssertEqual("ABC", text)
-
-        textField.enabled = false
-        XCTAssertEqual(false, textField.enabled)
-        XCTAssertEqual(false, enabled)
-
-        textField.enabled = true
-        XCTAssertEqual(true, enabled)
-
-        textOutlet.detach()
-
-        textField.text = "XYZ"
-        XCTAssertEqual("ABC", text)
-        
-        enabledOutlet.detach()
-        
-        textField.enabled = false
-        XCTAssertEqual(true, enabled)
-        
-    }
-
-    #endif
 
     func testValueToReference() {
         let startCount = StatefulObjectCount
@@ -1793,7 +1714,7 @@ public class ChannelZTests: XCTestCase {
     }
 
     /// Test reentrancy guards for conduits that would never achieve equilibrium
-    public func testConduitReentrancy() {
+    public func testKVOReentrancy() {
         let state1 = StatefulObject()
         let state2 = StatefulObject()
 
@@ -1808,6 +1729,39 @@ public class ChannelZTests: XCTestCase {
         state2.intField++
         XCTAssertEqual(state1.intField, 2 + (off * 3))
         XCTAssertEqual(state2.intField, 2 + (off * 3))
+    }
+
+    /// Test reentrancy guards for conduits that would never achieve equilibrium
+    public func testSwiftReentrancy() {
+        let state1 = ∞Int(0)∞
+        let state2 = ∞Int(0)∞
+        let state3 = ∞Int(0)∞
+
+//        ChannelZReentrancyLimit = 0
+
+        // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
+        state1.map({ $0 + 1 }) <=∞=> state2
+        state2.map({ $0 + 2 }) <=∞=> state3
+        state3.map({ $0 + 3 }) <=∞=> state1
+        state3.map({ $0 + 4 }) <=∞=> state2
+        state3.map({ $0 + 5 }) <=∞=> state3
+
+        state1.value++
+        XCTAssertEqual(state1.value, 1)
+        XCTAssertEqual(state2.value, 5)
+        XCTAssertEqual(state3.value, 1)
+
+        state2.value++
+        XCTAssertEqual(state1.value, 9)
+        XCTAssertEqual(state2.value, 6)
+        XCTAssertEqual(state3.value, 6)
+
+        state3.value++
+        XCTAssertEqual(state1.value, 10)
+        XCTAssertEqual(state2.value, 11)
+        XCTAssertEqual(state3.value, 7)
+
+//        ChannelZReentrancyLimit = 1
     }
 
     public func testMemory() {
@@ -1844,6 +1798,314 @@ public class ChannelZTests: XCTestCase {
         state∞state.requiredObjectField -∞> { _ in count += 1 }
         state∞state.optionaldObjectField -∞> { _ in count += 1 }
     }
+
+
+    #if os(OSX)
+    func testButtonCommand() {
+        let button = NSButton()
+
+        /// seems to be needed or else the button won't get clicked
+        NSWindow().contentView!.addSubview(button)
+
+        var stateChanges = 0
+
+        button∞button.state -∞> { x in
+            stateChanges += 1
+//            println("state change: \(x)")
+        }
+
+        button.state = NSOnState
+        button.state = NSOffState
+        button.state = NSOnState
+        button.state = NSOffState
+        XCTAssertEqual(stateChanges, 4)
+
+        var clicks = 0 // track the number of clicks on the button
+
+        XCTAssertEqual(clicks, 0)
+
+        let cmd = button.controlz()
+        var outlet = cmd.attach({ _ in clicks += 1 })
+
+        button.performClick(self); XCTAssertEqual(--clicks, 0)
+        button.performClick(self); XCTAssertEqual(--clicks, 0)
+
+        outlet.detach()
+
+        button.performClick(self); XCTAssertEqual(clicks, 0)
+        button.performClick(self); XCTAssertEqual(clicks, 0)
+
+
+    }
+
+    func testTextFieldProperties() {
+        let textField = NSTextField()
+
+        /// seems to be needed or else the button won't get clicked
+        NSWindow().contentView!.addSubview(textField)
+
+        var text = ""
+
+        let textChannel = textField∞(textField.stringValue)
+        var textOutlet = textChannel.attach({ text = $0 })
+
+        var enabled = true
+        let enabledChannel = textField∞(textField.enabled)
+        var enabledOutlet = enabledChannel.attach({ enabled = $0 })
+
+        textField.stringValue = "ABC"
+        XCTAssertEqual("ABC", textField.stringValue)
+        XCTAssertEqual("ABC", text)
+
+        textChannel.value = "XYZ"
+        XCTAssertEqual("XYZ", textField.stringValue)
+        XCTAssertEqual("XYZ", text)
+
+        textField.enabled = false
+        XCTAssertEqual(false, textField.enabled)
+        XCTAssertEqual(false, enabled)
+
+        textField.enabled = true
+        XCTAssertEqual(true, enabled)
+
+        textOutlet.detach()
+
+        textField.stringValue = "QRS"
+        XCTAssertEqual("XYZ", text)
+
+        enabledOutlet.detach()
+
+        textField.enabled = false
+        XCTAssertEqual(true, enabled)
+
+    }
+
+    func testControls() {
+        struct ViewModel {
+            let amount = ∞(Double(0))∞
+            let amountMax = Double(100.0)
+        }
+
+        let vm = ViewModel()
+
+        let stepper = NSStepper()
+        stepper.maxValue = vm.amountMax
+        stepper∞stepper.doubleValue <=∞=> vm.amount
+
+        let slider = NSSlider()
+        slider.maxValue = vm.amountMax
+        slider∞slider.doubleValue <=∞=> vm.amount
+
+        stepper.doubleValue += 25.0
+        XCTAssertEqual(slider.doubleValue, Double(25.0))
+        XCTAssertEqual(vm.amount.value, Double(25.0))
+
+        slider.doubleValue += 30.0
+        XCTAssertEqual(stepper.doubleValue, Double(55.0))
+        XCTAssertEqual(vm.amount.value, Double(55.0))
+
+
+        let progbar = NSProgressIndicator()
+        progbar.maxValue = 1.0
+
+        // NSProgressView goes from 0.0-1.0, so map the slider's percentage complete to the progress value
+        vm.amount.map({ Double($0 / vm.amountMax) }) ∞=> progbar∞progbar.doubleValue
+
+        vm.amount.value += 20
+
+        XCTAssertEqual(slider.doubleValue, Double(75.0))
+        XCTAssertEqual(stepper.doubleValue, Double(75.0))
+        XCTAssertEqual(progbar.doubleValue, Double(0.75))
+
+        let progress = NSProgress(totalUnitCount: Int64(vm.amountMax))
+        vm.amount.map({ Int64($0) }) ∞=> progress∞progress.completedUnitCount
+
+        // FIXME: memory leak
+        // progress∞progress.completedUnitCount -∞> { _ in println("progress: \(progress.localizedDescription)") }
+
+        let textField = NSTextField()
+
+        // FIXME: crash
+        // progress∞progress.localizedDescription ∞=> textField∞textField.stringValue
+
+        vm.amount.value += 15.0
+    }
+
+    #endif
+
+    #if os(iOS)
+    func testButtonCommand() {
+        let button = UIButton()
+
+//        var stateChanges = 0
+//
+        // TODO: implement proper enum tracking
+//        button∞button.state -∞> { x in
+//            stateChanges += 1
+//        }
+//
+//        XCTAssertEqual(stateChanges, 1)
+//        button.highlighted = true
+//        button.selected = true
+//        button.enabled = false
+//        XCTAssertEqual(stateChanges, 3)
+
+        var selectedChanges = 0
+        button∞button.selected -∞> { x in
+            selectedChanges += 1
+        }
+
+        XCTAssertEqual(selectedChanges, 0)
+        button.selected = true
+        XCTAssertEqual(selectedChanges, 1)
+        button.selected = false
+        XCTAssertEqual(selectedChanges, 2)
+
+        var taps = 0 // track the number of taps on the button
+
+        XCTAssertEqual(taps, 0)
+
+        let eventType: UIControlEvents = .TouchUpInside
+        let cmd = button.controlz(eventType)
+        XCTAssertEqual(0, button.allTargets().count)
+
+        // sadly, this only seems to work when the button is in a running UIApplication
+        // let tap: ()->() = { button.sendActionsForControlEvents(.TouchUpInside) }
+
+        // so we need to fake it by directly invoking the target's action
+        let tap: ()->() = {
+            let event = UIEvent()
+
+            for target in button.allTargets().allObjects as [UIEventObserver] {
+                // button.sendAction also doesn't work from a test case
+                for action in button.actionsForTarget(target, forControlEvent: eventType) as [String] {
+//                    button.sendAction(Selector(action), to: target, forEvent: event)
+                    XCTAssertEqual("handleControlEvent:", action)
+                    target.handleControlEvent(event)
+                }
+            }
+        }
+
+        let buttonTapsHappen = true // false && false // or else compiler warning about blocks never executing
+
+        var outlet1 = cmd.attach({ _ in taps += 1 })
+        XCTAssertEqual(1, button.allTargets().count)
+
+        if buttonTapsHappen {
+            tap(); taps -= 1; XCTAssertEqual(taps, 0)
+            tap(); taps -= 1; XCTAssertEqual(taps, 0)
+        }
+
+        var outlet2 = cmd.attach({ _ in taps += 1 })
+        XCTAssertEqual(2, button.allTargets().count)
+        if buttonTapsHappen {
+            tap(); taps -= 2; XCTAssertEqual(taps, 0)
+            tap(); taps -= 2; XCTAssertEqual(taps, 0)
+        }
+
+        outlet1.detach()
+        XCTAssertEqual(1, button.allTargets().count)
+        if buttonTapsHappen {
+            tap(); taps -= 1; XCTAssertEqual(taps, 0)
+            tap(); taps -= 1; XCTAssertEqual(taps, 0)
+        }
+
+        outlet2.detach()
+        XCTAssertEqual(0, button.allTargets().count)
+        if buttonTapsHappen {
+            tap(); taps -= 0; XCTAssertEqual(taps, 0)
+            tap(); taps -= 0; XCTAssertEqual(taps, 0)
+        }
+    }
+
+    func testTextFieldProperties() {
+        let textField = UITextField()
+
+
+        var text = ""
+        let textOutlet = (textField∞textField.text).map( { $0 } ).attach({ text = $0 })
+
+        var enabled = true
+        let enabledOutlet = textField.channelz(textField.enabled).attach({ enabled = $0 })
+
+
+        textField.text = "ABC"
+        XCTAssertEqual("ABC", textField.text)
+        XCTAssertEqual("ABC", text)
+
+        textField.enabled = false
+        XCTAssertEqual(false, textField.enabled)
+        XCTAssertEqual(false, enabled)
+
+        textField.enabled = true
+        XCTAssertEqual(true, enabled)
+
+        textOutlet.detach()
+
+        textField.text = "XYZ"
+        XCTAssertEqual("ABC", text)
+        
+        enabledOutlet.detach()
+        
+        textField.enabled = false
+        XCTAssertEqual(true, enabled)
+        
+    }
+
+    func testControls() {
+        struct ViewModel {
+            let amount = ∞(Double(0))∞
+            let amountMax = Double(100.0)
+        }
+
+        let vm = ViewModel()
+
+        let stepper = UIStepper()
+        stepper.maximumValue = vm.amountMax
+        stepper∞stepper.value <=∞=> vm.amount
+
+        let slider = UISlider()
+        slider.maximumValue = Float(vm.amountMax)
+        let outlet = slider∞slider.value <~∞~> vm.amount // FIXME: memory leak
+
+        stepper.value += 25.0
+        XCTAssertEqual(slider.value, Float(25.0))
+        XCTAssertEqual(vm.amount.value, Double(25.0))
+
+        slider.value += 30.0
+        XCTAssertEqual(stepper.value, Double(55.0))
+        XCTAssertEqual(vm.amount.value, Double(55.0))
+
+
+        let progbar = UIProgressView()
+
+        // UIProgressView goes from 0.0-1.0, so map the slider's percentage complete to the progress value
+        vm.amount.map({ Float($0 / vm.amountMax) }) ∞=> progbar∞progbar.progress
+
+        vm.amount.value += 20
+
+        XCTAssertEqual(slider.value, Float(75.0))
+        XCTAssertEqual(stepper.value, Double(75.0))
+        XCTAssertEqual(progbar.progress, Float(0.75))
+
+        let progress = NSProgress(totalUnitCount: Int64(vm.amountMax))
+        let pout = vm.amount.map({ Int64($0) }) ∞=> progress∞progress.completedUnitCount
+
+//        progress∞progress.localizedDescription -∞> { println("progress: \($0)") }
+
+//        let textField = UITextField()
+//        progress∞progress.localizedDescription ∞=> textField∞textField.text
+
+//        vm.amount.value += 15.0
+//
+//        //progress.completedUnitCount = 15
+//        
+//        println("progress: \(textField.text)") // “progress: 15% completed”
+
+        outlet.detach() // FIXME: memory leak
+        pout.detach() // FIXME: crash
+    }
+    #endif
 }
 
 
@@ -1936,3 +2198,34 @@ class MemoryDemo : NSObject {
     deinit { MemoryDemoCount-- }
 }
 
+class NumericHolderClass : NSObject {
+    dynamic var numberField: NSNumber = 0
+    dynamic var doubleField: Double = 0
+    dynamic var floatField: Float = 0
+    dynamic var intField: Int = 0
+    dynamic var uInt64Field: UInt64 = 0
+    dynamic var int64Field: Int64 = 0
+    dynamic var uInt32Field: UInt32 = 0
+    dynamic var int32Field: Int32 = 0
+    dynamic var uInt16Field: UInt16 = 0
+    dynamic var int16Field: Int16 = 0
+    dynamic var uInt8Field: UInt8 = 0
+    dynamic var int8Field: Int8 = 0
+    dynamic var boolField: Bool = false
+}
+
+struct NumericHolderStruct {
+    let numberField = ∞(NSNumber(floatLiteral: 0.0))∞
+    let doubleField = ∞(Double(0))∞
+    let floatField = ∞(Float(0))∞
+    let intField = ∞(Int(0))∞
+    let uInt64Field = ∞(UInt64(0))∞
+    let int64Field = ∞(Int64(0))∞
+    let uInt32Field = ∞(UInt32(0))∞
+    let int32Field = ∞(Int32(0))∞
+    let uInt16Field = ∞(UInt16(0))∞
+    let int16Field = ∞(Int16(0))∞
+    let uInt8Field = ∞(UInt8(0))∞
+    let int8Field = ∞(Int8(0))∞
+    let boolField = ∞(Bool(false))∞
+}

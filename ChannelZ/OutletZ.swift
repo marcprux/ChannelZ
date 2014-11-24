@@ -61,8 +61,8 @@ struct DeallocatedTargetOutlet : Outlet {
 }
 
 
-/// How many levels of re-entrancy is permitted when flowing state observations
-public var ChannelZOutletReentrancyGuard: UInt = 1
+/// How many levels of re-entrancy are permitted when flowing state observations
+public var ChannelZReentrancyLimit: UInt = 1
 
 final class OutletListReference<T> {
     private var outlets: [(index: UInt, outlet: OutletOf<T>)] = []
@@ -70,9 +70,9 @@ final class OutletListReference<T> {
     private var outletIndex: UInt = 0
 
     func pump(element: T) {
-        if entrancy++ > ChannelZOutletReentrancyGuard {
+        if entrancy++ > ChannelZReentrancyLimit {
             #if DEBUG_CHANNELZ
-                println("re-entrant value change limit of \(ChannelZOutletReentrancyGuard) reached for outlets")
+                println("re-entrant value change limit of \(ChannelZReentrancyLimit) reached for outlets")
             #endif
         } else {
             for (index, outlet) in outlets {

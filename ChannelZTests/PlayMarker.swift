@@ -69,6 +69,12 @@ class PlayMarker {
         return string ?? ""
     }
 
+    private func scanThrough(token: String) -> String {
+        let scanned = scanTo(token)
+        scan(token)
+        return scanned
+    }
+
     private func append(string: String?) {
         if let str = string?.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet()) {
             if countElements(str) > 0 {
@@ -190,11 +196,12 @@ class PlayMarker {
         while !scanner.atEnd {
             if scan("\n```swift") {
                 // swift code is special: we make new playground output files for the pending document and the swift code
-                let swiftCode = scanTo("```")
-                scan("```")
+                let swiftCode = scanThrough("```")
                 scanLine()  // ignore any trailing marks
                 pushXHTMLContent()
                 pushSwiftContent(swiftCode.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet()))
+            } else if scan("<!--") {
+                let comment = scanThrough("-->")
             } else if scan("\n###### ") {
                 appendHeader(6)
             } else if scan("\n##### ") {
@@ -223,8 +230,7 @@ class PlayMarker {
                 scanChild(element(node, "p", ("class", "para")))
             } else if scan("\n```") {
                 while let parent = node.parent as? NSXMLElement { node = parent }
-                element(toRoot(), "code").stringValue = scanTo("```")
-                scan("```")
+                element(toRoot(), "code").stringValue = scanThrough("```")
                 scanLine() // ignore any trailing marks
             } else {
                 while let parent = node.parent as? NSXMLElement { node = parent }

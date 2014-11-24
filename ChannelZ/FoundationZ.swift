@@ -111,7 +111,11 @@ public struct KeyValueRequiredChannel<T>: KeyValueChannel {
     }
 
     public func push(value: SourceType) {
-        self.target?.setValue(value as NSObject, forKeyPath: self.keyPath)
+        if let null = value as? NSNull {
+            self.target?.setValue(nil, forKeyPath: self.keyPath)
+        } else if let ob = value as? NSObject {
+            self.target?.setValue(ob, forKeyPath: self.keyPath)
+        }
     }
 
     public func pull() -> OutputType {
@@ -293,9 +297,6 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
 }
 
 
-/// How many levels of re-entrancy are permitted when flowing state observations
-public var ChannelZKeyValueReentrancyGuard: UInt = 1
-
 #if DEBUG_CHANNELZ
     /// Track how many observers we have created and released; useful for ensuring that outlets are correctly cleaned up
     public var ChannelZKeyValueObserverCount = 0
@@ -318,9 +319,9 @@ private struct KeyValueOutlet: Outlet {
 
         self.observer = TargetAssociatedObserver(target: target, keyPath: keyPath, kvoptions: NSKeyValueObservingOptions(NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue), callback: { (change: [NSObject : AnyObject]) -> () in
 
-            if entrancy++ > ChannelZKeyValueReentrancyGuard {
+            if entrancy++ > ChannelZReentrancyLimit {
                 #if DEBUG_CHANNELZ
-                    NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(ChannelZKeyValueReentrancyGuard) reached for «\(keyPath)»")
+                    NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(ChannelZReentrancyLimit) reached for «\(keyPath)»")
                 #endif
             } else {
                 handler(oldv: change[NSKeyValueChangeOldKey], newv: change[NSKeyValueChangeNewKey])
@@ -666,33 +667,3 @@ public func ∞ <T>(lhs: NSObject, rhs: (getter: @autoclosure ()->Optional<T>, k
 /// :returns: a ChannelZ wrapper for the objects KVO field
 public func ∞ <T : Equatable>(lhs: NSObject, rhs: (getter: @autoclosure ()->Optional<T>, keyPath: String))->ChannelZ<Optional<T>> { return sieveOptional(lhs, rhs.getter, keyPath: rhs.keyPath) }
 
-
-///// Operator for getting an optional keypath channel from an NSObject
-//infix operator ∞? { precedence 255 }
-//
-///// Infix operator for creating a channel from an auto-discovered keyPath to a forced optional property
-/////
-///// :returns: a ChannelZ wrapper for the objects KVO field
-//public func ∞? <T>(lhs: NSObject, rhs: @autoclosure ()->Optional<T>)->ChannelZ<Optional<T>> { return channelOptional(lhs, rhs) }
-//
-//
-
-
-/// Conduit operator with coersion via foundation types
-infix operator <~∞~> { }
-
-/// Convert (possibly lossily) between two string types by casting them through NSNumber
-public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: StringLiteralConvertible, L.OutputType: StringLiteralConvertible, R.SourceType: StringLiteralConvertible, R.OutputType: StringLiteralConvertible>(lhs: L, rhs: R)->Outlet {
-    let lhsm = lhs.map({ $0 as NSString as R.SourceType })
-    let rhsm = rhs.map({ $0 as NSString as L.SourceType })
-
-    return conduit(lhsm, rhsm)
-}
-
-/// Convert (possibly lossily) between two numeric types by casting them through NSNumber
-public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: IntegerLiteralConvertible, L.OutputType: IntegerLiteralConvertible, R.SourceType: IntegerLiteralConvertible, R.OutputType: IntegerLiteralConvertible>(lhs: L, rhs: R)->Outlet {
-    let lhsm = lhs.map({ $0 as NSNumber as R.SourceType })
-    let rhsm = rhs.map({ $0 as NSNumber as L.SourceType })
-
-    return conduit(lhsm, rhsm)
-}

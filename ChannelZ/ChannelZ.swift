@@ -587,12 +587,16 @@ public func + <E1, E2, C : BaseChannelType>(lhs: CombinedChannel<E1, E2>, rhs: C
     return flatten(combineChannel(lhs)(channel2: rhs))
 }
 
+/// Conduit creation operators
+infix operator <=∞=> { }
+infix operator ∞=> { }
+infix operator <=∞ { }
+
 
 /// Bi-directional conduit operator with natural equivalence between two identical types
 public func <=∞=><L : ChannelType, R : ChannelType where L.OutputType == R.SourceType, L.SourceType == R.OutputType>(lhs: L, rhs: R)->Outlet {
     return conduit(lhs, rhs)
 }
-infix operator <=∞=> { }
 
 
 /// One-sided conduit operator with natural equivalence between two identical types
@@ -600,7 +604,6 @@ public func ∞=><L : BaseFunnelType, R : ChannelType where L.OutputType == R.So
     let lsink = lhs.attach { rhs.push($0) }
     return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: { lsink.detach() })
 }
-infix operator ∞=> { }
 
 
 /// One-sided conduit operator with natural equivalence between two identical types
@@ -608,145 +611,273 @@ public func <=∞<L : ChannelType, R : BaseFunnelType where L.SourceType == R.Ou
     let rsink = rhs.attach { lhs.push($0) }
     return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: { rsink.detach() })
 }
-infix operator <=∞ { }
+
+
+/// Conduit conversion operators
+infix operator <~∞~> { }
+infix operator ∞~> { }
+infix operator <~∞ { }
 
 
 /// Conduit operator that filters out nil values with a custom transformer
-public func <~∞~><L : ChannelType, R : ChannelType>(lhs: (o: L, f: L.OutputType->Optional<R.SourceType>), rhs: (o: R, f: R.OutputType->Optional<L.SourceType>))->Outlet {
+public func <~∞~> <L : ChannelType, R : ChannelType>(lhs: (o: L, f: L.OutputType->Optional<R.SourceType>), rhs: (o: R, f: R.OutputType->Optional<L.SourceType>))->Outlet {
     let lhsm = lhs.o.map({ lhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
     let rhsm = rhs.o.map({ rhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
 
     return conduit(lhsm, rhsm)
 }
-infix operator <~∞~> { }
 
 
-//public func <~∞~><L : ChannelType, R : ChannelType, LS : ConduitNumericConvertable, RS : ConduitNumericConvertable where L.OutputType: ConduitNumericConvertable, R.OutputType: ConduitNumericConvertable, LS == L.SourceType, RS == R.SourceType>(lhs: L, rhs: R)->Outlet {
-//    let lhsm = lhs.map { $0.convertToConduitNumeric(RS.self) }
-//    let rhsm = rhs.map { $0.convertToConduitNumeric(LS.self) }
-//    return conduit(lhsm, rhsm)
-//}
-//
-//public protocol ConduitNumericConvertable : IntegerLiteralConvertible {
-//    typealias NumericType
-//
-//    func convertToConduitNumeric<T : ConduitNumericConvertable>(type: T.Type) -> T
-//}
-//
-////extension Bool : ConduitNumericConvertable {
-////    typealias NumericType = Bool
-////
-////    public func convertToConduitNumeric<T : ConduitNumericConvertable>(type: T.Type) -> T {
-////        switch type {
-////        case Bool.self: break
-////        }
-////
-////        fatalError("")
-////    }
-////
-////}
-//
-//extension Int : ConduitNumericConvertable {
-//    typealias NumericType = Int
-//
-//    public func convertToConduitNumeric<T : ConduitNumericConvertable>(type: T.Type) -> T {
-//        if self is T {
-//            return self as T
-//        }
-//
-//        if T.self is Int.Type {
-//
-//        }
-//
-//        fatalError("")
-//    }
-//    
-//}
-//
-//extension Double : ConduitNumericConvertable {
-//    typealias NumericType = Double
-//
-//    public func convertToConduitNumeric<T : ConduitNumericConvertable>(type: T.Type) -> T {
-//        if self is T {
-//            return self as T
-//        }
-//
-//        if T.self is Double.Type {
-//
-//        }
-//
-//        fatalError("")
-//    }
-//    
-//}
-//
-////extension UInt8 : ConduitNumericConvertable {
-////    typealias NumericType = UInt8
-////}
-////
-////extension Int16 : ConduitNumericConvertable {
-////    typealias NumericType = Int16
-////}
-////
-////extension UInt16 : ConduitNumericConvertable {
-////    typealias NumericType = UInt16
-////}
-////
-////extension Int32 : ConduitNumericConvertable {
-////    typealias NumericType = Int32
-////}
-////
-////extension UInt32 : ConduitNumericConvertable {
-////    typealias NumericType = UInt32
-////}
-////
-////extension Int64 : ConduitNumericConvertable {
-////    typealias NumericType = Int64
-////}
-////
-////extension UInt64 : ConduitNumericConvertable {
-////    typealias NumericType = UInt64
-////}
-////
-////extension Float : ConduitNumericConvertable {
-////    typealias NumericType = Float
-////}
-////
-////extension Float80 : ConduitNumericConvertable {
-////    typealias NumericType = Float80
-////}
-////
-////extension Double : ConduitNumericConvertable {
-////    typealias NumericType = Double
-////}
-////
-//
-//
-//
-/////// Conduit operator that transforms lossily between like numeric types
-////public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: IntegerLiteralConvertible, R.SourceType: IntegerLiteralConvertible, L.OutputType == R.SourceType.IntegerLiteralType, R.OutputType == L.SourceType.IntegerLiteralType>(lhs: L, rhs: R)->Outlet {
-////    let lhsm = lhs.map { R.SourceType(integerLiteral: $0) }
-////    let rhsm = rhs.map { L.SourceType(integerLiteral: $0) }
-////    return conduit(lhsm, rhsm)
-////}
-////
-/////// Conduit operator that transforms lossily between like numeric types
-////public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: FloatLiteralConvertible, R.SourceType: FloatLiteralConvertible, L.OutputType == R.SourceType.FloatLiteralType, R.OutputType == L.SourceType.FloatLiteralType>(lhs: L, rhs: R)->Outlet {
-////    let lhsm = lhs.map { R.SourceType(floatLiteral: $0) }
-////    let rhsm = rhs.map { L.SourceType(floatLiteral: $0) }
-////    return conduit(lhsm, rhsm)
-////}
-////
-/////// Conduit operator that transforms lossily between like numeric types
-////public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: IntegerLiteralConvertible, R.SourceType: FloatLiteralConvertible, L.OutputType == R.SourceType.FloatLiteralType, R.OutputType == L.SourceType.IntegerLiteralType>(lhs: L, rhs: R)->Outlet {
-////    let lhsm = lhs.map { R.SourceType(floatLiteral: $0) }
-////    let rhsm = rhs.map { L.SourceType(integerLiteral: $0) }
-////    return conduit(lhsm, rhsm)
-////}
-////
-/////// Conduit operator that transforms lossily between like numeric types
-////public func <~∞~><L : ChannelType, R : ChannelType where L.SourceType: FloatLiteralConvertible, R.SourceType: IntegerLiteralConvertible, L.OutputType == R.SourceType.IntegerLiteralType, R.OutputType == L.SourceType.FloatLiteralType>(lhs: L, rhs: R)->Outlet {
-////    let lhsm = lhs.map { R.SourceType(integerLiteral: $0) }
-////    let rhsm = rhs.map { L.SourceType(floatLiteral: $0) }
-////    return conduit(lhsm, rhsm)
-////}
+/// Convert (possibly lossily) between two numeric types
+public func <~∞~> <L : ChannelType, R : ChannelType where L.SourceType: IntegerLiteralConvertible, L.OutputType: IntegerLiteralConvertible, R.SourceType: IntegerLiteralConvertible, R.OutputType: IntegerLiteralConvertible>(lhs: L, rhs: R)->Outlet {
+    return conduit(lhs.map({ convertNumericType($0) }), rhs.map({ convertNumericType($0) }))
+}
+
+
+/// Convert (possibly lossily) between two numeric types
+public func ∞~> <L : ChannelType, R : ChannelType where L.OutputType: IntegerLiteralConvertible, R.SourceType: IntegerLiteralConvertible>(lhs: L, rhs: R)->Outlet {
+    let lsink = lhs.map({ convertNumericType($0) }).attach { rhs.push($0) }
+    return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: { lsink.detach() })
+}
+
+/// Convert (possibly lossily) between two numeric types
+public func <~∞ <L : ChannelType, R : ChannelType where R.OutputType: IntegerLiteralConvertible, L.SourceType: IntegerLiteralConvertible>(lhs: L, rhs: R)->Outlet {
+    let rsink = rhs.map({ convertNumericType($0) }).attach { lhs.push($0) }
+    return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: { rsink.detach() })
+}
+
+
+
+/// Conduit conversion operators
+infix operator <?∞?> { }
+infix operator ∞?> { }
+infix operator <?∞ { }
+
+/// Conduit operator to convert (possibly lossily) between optionally castable types
+public func <?∞?><L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Outlet {
+    let lsink = lhs.map({ $0 as? R.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { rhs.push($0) }
+    let rsink = rhs.map({ $0 as? L.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { lhs.push($0) }
+    return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: {
+        rsink.detach()
+        lsink.detach()
+    })
+}
+
+/// Conduit operator to convert (possibly lossily) between optionally castable types
+public func ∞?> <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Outlet {
+    let lsink = lhs.map({ $0 as? R.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { rhs.push($0) }
+    return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: { lsink.detach() })
+}
+
+/// Conduit operator to convert (possibly lossily) between optionally castable types
+public func <?∞ <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Outlet {
+    let rsink = rhs.map({ $0 as? L.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { lhs.push($0) }
+    return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: { rsink.detach() })
+}
+
+
+
+/// Dynamically convert between the given numeric types, getting past Swift's inability to statically cast between numbers
+public func convertNumericType<From : IntegerLiteralConvertible, To : IntegerLiteralConvertible>(from: From) -> To {
+    // there must, must, must be a better way than manually checking every permutation of known numeric types...
+
+    if From.self is Double.Type {
+        let value = from as Double
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is Float80.Type {
+        let value = from as Float80
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is Float.Type {
+        let value = from as Float
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is UInt64.Type {
+        let value = from as UInt64
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is Int64.Type {
+        let value = from as Int64
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is UInt.Type {
+        let value = from as UInt
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is Int.Type {
+        let value = from as Int
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is UInt32.Type {
+        let value = from as UInt32
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is Int32.Type {
+        let value = from as Int32
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is UInt16.Type {
+        let value = from as UInt16
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is Int16.Type {
+        let value = from as Int16
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is UInt8.Type {
+        let value = from as UInt8
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    } else if From.self is Int8.Type {
+        let value = from as Int8
+        if To.self is Double.Type { return Double(value) as To }
+        if To.self is Float80.Type { return Float80(value) as To }
+        if To.self is Float.Type { return Float(value) as To }
+        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
+        if To.self is Int64.Type { return Int64(value) as To }
+        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
+        if To.self is Int.Type { return Int(value) as To }
+        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
+        if To.self is Int32.Type { return Int32(value) as To }
+        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
+        if To.self is Int16.Type { return Int16(value) as To }
+        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
+        if To.self is Int8.Type { return Int8(value) as To }
+    }
+
+    // fall back to trying to force the cast; this should work for convertibles like NSNumber
+    return from as To
+}

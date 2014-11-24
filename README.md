@@ -197,22 +197,31 @@ button.controlz() -∞> { (event: UIEvent) in println("Tapped Button!") }
 
 Note that `controlz()` method on `UIButton`. This is a category method added by `ChannelZ` to all `UIControl` instances on iOS' `UIKit` and `NSControl` instances on Mac's `AppKit`. The extensions of UIKit and AppKit also permit channeling other control events, which are not normally observable through KVO.
 
-#### Example: Sychronizing a Slider and a Stepper
+#### Example: Sychronizing a Slider and a Stepper through a Model
 
 ```swift
+struct ViewModel {
+    let amount = ∞(Double(0))∞
+    let amountMax = Double(100.0)
+}
+
+let vm = ViewModel()
+
 let stepper = UIStepper()
-stepper.maximumValue = 100.0
+stepper.maximumValue = vm.amountMax
+stepper∞stepper.value <=∞=> vm.amount
 
 let slider = UISlider()
-slider.maximumValue = 100.0
-
-stepper∞stepper.value <~∞~> slider∞slider.value
+slider.maximumValue = Float(vm.amountMax)
+slider∞slider.value <~∞~> vm.amount
 
 stepper.value += 25.0
 assert(slider.value == 25.0)
+assert(vm.amount.value == 25.0)
 
 slider.value += 30.0
 assert(stepper.value == 55.0)
+assert(vm.amount.value == 55.0)
 
 println("slider: \(slider.value) stepper: \(stepper.value)")
 ```
@@ -226,10 +235,11 @@ Note that channels and funnels are not restricted to a single conduit or outlet.
 
 ```swift
 let progbar = UIProgressView()
-// UIProgressView goes from 0.0-1.0, so map the slider's percentage complete to the progress value 
-(slider∞slider.value).map({ $0 / slider.maximumValue }) ∞=> progbar∞progbar.progress
 
-slider.value += 20
+// UIProgressView goes from 0.0-1.0, so map the slider's percentage complete to the progress value 
+vm.amount.map({ Float($0 / vm.amountMax) }) ∞=> progbar∞progbar.progress
+
+vm.amount.value += 20
 
 assert(slider.value == 75.0)
 assert(stepper.value == 75.0)
@@ -239,22 +249,8 @@ println("slider: \(slider.value) stepper: \(stepper.value) progress: \(progbar.p
 ```
 <!--`-->
 
-There is no limit to the number of outlets that can be attached to channels and funnels. 
 
-#### Example: Adding an NSProgress and NSTextField
-
-```swift
-let progress = NSProgress(totalUnitCount: 100)
-let textField = UITextField()
-
-// whenever the progress updates its description, set it in the text field
-progress∞progress.localizedDescription ∞=> textField∞textField.text
-
-progress.completedUnitCount += 12
-
-println("progress: \(textField.text)")
-```
-<!--`-->
+> The `ViewModel` struct above demonstrates using the [Model View ViewModel(MVVM)](https://en.wikipedia.org/wiki/Model_View_ViewModel) variant of the traditional *Model View Control* design pattern for user interfaces. ChannelZ can be used as the data binding layer for implementing MVVM, which has the benefit of being more easily testable and better facilitating the creation of re-usable UI code for cross-platform iOS & Mac apps.
 
 ### Memory Management
 
@@ -273,6 +269,7 @@ Following is a list of the variants of the ∞ operator that is used throughout 
 * `C1 <=∞ C2`: Unidirectionally synchronizes state from channel C2 to channel C1
 * `C1 <=∞=> C2`: Bidirectionally synchronizes state between channels C1 and C2
 * `C1 <~∞~> C2`: Bidirectionally synchronizes state between channels C1 and C2 by coercing numeric types
+* `C1 <?∞?> C2`: Bidirectionally synchronizes state between channels C1 and C2 by attempting an optional cast
 
 ### Setting up ChannelZ
 
@@ -297,34 +294,21 @@ Following is a list of the variants of the ∞ operator that is used throughout 
 1. Add `import ChannelZ` to the top of your Swift source files.
 
 
-### Concepts
-
-ChannelZ has four major components:
-
-* **Funnel**: a unidirectional dataflow, such as the tap of a UI button or the receiving of some network data
-* **Channel**: a bidirectional dataflow, such as the value of a model property; a Channel is a subtype of a Funnel
-* **Outlet**: the recipient of dataflow events
-* **Conduit**: a connection between two channels in order to keep their data in sync
-
-
-
-
 ### FAQ:
 
-1. Why ∞?
-1. UIKit and KVO?
-1. Can I use ChannelZ from Objective-C? No.
-1. Optionals?
-1. NSMutableDictionary keys?
-1. System requirements?
-1. Automatic keypath identification?
-1. Performance? 12x slower to do keypath auto-identification
-1. Memory management?
-1. Unstable bindings & reentrancy?
-1. Threading?
-1. What classes support KVO?
-1. Core Data?
-1. Problems? Please [file an issue](https://github.com/mprudhom/ChannelZ/issues/new).
+1. **Why the Operator ∞?** A common complaint about overloading existing operators (such as +) is that they can defy intuition. ∞ was chosen because it is not used by any other known Swift framework, and so developers are unlikely to have preconceived notions about what it should mean. Also, the infinity symbol is a good metaphor for the infinite nature of modeling state changes over time.
+1. **Can I use ChannelZ from Objective-C?** No. ChannelZ uses generic, structs, and enums, none of which can be used from Objective-C code. The framework will interact gracefully with any Objective-C code you have, but you cannot access channels from Objective-C, only from Swift.
+1. **Optionals?**
+1. **NSMutableDictionary keys?**
+1. **System requirements?** ChannelZ requires Xcode 6.1+ with iOS 8.1+ or Mac OS 10.10+.
+1. **How is automatic keypath identification done?** In order to turn the code `ob∞ob.someField` into a KVO subscription, we need to figure out that `someField` is equivalent to the `"someField"` key path. This is accomplished by temporarily swizzling the class at the time of channel creation in order to instrument the properties and track which property is accessed by the autoclosure, and then immediately swizzling it back to the original class. This is usually transparent, but may fail on classes that dynamically implement their properties, such as Core Data's '`NSManagedObject`. In those cases, you can always manually specify the key path of a field with the operator variant that takes a tuple with the original value and the name of the property: `ob∞(ob.someField, "someField")`
+1. **Automatic Keypath Identification Performance?** `ob∞ob.someField` is about 12x slower than `ob∞(ob.someField, "someField")`
+1. **Memory management?** All channels are rooted in a reference type: either a reference wrapper around a Swift value, or by the owning class instance itself for KVO. The reference type owns all the attached outlets, and they are deallocated whenever the reference is released. You shouldn't need to manually track outlets and detach them, although there is nothing preventing you from doing so if you wish.
+1. **Unstable conduit & reentrancy?** A state channel conduit is considered *unstable* when it cannot reach equilibrium. For example, `ob1∞ob1.intField <=∞=> (ob2∞ob2.intField).map({ $0 + 1 })` would mean that setting `ob1.intField` to 1 would set `ob2.intField` to 1, and then the map on the channel would cause `ob1.intField` to be set to 2. This cycle is prevented by limited the levels of re-entrancy that an outlet will allow, and is controlled by the global `ChannelZReentrancyLimit` field, which default to 1. You can change this value globally if you have channel cycles that may take a few passes to settle into equilibrium.
+1. **Threading & Queuing?** ChannelZ doesn't touch threads or queues. You can always perform queue jumping yourself in an outlet.
+1. **UIKit/AppKit and KVO?** `UIKit`'s `UIControl` and `AppKit`'s `NSControl` are not KVO-compliant for user interaction. For example, the `value` field of a `UISlider` does not receive KVO messages when the user drags the slider. We work around this by supplementing channel attachments with an additional funnel for the control events. See the `KeyValueChannelSupplementing` implementation in the `UIControl` extension for an example of how you can supplement your own control events.
+1. **Problems?** Please file a Github [ChannelZ issue](https://github.com/mprudhom/ChannelZ/issues/new).
+1. **Questions** Please use StackOverflow's [#channelz tag](http://stackoverflow.com/questions/tagged/channelz).
 
 ## References
 
