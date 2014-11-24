@@ -1091,7 +1091,7 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(intN, Int(2))
 
         let uint64 : UInt64 = convertNumericType(Double(-2.34))
-        XCTAssertEqual(uint64, UInt64(0))
+        XCTAssertEqual(uint64, UInt64(2)) // conversion runs abs()
 
         autoreleasepool {
             let s = NumericHolderStruct()
@@ -1205,6 +1205,16 @@ public class ChannelZTests: XCTestCase {
             XCTAssertEqual(s.doubleField.value, Double(c.intField))
             s.doubleField.value += 0.5
             XCTAssertNotEqual(s.doubleField.value, Double(c.intField)) // will be rounded
+        }
+
+        autoreleasepool {
+            let s = NumericHolderStruct()
+            let c = NumericHolderClass()
+            s.decimalNumberField <~∞~> c∞c.numberField
+            c.numberField = c.numberField.integerValue + 1
+            XCTAssertEqual(s.decimalNumberField.value, c.numberField)
+            s.decimalNumberField.value = NSDecimalNumber(string: "9e12")
+            XCTAssertEqual(s.decimalNumberField.value, c.numberField)
         }
     }
 
@@ -2200,6 +2210,7 @@ class MemoryDemo : NSObject {
 
 class NumericHolderClass : NSObject {
     dynamic var numberField: NSNumber = 0
+    dynamic var decimalNumberField: NSDecimalNumber = 0
     dynamic var doubleField: Double = 0
     dynamic var floatField: Float = 0
     dynamic var intField: Int = 0
@@ -2216,6 +2227,7 @@ class NumericHolderClass : NSObject {
 
 struct NumericHolderStruct {
     let numberField = ∞(NSNumber(floatLiteral: 0.0))∞
+    let decimalNumberField = ∞(NSDecimalNumber(floatLiteral: 0.0))∞
     let doubleField = ∞(Double(0))∞
     let floatField = ∞(Float(0))∞
     let intField = ∞(Int(0))∞

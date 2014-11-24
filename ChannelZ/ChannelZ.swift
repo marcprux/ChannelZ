@@ -629,19 +629,19 @@ public func <~∞~> <L : ChannelType, R : ChannelType>(lhs: (o: L, f: L.OutputTy
 
 
 /// Convert (possibly lossily) between two numeric types
-public func <~∞~> <L : ChannelType, R : ChannelType where L.SourceType: IntegerLiteralConvertible, L.OutputType: IntegerLiteralConvertible, R.SourceType: IntegerLiteralConvertible, R.OutputType: IntegerLiteralConvertible>(lhs: L, rhs: R)->Outlet {
+public func <~∞~> <L : ChannelType, R : ChannelType where L.SourceType: ConduitNumericCoercible, L.OutputType: ConduitNumericCoercible, R.SourceType: ConduitNumericCoercible, R.OutputType: ConduitNumericCoercible>(lhs: L, rhs: R)->Outlet {
     return conduit(lhs.map({ convertNumericType($0) }), rhs.map({ convertNumericType($0) }))
 }
 
 
 /// Convert (possibly lossily) between two numeric types
-public func ∞~> <L : ChannelType, R : ChannelType where L.OutputType: IntegerLiteralConvertible, R.SourceType: IntegerLiteralConvertible>(lhs: L, rhs: R)->Outlet {
+public func ∞~> <L : ChannelType, R : ChannelType where L.OutputType: ConduitNumericCoercible, R.SourceType: ConduitNumericCoercible>(lhs: L, rhs: R)->Outlet {
     let lsink = lhs.map({ convertNumericType($0) }).attach { rhs.push($0) }
     return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: { lsink.detach() })
 }
 
 /// Convert (possibly lossily) between two numeric types
-public func <~∞ <L : ChannelType, R : ChannelType where R.OutputType: IntegerLiteralConvertible, L.SourceType: IntegerLiteralConvertible>(lhs: L, rhs: R)->Outlet {
+public func <~∞ <L : ChannelType, R : ChannelType where R.OutputType: ConduitNumericCoercible, L.SourceType: ConduitNumericCoercible>(lhs: L, rhs: R)->Outlet {
     let rsink = rhs.map({ convertNumericType($0) }).attach { lhs.push($0) }
     return OutletOf<(L.OutputType, R.OutputType)>(pumper: { _ in }, detacher: { rsink.detach() })
 }
@@ -676,208 +676,549 @@ public func <?∞ <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Outlet {
 }
 
 
-
 /// Dynamically convert between the given numeric types, getting past Swift's inability to statically cast between numbers
-public func convertNumericType<From : IntegerLiteralConvertible, To : IntegerLiteralConvertible>(from: From) -> To {
-    // there must, must, must be a better way than manually checking every permutation of known numeric types...
+public func convertNumericType<From : ConduitNumericCoercible, To : ConduitNumericCoercible>(from: From) -> To {
+    // try both sides of the convertables so this can be extended by other types (such as NSNumber)
+    return To.fromConduitNumericCoercible(from) ?? from.toConduitNumericCoercible() ?? from as To
+}
 
-    if From.self is Double.Type {
-        let value = from as Double
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is Float80.Type {
-        let value = from as Float80
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is Float.Type {
-        let value = from as Float
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is UInt64.Type {
-        let value = from as UInt64
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is Int64.Type {
-        let value = from as Int64
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is UInt.Type {
-        let value = from as UInt
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is Int.Type {
-        let value = from as Int
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is UInt32.Type {
-        let value = from as UInt32
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is Int32.Type {
-        let value = from as Int32
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is UInt16.Type {
-        let value = from as UInt16
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is Int16.Type {
-        let value = from as Int16
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is UInt8.Type {
-        let value = from as UInt8
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
-    } else if From.self is Int8.Type {
-        let value = from as Int8
-        if To.self is Double.Type { return Double(value) as To }
-        if To.self is Float80.Type { return Float80(value) as To }
-        if To.self is Float.Type { return Float(value) as To }
-        if To.self is UInt64.Type { return UInt64(max(value, 0)) as To }
-        if To.self is Int64.Type { return Int64(value) as To }
-        if To.self is UInt.Type { return UInt(max(value, 0)) as To }
-        if To.self is Int.Type { return Int(value) as To }
-        if To.self is UInt32.Type { return UInt32(max(value, 0)) as To }
-        if To.self is Int32.Type { return Int32(value) as To }
-        if To.self is UInt16.Type { return UInt16(max(value, 0)) as To }
-        if To.self is Int16.Type { return Int16(value) as To }
-        if To.self is UInt8.Type { return UInt8(max(value, 0)) as To }
-        if To.self is Int8.Type { return Int8(value) as To }
+
+/// Implemented by numeric types that can be coerced into other numeric types
+public protocol ConduitNumericCoercible {
+    class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self?
+    func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+}
+
+
+extension Bool : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Bool? {
+        if let value = value as? Bool { return self.init(value) }
+        else if let value = value as? Int8 { return self.init(value != 0) }
+        else if let value = value as? UInt8 { return self.init(value != 0) }
+        else if let value = value as? Int16 { return self.init(value != 0) }
+        else if let value = value as? UInt16 { return self.init(value != 0) }
+        else if let value = value as? Int32 { return self.init(value != 0) }
+        else if let value = value as? UInt32 { return self.init(value != 0) }
+        else if let value = value as? Int { return self.init(value != 0) }
+        else if let value = value as? UInt { return self.init(value != 0) }
+        else if let value = value as? Int64 { return self.init(value != 0) }
+        else if let value = value as? UInt64 { return self.init(value != 0) }
+        else if let value = value as? Float { return self.init(value != 0) }
+        else if let value = value as? Float80 { return self.init(value != 0) }
+        else if let value = value as? Double { return self.init(value != 0) }
+        else { return value as? Bool }
     }
 
-    // fall back to trying to force the cast; this should work for convertibles like NSNumber
-    return from as To
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self) as? T }
+        else if T.self is Int8.Type { return Int8(self ? 1 : 0) as? T }
+        else if T.self is UInt8.Type { return UInt8(self ? 1 : 0) as? T }
+        else if T.self is Int16.Type { return Int16(self ? 1 : 0) as? T }
+        else if T.self is UInt16.Type { return UInt16(self ? 1 : 0) as? T }
+        else if T.self is Int32.Type { return Int32(self ? 1 : 0) as? T }
+        else if T.self is UInt32.Type { return UInt32(self ? 1 : 0) as? T }
+        else if T.self is Int.Type { return Int(self ? 1 : 0) as? T }
+        else if T.self is UInt.Type { return UInt(self ? 1 : 0) as? T }
+        else if T.self is Int64.Type { return Int64(self ? 1 : 0) as? T }
+        else if T.self is UInt64.Type { return UInt64(self ? 1 : 0) as? T }
+        else if T.self is Float.Type { return Float(self ? 1 : 0) as? T }
+        else if T.self is Float80.Type { return Float80(self ? 1 : 0) as? T }
+        else if T.self is Double.Type { return Double(self ? 1 : 0) as? T }
+        else { return self as? T }
+    }
+}
+
+
+extension Int8 : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int8? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(value) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(value) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(value) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(value) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(value) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(value) }
+        else if let value = value as? Float80 { return self.init(value) }
+        else if let value = value as? Double { return self.init(value) }
+        else { return value as? Int8 }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension UInt8 : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt8? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(abs(value)) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(abs(value)) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(abs(value)) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(abs(value)) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(abs(value)) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(abs(value)) }
+        else if let value = value as? Float80 { return self.init(abs(value)) }
+        else if let value = value as? Double { return self.init(abs(value)) }
+        else { return value as? UInt8 }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension Int16 : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int16? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(value) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(value) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(value) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(value) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(value) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(value) }
+        else if let value = value as? Float80 { return self.init(value) }
+        else if let value = value as? Double { return self.init(value) }
+        else { return value as? Int16 }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension UInt16 : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt16? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(abs(value)) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(abs(value)) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(abs(value)) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(abs(value)) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(abs(value)) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(abs(value)) }
+        else if let value = value as? Float80 { return self.init(abs(value)) }
+        else if let value = value as? Double { return self.init(abs(value)) }
+        else { return value as? UInt16 }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension Int32 : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int32? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(value) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(value) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(value) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(value) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(value) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(value) }
+        else if let value = value as? Float80 { return self.init(value) }
+        else if let value = value as? Double { return self.init(value) }
+        else { return value as? Int32 }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension UInt32 : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt32? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(abs(value)) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(abs(value)) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(abs(value)) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(abs(value)) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(abs(value)) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(abs(value)) }
+        else if let value = value as? Float80 { return self.init(abs(value)) }
+        else if let value = value as? Double { return self.init(abs(value)) }
+        else { return value as? UInt32 }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension Int : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(value) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(value) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(value) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(value) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(value) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(value) }
+        else if let value = value as? Float80 { return self.init(value) }
+        else if let value = value as? Double { return self.init(value) }
+        else { return value as? Int }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension UInt : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(abs(value)) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(abs(value)) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(abs(value)) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(abs(value)) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(abs(value)) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(abs(value)) }
+        else if let value = value as? Float80 { return self.init(abs(value)) }
+        else if let value = value as? Double { return self.init(abs(value)) }
+        else { return value as? UInt }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension Int64 : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int64? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(value) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(value) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(value) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(value) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(value) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(value) }
+        else if let value = value as? Float80 { return self.init(value) }
+        else if let value = value as? Double { return self.init(value) }
+        else { return value as? Int64 }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension UInt64 : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt64? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(abs(value)) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(abs(value)) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(abs(value)) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(abs(value)) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(abs(value)) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(abs(value)) }
+        else if let value = value as? Float80 { return self.init(abs(value)) }
+        else if let value = value as? Double { return self.init(abs(value)) }
+        else { return value as? UInt64 }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension Float : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Float? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(value) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(value) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(value) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(value) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(value) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(value) }
+        else if let value = value as? Float80 { return self.init(value) }
+        else if let value = value as? Double { return self.init(value) }
+        else { return value as? Float }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension Float80 : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Float80? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(value) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(value) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(value) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(value) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(value) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(value) }
+        else if let value = value as? Float80 { return self.init(value) }
+        else if let value = value as? Double { return self.init(value) }
+        else { return value as? Float80 }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
+}
+
+extension Double : ConduitNumericCoercible {
+    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Double? {
+        if let value = value as? Bool { return self.init(value ? 1 : 0) }
+        else if let value = value as? Int8 { return self.init(value) }
+        else if let value = value as? UInt8 { return self.init(value) }
+        else if let value = value as? Int16 { return self.init(value) }
+        else if let value = value as? UInt16 { return self.init(value) }
+        else if let value = value as? Int32 { return self.init(value) }
+        else if let value = value as? UInt32 { return self.init(value) }
+        else if let value = value as? Int { return self.init(value) }
+        else if let value = value as? UInt { return self.init(value) }
+        else if let value = value as? Int64 { return self.init(value) }
+        else if let value = value as? UInt64 { return self.init(value) }
+        else if let value = value as? Float { return self.init(value) }
+        else if let value = value as? Float80 { return self.init(value) }
+        else if let value = value as? Double { return self.init(value) }
+        else { return value as? Double }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is Bool.Type { return Bool(self != 0) as? T }
+        else if T.self is Int8.Type { return Int8(self) as? T }
+        else if T.self is UInt8.Type { return UInt8(self) as? T }
+        else if T.self is Int16.Type { return Int16(self) as? T }
+        else if T.self is UInt16.Type { return UInt16(self) as? T }
+        else if T.self is Int32.Type { return Int32(self) as? T }
+        else if T.self is UInt32.Type { return UInt32(self) as? T }
+        else if T.self is Int.Type { return Int(self) as? T }
+        else if T.self is UInt.Type { return UInt(self) as? T }
+        else if T.self is Int64.Type { return Int64(self) as? T }
+        else if T.self is UInt64.Type { return UInt64(self) as? T }
+        else if T.self is Float.Type { return Float(self) as? T }
+        else if T.self is Float80.Type { return Float80(self) as? T }
+        else if T.self is Double.Type { return Double(self) as? T }
+        else { return self as? T }
+    }
 }

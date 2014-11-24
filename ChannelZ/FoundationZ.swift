@@ -354,7 +354,7 @@ final class TargetAssociatedObserver : NSObject {
     let center: NSNotificationCenter?
     let callback: ([NSObject : AnyObject])->()
 
-    weak var target: NSObject?
+//    weak var target: NSObject?
     let targetPtr: Unmanaged<NSObject>
     var infoPtr: UnsafeMutablePointer<Void>?
     var instrumentedKVO = true
@@ -364,7 +364,8 @@ final class TargetAssociatedObserver : NSObject {
         self.callback = callback
         self.center = center
 
-        self.target = target
+        // FIXME: objc[1808]: __weak variable at 0x7fff5fbfd5c0 holds 0x7fff7bad3540 instead of 0x6080000d91a0. This is probably incorrect use of objc_storeWeak() and objc_loadWeak(). Break on objc_weak_error to debug.
+//        self.target = target
         // since this associated object is deallocated as part of the owning object's dealloc (see objc_destructInstance in <http://opensource.apple.com/source/objc4/objc4-646/runtime/objc-runtime-new.mm>), we can't rely on the weak reference not having been zeroed, so keep around an extra unmanaged pointer to the target object that we can use to remove the observer
         self.targetPtr = Unmanaged.passUnretained(target)
 
@@ -392,7 +393,7 @@ final class TargetAssociatedObserver : NSObject {
 
     /// Callback when in Key-Value Observation mode
     override func observeValueForKeyPath(keyPath: String, ofObject object: AnyObject, change: [NSObject : AnyObject], context: UnsafeMutablePointer<Void>) {
-        assert(object === target)
+//        assert(object === target)
         assert(keyPath == self.keyPath)
         self.callback(change)
     }
@@ -401,7 +402,8 @@ final class TargetAssociatedObserver : NSObject {
     private func deactivate() {
         let this = self
         if OSAtomicTestAndClear(0, &active) {
-            let object = (target ?? targetPtr.takeUnretainedValue())
+//            let object = (target ?? targetPtr.takeUnretainedValue())
+            let object = targetPtr.takeUnretainedValue()
             if let center = center { // NSNotificationCenter mode
                 center.removeObserver(this, name: keyPath, object: object)
             } else { // KVO mode
@@ -623,6 +625,64 @@ extension NSObject {
         return funnelNotification(center: center, self, notificationName)
     }
 }
+
+extension NSNumber : ConduitNumericCoercible {
+    public class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self? {
+        if let value = value as? NSNumber {
+            let type = value.objCType
+            if type == "c" { return self.init(char: value.charValue) }
+            else if type == "C" { return self.init(unsignedChar: value.unsignedCharValue) }
+            else if type == "s" { return self.init(short: value.shortValue) }
+            else if type == "S" { return self.init(unsignedShort: value.unsignedShortValue) }
+            else if type == "i" { return self.init(int: value.intValue) }
+            else if type == "I" { return self.init(unsignedInt: value.unsignedIntValue) }
+            else if type == "l" { return self.init(long: value.longValue) }
+            else if type == "L" { return self.init(unsignedLong: value.unsignedLongValue) }
+            else if type == "q" { return self.init(longLong: value.longLongValue) }
+            else if type == "Q" { return self.init(unsignedLongLong: value.unsignedLongLongValue) }
+            else if type == "f" { return self.init(float: value.floatValue) }
+            else if type == "d" { return self.init(double: value.doubleValue) }
+            else { return nil }
+        }
+        else if let value = value as? Bool { return self.init(bool: value) }
+        else if let value = value as? Int8 { return self.init(char: value) }
+        else if let value = value as? UInt8 { return self.init(unsignedChar: value) }
+        else if let value = value as? Int16 { return self.init(short: value) }
+        else if let value = value as? UInt16 { return self.init(unsignedShort: value) }
+        else if let value = value as? Int32 { return self.init(int: value) }
+        else if let value = value as? UInt32 { return self.init(unsignedInt: value) }
+        else if let value = value as? Int { return self.init(long: value) }
+        else if let value = value as? UInt { return self.init(unsignedLong: value) }
+        else if let value = value as? Int64 { return self.init(longLong: value) }
+        else if let value = value as? UInt64 { return self.init(unsignedLongLong: value) }
+        else if let value = value as? Float { return self.init(float: value) }
+//        else if let value = value as? Float80 { return self.init(double: value) } ?
+        else if let value = value as? Double { return self.init(double: value) }
+        else { return nil }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is NSDecimalNumber.Type { return NSDecimalNumber(double: self.doubleValue) as? T }
+        else if T.self is NSNumber.Type { return self as? T }
+        else if T.self is Bool.Type { return Bool(self.boolValue) as? T }
+        else if T.self is Int8.Type { return Int8(self.charValue) as? T }
+        else if T.self is UInt8.Type { return UInt8(self.unsignedCharValue) as? T }
+        else if T.self is Int16.Type { return Int16(self.shortValue) as? T }
+        else if T.self is UInt16.Type { return UInt16(self.unsignedShortValue) as? T }
+        else if T.self is Int32.Type { return Int32(self.intValue) as? T }
+        else if T.self is UInt32.Type { return UInt32(self.unsignedIntValue) as? T }
+        else if T.self is Int.Type { return Int(self.longValue) as? T }
+        else if T.self is UInt.Type { return UInt(self.unsignedLongValue) as? T }
+        else if T.self is Int64.Type { return Int64(self.longLongValue) as? T }
+        else if T.self is UInt64.Type { return UInt64(self.unsignedLongLongValue) as? T }
+        else if T.self is Float.Type { return Float(self.floatValue) as? T }
+//        else if T.self is Float80.Type { return Float80(self) as? T } ??
+        else if T.self is Double.Type { return Double(self.doubleValue) as? T }
+        else { return self as? T }
+    }
+
+}
+
 
 /// Operator for getting a keypath channel from an NSObject
 infix operator ∞ { precedence 255 }
