@@ -12,7 +12,7 @@
 
     extension NSControl : KeyValueChannelSupplementing {
 
-        public func controlz() -> EventFunnel<Void> {
+        public func controlz() -> EventFunnel<NSEvent> {
 
             if self.target != nil && !(self.target is DispatchTarget) {
                 fatalError("controlz event handling overrides existing target/action for control; if this is really what you want to do, explicitly nil the target & action of the control")
@@ -22,9 +22,9 @@
             self.target = observer
             self.action = Selector("execute")
 
-            var funnel = EventFunnel<Void>(nil)
+            var funnel = EventFunnel<NSEvent>(nil)
             funnel.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
-            observer.actions += [{ funnel.outlets.pump() }]
+            observer.actions += [{ funnel.outlets.pump($0) }]
 
             return funnel
         }
@@ -68,11 +68,12 @@
     }
 
     @objc public class DispatchTarget : NSObject {
-        public var actions : [(Void)->(Void)] = []
+        public var actions : [(NSEvent)->(Void)] = []
 
         public func execute() {
+            let event = NSApplication.sharedApplication().currentEvent ?? NSEvent()
             for action in actions {
-                action()
+                action(event)
             }
         }
     }
