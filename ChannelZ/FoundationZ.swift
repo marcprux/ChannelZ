@@ -373,7 +373,9 @@ final class TargetAssociatedObserver : NSObject {
 
         objc_setAssociatedObject(target, &assocctx, self, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
         if !OSAtomicTestAndSet(0, &active) {
+            #if DEBUG_CHANNELZ
             ChannelZKeyValueObserverCount++
+            #endif
             if let center = center {
                 center.addObserver(self, selector: Selector("notificationReceived:"), name: keyPath, object: target)
             } else if let kvoptions = kvoptions {
@@ -409,7 +411,9 @@ final class TargetAssociatedObserver : NSObject {
             } else { // KVO mode
                 object.removeObserver(this, forKeyPath: keyPath, context: &kvoctx)
             }
+            #if DEBUG_CHANNELZ
             ChannelZKeyValueObserverCount--
+            #endif
         }
     }
 
