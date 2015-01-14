@@ -2,7 +2,7 @@
 //  ChannelZ+Foundation.swift
 //  GlimpseCore
 //
-//  Created by Marc Prud'hommeaux <mwp1@cornell.edu>
+//  Created by Marc Prud'hommeaux <marc@glimpse.io>
 //  License: MIT (or whatever)
 //
 
@@ -47,7 +47,7 @@ extension NSObject {
 }
 
 private func channelRequired<T>(target: NSObject, getter: @autoclosure ()->T, keyPath: String = "")->ChannelZ<T> {
-    return ChannelZ(channelRequiredKeyValue(target, keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, getter()).map({ $0.nextValue }))
+    return ChannelZ(channelRequiredKeyValue(target, keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, getter()).map({ $0.value }))
 }
 
 /// Separate function to help the compiler distinguish signatures
@@ -56,12 +56,12 @@ private func sieveRequired<T : Equatable>(target: NSObject, getter: @autoclosure
 }
 
 private func channelOptional<T>(target: NSObject, getter: @autoclosure ()->Optional<T>, keyPath: String = "")->ChannelZ<Optional<T>> {
-    return ChannelZ(channelStateValues(KeyValueOptionalChannel(target: target, keyPath: keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, value: getter()).channelOf))
+    return ChannelZ(channelStateValues(KeyValueOptionalChannel(target: target, keyPath: keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, value: getter()).channel()))
 }
 
 /// Separate function to help the compiler distinguish signatures
 private func sieveOptional<T : Equatable>(target: NSObject, getter: @autoclosure ()->Optional<T>, keyPath: String = "")->ChannelZ<Optional<T>> {
-    return ChannelZ(channelOptionalStateChanges(KeyValueOptionalChannel(target: target, keyPath: keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, value: getter()).channelOf))
+    return ChannelZ(channelOptionalStateChanges(KeyValueOptionalChannel(target: target, keyPath: keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, value: getter()).channel()))
 }
 
 
@@ -70,13 +70,73 @@ private func channelRequiredKeyValue<T>(target: NSObject, keyPath: String, value
 }
 
 /// Root protocol for required and optional key-value-observing channels
-public protocol KeyValueChannel: ChannelType, DirectChannelType {
+public protocol KeyValueChannel: ChannelType {
     /// The keyPath for this channel
     var keyPath: String { get }
 
     /// The target object of this channel
     var target: NSObject? { get }
 }
+
+private func setValueForKeyPath<T>(target: NSObject, keyPath: NSString, nullable: Bool, value: T?) {
+    if nullable && value is NSNull { target.setValue(nil, forKeyPath: keyPath) }
+    else if let ob = value as? NSObject { target.setValue(ob, forKeyPath: keyPath) }
+    // manual numeric coercion: because only “the following types are automatically bridged to NSNumber: Int, UInt, Float, Double, Bool”
+    else if let value = value as? Bool { target.setValue(NSNumber(bool: value), forKeyPath: keyPath) }
+    else if let value = value as? Int8 { target.setValue(NSNumber(char: value), forKeyPath: keyPath) }
+    else if let value = value as? UInt8 { target.setValue(NSNumber(unsignedChar: value), forKeyPath: keyPath) }
+    else if let value = value as? Int16 { target.setValue(NSNumber(short: value), forKeyPath: keyPath) }
+    else if let value = value as? UInt16 { target.setValue(NSNumber(unsignedShort: value), forKeyPath: keyPath) }
+    else if let value = value as? Int32 { target.setValue(NSNumber(int: value), forKeyPath: keyPath) }
+    else if let value = value as? UInt32 { target.setValue(NSNumber(unsignedInt: value), forKeyPath: keyPath) }
+    else if let value = value as? Int { target.setValue(NSNumber(unsignedInteger: value), forKeyPath: keyPath) }
+    else if let value = value as? UInt { target.setValue(NSNumber(unsignedLong: value), forKeyPath: keyPath) }
+    else if let value = value as? Int64 { target.setValue(NSNumber(longLong: value), forKeyPath: keyPath) }
+    else if let value = value as? UInt64 { target.setValue(NSNumber(unsignedLongLong: value), forKeyPath: keyPath) }
+    else if let value = value as? Float { target.setValue(NSNumber(float: value), forKeyPath: keyPath) }
+    // else if let value = value as? Float80 { target.setValue(NSNumber(double: value), forKeyPath: keyPath) }
+    else if let value = value as? Double { target.setValue(NSNumber(double: value), forKeyPath: keyPath) }
+    else if nullable { target.setValue(nil, forKeyPath: keyPath) }
+    else { preconditionFailure("unable to coerce value «\(value.dynamicType)» into Foundation type for non-nullable keyPath «\(keyPath)»") }
+}
+
+private func coerceCocoaType<SourceType>(ob: AnyObject?, type: SourceType.Type) -> SourceType? {
+    if let ob = ob as? SourceType {
+        return ob // always first try to get automatic coercion (e.g., NSString to String)
+    } else if let ob = ob as? NSNumber {
+        // when an NSNumber is sent to an observer that is listening for a particular primitive, try to coerce it
+        if SourceType.self is UInt64.Type {
+            return ob.unsignedLongLongValue as? SourceType
+        } else if SourceType.self is Int64.Type {
+            return ob.longLongValue as? SourceType
+        } else if SourceType.self is Double.Type {
+            return ob.doubleValue as? SourceType
+        } else if SourceType.self is Float.Type {
+            return ob.floatValue as? SourceType
+        } else if SourceType.self is UInt.Type {
+            return ob.unsignedLongValue as? SourceType
+        } else if SourceType.self is Int.Type {
+            return ob.integerValue as? SourceType
+        } else if SourceType.self is UInt32.Type {
+            return ob.unsignedIntValue as? SourceType
+        } else if SourceType.self is Int32.Type {
+            return ob.intValue as? SourceType
+        } else if SourceType.self is UInt16.Type {
+            return ob.unsignedShortValue as? SourceType
+        } else if SourceType.self is Int16.Type {
+            return ob.shortValue as? SourceType
+        } else if SourceType.self is UInt8.Type {
+            return ob.unsignedCharValue as? SourceType
+        } else if SourceType.self is Int8.Type {
+            return ob.charValue as? SourceType
+        } else if SourceType.self is Bool.Type {
+            return ob.boolValue as? SourceType
+        }
+    }
+
+    return nil
+}
+
 
 /// A Channel for Cocoa properties that support key-value path observation/coding
 public struct KeyValueRequiredChannel<T>: KeyValueChannel {
@@ -104,70 +164,27 @@ public struct KeyValueRequiredChannel<T>: KeyValueChannel {
         }
     }
 
-    /// DirectChannelType access to the underlying source value
+    /// access to the underlying source value
     public var value: SourceType {
-        get { return pull().nextValue }
+        get { return get() }
         nonmutating set(v) { push(v) }
     }
 
-    public func push(value: SourceType) {
-        if let null = value as? NSNull {
-            self.target?.setValue(nil, forKeyPath: self.keyPath)
-        } else if let ob = value as? NSObject {
-            self.target?.setValue(ob, forKeyPath: self.keyPath)
+    public func push(value: SourceType) -> Bool {
+        if let target = self.target {
+            setValueForKeyPath(target, keyPath, false, value)
+            return true
+        } else {
+            return false
         }
     }
 
-    public func pull() -> OutputType {
+    private func get() -> SourceType {
         if let target = target {
-            let v = target.valueForKeyPath(self.keyPath) as SourceType
-            return StateEvent(lastValue: nil, nextValue: v)
+            return target.valueForKeyPath(self.keyPath) as SourceType
         } else {
             preconditionFailure("attempt to pull from keyPath «\(keyPath)» of a deallocated instance; channels do not retain their targets")
         }
-    }
-
-    /// Requests that the channel emit an event
-    public func pump()->Void {
-        self.target?.willChangeValueForKey(self.keyPath)
-        self.target?.didChangeValueForKey(self.keyPath)
-    }
-
-    func coerce(ob: AnyObject?) -> SourceType? {
-        if let ob = ob as? SourceType {
-            return ob
-        } else if let ob = ob as? NSNumber {
-            // when an NSNumber is sent to an observer that is listening for a particular primitive, try to coerce it
-            if SourceType.self is UInt64.Type {
-                return ob.unsignedLongLongValue as? SourceType
-            } else if SourceType.self is Int64.Type {
-                return ob.longLongValue as? SourceType
-            } else if SourceType.self is Double.Type {
-                return ob.doubleValue as? SourceType
-            } else if SourceType.self is Float.Type {
-                return ob.floatValue as? SourceType
-            } else if SourceType.self is UInt.Type {
-                return ob.unsignedLongValue as? SourceType
-            } else if SourceType.self is Int.Type {
-                return ob.integerValue as? SourceType
-            } else if SourceType.self is UInt32.Type {
-                return ob.unsignedIntValue as? SourceType
-            } else if SourceType.self is Int32.Type {
-                return ob.intValue as? SourceType
-            } else if SourceType.self is UInt16.Type {
-                return ob.unsignedShortValue as? SourceType
-            } else if SourceType.self is Int16.Type {
-                return ob.shortValue as? SourceType
-            } else if SourceType.self is UInt8.Type {
-                return ob.unsignedCharValue as? SourceType
-            } else if SourceType.self is Int8.Type {
-                return ob.charValue as? SourceType
-            } else if SourceType.self is Bool.Type {
-                return ob.boolValue as? SourceType
-            }
-        }
-
-        return nil
     }
 
     /// Attaches an outlet to receive change notifications from the state pipeline
@@ -178,9 +195,13 @@ public struct KeyValueRequiredChannel<T>: KeyValueChannel {
             let kp = keyPath
             return KeyValueOutlet(target: target, keyPath: keyPath, handler: { (oldv, newv) in
                 // for example, we are watching a NSMutableDictionary's key that is set to an NSString and then an NSNumber
-                if let newv = self.coerce(newv) {
+                if let newv = coerceCocoaType(newv, SourceType.self) {
                     // option type check is because Initial option sends oldValue as nil
-                    outlet(StateEvent(lastValue: self.coerce(oldv), nextValue: newv))
+                    if let old = coerceCocoaType(oldv, SourceType.self) {
+                        outlet(StateEvent.change(old, value: newv))
+                    } else {
+                        outlet(StateEvent.push(newv))
+                    }
                 } else {
                     assert(newv is SourceType, "required value for «\(kp)» changed type from \(oldv) to \(newv); use an optional channel if value type can change")
                 }
@@ -196,24 +217,17 @@ public struct KeyValueRequiredChannel<T>: KeyValueChannel {
     public typealias SelfChannel = KeyValueRequiredChannel
 
     /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
-    public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
-    public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+    public func channel() -> ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
 
     /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
 
     /// Returns a mapped channel that transforms the elements before passing them through to the outlets
-    public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
-
-    /// Returns a mapped channel that transforms source elements through the given transform before pushing them back to the source
-    public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
-
-    /// Returned a combined channel where signals from either channel will be combined into a signal for the combined channel's receivers
-    public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
+    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 }
-
 
 /// A Channel for optional Cocoa properties that support key-value path observation/coding
 public struct KeyValueOptionalChannel<T>: KeyValueChannel {
@@ -235,29 +249,27 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
         assert((initialValue === nil && value == nil) || ((initialValue as? NSObject) == (value as? NSObject)), "valueForKeyPath(\(keyPath)): «\(initialValue)» did not equal initialized value: «\(value)»")
     }
 
-    /// DirectChannelType access to the underlying source value
+    /// access to the underlying source value
     public var value: SourceType {
-        get { return pull().nextValue }
+        get { return get() }
         nonmutating set(v) { push(v) }
     }
 
-    public func push(newValue: SourceType) {
-        self.target?.setValue(newValue is NSNull ? nil : (newValue as? NSObject), forKeyPath: self.keyPath)
-    }
-
-    public func pull() -> OutputType {
-        if let target = target {
-            let v = target.valueForKeyPath(self.keyPath) as SourceType
-            return StateEvent(lastValue: nil, nextValue: v)
+    public func push(value: SourceType) -> Bool {
+        if let target = self.target {
+            setValueForKeyPath(target, keyPath, true, value)
+            return true
         } else {
-            return StateEvent(lastValue: nil, nextValue: nil)
+            return false
         }
     }
 
-    /// Requests that the channel emit an event
-    public func pump()->Void {
-        self.target?.willChangeValueForKey(self.keyPath)
-        self.target?.didChangeValueForKey(self.keyPath)
+    private func get() -> SourceType {
+        if let target = target {
+            return target.valueForKeyPath(self.keyPath) as SourceType
+        } else {
+            return nil
+        }
     }
 
     /// Attaches an outlet to receive change notifications from the state pipeline
@@ -266,7 +278,11 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
     public func attach(outlet: (OutputType)->())->Outlet {
         if let target = target {
             return KeyValueOutlet(target: target, keyPath: keyPath, handler: { (oldv, newv) in
-                outlet(StateEvent(lastValue: oldv as? SourceType, nextValue: newv as? SourceType ?? nil))
+                if let oldv : AnyObject = oldv {
+                    outlet(StateEvent.change(coerceCocoaType(oldv, T.self), value: coerceCocoaType(newv, T.self)))
+                } else {
+                    outlet(StateEvent.push(coerceCocoaType(newv, T.self)))
+                }
             })
         } else {
             NSLog("ChannelZ warning: attempt to attach to a deallocated target keyPath «\(keyPath)»; channels do not retain their targets")
@@ -278,22 +294,16 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
     public typealias SelfChannel = KeyValueOptionalChannel
 
     /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
-    public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
-    public var channelOf: ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+    public func channel() -> ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
 
     /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
     public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
 
     /// Returns a mapped channel that transforms the elements before passing them through to the outlets
-    public func map<OutputTransformedType>(transform: (OutputType)->OutputTransformedType)->MappedChannel<SelfChannel, OutputTransformedType, SelfChannel.SourceType> { return mapOutput(self, transform) }
-
-    /// Returns a mapped channel that transforms source elements through the given transform before pushing them back to the source
-    public func rmap<SourceTransformedType>(transform: (SourceTransformedType)->SourceType)->MappedChannel<SelfChannel, SelfChannel.OutputType, SourceTransformedType> { return mapSource(self, transform) }
-
-    /// Returned a combined channel where signals from either channel will be combined into a signal for the combined channel's receivers
-    public func combine<WithChannel>(channel: WithChannel)->CombinedChannel<SelfChannel, WithChannel> { return combineChannel(self)(channel2: channel) }
+    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 }
 
 
@@ -311,20 +321,32 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
 /// outlet for Cocoa KVO changes
 private struct KeyValueOutlet: Outlet {
     typealias HandlerType = ((oldv: AnyObject?, newv: AnyObject?)->Void)
-    weak var observer: TargetAssociatedObserver?
+    let observer: TargetAssociatedObserver
+    let handler: HandlerType
     var supplementaryDetachable: (()->())?
 
     init(target: NSObject, keyPath: String, handler: HandlerType) {
         var entrancy: UInt = 0
 
-        self.observer = TargetAssociatedObserver(target: target, keyPath: keyPath, kvoptions: NSKeyValueObservingOptions(NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue), callback: { (change: [NSObject : AnyObject]) -> () in
+        self.handler = handler
+        self.observer = TargetAssociatedObserver(target: target, keyPath: keyPath, callback: { (change: [NSObject : AnyObject]) -> () in
 
             if entrancy++ > ChannelZReentrancyLimit {
                 #if DEBUG_CHANNELZ
                     NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(ChannelZReentrancyLimit) reached for «\(keyPath)»")
                 #endif
             } else {
-                handler(oldv: change[NSKeyValueChangeOldKey], newv: change[NSKeyValueChangeNewKey])
+                if let valueChangeType = change[NSKeyValueChangeKindKey] as? NSNumber {
+                    if let valueChange = NSKeyValueChange(rawValue: valueChangeType.unsignedLongValue) {
+                        switch valueChange {
+                        case .Setting:
+                            handler(oldv: change[NSKeyValueChangeOldKey]!, newv: change[NSKeyValueChangeNewKey]!)
+                        case .Insertion, .Removal, .Replacement:
+                            // TODO: handle NSKeyValueChangeKindKey and NSKeyValueChangeIndexesKey keys for collection changes
+                            break
+                        }
+                    }
+                }
                 entrancy--
             }
         })
@@ -340,89 +362,209 @@ private struct KeyValueOutlet: Outlet {
     }
 
     func detach() {
-        observer?.deactivate()
+        observer.detach()
         supplementaryDetachable?()
     }
+
+    func prime() {
+        if let target = self.observer.target {
+            if let keyPath = self.observer.keyPath {
+                self.handler(oldv: nil, newv: target.valueForKeyPath(keyPath))
+            }
+        }
+    }
+
 }
 
-/// Am observer that is stored as an associated object in the target and is automatically removed when the target is deallocated; can be with either for KVO or NSNotificationCenter depending on the constructor arguments
-final class TargetAssociatedObserver : NSObject {
-    var assocctx = UnsafePointer<Void>()
-    var kvoctx = UnsafePointer<Void>()
-    var active : UInt32 = 0
-    let keyPath: NSString
-    let center: NSNotificationCenter?
-    let callback: ([NSObject : AnyObject])->()
+/// Global pointer to the context that will holder the observer list
+private var targetObserverRegisterContext = UnsafePointer<Void>()
 
-//    weak var target: NSObject?
-    let targetPtr: Unmanaged<NSObject>
-    var infoPtr: UnsafeMutablePointer<Void>?
-    var instrumentedKVO = true
+/// Global lock for getting/setting the observer
+private var targetObserverRegisterLock = NSLock()
 
-    init(target: NSObject, keyPath: String, kvoptions: NSKeyValueObservingOptions? = nil, center: NSNotificationCenter? = nil, callback: ([NSObject : AnyObject])->()) {
-        self.keyPath = keyPath
-        self.callback = callback
-        self.center = center
+/// Singleton notification center; we don't currently support multiple NSNotificationCenter observers
+private let targetObserverRegisterNotificationCenter = NSNotificationCenter.defaultCenter()
 
-        // FIXME: objc[1808]: __weak variable at 0x7fff5fbfd5c0 holds 0x7fff7bad3540 instead of 0x6080000d91a0. This is probably incorrect use of objc_storeWeak() and objc_loadWeak(). Break on objc_weak_error to debug.
-//        self.target = target
-        // since this associated object is deallocated as part of the owning object's dealloc (see objc_destructInstance in <http://opensource.apple.com/source/objc4/objc4-646/runtime/objc-runtime-new.mm>), we can't rely on the weak reference not having been zeroed, so keep around an extra unmanaged pointer to the target object that we can use to remove the observer
-        self.targetPtr = Unmanaged.passUnretained(target)
+private let targetObserverRegisterKVOOptions = NSKeyValueObservingOptions(NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue)
 
-        super.init()
+/// An observer register that is stored as an associated object in the target and is automatically removed when the target is deallocated; can be with either KVO or NSNotificationCenter depending on the constructor arguments
+@objc final class TargetObserverRegister : NSObject {
+    // note: it would make sense to declare this as TargetObserverRegister<T:NSObject>, but the class won't receive any KVO notifications if it is a generic
 
-        objc_setAssociatedObject(target, &assocctx, self, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
-        if !OSAtomicTestAndSet(0, &active) {
+    /// The signature for the callback when a change occurs
+    typealias Callback = ([NSObject : AnyObject])->()
+
+    typealias Observer = (identifier: UInt64, handler: Callback)
+
+    /// since this associated object is deallocated as part of the owning object's dealloc (see objc_destructInstance in <http://opensource.apple.com/source/objc4/objc4-646/runtime/objc-runtime-new.mm>), we can't rely on the weak reference not having been zeroed, so use an extra unmanaged pointer to the target object that we can use to remove the observer
+    private let targetPtr: Unmanaged<NSObject>
+
+    private var target : NSObject { return targetPtr.takeUnretainedValue() }
+
+    private var keyObservers = [String: [Observer]]()
+
+    private var noteObservers = [String: [Observer]]()
+
+    /// The internal counter of identifiers
+    private var identifierCounter : UInt64 = 0
+
+    class func get(target: NSObject) -> TargetObserverRegister {
+        targetObserverRegisterLock.lock()
+        if let ob = objc_getAssociatedObject(target, &targetObserverRegisterContext) as? TargetObserverRegister {
+            targetObserverRegisterLock.unlock()
+            return ob
+        } else {
+            let ob = TargetObserverRegister(targetPtr: Unmanaged.passUnretained(target))
+            objc_setAssociatedObject(target, &targetObserverRegisterContext, ob, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
             #if DEBUG_CHANNELZ
-            ChannelZKeyValueObserverCount++
+                ChannelZKeyValueObserverCount++
             #endif
-            if let center = center {
-                center.addObserver(self, selector: Selector("notificationReceived:"), name: keyPath, object: target)
-            } else if let kvoptions = kvoptions {
-                target.addObserver(self, forKeyPath: keyPath, options: kvoptions, context: &kvoctx)
-                self.infoPtr = target.observationInfo
-                self.instrumentedKVO = NSStringFromClass(target.dynamicType).hasPrefix(ChannelZKVOSwizzledISAPrefix)
-            } else {
-                preconditionFailure("either NSKeyValueObservingOptions or NSNotificationCenter must be specified")
-            }
+            targetObserverRegisterLock.unlock()
+            return ob
         }
     }
 
-    /// Callback when in NSNotificationCenter mode
-    func notificationReceived(note: NSNotification) {
-        self.callback(note.userInfo ?? [:])
-    }
-
-    /// Callback when in Key-Value Observation mode
-    override func observeValueForKeyPath(keyPath: String, ofObject object: AnyObject, change: [NSObject : AnyObject], context: UnsafeMutablePointer<Void>) {
-//        assert(object === target)
-        assert(keyPath == self.keyPath)
-        self.callback(change)
-    }
-
-    /// Removes this object as an observer of the target
-    private func deactivate() {
-        let this = self
-        if OSAtomicTestAndClear(0, &active) {
-//            let object = (target ?? targetPtr.takeUnretainedValue())
-            let object = targetPtr.takeUnretainedValue()
-            if let center = center { // NSNotificationCenter mode
-                center.removeObserver(this, name: keyPath, object: object)
-            } else { // KVO mode
-                object.removeObserver(this, forKeyPath: keyPath, context: &kvoctx)
-            }
-            #if DEBUG_CHANNELZ
-            ChannelZKeyValueObserverCount--
-            #endif
-        }
+    private init(targetPtr: Unmanaged<NSObject>) {
+        self.targetPtr = targetPtr
     }
 
     deinit {
-        deactivate()
+        #if DEBUG_CHANNELZ
+            ChannelZKeyValueObserverCount--
+        #endif
+        clear()
+    }
+
+    func addObserver(keyPath: String, handler: Callback) -> UInt64 {
+        let observer = Observer(identifier: ++identifierCounter, handler: handler)
+
+        var observers = keyObservers[keyPath] ?? []
+        keyObservers[keyPath] = observers + [observer]
+
+        if observers.count == 0 { // this is the first observer: actually add it to the target
+            target.addObserver(self, forKeyPath: keyPath, options: targetObserverRegisterKVOOptions, context: nil)
+        }
+
+        return observer.identifier
+    }
+
+    func addNotification(name: String, handler: Callback) -> UInt64 {
+        var observers = noteObservers[name] ?? []
+        if observers.count == 0 { // this is the first observer: actually add it to the target
+            targetObserverRegisterNotificationCenter.addObserver(self, selector: Selector("notificationReceived:"), name: name, object: target)
+        }
+
+        let observer = Observer(identifier: ++identifierCounter, handler: handler)
+        noteObservers[name] = observers + [observer]
+        return observer.identifier
+    }
+    
+    /// Removes all the observers and clears the map
+    private func clear() {
+        let target = self.target // hang on to the target since the getter won't be valid after we remove the associated object
+
+        // remove the associated object
+        objc_setAssociatedObject(target, &targetObserverRegisterContext, nil, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+
+        for keyPath in keyObservers.keys {
+            // FIXME: random crash with certain classes: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x1057715e0> for the key path "isFinished" from <NSBlockOperation 0x105769810> because it is not registered as an observer."
+            if target is NSBlockOperation {
+                // NSBlockOperation doesn't seem to require observers to be removed?
+                // target.addObserver(self, forKeyPath: keyPath, options: targetObserverRegisterKVOOptions, context: nil) // crash
+            } else {
+                target.removeObserver(self, forKeyPath: keyPath, context: nil)
+            }
+        }
+        keyObservers = [:]
+
+        for name in noteObservers.keys {
+            targetObserverRegisterNotificationCenter.removeObserver(self, name: name, object: target)
+        }
+        noteObservers = [:]
+    }
+
+    func removeObserver(keyPath: String, identifier: UInt64) {
+        if let observers = keyObservers[keyPath] {
+            var filtered = observers.filter { $0.identifier != identifier }
+            if filtered.count == 0 { // no more observers left: remove ourselves as the observer
+                // FIXME: random crashes in certain specific observed classes, such as NSBlockOperation:
+                // error: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x109c0daa0> for the key path "isExecuting" from <NSBlockOperation 0x109c07830> because it is not registered as an observer."
+                keyObservers.removeValueForKey(keyPath)
+                target.removeObserver(self, forKeyPath: keyPath, context: nil)
+            } else {
+                keyObservers[keyPath] = filtered
+            }
+        }
+    }
+
+    func removeNotification(name: String, identifier: UInt64) {
+        if let observers = noteObservers[name] {
+            var filtered = observers.filter { $0.identifier != identifier }
+            if filtered.count == 0 { // no more observers left: remove ourselves as the observer
+                noteObservers.removeValueForKey(name)
+                targetObserverRegisterNotificationCenter.removeObserver(self, name: name, object: nil)
+            } else {
+                noteObservers[name] = filtered
+            }
+        }
+    }
+
+    /// Callback for KVO
+    override func observeValueForKeyPath(keyPath: String, ofObject object: AnyObject, change: [NSObject : AnyObject], context: UnsafeMutablePointer<Void>) {
+        if let observers = keyObservers[keyPath] {
+            for observer in observers {
+                observer.handler(change)
+            }
+        }
+    }
+
+    /// Callback for in NSNotificationCenter
+    func notificationReceived(note: NSNotification) {
+        let change = note.userInfo ?? [:]
+        if let observers = noteObservers[note.name] {
+            for observer in observers {
+                observer.handler(change)
+            }
+        }
     }
 }
 
-/// The class prefix that Cocoa prepends to the generated subclass that is swizzled in for KVO handling
+final class TargetAssociatedObserver {
+    let identifier: UInt64
+    let keyPath: String?
+    let notificationName: String?
+    weak var target: NSObject?
+
+    init(target: NSObject, keyPath: String, callback: ([NSObject : AnyObject])->()) {
+        self.target = target
+        let map = TargetObserverRegister.get(target)
+        self.identifier = map.addObserver(keyPath, handler: callback)
+        self.keyPath = keyPath
+    }
+
+    init(target: NSObject, notificationName: String, callback: ([NSObject : AnyObject])->()) {
+        self.target = target
+        let map = TargetObserverRegister.get(target)
+        self.identifier = map.addNotification(notificationName, handler: callback)
+        self.notificationName = notificationName
+    }
+
+    func detach() {
+        if let target = target {
+            let map = TargetObserverRegister.get(target)
+            if let keyPath = keyPath {
+                map.removeObserver(keyPath, identifier: identifier)
+            } else if let notificationName = notificationName {
+                map.removeNotification(notificationName, identifier: identifier)
+            }
+
+            self.target = nil // manually clear the target so we don't detach twice
+        }
+    }
+}
+
+
+    /// The class prefix that Cocoa prepends to the generated subclass that is swizzled in for KVO handling
 let ChannelZKVOSwizzledISAPrefix = "NSKVONotifying_"
 
 /// The class prefix that ChannelZ appends to the generated subclass that is swizzled in for automatic keyPath identification
@@ -535,7 +677,7 @@ private func keyPathForAutoclosure<T>(target: NSObject, accessor: ()->T, require
 public struct EventFunnel<T>: FunnelType {
     public typealias OutputType = T
     internal var dispatchTarget: NSObject? // object to be retained for as long as someone holds the EventFunnel
-    internal var outlets = OutletListReference<OutputType>()
+    internal var outlets = OutletList<OutputType>()
 
     public init(_ dispatchTarget: NSObject?) {
         self.dispatchTarget = dispatchTarget
@@ -544,26 +686,24 @@ public struct EventFunnel<T>: FunnelType {
     /// Attaches an outlet to receive change notifications from the state pipeline
     ///
     /// :param: outlet      the outlet closure to which state will be sent
-    public func attach(outlet: (OutputType)->())->Outlet { return outlets.addOutlet(outlet) }
+    public func attach(outlet: (OutputType)->())->Outlet { return outlets.addOutlet(primer: { }, outlet: outlet) }
 
     // Boilerplate funnel/filter/map
-    private typealias ThisFunnel = EventFunnel
-    public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<ThisFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<ThisFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    private typealias SelfFunnel = EventFunnel
+    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
+    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
+    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
 }
 
 
 /// A Funnel for NSNotificationCenter events
 public struct NotificationFunnel: FunnelType {
-    private let center: NSNotificationCenter
     private weak var target: NSObject?
     private let name: String
 
     public typealias OutputType = [NSObject : AnyObject]
 
-    private init(center: NSNotificationCenter, target: NSObject, name: String) {
-        self.center = center
+    private init(target: NSObject, name: String) {
         self.target = target
         self.name = name
     }
@@ -573,7 +713,7 @@ public struct NotificationFunnel: FunnelType {
     /// :param: outlet      the outlet closure to which state will be sent
     public func attach(outlet: ([NSObject : AnyObject])->())->Outlet {
         if let target = target {
-            return NotificationObserver(center: center, observee: target, name: name, handler: { outlet($0) })
+            return NotificationObserver(observee: target, name: name, handler: { outlet($0) })
         } else {
             NSLog("ChannelZ warning: attempt to attach to a deallocated target notification «\(name)»; channels do not retain their targets")
             return DeallocatedTargetOutlet()
@@ -582,10 +722,10 @@ public struct NotificationFunnel: FunnelType {
 
 
     // Boilerplate funnel/filter/map
-    public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<NotificationFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<NotificationFunnel, TransformedType> { return mapFunnel(self)(transform) }
-
+    public typealias SelfFunnel = NotificationFunnel
+    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
+    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
+    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
 }
 
 #if DEBUG_CHANNELZ
@@ -593,30 +733,34 @@ public struct NotificationFunnel: FunnelType {
     public var ChannelZNotificationObserverCount = 0
 #endif
 
-/// Observer for NSNotification changes; cannot be embedded within KeyValueRequiredChannel because Objective-C classes cannot use generics
+/// Observer for NSNotification changes
 public struct NotificationObserver: Outlet {
     private weak var observer : TargetAssociatedObserver?
 
-    init(center: NSNotificationCenter, observee: NSObject, name: String, handler: ([NSObject : AnyObject])->(Void)) {
-        self.observer = TargetAssociatedObserver(target: observee, keyPath: name, center: center, callback: { (userInfo: [NSObject : AnyObject]) -> () in
+    init(observee: NSObject, name: String, handler: ([NSObject : AnyObject])->(Void)) {
+        self.observer = TargetAssociatedObserver(target: observee, notificationName: name, callback: { (userInfo: [NSObject : AnyObject]) -> () in
             handler(userInfo)
         })
     }
 
     public func detach() {
-        self.observer?.deactivate()
+        self.observer?.detach()
+    }
+
+    public func prime() {
+        // notification funnels are read-only
     }
 
 }
 
 
 /// Creates a Funnel on NSNotificationCenter
-private func funnelNotification(center: NSNotificationCenter = NSNotificationCenter.defaultCenter(), target: NSObject, name: String)->NotificationFunnel {
-    return NotificationFunnel(center: center, target: target, name: name)
+private func funnelNotification(target: NSObject, name: String)->NotificationFunnel {
+    return NotificationFunnel(target: target, name: name)
 }
 
-public func funnel(center: NSNotificationCenter = NSNotificationCenter.defaultCenter(), target: NSObject, name: String)->NotificationFunnel {
-    return funnelNotification(center: center, target, name)
+public func funnel(target: NSObject, name: String)->NotificationFunnel {
+    return funnelNotification(target, name)
 }
 
 /// Extension for listening to notifications of a given type
@@ -625,8 +769,8 @@ extension NSObject {
     ///
     /// :param: notificationName    the name of the notification to register
     /// :param: center              the NSNotificationCenter to register with (defaults to defaultCenter())
-    public func notifyz(notificationName: String, center: NSNotificationCenter = NSNotificationCenter.defaultCenter())->NotificationFunnel {
-        return funnelNotification(center: center, self, notificationName)
+    public func notifyz(notificationName: String)->NotificationFunnel {
+        return funnelNotification(self, notificationName)
     }
 }
 

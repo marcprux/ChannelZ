@@ -1,9 +1,9 @@
 //
-//  CoreDataZ.swift
-//  ChannelZ
+//  ChannelZ+Foundation.swift
+//  GlimpseCore
 //
-//  Created by Marc Prud'hommeaux on 11/13/14.
-//  Copyright (c) 2014 glimpse.io. All rights reserved.
+//  Created by Marc Prud'hommeaux <marc@glimpse.io>
+//  License: MIT (or whatever)
 //
 
 import CoreData
@@ -19,7 +19,7 @@ extension NSManagedObjectContext {
     }
 
     private func typeChangeFunnel(noteType: NSString, changeTypes: NSString...) -> FunnelOf<[NSManagedObject]> {
-        return self.notifyz(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }.funnelOf
+        return self.notifyz(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }.funnel()
     }
 
     /// Funnels notifications of inserted objects after the changes have been processed in the context

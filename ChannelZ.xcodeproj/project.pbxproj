@@ -17,6 +17,7 @@
 		7E43C2D71A10763D003747B6 /* UIKitZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D61A10763D003747B6 /* UIKitZ.swift */; };
 		7E4E53CA1A21578700B1016C /* PlayMarker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4E53C91A21578700B1016C /* PlayMarker.swift */; };
 		7E7E35461A152CCD00777D72 /* CoreDataZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7E35451A152CCD00777D72 /* CoreDataZ.swift */; };
+		7ECE513B1A60A29600924B8E /* CoercibleZ.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ECE513A1A60A29600924B8E /* CoercibleZ.swift */; };
 		7EE45E221A210FFE00E9AB52 /* PlayMarkerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -48,6 +49,7 @@
 		7E4E53C91A21578700B1016C /* PlayMarker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayMarker.swift; sourceTree = "<group>"; };
 		7E4E53CB1A21749F00B1016C /* Introduction.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = Introduction.playground; sourceTree = "<group>"; };
 		7E7E35451A152CCD00777D72 /* CoreDataZ.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CoreDataZ.swift; sourceTree = "<group>"; };
+		7ECE513A1A60A29600924B8E /* CoercibleZ.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CoercibleZ.swift; sourceTree = "<group>"; };
 		7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayMarkerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -101,6 +103,7 @@
 				7E7E35451A152CCD00777D72 /* CoreDataZ.swift */,
 				7E43C2D21A1075D0003747B6 /* AppKitZ.swift */,
 				7E43C2D61A10763D003747B6 /* UIKitZ.swift */,
+				7ECE513A1A60A29600924B8E /* CoercibleZ.swift */,
 			);
 			path = ChannelZ;
 			sourceTree = "<group>";
@@ -181,7 +184,7 @@
 		7E30DC271A0D6A510050EC52 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0610;
+				LastUpgradeCheck = 0620;
 				ORGANIZATIONNAME = glimpse.io;
 				TargetAttributes = {
 					7E30DC2F1A0D6A510050EC52 = {
@@ -238,6 +241,7 @@
 				7E43C2D71A10763D003747B6 /* UIKitZ.swift in Sources */,
 				7E7E35461A152CCD00777D72 /* CoreDataZ.swift in Sources */,
 				7E43C2CF1A1073CA003747B6 /* OutletZ.swift in Sources */,
+				7ECE513B1A60A29600924B8E /* CoercibleZ.swift in Sources */,
 				7E43C2CB1A1072A4003747B6 /* FunnelZ.swift in Sources */,
 				7E43C2CD1A1072AC003747B6 /* ChannelZ.swift in Sources */,
 			);
@@ -359,6 +363,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_MODULES = YES;
+				COMBINE_HIDPI_IMAGES = YES;
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -377,6 +382,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_MODULES = YES;
+				COMBINE_HIDPI_IMAGES = YES;
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -392,6 +398,7 @@
 		7E30DC4A1A0D6A510050EC52 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
@@ -405,6 +412,7 @@
 		7E30DC4B1A0D6A510050EC52 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = ChannelZTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_NAME = ChannelZTests;

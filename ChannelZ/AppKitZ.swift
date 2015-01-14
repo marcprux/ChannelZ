@@ -2,7 +2,7 @@
 //  Funnels+AppKit.swift
 //  ChannelZ
 //
-//  Created by Marc Prud'hommeaux <mwp1@cornell.edu>
+//  Created by Marc Prud'hommeaux <marc@glimpse.io>
 //  License: MIT (or whatever)
 //
 
@@ -24,7 +24,7 @@
 
             var funnel = EventFunnel<NSEvent>(nil)
             funnel.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
-            observer.actions += [{ funnel.outlets.pump($0) }]
+            observer.actions += [{ funnel.outlets.receive($0) }]
 
             return funnel
         }
@@ -65,6 +65,26 @@
             return nil
         }
 
+    }
+
+    extension NSMenuItem {
+
+        public func controlz() -> EventFunnel<NSEvent> {
+
+            if self.target != nil && !(self.target is DispatchTarget) {
+                fatalError("controlz event handling overrides existing target/action for menu item; if this is really what you want to do, explicitly nil the target & action of the control")
+            }
+
+            let observer = self.target as? DispatchTarget ?? DispatchTarget() // use the existing dispatch target if it exists
+            self.target = observer
+            self.action = Selector("execute")
+
+            var funnel = EventFunnel<NSEvent>(nil)
+            funnel.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
+            observer.actions += [{ funnel.outlets.receive($0) }]
+            
+            return funnel
+        }
     }
 
     @objc public class DispatchTarget : NSObject {

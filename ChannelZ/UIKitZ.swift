@@ -2,7 +2,7 @@
 //  Funnels+UIKit.swift
 //  ChannelZ
 //
-//  Created by Marc Prud'hommeaux <mwp1@cornell.edu>
+//  Created by Marc Prud'hommeaux <marc@glimpse.io>
 //  License: MIT (or whatever)
 //
 
@@ -65,7 +65,7 @@
 
         // Boilerplate funnel/filter/map
         public typealias SelfFunnel = UIEventFunnel
-        public var funnelOf: FunnelOf<OutputType> { return FunnelOf(self) }
+        public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
         public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
         public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
 
@@ -101,6 +101,10 @@
                 objc_setAssociatedObject(control, &ctx, nil, objc_AssociationPolicy(OBJC_ASSOCIATION_ASSIGN))
                 self.attached = false
             }
+        }
+
+        public func prime() {
+            // no-op, since events are push
         }
 
         public func handleControlEvent(event: UIEvent) {

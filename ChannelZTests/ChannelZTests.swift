@@ -2,7 +2,7 @@
 //  ChannelZTests.swift
 //  ChannelZTests
 //
-//  Created by Marc Prud'hommeaux <mwp1@cornell.edu>
+//  Created by Marc Prud'hommeaux <marc@glimpse.io>
 //  License: MIT (or whatever)
 //
 
@@ -103,7 +103,7 @@ public class ChannelZTests: XCTestCase {
             state.optionalStringField = "foo"; XCTAssertEqual(0, --stringFieldChanges)
 
             #if DEBUG_CHANNELZ
-            XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 3, "observers should still be around before cleanup")
+            XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1, "observers should still be around before cleanup")
             #endif
         }
 
@@ -118,27 +118,27 @@ public class ChannelZTests: XCTestCase {
 
         let sv = sieveField("X")
         sv.filter({ _ in true }).map(countElements)
-        sv.channelOf.filter({ _ in true }).channelOf.map(countElements)
+        sv.channel().filter({ _ in true }).channel().map(countElements)
         sv.map(countElements)
 
         var a = sv.filter({ _ in true }).map(countElements).filter({ $0 % 2 == 1 })
         var aa = a.attach { strlen = $0 }
 
-        a.push("XXX")
+        a.value = ("AAA")
 
         XCTAssertEqual(3, strlen)
 
         // TODO: need to re-implement .value for FieldChannels, etc.
-//        a.push(a.pull() + "ZZ")
+//        a.value = (a.value + "ZZ")
 //        XCTAssertEqual(5, strlen)
-//        XCTAssertEqual("XXXZZ", a.pull())
+//        XCTAssertEqual("AAAZZ", a.value)
 //
-//        a.push(a.pull() + "A")
-//        XCTAssertEqual("XXXZZA", a.pull())
+//        a.value = (a.value + "A")
+//        XCTAssertEqual("AAAZZA", a.value)
 //        XCTAssertEqual(5, strlen, "even-numbered increment should have been filtered")
 //
-//        a.push(a.pull() + "A")
-//        XCTAssertEqual("XXXZZAA", a.pull())
+//        a.value = (a.value + "A")
+//        XCTAssertEqual("AAAZZAA", a.value)
 //        XCTAssertEqual(7, strlen)
 
 
@@ -156,15 +156,15 @@ public class ChannelZTests: XCTestCase {
 
 
         XCTAssertEqual(0, changeCount)
-        XCTAssertNotEqual(5, x.pull())
+        XCTAssertNotEqual(5, x.value)
 
         x <- 5
-        XCTAssertEqual(5, x.pull())
+        XCTAssertEqual(5, x.value)
         XCTAssertEqual(1, changeCount)
 
 
         x <- 5
-        XCTAssertEqual(5, x.pull())
+        XCTAssertEqual(5, x.value)
         XCTAssertEqual(1, changeCount)
 
         x <- 6
@@ -268,10 +268,10 @@ public class ChannelZTests: XCTestCase {
         c.attach { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
-        c.push(c.pull() + 1); XCTAssertEqual(0, --changes)
-        c.push(2); XCTAssertEqual(0, changes)
-        c.push(2); c.push(2); XCTAssertEqual(0, changes)
-        c.push(9); c.push(9); XCTAssertEqual(0, --changes)
+        c.value = (c.value + 1); XCTAssertEqual(0, --changes)
+        c.value = (2); XCTAssertEqual(0, changes)
+        c.value = (2); c.value = (2); XCTAssertEqual(0, changes)
+        c.value = (9); c.value = (9); XCTAssertEqual(0, --changes)
     }
 
     func testOptionalFieldSieve() {
@@ -282,13 +282,13 @@ public class ChannelZTests: XCTestCase {
         c -∞> { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
-        c.push(2); XCTAssertEqual(0, --changes)
-        c.push(2); c.push(2); XCTAssertEqual(0, changes)
-        c.push(nil); XCTAssertEqual(0, --changes)
-        c.push(nil); XCTAssertEqual(0, --changes) // FIXME: nil to nil is a change?
-        c.push(1); XCTAssertEqual(0, --changes)
-        c.push(1); XCTAssertEqual(0, changes)
-        c.push(2); XCTAssertEqual(0, --changes)
+        c.value = (2); XCTAssertEqual(0, --changes)
+        c.value = (2); c.value = (2); XCTAssertEqual(0, changes)
+        c.value = (nil); XCTAssertEqual(0, --changes)
+//        c.value = (nil); XCTAssertEqual(0, --changes) // FIXME: nil to nil is a change?
+        c.value = (1); XCTAssertEqual(0, --changes)
+        c.value = (1); XCTAssertEqual(0, changes)
+        c.value = (2); XCTAssertEqual(0, --changes)
     }
 
     func testKeyValueSieve() {
@@ -299,10 +299,10 @@ public class ChannelZTests: XCTestCase {
         c -∞> { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
-        c.push(""); XCTAssertEqual(0, changes, "default to default should not change")
-        c.push("A"); XCTAssertEqual(0, --changes, "default to A should change")
-        c.push("A"); XCTAssertEqual(0, changes, "A to A should not change")
-        c.push("B"); c.push("B"); XCTAssertEqual(0, --changes, "A to B should change once")
+        c.value = (""); XCTAssertEqual(0, changes, "default to default should not change")
+        c.value = ("A"); XCTAssertEqual(0, --changes, "default to A should change")
+        c.value = ("A"); XCTAssertEqual(0, changes, "A to A should not change")
+        c.value = ("B"); c.value = ("B"); XCTAssertEqual(0, --changes, "A to B should change once")
     }
 
     func testKeyValueSieveUnretainedOutlet() {
@@ -313,8 +313,8 @@ public class ChannelZTests: XCTestCase {
         c -∞> { _ in changes += 1 } // note we do not assign it locally, so it should immediately get cleaned up
 
         XCTAssertEqual(0, changes)
-        c.push("A"); XCTAssertEqual(1, changes, "unretained outlet should still listen")
-        c.push(""); XCTAssertEqual(2, changes, "unretained outlet should still listen")
+        c.value = ("A"); XCTAssertEqual(1, changes, "unretained outlet should still listen")
+        c.value = (""); XCTAssertEqual(2, changes, "unretained outlet should still listen")
     }
 
     func testOptionalNSKeyValueSieve() {
@@ -326,14 +326,14 @@ public class ChannelZTests: XCTestCase {
 
         for _ in 0...5 {
             XCTAssertEqual(0, changes)
-            c.push("A"); XCTAssertEqual(0, --changes, "unset to A should change")
-            c.push("A"); c.push("A"); XCTAssertEqual(0, changes, "A to A should not change")
-            c.push(nil); XCTAssertEqual(0, --changes, "A to nil should change")
-            c.push("B"); c.push("B"); XCTAssertEqual(0, --changes, "nil to B should change once")
-            c.push(nil); XCTAssertEqual(0, --changes, "B to nil should change")
+            c.value = ("A"); XCTAssertEqual(0, --changes, "unset to A should change")
+            c.value = ("A"); c.value = ("A"); XCTAssertEqual(0, changes, "A to A should not change")
+            c.value = (nil); XCTAssertEqual(0, --changes, "A to nil should change")
+            c.value = ("B"); c.value = ("B"); XCTAssertEqual(0, --changes, "nil to B should change once")
+            c.value = (nil); XCTAssertEqual(0, --changes, "B to nil should change")
 
             // this one is tricky, since with KVC, previous values are often cached as NSNull(), which != nil
-            c.push(nil); c.push(nil); XCTAssertEqual(0, changes, "nil to nil should not change")
+            c.value = (nil); c.value = (nil); XCTAssertEqual(0, changes, "nil to nil should not change")
         }
     }
 
@@ -346,14 +346,14 @@ public class ChannelZTests: XCTestCase {
 
         for _ in 0...5 {
             XCTAssertEqual(0, changes)
-            c.push("A"); XCTAssertEqual(0, --changes, "unset to A should change")
-            c.push("A"); c.push("A"); XCTAssertEqual(0, changes, "A to A should not change")
-            c.push(nil); XCTAssertEqual(0, --changes, "A to nil should change")
-            c.push("B"); c.push("B"); XCTAssertEqual(0, --changes, "nil to B should change once")
-            c.push(nil); XCTAssertEqual(0, --changes, "B to nil should change")
+            c.value = ("A"); XCTAssertEqual(0, --changes, "unset to A should change")
+            c.value = ("A"); c.value = ("A"); XCTAssertEqual(0, changes, "A to A should not change")
+            c.value = (nil); XCTAssertEqual(0, --changes, "A to nil should change")
+            c.value = ("B"); c.value = ("B"); XCTAssertEqual(0, --changes, "nil to B should change once")
+            c.value = (nil); XCTAssertEqual(0, --changes, "B to nil should change")
 
             // this one is tricky, since with KVC, previous values are often cached as NSNull(), which != nil
-            c.push(nil); c.push(nil); XCTAssertEqual(0, changes, "nil to nil should not change")
+            c.value = (nil); c.value = (nil); XCTAssertEqual(0, changes, "nil to nil should not change")
         }
     }
 
@@ -384,68 +384,68 @@ public class ChannelZTests: XCTestCase {
     func testFieldChannelFunnel() {
         var xs: Int = 1
         var x = channelField(xs)
-        var f: FunnelOf<Int> = x.funnelOf // read-only funnel of channel x
+        var f: FunnelOf<Int> = x.funnel() // read-only funnel of channel x
 
         var changes = 0
         var outlet = f -∞> { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
-        x.push(x.pull() + 1); XCTAssertEqual(0, --changes)
-        x.push(2); XCTAssertEqual(0, --changes)
-        x.push(2); XCTAssertEqual(0, --changes)
-        x.push(9);XCTAssertEqual(0, --changes)
+        x.value = (x.value + 1); XCTAssertEqual(0, --changes)
+        x.value = (2); XCTAssertEqual(0, --changes)
+        x.value = (2); XCTAssertEqual(0, --changes)
+        x.value = (9);XCTAssertEqual(0, --changes)
 
         outlet.detach()
-        x.push(-1); XCTAssertEqual(0, changes)
+        x.value = (-1); XCTAssertEqual(0, changes)
     }
 
     func testFieldChannelMapFunnel() {
         var xs: Bool = true
         var x = channelField(xs)
 
-        var xf: FunnelOf<Bool> = x.funnelOf // read-only funnel of channel x
+        var xf: FunnelOf<Bool> = x.funnel() // read-only funnel of channel x
 
         let fxa = xf -∞> { (x: Bool) in return }
 
         var y = x.map({ "\($0)" })
-        var yf: FunnelOf<String> = y.funnelOf // read-only funnel of mapped channel y
+        var yf: FunnelOf<String> = y.funnel() // read-only funnel of mapped channel y
 
         var changes = 0
         var fya: Outlet = yf -∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(0, changes)
-        x.push(!x.pull()); XCTAssertEqual(0, --changes)
-        x.push(true); XCTAssertEqual(0, --changes)
-        x.push(true); XCTAssertEqual(0, --changes)
-        x.push(false); XCTAssertEqual(0, --changes)
+        x.value = (!x.value); XCTAssertEqual(0, --changes)
+        x.value = (true); XCTAssertEqual(0, --changes)
+        x.value = (true); XCTAssertEqual(0, --changes)
+        x.value = (false); XCTAssertEqual(0, --changes)
 
         fya.detach()
-        x.push(true); XCTAssertEqual(0, changes)
+        x.value = (true); XCTAssertEqual(0, changes)
     }
 
     func testFieldSieveChannelMapFunnel() {
         var xs: Double = 1
 
         var x = sieveField(xs)
-        var xf: FunnelOf<Double> = x.funnelOf // read-only funnel of channel x
+        var xf: FunnelOf<Double> = x.funnel() // read-only funnel of channel x
 
         var fxa = xf -∞> { (x: Double) in return }
 
         var y = x.map({ "\($0)" })
-        var yf: FunnelOf<String> = y.funnelOf // read-only funnel of channel y
+        var yf: FunnelOf<String> = y.funnel() // read-only funnel of channel y
 
         var changes = 0
         var fya: Outlet = yf -∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(0, changes)
-        x.push(x.pull() + 1); XCTAssertEqual(0, --changes)
-        x.push(2); XCTAssertEqual(0, changes)
-        x.push(2); x.push(2); XCTAssertEqual(0, changes)
-        x.push(9); x.push(9); XCTAssertEqual(0, --changes)
+        x.value = (x.value + 1); XCTAssertEqual(0, --changes)
+        x.value = (2); XCTAssertEqual(0, changes)
+        x.value = (2); x.value = (2); XCTAssertEqual(0, changes)
+        x.value = (9); x.value = (9); XCTAssertEqual(0, --changes)
 
         fxa.detach()
         fya.detach()
-        x.push(-1); XCTAssertEqual(0, changes)
+        x.value = (-1); XCTAssertEqual(0, changes)
     }
 
     func testHeterogeneousConduit() {
@@ -467,30 +467,29 @@ public class ChannelZTests: XCTestCase {
         var a = ∞(Double(1.0))∞
         var b = ∞(UInt(1))∞
 
-        // “fatal error: floating point value can not be converted to UInt because it is less than UInt.min”
-        var af = a.filter({ $0 >= 0 }).map({ UInt($0) })
+        var af = a.filter({ $0 >= Double(UInt.min) && $0 <= Double(UInt.max) }).map({ UInt($0) })
         var bf = b.map({ Double($0) })
         let pipeline = conduit(af, bf)
 
         a <- 2.0
-        XCTAssertEqual(2.0, a.pull())
-        XCTAssertEqual(UInt(2), b.pull())
+        XCTAssertEqual(2.0, a.value)
+        XCTAssertEqual(UInt(2), b.value)
 
         b <- 3
-        XCTAssertEqual(3.0, a.pull())
-        XCTAssertEqual(UInt(3), b.pull())
+        XCTAssertEqual(3.0, a.value)
+        XCTAssertEqual(UInt(3), b.value)
 
         a <- 9.9
-        XCTAssertEqual(9.9, a.pull())
-        XCTAssertEqual(UInt(9), b.pull())
+        XCTAssertEqual(9.9, a.value)
+        XCTAssertEqual(UInt(9), b.value)
 
         a <- -5.0
-        XCTAssertEqual(-5.0, a.pull())
-        XCTAssertEqual(UInt(9), b.pull())
+        XCTAssertEqual(-5.0, a.value)
+        XCTAssertEqual(UInt(9), b.value)
 
         a <- 8.1
-        XCTAssertEqual(8.1, a.pull())
-        XCTAssertEqual(UInt(8), b.pull())
+        XCTAssertEqual(8.1, a.value)
+        XCTAssertEqual(UInt(8), b.value)
     }
 
     func testUnstableConduit() {
@@ -502,95 +501,129 @@ public class ChannelZTests: XCTestCase {
         let pipeline = conduit(af, b)
 
         a.value = 2
-        XCTAssertEqual(2, a.pull())
-        XCTAssertEqual(3, b.pull())
+        XCTAssertEqual(2, a.value)
+        XCTAssertEqual(3, b.value)
 
-        b.push(10)
-        XCTAssertEqual(10, a.pull())
-        XCTAssertEqual(10, b.pull())
+        b.value = (10)
+        XCTAssertEqual(10, a.value)
+        XCTAssertEqual(10, b.value)
 
         a <- 99
-        XCTAssertEqual(99, a.pull())
-        XCTAssertEqual(100, b.pull())
+        XCTAssertEqual(99, a.value)
+        XCTAssertEqual(100, b.value)
     }
 
 
-    func testCombination() {
+    func testAnyCombinations() {
         let a = ∞(Float(3.0))∞
         let b = ∞(UInt(7))∞
         let c = ∞(Bool(false))∞
 
         let d = c.map { "\($0)" }
 
-        var lastSum = 0.0
-        var lastString = ""
+        var lastFloat : Float = 0.0
+        var lastString : String = ""
 
-        var combo1 = a.combine(b)
+        var combo1 = (a || b)
         combo1 -∞> { (floatChange: Float?, uintChange: UInt?) in }
 
-        var combo2 = combo1.combine(d)
+        var combo2 = (a || b || d)
 
-        combo2 -∞> { (firstTuple: (floatChange: Float, uintChange: UInt), stringChange: String) in
+        var changes = 0
+
+        combo2 -∞> { (floatChange: Float?, uintChange: UInt?, stringChange: String?) in
+            changes++
+            if let float = floatChange {
+                lastFloat = float
+            }
+
+            if let str = stringChange {
+                lastString = str
+            }
+        }
+
+        a.value++
+        XCTAssertEqual(0, --changes)
+        XCTAssertEqual("", lastString)
+        XCTAssertEqual(Float(4.0), lastFloat)
+
+        c.value = true
+        XCTAssertEqual(0, --changes)
+        XCTAssertEqual("true", lastString)
+        XCTAssertEqual(Float(4.0), lastFloat)
+
+        c.value = false
+        XCTAssertEqual(0, --changes)
+        XCTAssertEqual("false", lastString)
+        XCTAssertEqual(Float(4.0), lastFloat)
+
+    }
+
+    func testAllCombinations() {
+        let a = ∞(Float(3.0))∞
+        let b = ∞(UInt(7))∞
+        let c = ∞(Bool(false))∞
+
+        let d = c.map { "\($0)" }
+
+        var lastFloat : Float = 0.0
+        var lastString : String = ""
+
+        var combo1 = (a && b)
+        combo1 -∞> { (floatChange: Float, uintChange: UInt) in }
+
+        var combo2 = (a && b && d)
+
+        var changes = 0
+
+        let outlet = combo2 -∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
+            changes++
+            lastFloat = floatChange
             lastString = stringChange
         }
 
-        let flattened = flatten(combo2)
+        XCTAssertEqual(0, changes)
+        XCTAssertEqual("", lastString)
+        XCTAssertEqual(Float(0.0), lastFloat)
 
-        let outlet2 = flattened.attach { (f, u, s) in
-            lastSum = Double(f) + Double(u)
-        }
+        outlet.prime()
 
-        a <- 12
-
-        XCTAssertEqual(19.0, lastSum)
+        XCTAssertEqual(0, --changes)
         XCTAssertEqual("false", lastString)
+        XCTAssertEqual(Float(3.0), lastFloat)
 
-
-        a <- 13
-        XCTAssertEqual(Float(13), a.pull())
-        XCTAssertEqual(UInt(7), b.pull())
-        XCTAssertEqual(20.0, lastSum)
+        a.value++
+        XCTAssertEqual(0, --changes)
         XCTAssertEqual("false", lastString)
+        XCTAssertEqual(Float(4.0), lastFloat)
 
-        d <- true
-        XCTAssertEqual(Float(13), a.pull())
-        XCTAssertEqual(UInt(7), b.pull())
-        XCTAssertEqual(20.0, lastSum)
+        c.value = true
+        XCTAssertEqual(0, --changes)
         XCTAssertEqual("true", lastString)
+        XCTAssertEqual(Float(4.0), lastFloat)
 
-        b <- 2
-        XCTAssertEqual(15.0, lastSum)
-        XCTAssertEqual("true", lastString)
+        c.value = false
+        XCTAssertEqual(0, --changes)
+        XCTAssertEqual("false", lastString)
+        XCTAssertEqual(Float(4.0), lastFloat)
 
-        combo2.push(((1.5, 12), true)) // push a combination back
-        XCTAssertEqual(Float(1.5), a.pull())
-        XCTAssertEqual(UInt(12), b.pull())
-        XCTAssertEqual(true, c.pull())
-
-        XCTAssertEqual(13.5, lastSum)
-        XCTAssertEqual("true", lastString)
-
-        b <- 20
-        XCTAssertEqual(21.5, lastSum)
-
-        flattened.push(-1, 1, false) // push a flattened combo back
-        XCTAssertEqual(Float(-1), a.pull())
-        XCTAssertEqual(UInt(1), b.pull())
-        XCTAssertEqual(false, c.pull())
-
-        flattened.pull()
-        flattened.pull()
     }
 
+    func testMixedCombinations() {
+        let a = ∞(Int(0.0))∞
+
+        var and: FunnelOf<(Int, Int, Int, Int, Int, Int, Int)> = a && a && a && a && a && a && a
+        var or: FunnelOf<(Int?, Int?, Int?, Int?, Int?, Int?, Int?)> = a || a || a || a || a || a || a
+        var andor: FunnelOf<((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = a && a || a && a || a && a || a
+    }
 
     func testDeepNestedFilter() {
         let t = ∞(1.0)∞
 
-
         func identity<A>(a: A) -> A { return a }
         func always<A>(a: A) -> Bool { return true }
 
-        let deepNest = t.funnelOf
+        let deepNest = t.funnel()
             .map(identity).filter(always)
             .map(identity).filter(always)
             .map(identity).filter(always)
@@ -607,7 +640,7 @@ public class ChannelZTests: XCTestCase {
 
 
         // FilteredChannel<MappableChannel<....
-        let flatNest = deepNest.funnelOf
+        let flatNest = deepNest.funnel()
 
         let deepOutlet = deepNest.attach({ _ in })
 
@@ -639,8 +672,8 @@ public class ChannelZTests: XCTestCase {
 
 
         // FilteredChannel<MappableChannel<....
-        let flatFunnel = deepNest.funnelOf
-        let flatChannel = deepNest.channelOf
+        let flatFunnel = deepNest.funnel()
+        let flatChannel = deepNest.channel()
 
         let deepOutlet = deepNest.attach({ _ in })
 
@@ -661,31 +694,31 @@ public class ChannelZTests: XCTestCase {
         // bindz((n1, identity), (n2, identity))
         // (n1, { $0 + 1 }) <~∞~> (n2, { $0.integerValue - 1 }) <~∞~> (n3, { $0 + 1 })
 
-        let n1_n2 = n1.map({ $0 + 1 }) <=∞=> n2.map({ $0.integerValue - 1 })
+        let n1_n2 = n1.map({ NSNumber(int: $0 + 1) }) <=∞=> n2.map({ $0.integerValue - 1 })
         let n2_n3 = (n2, { .Some($0.integerValue - 1) }) <~∞~> (n3, { .Some($0 + 1) })
 
         n1 <- 2
-        XCTAssertEqual(2, n1.pull())
-        XCTAssertEqual(3, n2.pull() ?? -1)
-        XCTAssertEqual(2, n3.pull())
+        XCTAssertEqual(2, n1.value)
+        XCTAssertEqual(3, n2.value ?? -1)
+        XCTAssertEqual(2, n3.value)
 
         n2 <- 5
-        XCTAssertEqual(4, n1.pull())
-        XCTAssertEqual(5, n2.pull() ?? -1)
-        XCTAssertEqual(4, n3.pull())
+        XCTAssertEqual(4, n1.value)
+        XCTAssertEqual(5, n2.value ?? -1)
+        XCTAssertEqual(4, n3.value)
 
         n3 <- -1
-        XCTAssertEqual(-1, n1.pull())
-        XCTAssertEqual(0, n2.pull() ?? -1)
-        XCTAssertEqual(-1, n3.pull())
+        XCTAssertEqual(-1, n1.value)
+        XCTAssertEqual(0, n2.value ?? -1)
+        XCTAssertEqual(-1, n3.value)
 
         // TODO: fix bindings
 //        // make sure disconnecting the binding actually disconnects is
 //        n1_n2.disconnect()
 //        n1 <- 20
-//        XCTAssertEqual(20, n1.pull())
-//        XCTAssertEqual(0, n2.pull() ?? -1)
-//        XCTAssertEqual(-1, n3.pull())
+//        XCTAssertEqual(20, n1.value)
+//        XCTAssertEqual(0, n2.value ?? -1)
+//        XCTAssertEqual(-1, n3.value)
     }
 
     func testTransformableConduits() {
@@ -717,20 +750,20 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual("10", state.optionalStringField ?? "<nil>")
 
         state.optionalStringField = "123"
-        XCTAssertEqual(123, num.pull())
+        XCTAssertEqual(123, num.value)
         
         num <- 456
         XCTAssertEqual("456", dict["stringKey"] as NSString? ?? "<nil>")
 
         dict["stringKey"] = "-98"
-        XCTAssertEqual(-98, num.pull())
+        XCTAssertEqual(-98, num.value)
 
         // tests re-entrancy with inconsistent equivalencies
         dict["stringKey"] = "ABC"
-        XCTAssertEqual(-98, num.pull())
+        XCTAssertEqual(-98, num.value)
 
         dict["stringKey"] = "66"
-        XCTAssertEqual(66, num.pull())
+        XCTAssertEqual(66, num.value)
 
         /* ###
         // nullifying should change the proxy
@@ -761,24 +794,24 @@ public class ChannelZTests: XCTestCase {
 
         let qn1_qn2 = qn1 <~∞~> qn2
 
-        qn1.push(qn1.pull() + 1)
+        qn1.value = (qn1.value + 1)
         XCTAssertEqual(1, state.intField)
 
-        qn1.push(qn1.pull() - 1)
+        qn1.value = (qn1.value - 1)
         XCTAssertEqual(0, state.intField)
 
-        qn1.push(qn1.pull() + 1)
+        qn1.value = (qn1.value + 1)
         XCTAssertEqual(1, state.intField)
 
         state.intField += 10
-        XCTAssertEqual(11, qn1.pull())
+        XCTAssertEqual(11, qn1.value)
 
-        qn1.push(qn1.pull() + 1)
+        qn1.value = (qn1.value + 1)
         XCTAssertEqual(12, state.intField)
 
         var qs1 = ∞("")∞
 
-        XCTAssertEqual("", qs1.pull())
+        XCTAssertEqual("", qs1.value)
 
         let qs2 = state∞(state.optionalStringField)
 
@@ -919,28 +952,41 @@ public class ChannelZTests: XCTestCase {
 //        let b1 = x <=∞~> (y, { $0 == round($0) ? Optional<T1>.Some(T1($0)) : Optional<T1>.None })
 //
 //        x <- 2
-//        XCTAssertEqual(T1(2), x.pull())
-//        XCTAssertEqual(T2(2.0), y.pull())
+//        XCTAssertEqual(T1(2), x.value)
+//        XCTAssertEqual(T2(2.0), y.value)
 //
 //        y <- 3
-//        XCTAssertEqual(T1(3), x.pull())
-//        XCTAssertEqual(T2(3.0), y.pull())
+//        XCTAssertEqual(T1(3), x.value)
+//        XCTAssertEqual(T2(3.0), y.value)
 //
 //        y <- 9.9
-//        XCTAssertEqual(T1(3), x.pull())
-//        XCTAssertEqual(T2(9.9), y.pull())
+//        XCTAssertEqual(T1(3), x.value)
+//        XCTAssertEqual(T2(9.9), y.value)
 //
 //        y <- 17
-//        XCTAssertEqual(T1(17), x.pull())
-//        XCTAssertEqual(T2(17.0), y.pull())
+//        XCTAssertEqual(T1(17), x.value)
+//        XCTAssertEqual(T2(17.0), y.value)
 //
-//        x.push(x.pull() + 1)
-//        XCTAssertEqual(T1(18), x.pull())
-//        XCTAssertEqual(T2(18.0), y.pull())
+//        x.value = (x.value + 1)
+//        XCTAssertEqual(T1(18), x.value)
+//        XCTAssertEqual(T2(18.0), y.value)
 //
-//        y.push(y.pull() + 0.5)
-//        XCTAssertEqual(T1(18), x.pull())
-//        XCTAssertEqual(T2(18.5), y.pull())
+//        y.value = (y.value + 0.5)
+//        XCTAssertEqual(T1(18), x.value)
+//        XCTAssertEqual(T2(18.5), y.value)
+//    }
+
+//    func testCast() {
+//        let field: CombinedChannel<MappedChannel<FilteredChannel<MappedChannel<ChannelZ<Int>, Int, Int>>, String, Int>, ChannelZ<Int>> = channelField(99).map({ $0 * 2 }).filter({ $0 >= 0 }).map({ "\($0)" }).combine(channelField(2))
+//
+//        let field2: CombinedChannel<MappedChannel<FilteredChannel<MappedChannel<ChannelZ<Int>, Int, Int>>, String, Int>, MappedChannel<FilteredChannel<MappedChannel<ChannelZ<Int>, Int, Int>>, String, Int>> = channelField(99).map({ $0 * 2 }).filter({ $0 >= 0 }).map({ "\($0)" }).combine(channelField(99).map({ $0 * 2 }).filter({ $0 >= 0 }).map({ "\($0)" }))
+//
+//        let fld1 : LazySequence<MapSequenceView<FilterSequenceView<MapCollectionView<RandomAccessReverseView<[Int]>, Double>>, Float>> =
+//                   lazy([1, 2, 3]).reverse().map({ Double($0) }).filter({ $0 >= 0 }).map({ Float($0) })
+//
+//        let fld2: SequenceOf<Float> = SequenceOf(fld1)
+//
+//        let fld3 : Array<Float> = ([1, 2, 3]).reverse().map({ Double($0) }).filter({ $0 >= 0 }).map({ Float($0) })
 //    }
 
     func testConversionConduits() {
@@ -962,7 +1008,7 @@ public class ChannelZTests: XCTestCase {
         percentFormatter.numberStyle = .PercentStyle
 
         let toPercent: (Double)->(NSString?) = { percentFormatter.stringFromNumber($0) }
-        let fromPercent: (NSString?)->(Double?) = { percentFormatter.numberFromString($0 ?? "XXX")?.doubleValue }
+        let fromPercent: (NSString?)->(Double?) = { percentFormatter.numberFromString($0 ?? "AAA")?.doubleValue }
 
         let state2 = StatefulObject()
         let state2s = state2∞(state2.optionalNSStringField)
@@ -979,56 +1025,56 @@ public class ChannelZTests: XCTestCase {
         let fromSpelled: (String)->(Double?) = { spellingFormatter.numberFromString($0)?.doubleValue }
         let b3 = (num, toSpelled) <~∞~> (state3s, fromSpelled)
 
-        num.push(num.pull() + 1)
-        XCTAssertEqual(1, num.pull())
+        num.value = (num.value + 1)
+        XCTAssertEqual(1, num.value)
         XCTAssertEqual("1", state1.optionalStringField ?? "<nil>")
         XCTAssertEqual("100%", state2.optionalNSStringField ?? "<nil>")
         XCTAssertEqual("one", state3.requiredStringField)
 
-        num.push(num.pull() + 1)
-        XCTAssertEqual(2, num.pull())
+        num.value = (num.value + 1)
+        XCTAssertEqual(2, num.value)
         XCTAssertEqual("2", state1.optionalStringField ?? "<nil>")
         XCTAssertEqual("200%", state2.optionalNSStringField ?? "<nil>")
         XCTAssertEqual("two", state3.requiredStringField)
 
         state1.optionalStringField = "3"
-        XCTAssertEqual(3, num.pull())
+        XCTAssertEqual(3, num.value)
         XCTAssertEqual("3", state1.optionalStringField ?? "<nil>")
         XCTAssertEqual("300%", state2.optionalNSStringField ?? "<nil>")
         XCTAssertEqual("three", state3.requiredStringField)
 
         state2.optionalNSStringField = "400%"
-        XCTAssertEqual(4, num.pull())
+        XCTAssertEqual(4, num.value)
         XCTAssertEqual("4", state1.optionalStringField ?? "<nil>")
         XCTAssertEqual("400%", state2.optionalNSStringField ?? "<nil>")
         XCTAssertEqual("four", state3.requiredStringField)
 
         state3.requiredStringField = "five"
-        XCTAssertEqual(5, num.pull())
+        XCTAssertEqual(5, num.value)
         XCTAssertEqual("5", state1.optionalStringField ?? "<nil>")
         XCTAssertEqual("500%", state2.optionalNSStringField ?? "<nil>")
         XCTAssertEqual("five", state3.requiredStringField)
 
         state3.requiredStringField = "gibberish" // won't parse, so numbers should remain unchanged
-        XCTAssertEqual(5, num.pull())
+        XCTAssertEqual(5, num.value)
         XCTAssertEqual("5", state1.optionalStringField ?? "<nil>")
         XCTAssertEqual("500%", state2.optionalNSStringField ?? "<nil>")
         XCTAssertEqual("gibberish", state3.requiredStringField)
 
         state2.optionalNSStringField = nil
-        XCTAssertEqual(5, num.pull())
+        XCTAssertEqual(5, num.value)
         XCTAssertEqual("5", state1.optionalStringField ?? "<nil>")
         XCTAssertNil(state2.optionalNSStringField)
         XCTAssertEqual("gibberish", state3.requiredStringField)
 
         num <- 5.4321
-        XCTAssertEqual(5.4321, num.pull())
+        XCTAssertEqual(5.4321, num.value)
         XCTAssertEqual("5.432", state1.optionalStringField ?? "<nil>")
         XCTAssertEqual("543%", state2.optionalNSStringField ?? "<nil>")
         XCTAssertEqual("five point four three two one", state3.requiredStringField)
 
         state2.optionalNSStringField = "18.3%"
-        XCTAssertEqual(0.183, num.pull())
+        XCTAssertEqual(0.183, num.value)
         XCTAssertEqual("0.183", state1.optionalStringField ?? "<nil>")
         XCTAssertEqual("18%", state2.optionalNSStringField ?? "<nil>")
         XCTAssertEqual("zero point one eight three", state3.requiredStringField)
@@ -1215,6 +1261,17 @@ public class ChannelZTests: XCTestCase {
             XCTAssertEqual(s.decimalNumberField.value, c.numberField)
             s.decimalNumberField.value = NSDecimalNumber(string: "9e12")
             XCTAssertEqual(s.decimalNumberField.value, c.numberField)
+        }
+
+        autoreleasepool {
+            let o = NumericHolderOptionalStruct()
+            let c = NumericHolderClass()
+            c∞c.doubleField <=∞=> o.doubleField
+            o.doubleField.value = 12.34
+            XCTAssertEqual(12.34, c.doubleField)
+
+            // FIXME: crash (“could not set nil as the value for the key doubleField”), since NumericHolderClass.doubleField cannot accept optionals; the conduit works because non-optionals are allowed to be cast to optionals
+//            o.doubleField.value = nil
         }
     }
 
@@ -1408,7 +1465,7 @@ public class ChannelZTests: XCTestCase {
         outlet!.detach() // ensure that the outlet doesn't try to access a bad pointer
     }
 
-    public func test1stFieldRemoval() {
+    public func teststFieldRemoval() {
         let startCount = ChannelZKeyValueObserverCount
         let startObCount = StatefulObjectCount
         autoreleasepool {
@@ -1421,6 +1478,36 @@ public class ChannelZTests: XCTestCase {
             XCTAssertEqual(0, changes)
             ob.intField++
             XCTAssertEqual(1, changes)
+            ob.intField++
+            XCTAssertEqual(2, changes)
+        }
+
+        XCTAssertEqual(0, ChannelZKeyValueObserverCount - startCount)
+        XCTAssertEqual(0, StatefulObjectCount - startObCount)
+    }
+
+    public func testManyKeyOutlets() {
+        let startCount = ChannelZKeyValueObserverCount
+        let startObCount = StatefulObjectCount
+
+        autoreleasepool {
+            let ob = StatefulObject()
+
+            for count in 1...20 {
+                var changes = 0
+
+                for i in 1...count {
+                    // using the keypath name because it is faster than auto-identification
+                    (ob ∞ (ob.intField, "intField")).attach { _ in changes += 1 }
+                }
+                XCTAssertEqual(1, ChannelZKeyValueObserverCount - startCount)
+
+                XCTAssertEqual(0 * count, changes)
+                ob.intField++
+                XCTAssertEqual(1 * count, changes)
+                ob.intField++
+                XCTAssertEqual(2 * count, changes)
+            }
         }
 
         XCTAssertEqual(0, ChannelZKeyValueObserverCount - startCount)
@@ -1428,27 +1515,6 @@ public class ChannelZTests: XCTestCase {
     }
 
     public func testManyObserversOnBlockOperation() {
-        /** FIXME: we get a crash when there are a lot of observers on a single instance of NSOperation or NSBlockOperation (but no other known Foundation or non-Foundation classes!); internet seems to suggest this is a known issue when an object has many observers; one workaround seems to be to just skip the removal of notifications if the class is not the swizzled NSKVONotifying_ subclass, which doesn't seem to trigger the usually dealloc exception.
-
-        #0	0x00007fff9709bf69 in CFArrayGetCount ()
-        #1	0x00007fff94642791 in _NSKeyValueObservationInfoCreateByRemoving ()
-        #2	0x00007fff946424fb in -[NSObject(NSKeyValueObserverRegistration) _removeObserver:forProperty:] ()
-        #3	0x00007fff94642369 in -[NSObject(NSKeyValueObserverRegistration) removeObserver:forKeyPath:] ()
-        #4	0x00007fff94651ad4 in -[NSObject(NSKeyValueObserverRegistration) removeObserver:forKeyPath:context:] ()
-        #5	0x00000001050d390a in ChannelZ.TargetAssociatedObserver.deactivate (ChannelZ.TargetAssociatedObserver)() -> () at FoundationZ.swift:373
-        #6	0x00000001050d67d6 in ChannelZ.TargetAssociatedObserver.__deallocating_deinit at FoundationZ.swift:380
-        #7	0x00000001050d6832 in @objc ChannelZ.TargetAssociatedObserver.__deallocating_deinit ()
-        #8	0x00007fff900a068c in objc_object::sidetable_release(bool) ()
-        #9	0x00007fff9008b81f in _object_remove_assocations ()
-        #10	0x00007fff900880db in objc_destructInstance ()
-        #11	0x00007fff9008802c in object_dispose ()
-        #12	0x00007fff945f6291 in -[NSOperation dealloc] ()
-        #13	0x00007fff900a068c in objc_object::sidetable_release(bool) ()
-        #14	0x00007fff9008891f in (anonymous namespace)::AutoreleasePoolPage::pop(void*) ()
-        #15	0x0000000100784b7e in ObjectiveC.autoreleasepool (() -> ()) -> () ()
-        #16	0x0000000104f40ce1 in ChannelZTests.ChannelZTests.testManyObserversOnNSBlockOperation (ChannelZTests.ChannelZTests)() -> () at /opt/src/impathic/glimpse/ChannelZ/ChannelZTests/ChannelZTests.swift:1452
-        */
-
         let state = StatefulObject()
         XCTAssertEqual("ChannelZTests.StatefulObject", NSStringFromClass(state.dynamicType))
         state∞state.intField -∞> { _ in }
@@ -1456,14 +1522,14 @@ public class ChannelZTests: XCTestCase {
 
         let operation = NSOperation()
         XCTAssertEqual("NSOperation", NSStringFromClass(operation.dynamicType))
-//        operation∞operation.cancelled -∞> { _ in }
+        operation∞operation.cancelled -∞> { _ in }
         operation∞(operation.cancelled, "cancelled") -∞> { _ in }
         XCTAssertEqual("NSKVONotifying_NSOperation", NSStringFromClass(operation.dynamicType))
 
         // progress is not automatically instrumented with NSKVONotifying_ (implying that it handles its own KVO)
         let progress = NSProgress()
         XCTAssertEqual("NSProgress", NSStringFromClass(progress.dynamicType))
-//        progress∞progress.fractionCompleted -∞> { _ in }
+        progress∞progress.fractionCompleted -∞> { _ in }
         progress∞(progress.fractionCompleted, "fractionCompleted") -∞> { _ in }
         XCTAssertEqual("NSProgress", NSStringFromClass(progress.dynamicType))
 
@@ -1564,6 +1630,66 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(0, --counter)
     }
 
+    public func testPrime() {
+        let c = NumericHolderClass()
+        var count = 0
+        let channel = c∞c.doubleField
+        channel -∞> { _ in count += 1 }
+        XCTAssertEqual(0, count)
+
+        // ensure that pumping the channel actually causes it to send out a value
+//        channel.pump()
+//        XCTAssertEqual(1, count)
+//        channel.pump()
+//        XCTAssertEqual(2, count)
+    }
+
+    public func testPullFiltered() {
+        let intField = ∞(Int(0))∞
+
+        let ch1 = intField.map({ Int32($0) }).map({ Double($0) }).map({ Float($0) })
+
+        let ch2 = intField.map({ Int32($0) }).map({ Double($0) }).map({ Float($0) }).channel()
+
+        let intToUIntChannel = intField.filter({ $0 >= 0 }).map({ UInt($0) })
+        var lastUInt = UInt(0)
+        intToUIntChannel.attach({ lastUInt = $0 })
+
+        intField.value = 10
+        XCTAssertEqual(UInt(10), lastUInt)
+        XCTAssertEqual(Int(10), intToUIntChannel.value)
+
+        intField.value = -1
+        XCTAssertEqual(UInt(10), lastUInt, "changing a filtered value shouldn't pass down")
+
+        XCTAssertEqual(-1, intToUIntChannel.value, "pulling a filtered field should yield nil")
+    }
+
+    public func testChannelSignatures() {
+        let small = ∞(Int8(0))∞
+        let larger: MappedChannel<MappedChannel<MappedChannel<ChannelZ<Int8>, Int16>, Int32>, Int64> = small.map({ Int16($0) }).map({ Int32($0) }).map({ Int64($0) })
+        let largerz: ChannelOf<Int8, Int64> = larger.channel()
+
+        let large = ∞(Int64(0))∞
+        let smallerRaw: MappedChannel<MappedChannel<MappedChannel<ChannelZ<Int64>, Int32>, Int16>, Int8> = large.map({ Int32($0) }).map({ Int16($0) }).map({ Int8($0) })
+        let smallerClamped: MappedChannel<MappedChannel<MappedChannel<ChannelZ<Int64>, Int32>, Int16>, Int8> = large.map({ let ret: Int32 = $0 > Int64(Int32.max) ? Int32.max : $0 < Int64(Int32.min) ? Int32.min : Int32($0); return ret }).map({ let ret: Int16 = $0 > Int32(Int16.max) ? Int16.max : $0 < Int32(Int16.min) ? Int16.min : Int16($0); return ret }).map({ let ret: Int8 = $0 > Int16(Int8.max) ? Int8.max : $0 < Int16(Int8.min) ? Int8.min : Int8($0); return ret })
+
+//        let smaller2 = large.filter({ $0 >= Int64(Int32.min) && $0 <= Int64(Int32.max) }).map({ Int32($0) }).filter({ $0 >= Int32(Int16.min) && $0 <= Int32(Int16.max) }).map({ Int16($0) }) // .filter({ $0 >= Int16(Int8.min) && $0 <= Int16(Int8.max) }).map({ Int8($0) })
+        let smallerz: ChannelOf<Int64, Int8> = smallerClamped.channel()
+
+        let link = conduit(largerz, smallerz)
+
+        large.value = 1
+        XCTAssertEqual(large.value, Int64(small.value), "stable conduit")
+
+        large.value = Int64(Int8.max)
+        XCTAssertEqual(large.value, Int64(small.value), "stable conduit")
+
+        large.value = Int64(Int8.max) + 1
+        XCTAssertNotEqual(large.value, Int64(small.value), "unstable conduit")
+
+    }
+
     public func testFunnelCleanup() {
 
         autoreleasepool {
@@ -1604,6 +1730,13 @@ public class ChannelZTests: XCTestCase {
     }
 
     public func testOperationChannels() {
+        // wrap test in an XCTAssert because it will perform a try/catch
+
+        // file:///opt/src/impathic/glimpse/ChannelZ/ChannelZTests/ChannelZTests.swift: test failure: -[ChannelZTests testOperationChannels()] failed: XCTAssertTrue failed: throwing "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x10038d5b0> for the key path "isFinished" from <NSBlockOperation 0x1003854d0> because it is not registered as an observer." -
+        XCTAssert(operationChannelTest())
+    }
+
+    public func operationChannelTest() -> Bool {
 
         for (doCancel, doStart) in [(true, false), (false, true)] {
             let op = NSBlockOperation { () -> Void in }
@@ -1649,62 +1782,64 @@ public class ChannelZTests: XCTestCase {
             XCTAssertEqual(doStart, finished)
 //            XCTAssertEqual(false, ready) // seems rather indeterminate
         }
+
+        return true
     }
 
-    public func testBindingCombinations() {
-        autoreleasepool {
-            XCTAssertEqual(0, StatefulObjectCount)
-
-            let state1 = StatefulObjectSubclass()
-            let state2 = StatefulObject()
-            let state3 = StatefulObjectSubSubclass()
-            let state4 = StatefulObject()
-
-//            let flat2 : ChannelOf<(Int, Int), (Int, Int)> = state1∞state1.intField + state2∞state2.intField
+//    public func testBindingCombinations() {
+//        autoreleasepool {
+//            XCTAssertEqual(0, StatefulObjectCount)
 //
-//            let flat3 : ChannelOf<((Int, Int), Int), ((Int, Int), Int)> = flat2 + state3∞state3.intField
+//            let state1 = StatefulObjectSubclass()
+//            let state2 = StatefulObject()
+//            let state3 = StatefulObjectSubSubclass()
+//            let state4 = StatefulObject()
 //
-////            let flat3 : ChannelOf<((Int, Int), Int), ((Int, Int), Int)> = state1∞state1.intField + state2∞state2.intField + state3∞state3.intField
+////            let flat2 : ChannelOf<(Int, Int), (Int, Int)> = state1∞state1.intField + state2∞state2.intField
+////
+////            let flat3 : ChannelOf<((Int, Int), Int), ((Int, Int), Int)> = flat2 + state3∞state3.intField
+////
+//////            let flat3 : ChannelOf<((Int, Int), Int), ((Int, Int), Int)> = state1∞state1.intField + state2∞state2.intField + state3∞state3.intField
+////
+//////            let flat3 : ChannelOf<(Int, Int, Int), (Int, Int, Int)> = state1∞state1.intField + state2∞state2.intField + state3∞state3.intField
+////
+////            let flat4 = state1∞state1.intField + state2∞state2.intField + state3∞state3.intField + state4∞state4.intField
+////
+////            flat4 -∞> { (((i1: Int, i2: Int), i3: Int), i4: Int) in
+//////                println("channel change: \(i1) \(i2) \(i3) \(i4)")
+////            }
+////
+//            state1∞state1.intField + state2∞state2.intField <=∞=> state4∞state4.intField + state3∞state3.intField
 //
-////            let flat3 : ChannelOf<(Int, Int, Int), (Int, Int, Int)> = state1∞state1.intField + state2∞state2.intField + state3∞state3.intField
+//            state1.intField++
+//            XCTAssertEqual(state1.intField, 1)
+//            XCTAssertEqual(state2.intField, 0)
+//            XCTAssertEqual(state3.intField, 0)
+//            XCTAssertEqual(state4.intField, 1)
 //
-//            let flat4 = state1∞state1.intField + state2∞state2.intField + state3∞state3.intField + state4∞state4.intField
+//            state2.intField++
+//            XCTAssertEqual(state1.intField, 1)
+//            XCTAssertEqual(state2.intField, 1)
+//            XCTAssertEqual(state3.intField, 1)
+//            XCTAssertEqual(state4.intField, 1)
 //
-//            flat4 -∞> { (((i1: Int, i2: Int), i3: Int), i4: Int) in
-////                println("channel change: \(i1) \(i2) \(i3) \(i4)")
-//            }
+//            state3.intField++
+//            XCTAssertEqual(state1.intField, 1)
+//            XCTAssertEqual(state2.intField, 2)
+//            XCTAssertEqual(state3.intField, 2)
+//            XCTAssertEqual(state4.intField, 1)
 //
-            state1∞state1.intField + state2∞state2.intField <=∞=> state4∞state4.intField + state3∞state3.intField
-
-            state1.intField++
-            XCTAssertEqual(state1.intField, 1)
-            XCTAssertEqual(state2.intField, 0)
-            XCTAssertEqual(state3.intField, 0)
-            XCTAssertEqual(state4.intField, 1)
-
-            state2.intField++
-            XCTAssertEqual(state1.intField, 1)
-            XCTAssertEqual(state2.intField, 1)
-            XCTAssertEqual(state3.intField, 1)
-            XCTAssertEqual(state4.intField, 1)
-
-            state3.intField++
-            XCTAssertEqual(state1.intField, 1)
-            XCTAssertEqual(state2.intField, 2)
-            XCTAssertEqual(state3.intField, 2)
-            XCTAssertEqual(state4.intField, 1)
-
-            state4.intField++
-            XCTAssertEqual(state1.intField, 2)
-            XCTAssertEqual(state2.intField, 2)
-            XCTAssertEqual(state3.intField, 2)
-            XCTAssertEqual(state4.intField, 2)
-
-            XCTAssertEqual(4, StatefulObjectCount)
-        }
-        
-        XCTAssertEqual(0, StatefulObjectCount)
-    }
+//            state4.intField++
+//            XCTAssertEqual(state1.intField, 2)
+//            XCTAssertEqual(state2.intField, 2)
+//            XCTAssertEqual(state3.intField, 2)
+//            XCTAssertEqual(state4.intField, 2)
+//
+//            XCTAssertEqual(4, StatefulObjectCount)
+//        }
+//        
+//        XCTAssertEqual(0, StatefulObjectCount)
+//    }
 
     public func testStraightConduit() {
         let state1 = StatefulObject()
@@ -1756,20 +1891,23 @@ public class ChannelZTests: XCTestCase {
         state3.map({ $0 + 4 }) <=∞=> state2
         state3.map({ $0 + 5 }) <=∞=> state3
 
+//        let base = 12 //needed when conduit pumping is enabled
+        let base = 0
+
         state1.value++
-        XCTAssertEqual(state1.value, 1)
-        XCTAssertEqual(state2.value, 5)
-        XCTAssertEqual(state3.value, 1)
+        XCTAssertEqual(state1.value, base + 1)
+        XCTAssertEqual(state2.value, base + 5)
+        XCTAssertEqual(state3.value, base + 1)
 
         state2.value++
-        XCTAssertEqual(state1.value, 9)
-        XCTAssertEqual(state2.value, 6)
-        XCTAssertEqual(state3.value, 6)
+        XCTAssertEqual(state1.value, base + 9)
+        XCTAssertEqual(state2.value, base + 6)
+        XCTAssertEqual(state3.value, base + 6)
 
         state3.value++
-        XCTAssertEqual(state1.value, 10)
-        XCTAssertEqual(state2.value, 11)
-        XCTAssertEqual(state3.value, 7)
+        XCTAssertEqual(state1.value, base + 10)
+        XCTAssertEqual(state2.value, base + 11)
+        XCTAssertEqual(state3.value, base + 7)
 
 //        ChannelZReentrancyLimit = 1
     }
@@ -1815,7 +1953,7 @@ public class ChannelZTests: XCTestCase {
         let button = NSButton()
 
         /// seems to be needed or else the button won't get clicked
-        NSWindow().contentView!.addSubview(button)
+        (NSWindow().contentView as NSView).addSubview(button)
 
         var stateChanges = 0
 
@@ -1852,7 +1990,7 @@ public class ChannelZTests: XCTestCase {
         let textField = NSTextField()
 
         /// seems to be needed or else the button won't get clicked
-        NSWindow().contentView!.addSubview(textField)
+        (NSWindow().contentView as NSView).addSubview(textField)
 
         var text = ""
 
@@ -2240,4 +2378,21 @@ struct NumericHolderStruct {
     let uInt8Field = ∞(UInt8(0))∞
     let int8Field = ∞(Int8(0))∞
     let boolField = ∞(Bool(false))∞
+}
+
+struct NumericHolderOptionalStruct {
+    let numberField = ∞(nil as NSNumber?)∞
+    let decimalNumberField = ∞(nil as NSDecimalNumber?)∞
+    let doubleField = ∞(nil as Double?)∞
+    let floatField = ∞(nil as Float?)∞
+    let intField = ∞(nil as Int?)∞
+    let uInt64Field = ∞(nil as UInt64?)∞
+    let int64Field = ∞(nil as Int64?)∞
+    let uInt32Field = ∞(nil as UInt32?)∞
+    let int32Field = ∞(nil as Int32?)∞
+    let uInt16Field = ∞(nil as UInt16?)∞
+    let int16Field = ∞(nil as Int16?)∞
+    let uInt8Field = ∞(nil as UInt8?)∞
+    let int8Field = ∞(nil as Int8?)∞
+    let boolField = ∞(nil as Bool?)∞
 }
