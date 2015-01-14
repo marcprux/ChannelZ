@@ -1,3 +1,3 @@
 language: objective-c
 xcode_project: ChannelZ.xcodeproj
-xcode_scheme: ChannelZTests
+xcode_scheme: ChannelZ
