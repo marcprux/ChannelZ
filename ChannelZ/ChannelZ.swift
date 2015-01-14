@@ -386,7 +386,7 @@ public func conduit<A : BaseChannelType, B : BaseChannelType where A.SourceType 
 
     outlets += [source.attach({ for target in targets { target.value = $0 } })]
 
-    if prime {
+    if prime { // tell the source to prime their initial value to the targets
         outlets.map { $0.prime() }
     }
 
@@ -437,6 +437,7 @@ infix operator -∞> { }
 
 /// Conduit creation operators
 infix operator <=∞=> { }
+infix operator <=∞=-> { }
 infix operator ∞=> { }
 infix operator <=∞ { }
 
@@ -464,6 +465,15 @@ public func <=∞<L : ChannelType, R : BaseFunnelType where L.SourceType == R.Ou
     return OutletOf<(L.OutputType, R.OutputType)>(primer: { rsink.prime() }, detacher: { rsink.detach() })
 }
 
+/// Bi-directional conduit operator with natural equivalence between two identical types where the left side is primed
+public func <=∞=-><L : ChannelType, R : ChannelType where L.OutputType == R.SourceType, L.SourceType == R.OutputType>(lhs: L, rhs: R)->Outlet {
+    return conduit(lhs, prime: true)(targets: [rhs])
+}
+
+/// Bi-directional conduit operator with natural equivalence between two identical types where the left side is primed
+public func <=∞=-><L : ChannelType, R : ChannelType where L.OutputType == R.SourceType, L.SourceType == R.OutputType>(lhs: L, rhs: [R])->Outlet {
+    return conduit(lhs, prime: true)(targets: rhs)
+}
 
 /// Conduit conversion operators
 infix operator <~∞~> { }
@@ -500,32 +510,33 @@ public func <~∞~> <L : ChannelType, R : ChannelType where L.SourceType: Condui
 
 
 
-/// Conduit conversion operators
-infix operator <?∞?> { }
-infix operator ∞?> { }
-infix operator <?∞ { }
-
-/// Conduit operator to convert (possibly lossily) between optionally castable types
-public func <?∞?><L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Outlet {
-    let lsink = lhs.map({ $0 as? R.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { rhs.value = $0 }
-    let rsink = rhs.map({ $0 as? L.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { lhs.value = $0 }
-    return OutletOf<(L.OutputType, R.OutputType)>(primer: {
-        rsink.prime()
-        lsink.prime()
-    }, detacher: {
-        rsink.detach()
-        lsink.detach()
-    })
-}
-
-/// Conduit operator to convert (possibly lossily) between optionally castable types
-public func ∞?> <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Outlet {
-    let lsink = lhs.map({ $0 as? R.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { rhs.value = $0 }
-    return OutletOf<(L.OutputType, R.OutputType)>(primer: { lsink.prime() }, detacher: { lsink.detach() })
-}
-
-/// Conduit operator to convert (possibly lossily) between optionally castable types
-public func <?∞ <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Outlet {
-    let rsink = rhs.map({ $0 as? L.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { lhs.value = $0 }
-    return OutletOf<(L.OutputType, R.OutputType)>(primer: { rsink.prime() }, detacher: { rsink.detach() })
-}
+///// Conduit conversion operators
+//infix operator <?∞?> { }
+//infix operator ∞?> { }
+//infix operator <?∞ { }
+//
+///// Conduit operator to convert (possibly lossily) between optionally castable types
+//public func <?∞?><L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Outlet {
+//    let lsink = lhs.map({ $0 as? R.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { rhs.value = $0 }
+//    let rsink = rhs.map({ $0 as? L.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { lhs.value = $0 }
+//    return OutletOf<(L.OutputType, R.OutputType)>(primer: {
+//        rsink.prime()
+//        lsink.prime()
+//    }, detacher: {
+//        rsink.detach()
+//        lsink.detach()
+//    })
+//}
+//
+//
+///// Conduit operator to convert (possibly lossily) between optionally castable types
+//public func ∞?> <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Outlet {
+//    let lsink = lhs.map({ $0 as? R.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { rhs.value = $0 }
+//    return OutletOf<(L.OutputType, R.OutputType)>(primer: { lsink.prime() }, detacher: { lsink.detach() })
+//}
+//
+///// Conduit operator to convert (possibly lossily) between optionally castable types
+//public func <?∞ <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Outlet {
+//    let rsink = rhs.map({ $0 as? L.SourceType }).filter({ $0 != nil }).map({ $0! }).attach { lhs.value = $0 }
+//    return OutletOf<(L.OutputType, R.OutputType)>(primer: { rsink.prime() }, detacher: { rsink.detach() })
+//}

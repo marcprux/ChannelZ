@@ -36,11 +36,36 @@ public protocol FunnelType : BaseFunnelType, ExtendedFunnelType {
 
 }
 
+/// A Sink that funnls all elements through to the attached outlets
+public struct SinkFunnel<Element> : FunnelType, SinkType {
+    public typealias OutputType = Element
 
-///// A type-erased funnel.
-/////
-///// Forwards operations to an arbitrary underlying funnel with the same
-///// `OutputType` type, hiding the specifics of the underlying funnel.
+    private var outlets = OutletList<OutputType>()
+
+    /// Create a SinkFunnel with an optional primer callback
+    public init() {
+    }
+
+    public func attach(outlet: (OutputType)->())->Outlet {
+        return outlets.addOutlet(primer: { }, outlet: outlet)
+    }
+
+    public func put(x: Element) {
+        outlets.receive(x)
+    }
+
+    // Boilerplate funnel/filter/map
+    public typealias SelfFunnel = SinkFunnel
+    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
+    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return FilteredFunnel(source: self, predicate: predicate) }
+    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return MappedFunnel(source: self, transform: transform) }
+}
+
+
+/// A type-erased funnel.
+///
+/// Forwards operations to an arbitrary underlying funnel with the same
+/// `OutputType` type, hiding the specifics of the underlying funnel.
 public struct FunnelOf<OutputType> : FunnelType {
     private let attacher: (outlet: (OutputType) -> Void) -> Outlet
 
@@ -58,7 +83,6 @@ public struct FunnelOf<OutputType> : FunnelType {
     public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return FilteredFunnel(source: self, predicate: predicate) }
     public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return MappedFunnel(source: self, transform: transform) }
 }
-
 
 
 /// A filtered funnel that flows only those values that pass the filter predicate
@@ -261,95 +285,93 @@ private func combineAll<F1 : BaseFunnelType, F2 : BaseFunnelType>(source1: F1, s
 
 /// Funnel combination & flattening operation
 public func || <L : BaseFunnelType, R : BaseFunnelType>(lhs: L, rhs: R)->FunnelOf<(L.OutputType?, R.OutputType?)> {
-    return mapFunnel(combineAny(lhs, rhs))({ (a, b) in (a?.0, b) }).funnel()
+    return mapFunnel(combineAny(lhs, rhs))({ (a, b) -> (L.OutputType?, R.OutputType?) in (a?.0, b) }).funnel()
 }
 
 /// Funnel combination & flattening operation
 public func || <L1, L2, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?)>, rhs: R)->FunnelOf<(L1?, L2?, R.OutputType?)> {
-    return mapFunnel(combineAny(lhs, rhs))({ (a, b) in (a?.0, a?.1, b) }).funnel()
+    return mapFunnel(combineAny(lhs, rhs))({ (a, b) -> (L1?, L2?, R.OutputType?) in (a?.0, a?.1, b) }).funnel()
 }
 
 /// Funnel combination & flattening operation
 public func || <L1, L2, L3, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, R.OutputType?)> {
-    return mapFunnel(combineAny(lhs, rhs))({ (a, b) in (a?.0, a?.1, a?.2, b) }).funnel()
+    return mapFunnel(combineAny(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, R.OutputType?) in (a?.0, a?.1, a?.2, b) }).funnel()
 }
 
 ///// Funnel combination & flattening operation
 public func || <L1, L2, L3, L4, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, R.OutputType?)> {
-    return mapFunnel(combineAny(lhs, rhs))({ (a, b) in (a?.0, a?.1, a?.2, a?.3, b) }).funnel()
+    return mapFunnel(combineAny(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, b) }).funnel()
 }
 
 ///// Funnel combination & flattening operation
 public func || <L1, L2, L3, L4, L5, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, R.OutputType?)> {
-    return mapFunnel(combineAny(lhs, rhs))({ (a, b) in (a?.0, a?.1, a?.2, a?.3, a?.4, b) }).funnel()
+    return mapFunnel(combineAny(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, a?.4, b) }).funnel()
 }
 
 /// Funnel combination & flattening operation
 public func || <L1, L2, L3, L4, L5, L6, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, R.OutputType?)> {
-    return mapFunnel(combineAny(lhs, rhs))({ (a, b) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, b) }).funnel()
+    return mapFunnel(combineAny(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, b) }).funnel()
 }
 
-// commented-out because the type inference engine is slow here
+/// Funnel combination & flattening operation
+public func || <L1, L2, L3, L4, L5, L6, L7, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.OutputType?)> {
+    return mapFunnel(combineAny(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, b) }).funnel()
+}
 
-///// Funnel combination & flattening operation
-//public func || <L1, L2, L3, L4, L5, L6, L7, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.OutputType?)> {
-//    return mapFunnel(combineAny(lhs, rhs))({ (a, b) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, b) }).funnel()
-//}
-//
-///// Funnel combination & flattening operation
-//public func || <L1, L2, L3, L4, L5, L6, L7, L8, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.OutputType?)> {
-//    return mapFunnel(combineAny(lhs, rhs))({ (a, b) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, b) }).funnel()
-//}
-//
-///// Funnel combination & flattening operation
-//public func || <L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.OutputType?)> {
-//    return mapFunnel(combineAny(lhs, rhs))({ (a, b) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, a?.8, b) }).funnel()
-//}
+/// Funnel combination & flattening operation
+public func || <L1, L2, L3, L4, L5, L6, L7, L8, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.OutputType?)> {
+    return mapFunnel(combineAny(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, b) }).funnel()
+}
+
+/// Funnel combination & flattening operation
+public func || <L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.OutputType?)> {
+    return mapFunnel(combineAny(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, a?.8, b) }).funnel()
+}
 
 
 /// Funnel combination & flattening operation
 public func && <L : BaseFunnelType, R : BaseFunnelType>(lhs: L, rhs: R)->FunnelOf<(L.OutputType, R.OutputType)> {
-    return mapFunnel(combineAll(lhs, rhs))({ (a, b) in (a.0, b) }).funnel()
+    return mapFunnel(combineAll(lhs, rhs))({ (a, b) -> (L.OutputType, R.OutputType) in (a.0, b) }).funnel()
 }
 
 /// Funnel combination & flattening operation
 public func && <L1, L2, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2)>, rhs: R)->FunnelOf<(L1, L2, R.OutputType)> {
-    return mapFunnel(combineAll(lhs, rhs))({ (a, b) in (a.0, a.1, b) }).funnel()
+    return mapFunnel(combineAll(lhs, rhs))({ (a, b) -> (L1, L2, R.OutputType) in (a.0, a.1, b) }).funnel()
 }
 
 /// Funnel combination & flattening operation
 public func && <L1, L2, L3, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3)>, rhs: R)->FunnelOf<(L1, L2, L3, R.OutputType)> {
-    return mapFunnel(combineAll(lhs, rhs))({ (a, b) in (a.0, a.1, a.2, b) }).funnel()
+    return mapFunnel(combineAll(lhs, rhs))({ (a, b) -> (L1, L2, L3, R.OutputType) in (a.0, a.1, a.2, b) }).funnel()
 }
 
 ///// Funnel combination & flattening operation
 public func && <L1, L2, L3, L4, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, R.OutputType)> {
-    return mapFunnel(combineAll(lhs, rhs))({ (a, b) in (a.0, a.1, a.2, a.3, b) }).funnel()
+    return mapFunnel(combineAll(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, R.OutputType) in (a.0, a.1, a.2, a.3, b) }).funnel()
 }
 
 ///// Funnel combination & flattening operation
 public func && <L1, L2, L3, L4, L5, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, R.OutputType)> {
-    return mapFunnel(combineAll(lhs, rhs))({ (a, b) in (a.0, a.1, a.2, a.3, a.4, b) }).funnel()
+    return mapFunnel(combineAll(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, b) }).funnel()
 }
 
 /// Funnel combination & flattening operation
 public func && <L1, L2, L3, L4, L5, L6, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, R.OutputType)> {
-    return mapFunnel(combineAll(lhs, rhs))({ (a, b) in (a.0, a.1, a.2, a.3, a.4, a.5, b) }).funnel()
+    return mapFunnel(combineAll(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, a.5, b) }).funnel()
 }
 
 // commented-out because the type inference engine is slow here
 
-///// Funnel combination & flattening operation
-//public func && <L1, L2, L3, L4, L5, L6, L7, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, R.OutputType)> {
-//    return mapFunnel(combineAll(lhs, rhs))({ (a, b) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, b) }).funnel()
-//}
-//
-///// Funnel combination & flattening operation
-//public func && <L1, L2, L3, L4, L5, L6, L7, L8, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, R.OutputType)> {
-//    return mapFunnel(combineAll(lhs, rhs))({ (a, b) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, b) }).funnel()
-//}
-//
-///// Funnel combination & flattening operation
-//public func && <L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9, R.OutputType)> {
-//    return mapFunnel(combineAll(lhs, rhs))({ (a, b) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, a.8, b) }).funnel()
-//}
+/// Funnel combination & flattening operation
+public func && <L1, L2, L3, L4, L5, L6, L7, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, R.OutputType)> {
+    return mapFunnel(combineAll(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, b) }).funnel()
+}
+
+/// Funnel combination & flattening operation
+public func && <L1, L2, L3, L4, L5, L6, L7, L8, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, R.OutputType)> {
+    return mapFunnel(combineAll(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, L8, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, b) }).funnel()
+}
+
+/// Funnel combination & flattening operation
+public func && <L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9, R.OutputType)> {
+    return mapFunnel(combineAll(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, L8, L9, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, a.8, b) }).funnel()
+}

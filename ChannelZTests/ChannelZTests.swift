@@ -721,6 +721,30 @@ public class ChannelZTests: XCTestCase {
 //        XCTAssertEqual(-1, n3.value)
     }
 
+    func testSinkFunnels() {
+        let funnel = SinkFunnel<Int>()
+
+        funnel.put(1)
+        var changes = 0
+        let outlet = funnel.attach({ _ in changes += 1 })
+
+        XCTAssertEqual(0, changes)
+
+        funnel.put(1)
+        XCTAssertEqual(0, --changes)
+
+        let sink = SinkOf(funnel)
+        sink.put(2)
+        XCTAssertEqual(0, --changes, "sink wrapper around funnel should have passed elements through to outlets")
+
+        outlet.prime()
+        XCTAssertEqual(0, changes, "prime() should be a no-op for SinkFunnel")
+
+        outlet.detach()
+        sink.put(2)
+        XCTAssertEqual(0, changes, "detached outlet should not be called")
+    }
+
     func testTransformableConduits() {
 
         var num = ∞(0)∞
@@ -815,7 +839,8 @@ public class ChannelZTests: XCTestCase {
 
         let qs2 = state∞(state.optionalStringField)
 
-        // TODO: fix bindings
+        // TODO: fix optonal bindings
+        
 //        let qsb = qs1 <?∞?> qs2
 //
 //        qs1.value += "X"
@@ -825,7 +850,7 @@ public class ChannelZTests: XCTestCase {
 //        XCTAssertEqual("XX", state.optionalStringField ?? "<nil>")
 //
 //        /// Test that disconnecting the binding actually removes the observers
-//        qsb.disconnect()
+//        qsb.detach()
 //        qs1.value += "XYZ"
 //        XCTAssertEqual("XX", state.optionalStringField ?? "<nil>")
     }
@@ -974,19 +999,6 @@ public class ChannelZTests: XCTestCase {
 //        y.value = (y.value + 0.5)
 //        XCTAssertEqual(T1(18), x.value)
 //        XCTAssertEqual(T2(18.5), y.value)
-//    }
-
-//    func testCast() {
-//        let field: CombinedChannel<MappedChannel<FilteredChannel<MappedChannel<ChannelZ<Int>, Int, Int>>, String, Int>, ChannelZ<Int>> = channelField(99).map({ $0 * 2 }).filter({ $0 >= 0 }).map({ "\($0)" }).combine(channelField(2))
-//
-//        let field2: CombinedChannel<MappedChannel<FilteredChannel<MappedChannel<ChannelZ<Int>, Int, Int>>, String, Int>, MappedChannel<FilteredChannel<MappedChannel<ChannelZ<Int>, Int, Int>>, String, Int>> = channelField(99).map({ $0 * 2 }).filter({ $0 >= 0 }).map({ "\($0)" }).combine(channelField(99).map({ $0 * 2 }).filter({ $0 >= 0 }).map({ "\($0)" }))
-//
-//        let fld1 : LazySequence<MapSequenceView<FilterSequenceView<MapCollectionView<RandomAccessReverseView<[Int]>, Double>>, Float>> =
-//                   lazy([1, 2, 3]).reverse().map({ Double($0) }).filter({ $0 >= 0 }).map({ Float($0) })
-//
-//        let fld2: SequenceOf<Float> = SequenceOf(fld1)
-//
-//        let fld3 : Array<Float> = ([1, 2, 3]).reverse().map({ Double($0) }).filter({ $0 >= 0 }).map({ Float($0) })
 //    }
 
     func testConversionConduits() {
@@ -1634,14 +1646,14 @@ public class ChannelZTests: XCTestCase {
         let c = NumericHolderClass()
         var count = 0
         let channel = c∞c.doubleField
-        channel -∞> { _ in count += 1 }
+        let outlet = channel -∞> { _ in count += 1 }
         XCTAssertEqual(0, count)
 
-        // ensure that pumping the channel actually causes it to send out a value
-//        channel.pump()
-//        XCTAssertEqual(1, count)
-//        channel.pump()
-//        XCTAssertEqual(2, count)
+        // ensure that priming the channel actually causes it to send out a value
+        outlet.prime()
+        XCTAssertEqual(1, count)
+        outlet.prime()
+        XCTAssertEqual(2, count)
     }
 
     public func testPullFiltered() {
