@@ -29,7 +29,7 @@ assert(a2.value == 42)
 
 > **Note**: this documentation is also available as an executable Playground within the ChannelZ framework.
 
-### Operators & Fuctions
+### Operators & Functions
 
 ChannelZ's central operator is **∞**, which can be entered with `Option-5` on the Mac keyboard. Variants of this operator are used throughout the framework, but you can alternatively use functions for all of ChannelZ's operations. The major operators are listed in section [Operator Glossary](#operator-glossary).
 
