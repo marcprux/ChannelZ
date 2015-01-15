@@ -2,5 +2,6 @@ language: objective-c
 xcode_project: ChannelZ.xcodeproj
 xcode_scheme: ChannelZ
 xcode_sdk: iphonesimulator8.1
-script: xctool -project ChannelZ.xcodeproj -scheme ChannelZ test
+# script: xctool -project ChannelZ.xcodeproj -scheme ChannelZ test
+script: xcodebuild test -project ChannelZ.xcodeproj -scheme ChannelZ -sdk iphonesimulator ONLY_ACTIVE_ARCH=NO
 
