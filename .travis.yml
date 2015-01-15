@@ -1,3 +1,4 @@
 language: objective-c
 xcode_project: ChannelZ.xcodeproj
 xcode_scheme: ChannelZ
+xcode_sdk: iphonesimulator8.0
