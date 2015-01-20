@@ -374,12 +374,13 @@ internal func channelOptionalStateChanges<T where T : Equatable>(source: Channel
 }
 
 
-/// Creates a state pipeline between two channels with equivalent source and output types; changes made to either side will push the transformed value to the the other side.
+/// Creates a state pipeline between multiple channels with equivalent source and output types; changes made to either side will push the transformed value to the the other side.
 ///
 /// Note that the SourceType of either side must be identical to the OutputType of the other side, which is usually accomplished by adding maps and combinations to the pipelines until they achieve parity.
 ///
-/// :param: a one side of the pipeline
-/// :param: b the other side of the pipeline
+/// :param: source one side of the pipeline
+/// :param: prime whether to prime the targets with source's value
+/// :param: targets the other side of the pipeline
 /// :returns: a detachable outlet for the conduit
 public func conduit<A : BaseChannelType, B : BaseChannelType where A.SourceType == B.OutputType, B.SourceType == A.OutputType>(source: A, prime: Bool = false)(targets: [B]) -> OutletOf<(A.OutputType, B.OutputType)> {
     var outlets = [Outlet]()
@@ -430,16 +431,14 @@ public func <-<T : ChannelType>(var lhs: T, rhs: T.SourceType) -> T.SourceType {
     return rhs
 }
 
-/// Alternate attachment operation
-public func -∞> <T : BaseFunnelType>(lhs: T, rhs: T.OutputType->Void)->Outlet { return lhs.attach(rhs) }
-infix operator -∞> { }
-
 
 /// Conduit creation operators
 infix operator <=∞=> { }
 infix operator <=∞=-> { }
 infix operator ∞=> { }
+infix operator ∞=-> { }
 infix operator <=∞ { }
+infix operator <-=∞ { }
 
 
 /// Bi-directional conduit operator with natural equivalence between two identical types
@@ -458,11 +457,21 @@ public func ∞=><L : BaseFunnelType, R : ChannelType where L.OutputType == R.So
     return OutletOf<(L.OutputType, R.OutputType)>(primer: { lsink.prime() }, detacher: { lsink.detach() })
 }
 
+/// One-sided conduit operator with natural equivalence between two identical types with priming
+public func ∞=-><L : BaseFunnelType, R : ChannelType where L.OutputType == R.SourceType>(lhs: L, rhs: R)->Outlet {
+    return prime(lhs ∞=> rhs)
+}
+
 
 /// One-sided conduit operator with natural equivalence between two identical types
 public func <=∞<L : ChannelType, R : BaseFunnelType where L.SourceType == R.OutputType>(lhs: L, rhs: R)->Outlet {
     let rsink = rhs.attach { lhs.value = $0 }
     return OutletOf<(L.OutputType, R.OutputType)>(primer: { rsink.prime() }, detacher: { rsink.detach() })
+}
+
+/// One-sided conduit operator with natural equivalence between two identical types with priming
+public func <-=∞<L : ChannelType, R : BaseFunnelType where L.SourceType == R.OutputType>(lhs: L, rhs: R)->Outlet {
+    return prime(lhs <=∞ rhs)
 }
 
 /// Bi-directional conduit operator with natural equivalence between two identical types where the left side is primed

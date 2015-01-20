@@ -77,7 +77,7 @@ public class ChannelZTests: XCTestCase {
             let state = StatefulObject()
             state.optionalStringField = "sval1"
 
-            state∞state.intField -∞> { _ in intFieldChanges += 1 }
+            state∞state.intField ∞> { _ in intFieldChanges += 1 }
 
             #if DEBUG_CHANNELZ
             XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1)
@@ -86,7 +86,7 @@ public class ChannelZTests: XCTestCase {
             var stringFieldObserver = state∞(state.optionalStringField)
             stringFieldObserver.attach { _ in stringFieldChanges += 1 }
 
-            state∞state.doubleField -∞> { _ in doubleFieldChanges += 1 }
+            state∞state.doubleField ∞> { _ in doubleFieldChanges += 1 }
 
             XCTAssertEqual("sval1", state.optionalStringField!)
 
@@ -243,14 +243,14 @@ public class ChannelZTests: XCTestCase {
         let ob = SwiftObservables()
 
         var stringChanges = 0
-        ob.stringField -∞> { _ in stringChanges += 1 }
+        ob.stringField ∞> { _ in stringChanges += 1 }
         XCTAssertEqual(0, stringChanges)
 
         ob.stringField.value = "x"
         XCTAssertEqual(0, --stringChanges)
 
         var enumChanges = 0
-        ob.enumField -∞> { _ in enumChanges += 1 }
+        ob.enumField ∞> { _ in enumChanges += 1 }
         XCTAssertEqual(0, enumChanges)
 
         ob.enumField.value = .MaybeSo
@@ -279,7 +279,7 @@ public class ChannelZTests: XCTestCase {
         var c = sieveField(xs)
 
         var changes = 0
-        c -∞> { _ in changes += 1 }
+        c ∞> { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
         c.value = (2); XCTAssertEqual(0, --changes)
@@ -296,7 +296,7 @@ public class ChannelZTests: XCTestCase {
         var c = state∞(state.requiredStringField)
 
         var changes = 0
-        c -∞> { _ in changes += 1 }
+        c ∞> { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
         c.value = (""); XCTAssertEqual(0, changes, "default to default should not change")
@@ -310,7 +310,7 @@ public class ChannelZTests: XCTestCase {
         var c = state∞(state.requiredStringField)
 
         var changes = 0
-        c -∞> { _ in changes += 1 } // note we do not assign it locally, so it should immediately get cleaned up
+        c ∞> { _ in changes += 1 } // note we do not assign it locally, so it should immediately get cleaned up
 
         XCTAssertEqual(0, changes)
         c.value = ("A"); XCTAssertEqual(1, changes, "unretained outlet should still listen")
@@ -322,7 +322,7 @@ public class ChannelZTests: XCTestCase {
         var c = state∞(state.optionalNSStringField)
 
         var changes = 0
-        c -∞> { _ in changes += 1 }
+        c ∞> { _ in changes += 1 }
 
         for _ in 0...5 {
             XCTAssertEqual(0, changes)
@@ -342,7 +342,7 @@ public class ChannelZTests: XCTestCase {
         var c = state∞(state.optionalStringField)
 
         var changes = 0
-        c -∞> { _ in changes += 1 }
+        c ∞> { _ in changes += 1 }
 
         for _ in 0...5 {
             XCTAssertEqual(0, changes)
@@ -365,7 +365,7 @@ public class ChannelZTests: XCTestCase {
 
         dict["foo"] = "bar"
 
-        dict.sievez(dict["foo"] as? NSString, keyPath: "foo") -∞> { _ in fooChanges += 1 }
+        dict.sievez(dict["foo"] as? NSString, keyPath: "foo") ∞> { _ in fooChanges += 1 }
         XCTAssertEqual(0, fooChanges)
 
         dict["foo"] = "bar"
@@ -387,7 +387,7 @@ public class ChannelZTests: XCTestCase {
         var f: FunnelOf<Int> = x.funnel() // read-only funnel of channel x
 
         var changes = 0
-        var outlet = f -∞> { _ in changes += 1 }
+        var outlet = f ∞> { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
         x.value = (x.value + 1); XCTAssertEqual(0, --changes)
@@ -405,13 +405,13 @@ public class ChannelZTests: XCTestCase {
 
         var xf: FunnelOf<Bool> = x.funnel() // read-only funnel of channel x
 
-        let fxa = xf -∞> { (x: Bool) in return }
+        let fxa = xf ∞> { (x: Bool) in return }
 
         var y = x.map({ "\($0)" })
         var yf: FunnelOf<String> = y.funnel() // read-only funnel of mapped channel y
 
         var changes = 0
-        var fya: Outlet = yf -∞> { (x: String) in changes += 1 }
+        var fya: Outlet = yf ∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(0, changes)
         x.value = (!x.value); XCTAssertEqual(0, --changes)
@@ -429,13 +429,13 @@ public class ChannelZTests: XCTestCase {
         var x = sieveField(xs)
         var xf: FunnelOf<Double> = x.funnel() // read-only funnel of channel x
 
-        var fxa = xf -∞> { (x: Double) in return }
+        var fxa = xf ∞> { (x: Double) in return }
 
         var y = x.map({ "\($0)" })
         var yf: FunnelOf<String> = y.funnel() // read-only funnel of channel y
 
         var changes = 0
-        var fya: Outlet = yf -∞> { (x: String) in changes += 1 }
+        var fya: Outlet = yf ∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(0, changes)
         x.value = (x.value + 1); XCTAssertEqual(0, --changes)
@@ -524,14 +524,14 @@ public class ChannelZTests: XCTestCase {
         var lastFloat : Float = 0.0
         var lastString : String = ""
 
-        var combo1 = (a || b)
-        combo1 -∞> { (floatChange: Float?, uintChange: UInt?) in }
+        var combo1 = (a | b)
+        combo1 ∞> { (floatChange: Float?, uintChange: UInt?) in }
 
-        var combo2 = (a || b || d)
+        var combo2 = (a | b | d)
 
         var changes = 0
 
-        combo2 -∞> { (floatChange: Float?, uintChange: UInt?, stringChange: String?) in
+        combo2 ∞> { (floatChange: Float?, uintChange: UInt?, stringChange: String?) in
             changes++
             if let float = floatChange {
                 lastFloat = float
@@ -569,14 +569,14 @@ public class ChannelZTests: XCTestCase {
         var lastFloat : Float = 0.0
         var lastString : String = ""
 
-        var combo1 = (a && b)
-        combo1 -∞> { (floatChange: Float, uintChange: UInt) in }
+        var combo1 = (a & b)
+        combo1 ∞> { (floatChange: Float, uintChange: UInt) in }
 
-        var combo2 = (a && b && d)
+        var combo2 = (a & b & d)
 
         var changes = 0
 
-        let outlet = combo2 -∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
+        let outlet = combo2 ∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
             changes++
             lastFloat = floatChange
             lastString = stringChange
@@ -612,9 +612,34 @@ public class ChannelZTests: XCTestCase {
     func testMixedCombinations() {
         let a = ∞(Int(0.0))∞
 
-        var and: FunnelOf<(Int, Int, Int, Int, Int, Int, Int)> = a && a && a && a && a && a && a
-        var or: FunnelOf<(Int?, Int?, Int?, Int?, Int?, Int?, Int?)> = a || a || a || a || a || a || a
-        var andor: FunnelOf<((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = a && a || a && a || a && a || a
+        var and: FunnelOf<(Int, Int, Int, Int)> = a & a & a & a
+        var andx = 0
+        and.attach({ _ in andx += 1 })
+
+        var or: FunnelOf<(Int?, Int?, Int?, Int?)> = a | a | a | a
+        var orx = 0
+        or.attach({ _ in orx += 1 })
+
+        var andor: FunnelOf<((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = a & a | a & a | a & a | a
+        var andorx = 0
+        andor.attach({ _ in andorx += 1 })
+
+        XCTAssertEqual(0, andx)
+        XCTAssertEqual(0, orx)
+        XCTAssertEqual(0, andorx)
+
+        a.value++
+
+        XCTAssertEqual(1, andx, "last and fires a single and change")
+        XCTAssertEqual(4, orx, "each or four")
+        XCTAssertEqual(4, andorx, "four groups in mixed")
+
+        a.value++
+
+        XCTAssertEqual(5, andx)
+        XCTAssertEqual(8, orx)
+        XCTAssertEqual(11, andorx)
+
     }
 
     func testDeepNestedFilter() {
@@ -756,8 +781,8 @@ public class ChannelZTests: XCTestCase {
         let dictProxy = dict.channelz(dict["stringKey"], keyPath: "stringKey")
 
         // bind the number value to a string equivalent
-//        num -∞> { num in strProxy.value = "\(num)" }
-//        strProxy -∞> { str in num.value = Int((str as NSString).intValue) }
+//        num ∞> { num in strProxy.value = "\(num)" }
+//        strProxy ∞> { str in num.value = Int((str as NSString).intValue) }
 
         let num_strProxy = (num, { "\($0)" }) <~∞~> (strProxy, { $0?.toInt() })
 
@@ -1370,12 +1395,12 @@ public class ChannelZTests: XCTestCase {
 
             var ageChanges = 0, nameChanges = 0
             // sadly, automatic keypath identification doesn't yet work for NSManagedObject subclasses
-//            person∞person.age -∞> { _ in ageChanges += 1 }
-//            person∞person.fullName -∞> { _ in nameChanges += 1 }
+//            person∞person.age ∞> { _ in ageChanges += 1 }
+//            person∞person.fullName ∞> { _ in nameChanges += 1 }
 
             // @NSManaged fields can secretly be nil
-            person∞(person.age as Int16?, "age") -∞> { _ in ageChanges += 1 }
-            person∞(person.fullName, "fullName") -∞> { _ in nameChanges += 1 }
+            person∞(person.age as Int16?, "age") ∞> { _ in ageChanges += 1 }
+            person∞(person.fullName, "fullName") ∞> { _ in nameChanges += 1 }
 
             person.fullName = "Edward Norton"
 
@@ -1449,7 +1474,7 @@ public class ChannelZTests: XCTestCase {
         state2.numberField3 = 0
         state2.bind("numberField3", toObject: state1, withKeyPath: "numberField3", options: nil)
 
-        let state2sieve = state2∞(state2.numberField3, "numberField3") -∞> { num in
+        let state2sieve = state2∞(state2.numberField3, "numberField3") ∞> { num in
             // println("changing number to: \(num)")
         }
         state1.numberField3 = 4
@@ -1529,20 +1554,20 @@ public class ChannelZTests: XCTestCase {
     public func testManyObserversOnBlockOperation() {
         let state = StatefulObject()
         XCTAssertEqual("ChannelZTests.StatefulObject", NSStringFromClass(state.dynamicType))
-        state∞state.intField -∞> { _ in }
+        state∞state.intField ∞> { _ in }
         XCTAssertEqual("NSKVONotifying_ChannelZTests.StatefulObject", NSStringFromClass(state.dynamicType))
 
         let operation = NSOperation()
         XCTAssertEqual("NSOperation", NSStringFromClass(operation.dynamicType))
-        operation∞operation.cancelled -∞> { _ in }
-        operation∞(operation.cancelled, "cancelled") -∞> { _ in }
+        operation∞operation.cancelled ∞> { _ in }
+        operation∞(operation.cancelled, "cancelled") ∞> { _ in }
         XCTAssertEqual("NSKVONotifying_NSOperation", NSStringFromClass(operation.dynamicType))
 
         // progress is not automatically instrumented with NSKVONotifying_ (implying that it handles its own KVO)
         let progress = NSProgress()
         XCTAssertEqual("NSProgress", NSStringFromClass(progress.dynamicType))
-        progress∞progress.fractionCompleted -∞> { _ in }
-        progress∞(progress.fractionCompleted, "fractionCompleted") -∞> { _ in }
+        progress∞progress.fractionCompleted ∞> { _ in }
+        progress∞(progress.fractionCompleted, "fractionCompleted") ∞> { _ in }
         XCTAssertEqual("NSProgress", NSStringFromClass(progress.dynamicType))
 
         for j in 1...10 {
@@ -1552,7 +1577,7 @@ public class ChannelZTests: XCTestCase {
 
                 var attachments: [Outlet] = []
                 for i in 1...10 {
-                    let attachment = channel -∞> { _ in }
+                    let attachment = channel ∞> { _ in }
                     attachments += [attachment]
                 }
 
@@ -1591,14 +1616,14 @@ public class ChannelZTests: XCTestCase {
     public func testAutoKeypathPerfomanceWithoutName() {
         let prog = NSProgress()
         for i in 1...AutoKeypathPerfomanceCount {
-            prog∞prog.totalUnitCount -∞> { _ in }
+            prog∞prog.totalUnitCount ∞> { _ in }
         }
     }
 
     public func testAutoKeypathPerfomanceWithName() {
         let prog = NSProgress()
         for i in 1...AutoKeypathPerfomanceCount {
-            prog∞(prog.totalUnitCount, "totalUnitCount") -∞> { _ in }
+            prog∞(prog.totalUnitCount, "totalUnitCount") ∞> { _ in }
         }
     }
 
@@ -1606,38 +1631,38 @@ public class ChannelZTests: XCTestCase {
         var counter = 0
 
         let constraint = NSLayoutConstraint()
-        constraint∞constraint.constant -∞> { _ in counter += 1 }
-        constraint∞constraint.active -∞> { _ in counter += 1 }
+        constraint∞constraint.constant ∞> { _ in counter += 1 }
+        constraint∞constraint.active ∞> { _ in counter += 1 }
 
         let undo = NSUndoManager()
-        undo.notifyz(NSUndoManagerDidUndoChangeNotification) -∞> { _ in counter += 1 }
-        undo∞undo.canUndo -∞> { _ in counter += 1 }
-        undo∞undo.canRedo -∞> { _ in counter += 1 }
-        undo∞undo.levelsOfUndo -∞> { _ in counter += 1 }
-        undo∞undo.undoActionName -∞> { _ in counter += 1 }
-        undo∞undo.redoActionName -∞> { _ in counter += 1 }
+        undo.notifyz(NSUndoManagerDidUndoChangeNotification) ∞> { _ in counter += 1 }
+        undo∞undo.canUndo ∞> { _ in counter += 1 }
+        undo∞undo.canRedo ∞> { _ in counter += 1 }
+        undo∞undo.levelsOfUndo ∞> { _ in counter += 1 }
+        undo∞undo.undoActionName ∞> { _ in counter += 1 }
+        undo∞undo.redoActionName ∞> { _ in counter += 1 }
 
 
         let df = NSDateFormatter()
-        df∞df.dateFormat -∞> { _ in counter += 1 }
-        df∞df.locale -∞> { _ in counter += 1 }
-        df∞df.timeZone -∞> { _ in counter += 1 }
-        df∞df.eraSymbols -∞> { _ in counter += 1 }
+        df∞df.dateFormat ∞> { _ in counter += 1 }
+        df∞df.locale ∞> { _ in counter += 1 }
+        df∞df.timeZone ∞> { _ in counter += 1 }
+        df∞df.eraSymbols ∞> { _ in counter += 1 }
 
         let comps = NSDateComponents()
-        comps∞comps.date -∞> { _ in counter += 1 }
-        comps∞comps.era -∞> { _ in counter += 1 }
-        comps∞comps.year -∞> { _ in counter += 1 }
-        comps∞comps.month -∞> { _ in counter += 1 }
+        comps∞comps.date ∞> { _ in counter += 1 }
+        comps∞comps.era ∞> { _ in counter += 1 }
+        comps∞comps.year ∞> { _ in counter += 1 }
+        comps∞comps.month ∞> { _ in counter += 1 }
         comps.year = 2016
         XCTAssertEqual(0, --counter)
 
         let prog = NSProgress(totalUnitCount: 100)
-        prog∞prog.totalUnitCount -∞> { _ in counter += 1 }
+        prog∞prog.totalUnitCount ∞> { _ in counter += 1 }
         prog.totalUnitCount = 200
         XCTAssertEqual(0, --counter)
 
-        prog∞prog.fractionCompleted -∞> { _ in counter += 1 }
+        prog∞prog.fractionCompleted ∞> { _ in counter += 1 }
         prog.completedUnitCount++
         XCTAssertEqual(0, --counter)
     }
@@ -1646,7 +1671,7 @@ public class ChannelZTests: XCTestCase {
         let c = NumericHolderClass()
         var count = 0
         let channel = c∞c.doubleField
-        let outlet = channel -∞> { _ in count += 1 }
+        let outlet = channel ∞> { _ in count += 1 }
         XCTAssertEqual(0, count)
 
         // ensure that priming the channel actually causes it to send out a value
@@ -1711,11 +1736,11 @@ public class ChannelZTests: XCTestCase {
             undo.beginUndoGrouping()
 
             XCTAssertEqual(1, InstanceTrackingUndoManagerInstanceCount)
-            undo∞undo.canUndo -∞> { _ in counter += 1 }
-            undo∞undo.canRedo -∞> { _ in counter += 1 }
-            undo∞undo.levelsOfUndo -∞> { _ in counter += 1 }
-            undo∞undo.undoActionName -∞> { _ in counter += 1 }
-            undo∞undo.redoActionName -∞> { _ in counter += 1 }
+            undo∞undo.canUndo ∞> { _ in counter += 1 }
+            undo∞undo.canRedo ∞> { _ in counter += 1 }
+            undo∞undo.levelsOfUndo ∞> { _ in counter += 1 }
+            undo∞undo.undoActionName ∞> { _ in counter += 1 }
+            undo∞undo.redoActionName ∞> { _ in counter += 1 }
             undo.notifyz(NSUndoManagerDidOpenUndoGroupNotification).attach({ _ in opened += 1 })
             undo.notifyz(NSUndoManagerDidCloseUndoGroupNotification).attach({ _ in closed += 1 })
 
@@ -1817,7 +1842,7 @@ public class ChannelZTests: XCTestCase {
 ////
 ////            let flat4 = state1∞state1.intField + state2∞state2.intField + state3∞state3.intField + state4∞state4.intField
 ////
-////            flat4 -∞> { (((i1: Int, i2: Int), i3: Int), i4: Int) in
+////            flat4 ∞> { (((i1: Int, i2: Int), i3: Int), i4: Int) in
 //////                println("channel change: \(i1) \(i2) \(i3) \(i4)")
 ////            }
 ////
@@ -1945,20 +1970,69 @@ public class ChannelZTests: XCTestCase {
         let state = StatefulObjectSubSubclass()
         var count = 0
 
-        let outlet : Outlet = state.channelz(state.optionalStringField).attach { _ in count += 1 }
-        state∞state.requiredStringField -∞> { _ in count += 1 }
-        state∞state.optionalNSStringField -∞> { _ in count += 1 }
-        state∞state.requiredNSStringField -∞> { _ in count += 1 }
-        state∞state.intField -∞> { _ in count += 1 }
-        state∞state.doubleField -∞> { _ in count += 1 }
-        state∞state.numberField1 -∞> { _ in count += 1 }
-        state∞state.numberField2 -∞> { _ in count += 1 }
-        state∞state.numberField3 -∞> { _ in count += 1 }
-        state∞state.numberField3 -∞> { _ in count += 1 }
-        state∞state.requiredObjectField -∞> { _ in count += 1 }
-        state∞state.optionaldObjectField -∞> { _ in count += 1 }
+        let outlet : Outlet = state.channelz(state.optionalStringField) ∞> { _ in count += 1 }
+        state∞state.requiredStringField ∞> { _ in count += 1 }
+        state∞state.optionalNSStringField ∞> { _ in count += 1 }
+        state∞state.requiredNSStringField ∞> { _ in count += 1 }
+        state∞state.intField ∞> { _ in count += 1 }
+        state∞state.doubleField ∞> { _ in count += 1 }
+        state∞state.numberField1 ∞> { _ in count += 1 }
+        state∞state.numberField2 ∞> { _ in count += 1 }
+        state∞state.numberField3 ∞> { _ in count += 1 }
+        state∞state.numberField3 ∞> { _ in count += 1 }
+        state∞state.requiredObjectField ∞> { _ in count += 1 }
+        state∞state.optionaldObjectField ∞> { _ in count += 1 }
     }
 
+
+    public func testDeepKeyPath() {
+        let state = StatefulObjectSubSubclass()
+        var count = 0
+
+        state∞(state.state.intField, "state.intField") ∞> { _ in count += 1 }
+
+        XCTAssertEqual(0, count)
+
+        state.state.intField++
+        XCTAssertEqual(0, --count)
+
+        let oldstate = state.state
+
+        state.state = StatefulObject()
+        XCTAssertEqual(0, --count)
+
+        oldstate.intField++
+        XCTAssertEqual(0, count, "should not be watching stale state")
+
+        state.state.intField++
+        XCTAssertEqual(0, --count)
+
+        state.state.intField--
+        XCTAssertEqual(0, --count)
+
+        state.state = StatefulObject()
+        XCTAssertEqual(0, count, "new intermediate with same terminal value should not pass sieve") // or should it?
+    }
+
+    public func testDeepOptionalKeyPath() {
+        let state = StatefulObjectSubSubclass()
+        var count = 0
+
+        state∞(state.optionaldObjectField?.optionaldObjectField?.intField, "optionaldObjectField.optionaldObjectField.intField") ∞> { _ in count += 1 }
+
+        XCTAssertEqual(0, count)
+
+        state.optionaldObjectField = StatefulObjectSubSubclass()
+
+        //        XCTAssertEqual(0, --count)
+
+        state.optionaldObjectField!.optionaldObjectField = StatefulObjectSubSubclass()
+        XCTAssertEqual(0, --count)
+
+        state.optionaldObjectField!.optionaldObjectField!.intField++
+        XCTAssertEqual(0, --count)
+        
+    }
 
     #if os(OSX)
     func testButtonCommand() {
@@ -1969,7 +2043,7 @@ public class ChannelZTests: XCTestCase {
 
         var stateChanges = 0
 
-        button∞button.state -∞> { x in
+        button∞button.state ∞> { x in
             stateChanges += 1
 //            println("state change: \(x)")
         }
@@ -2081,7 +2155,7 @@ public class ChannelZTests: XCTestCase {
         vm.amount.map({ Int64($0) }) ∞=> progress∞progress.completedUnitCount
 
         // FIXME: memory leak
-        // progress∞progress.completedUnitCount -∞> { _ in println("progress: \(progress.localizedDescription)") }
+        // progress∞progress.completedUnitCount ∞> { _ in println("progress: \(progress.localizedDescription)") }
 
         let textField = NSTextField()
 
@@ -2100,7 +2174,7 @@ public class ChannelZTests: XCTestCase {
 //        var stateChanges = 0
 //
         // TODO: implement proper enum tracking
-//        button∞button.state -∞> { x in
+//        button∞button.state ∞> { x in
 //            stateChanges += 1
 //        }
 //
@@ -2111,7 +2185,7 @@ public class ChannelZTests: XCTestCase {
 //        XCTAssertEqual(stateChanges, 3)
 
         var selectedChanges = 0
-        button∞button.selected -∞> { x in
+        button∞button.selected ∞> { x in
             selectedChanges += 1
         }
 
@@ -2251,7 +2325,7 @@ public class ChannelZTests: XCTestCase {
         let progress = NSProgress(totalUnitCount: Int64(vm.amountMax))
         let pout = vm.amount.map({ Int64($0) }) ∞=> progress∞progress.completedUnitCount
 
-//        progress∞progress.localizedDescription -∞> { println("progress: \($0)") }
+//        progress∞progress.localizedDescription ∞> { println("progress: \($0)") }
 
 //        let textField = UITextField()
 //        progress∞progress.localizedDescription ∞=> textField∞textField.text
@@ -2329,7 +2403,10 @@ public class StatefulObject : NSObject {
     }
 }
 
-public class StatefulObjectSubclass : StatefulObject { }
+public class StatefulObjectSubclass : StatefulObject {
+    dynamic var state = StatefulObject()
+}
+
 public final class StatefulObjectSubSubclass : StatefulObjectSubclass { }
 
 var InstanceTrackingUndoManagerInstanceCount = 0

@@ -183,7 +183,7 @@ ojic.intField // will be 89
 
 ### Channels and Funnels
 
-A `Channel` is bi-directional access to some underlying state. It is always backed by a reference type, either a class in Objective-C or a reference wrapper around a Swift value type. A `Channel` is a specialization of a `Funnel`, which provides uni-directional flow of events. Events are not limited to state changes. For example, you funnel button tap events to a custom attached outlet using the `-∞>` operator.
+A `Channel` is bi-directional access to some underlying state. It is always backed by a reference type, either a class in Objective-C or a reference wrapper around a Swift value type. A `Channel` is a specialization of a `Funnel`, which provides uni-directional flow of events. Events are not limited to state changes. For example, you funnel button tap events to a custom attached outlet using the `∞>` operator.
 
 #### Example: Funneling Button Taps
 
@@ -191,7 +191,7 @@ A `Channel` is bi-directional access to some underlying state. It is always back
 import UIKit
 
 let button = UIButton()
-button.controlz() -∞> { (event: UIEvent) in println("Tapped Button!") }
+button.controlz() ∞> { (event: UIEvent) in println("Tapped Button!") }
 ```
 <!--`-->
 
@@ -262,14 +262,19 @@ Outlets are weakly associated with their target objects, so when the objects are
 Following is a list of the variants of the ∞ operator that is used throughout the ChannelZ framework:
 
 * `∞(SWTYPE)∞`: Wraps the given Swift reference type in a field channel
-* `OBJC ∞ OBJC.PROPERTY`: Creates a channel to the given Objective-C object's auto-detected KVO-compliant key.
-* `OBJC ∞ (OBJC.PROPERTY, "PROPNAME")`: Creates a channel to the given Objective-C's property with a manually specified keypath.
-* `FUNL -∞> { (ARG: TYPE) in VOID }`: Attaches an outlet to the given funnel or channel.
-* `C1 ∞=> C2`: Unidirectionally synchronizes state from channel C1 to channel C2
-* `C1 <=∞ C2`: Unidirectionally synchronizes state from channel C2 to channel C1
-* `C1 <=∞=> C2`: Bidirectionally synchronizes state between channels C1 and C2
-* `C1 <~∞~> C2`: Bidirectionally synchronizes state between channels C1 and C2 by coercing numeric types
-* `C1 <?∞?> C2`: Bidirectionally synchronizes state between channels C1 and C2 by attempting an optional cast
+* `ObjC ∞ ObjC.key`: Creates a channel to the given Objective-C object's auto-detected KVO-compliant key.
+* `ObjC ∞ (ObjC.key, "keyPath")`: Creates a channel to the given Objective-C's property with a manually specified keypath.
+* `Fz ∞> { (arg: Type) -> Void }`: Attaches an outlet to the given funnel or channel.
+* `Fz ∞-> { (arg: Type) -> Void }`: Attaches an outlet to the given funnel or channel and primes it with the current value.
+* `Cz1 ∞=> Cz2`: Unidirectionally conduits state from channel `Cz1` to channel `Cz2`.
+* `Cz1 ∞=-> Cz2`: Unidirectionally conduits state from channel `Cz1` to channel `Cz2` and primes the outlet.
+* `Cz1 <-=∞ Cz2`: Unidirectionally conduits state from channel `Cz2` to channel `Cz1` and primes the outlet.
+* `Cz1 <=∞=> Cz2`: Bidirectionally conduits state between channels `Cz1` and `Cz2`.
+* `Cz1 <=∞=-> Cz2`: Bidirectionally conduits state between channels `Cz1` and `Cz2` and primes the right side outlet.
+* `Cz1 <~∞~> Cz2`: Bidirectionally conduits state between channels `Cz1` and `Cz2` by coercing numeric types.
+* `Cz1 <?∞?> Cz2`: Bidirectionally conduits state between channels `Cz1` and `Cz2` by attempting an optional cast.
+* `(Cz1 | Cz2) ∞> { (cz1Type?, cz2Type?) -> Void }`: Attach an outlet to the combination of `Cz1` and `Cz2` such that when either changes, the outlet will be fired.
+* `(Cz1 & Cz2) ∞> { (cz1Type, cz2Type) -> Void }`: Attach an outlet to the combination of `Cz1` and `Cz2` such that when both change, the outlet will be fired.
 
 ### Setting up ChannelZ
 

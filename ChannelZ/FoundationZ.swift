@@ -343,6 +343,7 @@ private struct KeyValueOutlet: Outlet {
                             handler(oldv: change[NSKeyValueChangeOldKey]!, newv: change[NSKeyValueChangeNewKey]!)
                         case .Insertion, .Removal, .Replacement:
                             // TODO: handle NSKeyValueChangeKindKey and NSKeyValueChangeIndexesKey keys for collection changes
+                            handler(oldv: change[NSKeyValueChangeOldKey], newv: change[NSKeyValueChangeNewKey])
                             break
                         }
                     }

@@ -109,3 +109,8 @@ final class OutletList<T> {
     func clear() { outlets = [] }
 }
 
+/// Primes the outlet and returns the outlet itself
+internal func prime(outlet: Outlet) -> Outlet {
+    outlet.prime()
+    return outlet
+}
