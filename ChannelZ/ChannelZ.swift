@@ -462,16 +462,25 @@ public func ∞=-><L : BaseFunnelType, R : ChannelType where L.OutputType == R.S
     return prime(lhs ∞=> rhs)
 }
 
+// this source compiles, but any source that references it crashes the compiler
+/// One-sided conduit operator with natural equivalence between two types where the receiver is the optional of the sender
+//public func ∞~-><T, L : BaseFunnelType, R : ChannelType where L.OutputType == T, R.SourceType == Optional<T>>(lhs: L, rhs: R)->Outlet {
+//    let lsink = lhs.attach { rhs.value = $0 }
+//    return OutletOf<(L.OutputType, R.OutputType)>(primer: { lsink.prime() }, detacher: { lsink.detach() })
+//}
 
-/// One-sided conduit operator with natural equivalence between two identical types
-public func <=∞<L : ChannelType, R : BaseFunnelType where L.SourceType == R.OutputType>(lhs: L, rhs: R)->Outlet {
-    let rsink = rhs.attach { lhs.value = $0 }
-    return OutletOf<(L.OutputType, R.OutputType)>(primer: { rsink.prime() }, detacher: { rsink.detach() })
+// limited workaround for the above compiler crash by constraining the RHS to the ChannelZ and ChannelOf implementations
+
+/// One-sided conduit operator with natural equivalence between two types where the receiver is the optional of the sender
+public func ∞=><T, L : BaseFunnelType where L.OutputType == T>(lhs: L, rhs: ChannelZ<Optional<T>>)->Outlet {
+    let lsink = lhs.attach { rhs.value = $0 }
+    return OutletOf<T>(primer: { lsink.prime() }, detacher: { lsink.detach() })
 }
 
-/// One-sided conduit operator with natural equivalence between two identical types with priming
-public func <-=∞<L : ChannelType, R : BaseFunnelType where L.SourceType == R.OutputType>(lhs: L, rhs: R)->Outlet {
-    return prime(lhs <=∞ rhs)
+/// One-sided conduit operator with natural equivalence between two types where the receiver is the optional of the sender
+public func ∞=><T, U, L : BaseFunnelType where L.OutputType == T>(lhs: L, rhs: ChannelOf<Optional<T>, U>)->Outlet {
+    let lsink = lhs.attach { rhs.value = $0 }
+    return OutletOf<T>(primer: { lsink.prime() }, detacher: { lsink.detach() })
 }
 
 /// Bi-directional conduit operator with natural equivalence between two identical types where the left side is primed
@@ -487,6 +496,7 @@ public func <=∞=-><L : ChannelType, R : ChannelType where L.OutputType == R.So
 /// Conduit conversion operators
 infix operator <~∞~> { }
 infix operator ∞~> { }
+infix operator ∞~-> { }
 infix operator <~∞ { }
 
 

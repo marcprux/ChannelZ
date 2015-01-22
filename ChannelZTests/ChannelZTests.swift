@@ -1949,6 +1949,22 @@ public class ChannelZTests: XCTestCase {
 //        ChannelZReentrancyLimit = 1
     }
 
+    public func testRequiredToOptional() {
+        let state1 = ∞Int(0)∞
+        let state2 = ∞Optional<Int>()∞
+
+        state1 ∞=> state2
+
+        XCTAssertEqual(0, state1.value)
+        XCTAssertEqual(999, state2.value ?? 999)
+
+        state1.value++
+
+        XCTAssertEqual(1, state1.value)
+        XCTAssertEqual(1, state2.value ?? 999)
+
+    }
+
     public func testMemory() {
         autoreleasepool {
             let md1 = MemoryDemo()
