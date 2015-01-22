@@ -111,6 +111,51 @@ public struct FilteredFunnel<S : BaseFunnelType> : FunnelType {
 }
 
 
+public class TrapOutlet<F : BaseFunnelType>: OutletType {
+    typealias Element = F.OutputType
+
+    public let source: F
+
+    /// Returns the last value to be added to this trap
+    public var value: F.OutputType? { return values.last }
+
+    /// All the values currently held in the trap
+    public var values: [F.OutputType]
+
+    public let capacity: Int
+
+    private var outlet: Outlet?
+
+    public init(source: F, capacity: Int) {
+        self.source = source
+        self.values = []
+        self.capacity = capacity
+        self.values.reserveCapacity(capacity)
+
+        let outlet = source.attach({ [weak self] (value) -> Void in
+            let _ = self?.receive(value)
+        })
+        self.outlet = outlet
+    }
+
+    deinit { outlet?.detach() }
+    public func detach() { outlet?.detach() }
+    public func prime() { outlet?.prime() }
+
+    public func receive(value: Element) {
+        while values.count >= capacity {
+            values.removeAtIndex(0)
+        }
+
+        values.append(value)
+    }
+}
+
+///// Creates a trap for the last `count` events of the `source` funnel
+public func trap<F : BaseFunnelType>(source: F, capacity: Int = 1) -> TrapOutlet<F> {
+    return TrapOutlet(source: source, capacity: capacity)
+}
+
 /// Internal FilteredFunnel curried creation
 internal func filterFunnel<T : BaseFunnelType>(source: T)(predicate: (T.OutputType)->Bool)->FilteredFunnel<T> {
     return FilteredFunnel(source: source, predicate: predicate)

@@ -22,20 +22,20 @@ import WebKit
 
 
 public class ChannelZTests: XCTestCase {
-    override public func tearDown() {
-        super.tearDown()
 
-        // ensure that all the bindings and observers are properly cleaned up
-        #if DEBUG_CHANNELZ
-        XCTAssertEqual(0, StatefulObjectCount, "all StatefulObject instances should have been deallocated")
-        StatefulObjectCount = 0
-        XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
-        ChannelZKeyValueObserverCount = 0
-        XCTAssertEqual(0, ChannelZNotificationObserverCount, "Notification observers were not cleaned up")
-        ChannelZNotificationObserverCount = 0
-        #else
-        XCTFail("Why are you running tests with debugging off?")
-        #endif
+    func testTraps() {
+        let bools = trap(∞false∞, capacity: 10)
+
+        // test that sending capacity distinct values will store those values
+        var send = [true, false, true, false, true, false, true, false, true, false]
+        send.map { bools.source.value = $0 }
+        XCTAssertEqual(send, bools.values)
+
+        // test that sending some mixed values will sieve and consense to the capacity
+        var mixed = [false, true, true, true, false, true, false, true, false, true, true, false, true, true, false, false, false]
+        mixed.map { bools.source.value = $0 }
+        XCTAssertEqual(send, bools.values)
+
     }
 
     func testFunnels() {
@@ -2356,6 +2356,24 @@ public class ChannelZTests: XCTestCase {
         pout.detach() // FIXME: crash
     }
     #endif
+
+
+    override public func tearDown() {
+        super.tearDown()
+
+        // ensure that all the bindings and observers are properly cleaned up
+        #if DEBUG_CHANNELZ
+            XCTAssertEqual(0, StatefulObjectCount, "all StatefulObject instances should have been deallocated")
+            StatefulObjectCount = 0
+            XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
+            ChannelZKeyValueObserverCount = 0
+            XCTAssertEqual(0, ChannelZNotificationObserverCount, "Notification observers were not cleaned up")
+            ChannelZNotificationObserverCount = 0
+            #else
+            XCTFail("Why are you running tests with debugging off?")
+        #endif
+    }
+
 }
 
 
