@@ -33,7 +33,6 @@ public protocol ExtendedFunnelType : BaseFunnelType {
 }
 
 public protocol FunnelType : BaseFunnelType, ExtendedFunnelType {
-
 }
 
 /// A Sink that funnls all elements through to the attached outlets
@@ -151,7 +150,7 @@ public class TrapOutlet<F : BaseFunnelType>: OutletType {
     }
 }
 
-///// Creates a trap for the last `count` events of the `source` funnel
+/// Creates a trap for the last `count` events of the `source` funnel
 public func trap<F : BaseFunnelType>(source: F, capacity: Int = 1) -> TrapOutlet<F> {
     return TrapOutlet(source: source, capacity: capacity)
 }
