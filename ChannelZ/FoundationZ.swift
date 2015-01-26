@@ -687,7 +687,7 @@ public struct EventFunnel<T>: FunnelType {
     /// Attaches an outlet to receive change notifications from the state pipeline
     ///
     /// :param: outlet      the outlet closure to which state will be sent
-    public func attach(outlet: (OutputType)->())->Outlet { return outlets.addOutlet(primer: { }, outlet: outlet) }
+    public func attach(outlet: (OutputType)->())->Outlet { return outlets.addOutlet(outlet) }
 
     // Boilerplate funnel/filter/map
     private typealias SelfFunnel = EventFunnel

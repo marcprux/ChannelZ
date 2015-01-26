@@ -20,7 +20,7 @@ public protocol OutletType : Outlet {
     typealias Element
 
     /// Receives the state element
-    func receive(value: Element)
+//    func receive(value: Element)
 }
 
 
@@ -28,33 +28,15 @@ public protocol OutletType : Outlet {
 ///
 /// Forwards operations to an arbitrary underlying outlet with the same
 /// `Element` type, hiding the specifics of the underlying outlet.
-public struct OutletOf<Element> : OutletType {
+public struct OutletOf<T> : OutletType {
     let primer: ()->()
     let detacher: ()->()
-    let receiver: (Element)->()
 
-//    public init<O : OutletType where Element == O.Element>(_ base: O) {
-//        self.primer = { base.prime() }
-//        self.detacher = { base.detach() }
-//        self.receiver = { base.receive($0) }
-//    }
-//
-//    public init<S : SinkType where Element == S.Element>(sink: S) {
-//        self.primer = { }
-//        self.detacher = { }
-//        self.receiver = { SinkOf(sink).put($0) }
-//    }
+    public typealias Element = T
 
-    public init(primer: ()->(), detacher: ()->(), receiver: (Element)->() = { _ in }) {
+    public init(primer: ()->(), detacher: ()->()) {
         self.primer = primer
         self.detacher = detacher
-        self.receiver = receiver
-    }
-
-
-    /// Receives the state element
-    public func receive(value: Element) {
-        self.receiver(value)
     }
 
     /// Disconnects this outlet from the source funnel
@@ -78,7 +60,7 @@ struct DeallocatedTargetOutlet : Outlet {
 public var ChannelZReentrancyLimit: UInt = 1
 
 final class OutletList<T> {
-    private var outlets: [(index: UInt, outlet: OutletOf<T>)] = []
+    private var outlets: [(index: UInt, outlet: (T)->())] = []
     internal var entrancy: UInt = 0
     private var outletIndex: UInt = 0
 
@@ -89,18 +71,18 @@ final class OutletList<T> {
             #endif
         } else {
             for (index, outlet) in outlets {
-                outlet.receive(element)
+                outlet(element)
             }
             entrancy--
         }
     }
 
-    func addOutlet(#primer: ()->(), outlet: (T)->())->OutletOf<T> {
+    func addOutlet(outlet: (T)->(), primer: ()->() = { })->OutletOf<T> {
         precondition(entrancy == 0, "cannot add to outlets while they are flowing")
         let index: UInt = outletIndex++
-        let outlet = OutletOf<T>(primer: primer, detacher: { [weak self] in self?.removeOutlet(index); return }, receiver: outlet)
+        let olet = OutletOf<T>(primer: primer, detacher: { [weak self] in self?.removeOutlet(index); return })
         self.outlets += [(index, outlet)]
-        return outlet
+        return olet
     }
 
     func removeOutlet(index: UInt) { outlets = outlets.filter { $0.index != index } }

@@ -35,7 +35,25 @@ public class ChannelZTests: XCTestCase {
         var mixed = [false, true, true, true, false, true, false, true, false, true, true, false, true, true, false, false, false]
         mixed.map { bools.source.value = $0 }
         XCTAssertEqual(send, bools.values)
+    }
 
+    func testGenerators() {
+        let seq = [true, false, true, false, true]
+
+//        let gfun1 = GeneratorFunnel(GeneratorOf(seq.generate())) // GeneratorFunnel with generator
+//        let trap1 = trap(gfun1, capacity: 3)
+//        XCTAssertEqual(seq[2...4], trap1.values[0...2], "trap should contain the last 3 elements of the sequence generator")
+
+        let gfun2 = GeneratorFunnel(seq) // GeneratorFunnel with sequence
+        let trap2 = trap(gfun2, capacity: 3)
+        XCTAssertEqual(seq[2...4], trap2.values[0...2], "trap should contain the last 3 elements of the sequence generator")
+
+        let trapped = trap(GeneratorFunnel(1...5) & GeneratorFunnel(6...10), capacity: 1000)
+        XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[5, 6], [5, 7], [5, 8], [5, 9], [5, 10]]) // tupes aren't equatable
+
+        // funnel concatenation
+        let merged = trap(GeneratorFunnel(1...3) + GeneratorFunnel(3...5) + GeneratorFunnel(2...6), capacity: 1000)
+        XCTAssertEqual(merged.values, [1, 2, 3, 3, 4, 5, 2, 3, 4, 5, 6])
     }
 
     func testFunnels() {

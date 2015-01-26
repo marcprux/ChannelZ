@@ -46,7 +46,7 @@ public struct SinkFunnel<Element> : FunnelType, SinkType {
     }
 
     public func attach(outlet: (OutputType)->())->Outlet {
-        return outlets.addOutlet(primer: { }, outlet: outlet)
+        return outlets.addOutlet(outlet)
     }
 
     public func put(x: Element) {
@@ -110,6 +110,36 @@ public struct FilteredFunnel<S : BaseFunnelType> : FunnelType {
 }
 
 
+/// A GeneratorFunnel wraps a SequenceType or GeneratorType and sends all generated elements whenever an attachment is made
+public struct GeneratorFunnel<T>: BaseFunnelType {
+    typealias OutputType = T
+
+    private let generator: ()->GeneratorOf<T>
+
+    public init<G: GeneratorType where T == G.Element>(_ gen: G) {
+        self.generator = { GeneratorOf(gen) }
+    }
+
+    public init<S: SequenceType where T == S.Generator.Element>(_ seq: S) {
+        self.generator = { GeneratorOf(seq.generate()) }
+    }
+
+    public func attach(outlet: (OutputType) -> Void) -> Outlet {
+        for element in generator() {
+            outlet(element)
+        }
+
+        return OutletOf<OutputType>(primer: { }, detacher: { })
+    }
+
+    // Boilerplate funnel/filter/map
+    public typealias SelfFunnel = GeneratorFunnel
+    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
+    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
+    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+}
+
+/// A TrapOutlet is an attachment to a funnel that retains a number of values (default 1) when they are sent by the source
 public class TrapOutlet<F : BaseFunnelType>: OutletType {
     typealias Element = F.OutputType
 
@@ -207,8 +237,45 @@ public func map<Source : BaseFunnelType, TransformedType>(source: Source, transf
     return mapFunnel(source)(transform)
 }
 
+/// A ConcatenatedFunnel merges two homogeneous funnels and delivers signals to the attached outlets when either of the sources emits an event
+public struct ConcatenatedFunnel<T, F1 : BaseFunnelType, F2 : BaseFunnelType where F1.OutputType == T, F2.OutputType == T> : FunnelType {
+    public typealias OutputType = T
+    private var source1: F1
+    private var source2: F2
 
-/// A CombinedAnyFunnel merges two funnels and delivers signals as a tuple to the attached outlets when any of the sources emits an event
+    public init(source1: F1, source2: F2) {
+        self.source1 = source1
+        self.source2 = source2
+    }
+
+    public func attach(outlet: OutputType->Void)->Outlet {
+        let sk1 = source1.attach({ v1 in outlet(v1) })
+        let sk2 = source2.attach({ v2 in outlet(v2) })
+
+        let outlet = OutletOf<OutputType>(primer: {
+            sk1.prime()
+            sk2.prime()
+        }, detacher: {
+            sk1.detach()
+            sk2.detach()
+        })
+
+        return outlet
+    }
+
+    // Boilerplate funnel/filter/map
+    public typealias SelfFunnel = ConcatenatedFunnel
+    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
+    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
+    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+}
+
+/// Funnel concatination operation for two funnels of the same type
+public func + <T, L : BaseFunnelType, R : BaseFunnelType where L.OutputType == T, R.OutputType == T>(lhs: L, rhs: R)->FunnelOf<T> {
+    return ConcatenatedFunnel(source1: lhs, source2: rhs).funnel()
+}
+
+/// A CombinedAnyFunnel merges two hetergeneous funnels and delivers signals as a tuple to the attached outlets when any of the sources emits an event
 public struct CombinedAnyFunnel<F1 : BaseFunnelType, F2 : BaseFunnelType> : FunnelType {
     public typealias OutputType = (F1.OutputType?, F2.OutputType?)
     private var source1: F1

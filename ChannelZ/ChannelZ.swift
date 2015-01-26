@@ -150,11 +150,11 @@ public final class FieldChannel<T> : ChannelType {
     }
 
     public func attach(outlet: (OutputType)->())->Outlet {
-        return outlets.addOutlet(primer: { [weak self] in
+        return outlets.addOutlet(outlet, primer: { [weak self] in
             if let this = self {
                 outlet(StateEvent.push(this.value))
             }
-        }, outlet: outlet)
+        })
     }
 
 
