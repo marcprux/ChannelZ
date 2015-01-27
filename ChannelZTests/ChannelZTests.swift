@@ -675,6 +675,17 @@ public class ChannelZTests: XCTestCase {
 
     }
 
+    func testZippedGenerators() {
+        let range = 1...6
+        let nums = GeneratorFunnel(1...3) + GeneratorFunnel(4...6)
+        let strs = GeneratorFunnel(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
+        var numstrs: [(Int, String)] = []
+        let zipped = (nums & strs)
+        zipped.attach({ numstrs += [$0] })
+        XCTAssertEqual(numstrs.map({ $0.0 }), [1, 2, 3, 4, 5, 6])
+        XCTAssertEqual(numstrs.map({ $0.1 }), ["one", "two", "three", "four", "five", "six"])
+    }
+
     func testDeepNestedFilter() {
         let t = ∞(1.0)∞
 
