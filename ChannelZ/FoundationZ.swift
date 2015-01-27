@@ -326,7 +326,7 @@ private struct KeyValueOutlet: Outlet {
     var supplementaryDetachable: (()->())?
 
     init(target: NSObject, keyPath: String, handler: HandlerType) {
-        var entrancy: UInt = 0
+        var entrancy: Int = 0
 
         self.handler = handler
         self.observer = TargetAssociatedObserver(target: target, keyPath: keyPath, callback: { (change: [NSObject : AnyObject]) -> () in
@@ -397,7 +397,7 @@ private struct KeyValueOutlet: Outlet {
     /// The signature for the callback when a change occurs
     typealias Callback = ([NSObject : AnyObject])->()
 
-    typealias Observer = (identifier: UInt64, handler: Callback)
+    typealias Observer = (identifier: Int, handler: Callback)
 
     /// since this associated object is deallocated as part of the owning object's dealloc (see objc_destructInstance in <http://opensource.apple.com/source/objc4/objc4-646/runtime/objc-runtime-new.mm>), we can't rely on the weak reference not having been zeroed, so use an extra unmanaged pointer to the target object that we can use to remove the observer
     private let targetPtr: Unmanaged<NSObject>
@@ -409,7 +409,7 @@ private struct KeyValueOutlet: Outlet {
     private var noteObservers = [String: [Observer]]()
 
     /// The internal counter of identifiers
-    private var identifierCounter : UInt64 = 0
+    private var identifierCounter : Int = 0
 
     class func get(target: NSObject) -> TargetObserverRegister {
         Context.RegisterLock.lock()
@@ -438,7 +438,7 @@ private struct KeyValueOutlet: Outlet {
         clear()
     }
 
-    func addObserver(keyPath: String, handler: Callback) -> UInt64 {
+    func addObserver(keyPath: String, handler: Callback) -> Int {
         let observer = Observer(identifier: ++identifierCounter, handler: handler)
 
         var observers = keyObservers[keyPath] ?? []
@@ -451,7 +451,7 @@ private struct KeyValueOutlet: Outlet {
         return observer.identifier
     }
 
-    func addNotification(name: String, handler: Callback) -> UInt64 {
+    func addNotification(name: String, handler: Callback) -> Int {
         var observers = noteObservers[name] ?? []
         if observers.count == 0 { // this is the first observer: actually add it to the target
             Context.RegisterNotificationCenter.addObserver(self, selector: Selector("notificationReceived:"), name: name, object: target)
@@ -486,7 +486,7 @@ private struct KeyValueOutlet: Outlet {
         noteObservers = [:]
     }
 
-    func removeObserver(keyPath: String, identifier: UInt64) {
+    func removeObserver(keyPath: String, identifier: Int) {
         if let observers = keyObservers[keyPath] {
             var filtered = observers.filter { $0.identifier != identifier }
             if filtered.count == 0 { // no more observers left: remove ourselves as the observer
@@ -500,7 +500,7 @@ private struct KeyValueOutlet: Outlet {
         }
     }
 
-    func removeNotification(name: String, identifier: UInt64) {
+    func removeNotification(name: String, identifier: Int) {
         if let observers = noteObservers[name] {
             var filtered = observers.filter { $0.identifier != identifier }
             if filtered.count == 0 { // no more observers left: remove ourselves as the observer
@@ -533,7 +533,7 @@ private struct KeyValueOutlet: Outlet {
 }
 
 final class TargetAssociatedObserver {
-    let identifier: UInt64
+    let identifier: Int
     let keyPath: String?
     let notificationName: String?
     weak var target: NSObject?

@@ -6,6 +6,8 @@
 //  License: MIT (or whatever)
 //
 
+import ObjectiveC // uses for synchronizing OutletList with objc_sync_enter
+
 /// An `Outlet` is the result of `attach`ing to a Funnel or Channel
 public protocol Outlet {
     /// Disconnects this outlet from the source
@@ -57,38 +59,58 @@ struct DeallocatedTargetOutlet : Outlet {
 
 
 /// How many levels of re-entrancy are permitted when flowing state observations
-public var ChannelZReentrancyLimit: UInt = 1
+public var ChannelZReentrancyLimit: Int = 1
 
 final class OutletList<T> {
-    private var outlets: [(index: UInt, outlet: (T)->())] = []
-    internal var entrancy: UInt = 0
-    private var outletIndex: UInt = 0
+    private var outlets: [(index: Int, outlet: (T)->())] = []
+    internal var entrancy: Int = 0
+    private var outletIndex: Int = 0
+
+    private func synchronized<X>(lockObj: AnyObject!, closure: ()->X) -> X {
+        if objc_sync_enter(lockObj) == Int32(OBJC_SYNC_SUCCESS) {
+            var retVal: X = closure()
+            objc_sync_exit(lockObj)
+            return retVal
+        } else {
+            fatalError("Unable to synchronize on object")
+        }
+    }
 
     func receive(element: T) {
-        if entrancy++ > ChannelZReentrancyLimit {
-            #if DEBUG_CHANNELZ
-                println("re-entrant value change limit of \(ChannelZReentrancyLimit) reached for outlets")
-            #endif
-        } else {
-            for (index, outlet) in outlets {
-                outlet(element)
+        synchronized(self) { ()->(Void) in
+            if self.entrancy++ > ChannelZReentrancyLimit {
+                #if DEBUG_CHANNELZ
+                    println("re-entrant value change limit of \(ChannelZReentrancyLimit) reached for outlets")
+                #endif
+            } else {
+                for (index, outlet) in self.outlets { outlet(element) }
             }
-            entrancy--
+            self.entrancy--
         }
     }
 
     func addOutlet(outlet: (T)->(), primer: ()->() = { })->OutletOf<T> {
-        precondition(entrancy == 0, "cannot add to outlets while they are flowing")
-        let index: UInt = outletIndex++
-        let olet = OutletOf<T>(primer: primer, detacher: { [weak self] in self?.removeOutlet(index); return })
-        self.outlets += [(index, outlet)]
-        return olet
+        return synchronized(self) {
+            let index = self.outletIndex++
+            let olet = OutletOf<T>(primer: primer, detacher: { [weak self] in self?.removeOutlet(index); return })
+            precondition(self.entrancy == 0, "cannot add to outlets while they are flowing")
+            self.outlets += [(index, outlet)]
+            return olet
+        }
     }
 
-    func removeOutlet(index: UInt) { outlets = outlets.filter { $0.index != index } }
+    func removeOutlet(index: Int) {
+        synchronized(self) {
+            self.outlets = self.outlets.filter { $0.index != index }
+        }
+    }
 
     /// Clear all the outlets
-    func clear() { outlets = [] }
+    func clear() {
+        synchronized(self) {
+            self.outlets = []
+        }
+    }
 }
 
 /// Primes the outlet and returns the outlet itself

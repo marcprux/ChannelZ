@@ -83,7 +83,6 @@ public struct FunnelOf<OutputType> : FunnelType {
     public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return MappedFunnel(source: self, transform: transform) }
 }
 
-
 /// A filtered funnel that flows only those values that pass the filter predicate
 public struct FilteredFunnel<S : BaseFunnelType> : FunnelType {
     typealias OutputType = S.OutputType
