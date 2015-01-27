@@ -746,6 +746,8 @@ public class ChannelZTests: XCTestCase {
 
         let deepOutlet = deepNest.attach({ _ in })
 
+        deepNest.value = 10
+        
         XCTAssertEqual("ChannelZ.FilteredChannel", _stdlib_getDemangledTypeName(deepNest))
         XCTAssertEqual("ChannelZ.FunnelOf", _stdlib_getDemangledTypeName(flatFunnel))
         XCTAssertEqual("ChannelZ.ChannelOf", _stdlib_getDemangledTypeName(flatChannel))
