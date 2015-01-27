@@ -377,20 +377,22 @@ private struct KeyValueOutlet: Outlet {
 
 }
 
-/// Global pointer to the context that will holder the observer list
-private var targetObserverRegisterContext = UnsafePointer<Void>()
-
-/// Global lock for getting/setting the observer
-private var targetObserverRegisterLock = NSLock()
-
-/// Singleton notification center; we don't currently support multiple NSNotificationCenter observers
-private let targetObserverRegisterNotificationCenter = NSNotificationCenter.defaultCenter()
-
-private let targetObserverRegisterKVOOptions = NSKeyValueObservingOptions(NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue)
-
 /// An observer register that is stored as an associated object in the target and is automatically removed when the target is deallocated; can be with either KVO or NSNotificationCenter depending on the constructor arguments
 @objc final class TargetObserverRegister : NSObject {
     // note: it would make sense to declare this as TargetObserverRegister<T:NSObject>, but the class won't receive any KVO notifications if it is a generic
+
+    private struct Context {
+        /// Global pointer to the context that will holder the observer list
+        private static var ObserverListAssociatedKey = UnsafePointer<Void>()
+
+        /// Global lock for getting/setting the observer
+        private static var RegisterLock = NSLock()
+
+        /// Singleton notification center; we don't currently support multiple NSNotificationCenter observers
+        private static let RegisterNotificationCenter = NSNotificationCenter.defaultCenter()
+
+        private static let KVOOptions = NSKeyValueObservingOptions(NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue)
+    }
 
     /// The signature for the callback when a change occurs
     typealias Callback = ([NSObject : AnyObject])->()
@@ -410,17 +412,17 @@ private let targetObserverRegisterKVOOptions = NSKeyValueObservingOptions(NSKeyV
     private var identifierCounter : UInt64 = 0
 
     class func get(target: NSObject) -> TargetObserverRegister {
-        targetObserverRegisterLock.lock()
-        if let ob = objc_getAssociatedObject(target, &targetObserverRegisterContext) as? TargetObserverRegister {
-            targetObserverRegisterLock.unlock()
+        Context.RegisterLock.lock()
+        if let ob = objc_getAssociatedObject(target, &Context.ObserverListAssociatedKey) as? TargetObserverRegister {
+            Context.RegisterLock.unlock()
             return ob
         } else {
             let ob = TargetObserverRegister(targetPtr: Unmanaged.passUnretained(target))
-            objc_setAssociatedObject(target, &targetObserverRegisterContext, ob, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+            objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, ob, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
             #if DEBUG_CHANNELZ
                 ChannelZKeyValueObserverCount++
             #endif
-            targetObserverRegisterLock.unlock()
+            Context.RegisterLock.unlock()
             return ob
         }
     }
@@ -443,7 +445,7 @@ private let targetObserverRegisterKVOOptions = NSKeyValueObservingOptions(NSKeyV
         keyObservers[keyPath] = observers + [observer]
 
         if observers.count == 0 { // this is the first observer: actually add it to the target
-            target.addObserver(self, forKeyPath: keyPath, options: targetObserverRegisterKVOOptions, context: nil)
+            target.addObserver(self, forKeyPath: keyPath, options: Context.KVOOptions, context: nil)
         }
 
         return observer.identifier
@@ -452,7 +454,7 @@ private let targetObserverRegisterKVOOptions = NSKeyValueObservingOptions(NSKeyV
     func addNotification(name: String, handler: Callback) -> UInt64 {
         var observers = noteObservers[name] ?? []
         if observers.count == 0 { // this is the first observer: actually add it to the target
-            targetObserverRegisterNotificationCenter.addObserver(self, selector: Selector("notificationReceived:"), name: name, object: target)
+            Context.RegisterNotificationCenter.addObserver(self, selector: Selector("notificationReceived:"), name: name, object: target)
         }
 
         let observer = Observer(identifier: ++identifierCounter, handler: handler)
@@ -465,13 +467,13 @@ private let targetObserverRegisterKVOOptions = NSKeyValueObservingOptions(NSKeyV
         let target = self.target // hang on to the target since the getter won't be valid after we remove the associated object
 
         // remove the associated object
-        objc_setAssociatedObject(target, &targetObserverRegisterContext, nil, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+        objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, nil, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
 
         for keyPath in keyObservers.keys {
             // FIXME: random crash with certain classes: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x1057715e0> for the key path "isFinished" from <NSBlockOperation 0x105769810> because it is not registered as an observer."
             if target is NSBlockOperation {
                 // NSBlockOperation doesn't seem to require observers to be removed?
-                // target.addObserver(self, forKeyPath: keyPath, options: targetObserverRegisterKVOOptions, context: nil) // crash
+                // target.addObserver(self, forKeyPath: keyPath, options: Context.KVOOptions, context: nil) // crash
             } else {
                 target.removeObserver(self, forKeyPath: keyPath, context: nil)
             }
@@ -479,7 +481,7 @@ private let targetObserverRegisterKVOOptions = NSKeyValueObservingOptions(NSKeyV
         keyObservers = [:]
 
         for name in noteObservers.keys {
-            targetObserverRegisterNotificationCenter.removeObserver(self, name: name, object: target)
+            Context.RegisterNotificationCenter.removeObserver(self, name: name, object: target)
         }
         noteObservers = [:]
     }
@@ -503,7 +505,7 @@ private let targetObserverRegisterKVOOptions = NSKeyValueObservingOptions(NSKeyV
             var filtered = observers.filter { $0.identifier != identifier }
             if filtered.count == 0 { // no more observers left: remove ourselves as the observer
                 noteObservers.removeValueForKey(name)
-                targetObserverRegisterNotificationCenter.removeObserver(self, name: name, object: nil)
+                Context.RegisterNotificationCenter.removeObserver(self, name: name, object: nil)
             } else {
                 noteObservers[name] = filtered
             }

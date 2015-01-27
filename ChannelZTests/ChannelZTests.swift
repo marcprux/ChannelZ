@@ -49,7 +49,7 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(seq[2...4], trap2.values[0...2], "trap should contain the last 3 elements of the sequence generator")
 
         let trapped = trap(GeneratorFunnel(1...5) & GeneratorFunnel(6...10), capacity: 1000)
-        XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[5, 6], [5, 7], [5, 8], [5, 9], [5, 10]]) // tupes aren't equatable
+        XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]]) // tupes aren't equatable
 
         // funnel concatenation
         let merged = trap(GeneratorFunnel(1...3) + GeneratorFunnel(3...5) + GeneratorFunnel(2...6), capacity: 1000)
@@ -577,7 +577,7 @@ public class ChannelZTests: XCTestCase {
 
     }
 
-    func testAllCombinations() {
+    func testZippedFunnel() {
         let a = ∞(Float(3.0))∞
         let b = ∞(UInt(7))∞
         let c = ∞(Bool(false))∞
@@ -587,14 +587,14 @@ public class ChannelZTests: XCTestCase {
         var lastFloat : Float = 0.0
         var lastString : String = ""
 
-        var combo1 = (a & b)
-        combo1 ∞> { (floatChange: Float, uintChange: UInt) in }
+        var zip1 = (a & b)
+        zip1 ∞> { (floatChange: Float, uintChange: UInt) in }
 
-        var combo2 = (a & b & d)
+        var zip2 = (a & b & d)
 
         var changes = 0
 
-        let outlet = combo2 ∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
+        let outlet = zip2 ∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
             changes++
             lastFloat = floatChange
             lastString = stringChange
@@ -611,19 +611,34 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(Float(3.0), lastFloat)
 
         a.value++
-        XCTAssertEqual(0, --changes)
-        XCTAssertEqual("false", lastString)
-        XCTAssertEqual(Float(4.0), lastFloat)
-
+        b.value++
+        b.value++
+        b.value++
+        b.value++
         c.value = true
         XCTAssertEqual(0, --changes)
         XCTAssertEqual("true", lastString)
         XCTAssertEqual(Float(4.0), lastFloat)
 
-        c.value = false
+        c.value = !c.value
+        c.value = !c.value
+        c.value = !c.value
+        c.value = !c.value
+
+        a.value++
         XCTAssertEqual(0, --changes)
         XCTAssertEqual("false", lastString)
-        XCTAssertEqual(Float(4.0), lastFloat)
+        XCTAssertEqual(Float(5.0), lastFloat)
+
+        a.value++
+        XCTAssertEqual(0, --changes)
+        XCTAssertEqual("true", lastString)
+        XCTAssertEqual(Float(6.0), lastFloat)
+
+        a.value++
+        XCTAssertEqual(0, --changes)
+        XCTAssertEqual("false", lastString)
+        XCTAssertEqual(Float(7.0), lastFloat)
 
     }
 
@@ -654,9 +669,9 @@ public class ChannelZTests: XCTestCase {
 
         a.value++
 
-        XCTAssertEqual(5, andx)
+        XCTAssertEqual(2, andx)
         XCTAssertEqual(8, orx)
-        XCTAssertEqual(11, andorx)
+        XCTAssertEqual(8, andorx)
 
     }
 
