@@ -1,6 +1,6 @@
 //
-//  ChannelZTests.swift
-//  ChannelZTests
+//  ChannelTests.swift
+//  ChannelTests
 //
 //  Created by Marc Prud'hommeaux <marc@glimpse.io>
 //  License: MIT (or whatever)
@@ -23,7 +23,7 @@ import WebKit
 
 // TODO make a spec with each of https://github.com/ReactiveX/RxScala/blob/0.x/examples/src/test/scala/rx/lang/scala/examples/RxScalaDemo.scala
 
-public class ChannelZTests: XCTestCase {
+public class ChannelTests: XCTestCase {
 
     func testTraps() {
         let bools = trap(∞false∞, capacity: 10)
@@ -1501,7 +1501,7 @@ public class ChannelZTests: XCTestCase {
 
             person.fullName = "Edward Norton"
 
-            // “CoreData: error: Property 'setAge:' is a scalar type on class 'ChannelZTests.CoreDataPerson' that does not match its Entity's property's scalar type.  Dynamically generated accessors do not support implicit type coercion.  Cannot generate a setter method for it.”
+            // “CoreData: error: Property 'setAge:' is a scalar type on class 'ChannelTests.CoreDataPerson' that does not match its Entity's property's scalar type.  Dynamically generated accessors do not support implicit type coercion.  Cannot generate a setter method for it.”
             person.age = 65
 
             // field tracking doesn't work either...
@@ -1870,7 +1870,7 @@ public class ChannelZTests: XCTestCase {
     public func testOperationChannels() {
         // wrap test in an XCTAssert because it will perform a try/catch
 
-        // file:///opt/src/impathic/glimpse/ChannelZ/ChannelZTests/ChannelZTests.swift: test failure: -[ChannelZTests testOperationChannels()] failed: XCTAssertTrue failed: throwing "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x10038d5b0> for the key path "isFinished" from <NSBlockOperation 0x1003854d0> because it is not registered as an observer." -
+        // file:///opt/src/impathic/glimpse/ChannelZ/ChannelTests/ChannelTests.swift: test failure: -[ChannelTests testOperationChannels()] failed: XCTAssertTrue failed: throwing "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x10038d5b0> for the key path "isFinished" from <NSBlockOperation 0x1003854d0> because it is not registered as an observer." -
         XCTAssert(operationChannelTest())
     }
 
