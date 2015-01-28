@@ -362,8 +362,8 @@ public class ChannelZTests: XCTestCase {
         c ∞> { _ in changes += 1 } // note we do not assign it locally, so it should immediately get cleaned up
 
         XCTAssertEqual(0, changes)
-        c.value = ("A"); XCTAssertEqual(1, changes, "unretained outlet should still listen")
-        c.value = (""); XCTAssertEqual(2, changes, "unretained outlet should still listen")
+        c.value = ("A"); XCTAssertEqual(1, changes, "unretained subscription should still listen")
+        c.value = (""); XCTAssertEqual(2, changes, "unretained subscription should still listen")
     }
 
     func testOptionalNSKeyValueSieve() {
@@ -436,7 +436,7 @@ public class ChannelZTests: XCTestCase {
         var f: ObservableOf<Int> = x.observable() // read-only observable of channel x
 
         var changes = 0
-        var outlet = f ∞> { _ in changes += 1 }
+        var subscription = f ∞> { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
         x.value = (x.value + 1); XCTAssertEqual(0, --changes)
@@ -444,7 +444,7 @@ public class ChannelZTests: XCTestCase {
         x.value = (2); XCTAssertEqual(0, --changes)
         x.value = (9);XCTAssertEqual(0, --changes)
 
-        outlet.detach()
+        subscription.detach()
         x.value = (-1); XCTAssertEqual(0, changes)
     }
 
@@ -625,7 +625,7 @@ public class ChannelZTests: XCTestCase {
 
         var changes = 0
 
-        let outlet = zip2 ∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
+        let subscription = zip2 ∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
             changes++
             lastFloat = floatChange
             lastString = stringChange
@@ -635,7 +635,7 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual("", lastString)
         XCTAssertEqual(Float(0.0), lastFloat)
 
-        outlet.prime()
+        subscription.prime()
 
         XCTAssertEqual(0, --changes)
         XCTAssertEqual("false", lastString)
@@ -848,7 +848,7 @@ public class ChannelZTests: XCTestCase {
 
         observable.put(1)
         var changes = 0
-        let outlet = observable.subscribe({ _ in changes += 1 })
+        let subscription = observable.subscribe({ _ in changes += 1 })
 
         XCTAssertEqual(0, changes)
 
@@ -857,14 +857,14 @@ public class ChannelZTests: XCTestCase {
 
         let sink = SinkOf(observable)
         sink.put(2)
-        XCTAssertEqual(0, --changes, "sink wrapper around observable should have passed elements through to outlets")
+        XCTAssertEqual(0, --changes, "sink wrapper around observable should have passed elements through to subscriptions")
 
-        outlet.prime()
+        subscription.prime()
         XCTAssertEqual(0, changes, "prime() should be a no-op for SinkObservable")
 
-        outlet.detach()
+        subscription.detach()
         sink.put(2)
-        XCTAssertEqual(0, changes, "detached outlet should not be called")
+        XCTAssertEqual(0, changes, "detached subscription should not be called")
     }
 
 //    func testTransformableConduits() {
@@ -1239,10 +1239,10 @@ public class ChannelZTests: XCTestCase {
         state.requiredNSStringField = "foo"
         XCTAssert(requiredNSStringField == "foo", "failed: \(requiredNSStringField)")
 
-//        let preDetachCount = countElements(a1.outlets)
+//        let preDetachCount = countElements(a1.subscriptions)
         a1a.detach()
-//        let postDetachCount = countElements(a1.outlets)
-//        XCTAssertEqual(postDetachCount, preDetachCount - 1, "detaching the outlet should have removed it from the outlet list")
+//        let postDetachCount = countElements(a1.subscriptions)
+//        XCTAssertEqual(postDetachCount, preDetachCount - 1, "detaching the subscription should have removed it from the subscription list")
 
         state.requiredNSStringField = "foo1"
         XCTAssertNotEqual(requiredNSStringField, "foo1", "detached observable should not have fired")
@@ -1588,15 +1588,15 @@ public class ChannelZTests: XCTestCase {
 
 
     public func testDetachedSubscription() {
-        var outlet: Subscription?
+        var subscription: Subscription?
         autoreleasepool {
             let state = StatefulObject()
-            outlet = state.channelz(state.requiredNSStringField).subscribe({ _ in })
+            subscription = state.channelz(state.requiredNSStringField).subscribe({ _ in })
             XCTAssertEqual(1, StatefulObjectCount)
         }
 
         XCTAssertEqual(0, StatefulObjectCount)
-        outlet!.detach() // ensure that the outlet doesn't try to access a bad pointer
+        subscription!.detach() // ensure that the subscription doesn't try to access a bad pointer
     }
 
     public func teststFieldRemoval() {
@@ -1768,17 +1768,17 @@ public class ChannelZTests: XCTestCase {
         let c = NumericHolderClass()
         var count = 0
         let channel = c∞c.doubleField
-        let outlet = channel ∞> { _ in count += 1 }
+        let subscription = channel ∞> { _ in count += 1 }
         XCTAssertEqual(0, count)
 
 
         // ensure that priming the channel actually causes it to send out a value
-        outlet.prime()
-        XCTAssertEqual(0.0, outlet.source.value)
+        subscription.prime()
+        XCTAssertEqual(0.0, subscription.source.value)
         XCTAssertEqual(1, count)
 
-        outlet.prime()
-        XCTAssertEqual(0.0, outlet.source.value)
+        subscription.prime()
+        XCTAssertEqual(0.0, subscription.source.value)
         XCTAssertEqual(2, count)
     }
 
@@ -2078,7 +2078,7 @@ public class ChannelZTests: XCTestCase {
             XCTAssertEqual(2, MemoryDemoCount)
         }
         
-        // outlets are retained by the channel sources
+        // subscriptions are retained by the channel sources
         XCTAssertEqual(0, MemoryDemoCount)
     }
 
@@ -2087,7 +2087,7 @@ public class ChannelZTests: XCTestCase {
         let state = StatefulObjectSubSubclass()
         var count = 0
 
-        let outlet : Subscription = state.channelz(state.optionalStringField) ∞> { _ in count += 1 }
+        let subscription : Subscription = state.channelz(state.optionalStringField) ∞> { _ in count += 1 }
         state∞state.requiredStringField ∞> { _ in count += 1 }
         state∞state.optionalNSStringField ∞> { _ in count += 1 }
         state∞state.requiredNSStringField ∞> { _ in count += 1 }
@@ -2176,12 +2176,12 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(clicks, 0)
 
         let cmd = button.controlz()
-        var outlet = cmd.subscribe({ _ in clicks += 1 })
+        var subscription = cmd.subscribe({ _ in clicks += 1 })
 
         button.performClick(self); XCTAssertEqual(--clicks, 0)
         button.performClick(self); XCTAssertEqual(--clicks, 0)
 
-        outlet.detach()
+        subscription.detach()
 
         button.performClick(self); XCTAssertEqual(clicks, 0)
         button.performClick(self); XCTAssertEqual(clicks, 0)
@@ -2327,7 +2327,7 @@ public class ChannelZTests: XCTestCase {
         let tap: ()->() = {
             let event = UIEvent()
 
-            for target in button.allTargets().allObjects as [UIEventObserver] {
+            for target in button.allTargets().allObjects as [UIEventSubscription] {
                 // button.sendAction also doesn't work from a test case
                 for action in button.actionsForTarget(target, forControlEvent: eventType) as [String] {
 //                    button.sendAction(Selector(action), to: target, forEvent: event)
@@ -2339,7 +2339,7 @@ public class ChannelZTests: XCTestCase {
 
         let buttonTapsHappen = true // false && false // or else compiler warning about blocks never executing
 
-        var outlet1 = cmd.subscribe({ _ in taps += 1 })
+        var subscription1 = cmd.subscribe({ _ in taps += 1 })
         XCTAssertEqual(1, button.allTargets().count)
 
         if buttonTapsHappen {
@@ -2347,21 +2347,21 @@ public class ChannelZTests: XCTestCase {
             tap(); taps -= 1; XCTAssertEqual(taps, 0)
         }
 
-        var outlet2 = cmd.subscribe({ _ in taps += 1 })
+        var subscription2 = cmd.subscribe({ _ in taps += 1 })
         XCTAssertEqual(2, button.allTargets().count)
         if buttonTapsHappen {
             tap(); taps -= 2; XCTAssertEqual(taps, 0)
             tap(); taps -= 2; XCTAssertEqual(taps, 0)
         }
 
-        outlet1.detach()
+        subscription1.detach()
         XCTAssertEqual(1, button.allTargets().count)
         if buttonTapsHappen {
             tap(); taps -= 1; XCTAssertEqual(taps, 0)
             tap(); taps -= 1; XCTAssertEqual(taps, 0)
         }
 
-        outlet2.detach()
+        subscription2.detach()
         XCTAssertEqual(0, button.allTargets().count)
         if buttonTapsHappen {
             tap(); taps -= 0; XCTAssertEqual(taps, 0)
@@ -2417,7 +2417,7 @@ public class ChannelZTests: XCTestCase {
 
         let slider = UISlider()
         slider.maximumValue = Float(vm.amountMax)
-        let outlet = slider∞slider.value <~∞~> vm.amount // FIXME: memory leak
+        let subscription = slider∞slider.value <~∞~> vm.amount // FIXME: memory leak
 
         stepper.value += 25.0
         XCTAssertEqual(slider.value, Float(25.0))
@@ -2453,7 +2453,7 @@ public class ChannelZTests: XCTestCase {
 //        
 //        println("progress: \(textField.text)") // “progress: 15% completed”
 
-        outlet.detach() // FIXME: memory leak
+        subscription.detach() // FIXME: memory leak
         pout.detach() // FIXME: crash
     }
     #endif

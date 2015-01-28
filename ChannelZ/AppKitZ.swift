@@ -24,42 +24,42 @@
 
             var observable = EventObservable<NSEvent>(nil)
             observable.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
-            observer.actions += [{ observable.outlets.receive($0) }]
+            observer.actions += [{ observable.subscriptions.receive($0) }]
 
             return observable
         }
 
-        public func supplementKeyValueChannel(forKeyPath: String, outlet: (AnyObject?)->()) -> (()->())? {
-            // NSControl action events do not trigger KVO notifications, so we manually supplement any outlets with control events
+        public func supplementKeyValueChannel(forKeyPath: String, subscription: (AnyObject?)->()) -> (()->())? {
+            // NSControl action events do not trigger KVO notifications, so we manually supplement any subscriptions with control events
 
             if forKeyPath == "doubleValue" {
-                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.doubleValue) })
-                return { outlet.detach() }
+                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.doubleValue) })
+                return { subscription.detach() }
             }
 
             if forKeyPath == "floatValue" {
-                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.floatValue) })
-                return { outlet.detach() }
+                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.floatValue) })
+                return { subscription.detach() }
             }
 
             if forKeyPath == "integerValue" {
-                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.integerValue) })
-                return { outlet.detach() }
+                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.integerValue) })
+                return { subscription.detach() }
             }
 
             if forKeyPath == "stringValue" {
-                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.stringValue) })
-                return { outlet.detach() }
+                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.stringValue) })
+                return { subscription.detach() }
             }
 
             if forKeyPath == "attributedStringValue" {
-                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.attributedStringValue) })
-                return { outlet.detach() }
+                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.attributedStringValue) })
+                return { subscription.detach() }
             }
 
             if forKeyPath == "objectValue" {
-                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.objectValue) })
-                return { outlet.detach() }
+                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.objectValue) })
+                return { subscription.detach() }
             }
 
             return nil
@@ -81,7 +81,7 @@
 
             var observable = EventObservable<NSEvent>(nil)
             observable.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
-            observer.actions += [{ observable.outlets.receive($0) }]
+            observer.actions += [{ observable.subscriptions.receive($0) }]
             
             return observable
         }

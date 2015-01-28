@@ -23,10 +23,10 @@ public protocol ExtendedChannelType : BaseChannelType {
 
     /// NOTE: the following methods need to be a separate protocol or else client code cannot reify the types (possibly because FilteredChannel itself implements ChannelType, and so is regarded as a circular protocol declaration)
 
-    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the subscriptions
     func filter(predicate: (Self.Element)->Bool)->FilteredChannel<Self>
 
-    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
+    /// Returns a mapped channel that transforms the elements before passing them through to the subscriptions
     func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<Self, TransformedType>
 }
 
@@ -41,7 +41,7 @@ public protocol ChannelType : BaseChannelType, ExtendedChannelType { }
 ///
 /// See also: `ChannelZ<T>`.
 public struct ChannelOf<SourceType, Element> : ChannelType {
-    private let subscribeer: (outlet: (Element) -> (Void)) -> Subscription
+    private let subscribeer: (subscription: (Element) -> (Void)) -> Subscription
     private let setter: (SourceType) -> ()
     private let getter: () -> (SourceType)
 
@@ -56,9 +56,9 @@ public struct ChannelOf<SourceType, Element> : ChannelType {
         self.getter = { base.value }
     }
 
-    public func subscribe(outlet: (Element) -> Void) -> SubscriptionOf<SelfChannel> {
-        let olet = subscribeer(outlet)
-        return SubscriptionOf(source: self, primer: { olet.prime() }, detacher: { olet.detach() })
+    public func subscribe(subscription: (Element) -> Void) -> SubscriptionOf<SelfChannel> {
+        let sub = subscribeer(subscription)
+        return SubscriptionOf(source: self, primer: { sub.prime() }, detacher: { sub.detach() })
     }
 
 
@@ -71,10 +71,10 @@ public struct ChannelOf<SourceType, Element> : ChannelType {
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
 
-    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the subscriptions
     public func filter(predicate: (Element)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
 
-    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
+    /// Returns a mapped channel that transforms the elements before passing them through to the subscriptions
     public func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 }
 
@@ -88,7 +88,7 @@ public struct ChannelZ<T> : ChannelType {
     typealias SourceType = T
     typealias Element = T
 
-    private let subscribeer: (outlet: (T) -> (Void)) -> Subscription
+    private let subscribeer: (subscription: (T) -> (Void)) -> Subscription
     private let setter: (T) -> ()
     private let getter: () -> (T)
 
@@ -103,9 +103,9 @@ public struct ChannelZ<T> : ChannelType {
         self.getter = { base.value }
     }
 
-    public func subscribe(outlet: (Element) -> Void) -> SubscriptionOf<SelfChannel> {
-        let olet = subscribeer(outlet)
-        return SubscriptionOf(source: self, primer: { olet.prime() }, detacher: { olet.detach() })
+    public func subscribe(subscription: (Element) -> Void) -> SubscriptionOf<SelfChannel> {
+        let sub = subscribeer(subscription)
+        return SubscriptionOf(source: self, primer: { sub.prime() }, detacher: { sub.detach() })
     }
 
     // Boilerplate observable/channel/filter/map
@@ -117,10 +117,10 @@ public struct ChannelZ<T> : ChannelType {
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
 
-    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the subscriptions
     public func filter(predicate: (Element)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
 
-    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
+    /// Returns a mapped channel that transforms the elements before passing them through to the subscriptions
     public func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 }
 
@@ -131,7 +131,7 @@ public final class FieldChannel<T> : ChannelType {
     public typealias SourceType = T
     public typealias Element = StateEvent<T>
 
-    private var outlets = SubscriptionList<Element>()
+    private var subscriptions = SubscriptionList<Element>()
 
     /// The underlying value of the channel source
     private var sourceValue : SourceType
@@ -139,10 +139,10 @@ public final class FieldChannel<T> : ChannelType {
     public var value : SourceType {
         get { return sourceValue }
         set(newValue) {
-            if outlets.entrancy == 0 {
+            if subscriptions.entrancy == 0 {
                 let oldValue = sourceValue
                 sourceValue = newValue
-                outlets.receive(StateEvent.change(oldValue, value: newValue))
+                subscriptions.receive(StateEvent.change(oldValue, value: newValue))
             }
         }
     }
@@ -151,14 +151,14 @@ public final class FieldChannel<T> : ChannelType {
         sourceValue = v
     }
 
-    public func subscribe(outlet: (Element)->())->SubscriptionOf<SelfChannel> {
-        let index = outlets.addSubscription(outlet)
+    public func subscribe(subscription: (Element)->())->SubscriptionOf<SelfChannel> {
+        let index = subscriptions.addSubscription(subscription)
         return SubscriptionOf(source: self, primer: { [weak self] in
             if let this = self {
-                outlet(StateEvent.push(this.value))
+                subscription(StateEvent.push(this.value))
             }
         }, detacher: { [weak self] in
-            let _ = self?.outlets.removeSubscription(index)
+            let _ = self?.subscriptions.removeSubscription(index)
         })
     }
 
@@ -172,10 +172,10 @@ public final class FieldChannel<T> : ChannelType {
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
 
-    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the subscriptions
     public func filter(predicate: (Element)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
 
-    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
+    /// Returns a mapped channel that transforms the elements before passing them through to the subscriptions
     public func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 }
 
@@ -219,9 +219,9 @@ public struct FilteredChannel<Source : BaseChannelType> : ChannelType {
         self.predicate = predicate
     }
 
-    public func subscribe(outlet: (Source.Element)->Void)->SubscriptionOf<SelfChannel> {
-        let olet = source.subscribe({ if self.predicate($0) { outlet($0) } })
-        return SubscriptionOf(source: self, primer: { olet.prime() }, detacher: { olet.detach() })
+    public func subscribe(subscription: (Source.Element)->Void)->SubscriptionOf<SelfChannel> {
+        let sub = source.subscribe({ if self.predicate($0) { subscription($0) } })
+        return SubscriptionOf(source: self, primer: { sub.prime() }, detacher: { sub.detach() })
     }
 
     // Boilerplate observable/channel/filter/map
@@ -233,10 +233,10 @@ public struct FilteredChannel<Source : BaseChannelType> : ChannelType {
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
 
-    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the subscriptions
     public func filter(predicate: (Element)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
 
-    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
+    /// Returns a mapped channel that transforms the elements before passing them through to the subscriptions
     public func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 }
 
@@ -258,7 +258,7 @@ public func skip<T : BaseChannelType>(source: T, count: UInt = 1)->FilteredChann
 }
 
 
-/// A mapped channel passes all values through a transformer function before sending them to its subscribeed outlets
+/// A mapped channel passes all values through a transformer function before sending them to its subscribeed subscriptions
 public struct MappedChannel<Source : BaseChannelType, TransformedType> : ChannelType {
     public typealias Element = TransformedType
     public typealias SourceType = Source.SourceType
@@ -276,9 +276,9 @@ public struct MappedChannel<Source : BaseChannelType, TransformedType> : Channel
         self.transformer = transformer
     }
 
-    public func subscribe(outlet: (TransformedType)->Void)->SubscriptionOf<SelfChannel> {
-        let olet = source.subscribe({ outlet(self.transformer($0)) })
-        return SubscriptionOf(source: self, primer: { olet.prime() }, detacher: { olet.detach() })
+    public func subscribe(subscription: (TransformedType)->Void)->SubscriptionOf<SelfChannel> {
+        let sub = source.subscribe({ subscription(self.transformer($0)) })
+        return SubscriptionOf(source: self, primer: { sub.prime() }, detacher: { sub.detach() })
     }
 
     // Boilerplate observable/channel/filter/map
@@ -290,10 +290,10 @@ public struct MappedChannel<Source : BaseChannelType, TransformedType> : Channel
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
 
-    /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
+    /// Returns a filtered channel that only flows elements that pass the predicate through to the subscriptions
     public func filter(predicate: (Element)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
 
-    /// Returns a mapped channel that transforms the elements before passing them through to the outlets
+    /// Returns a mapped channel that transforms the elements before passing them through to the subscriptions
     public func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 }
 
@@ -388,25 +388,25 @@ internal func channelOptionalStateChanges<T where T : Equatable>(source: Channel
 /// :param: source one side of the pipeline
 /// :param: prime whether to prime the targets with source's value
 /// :param: targets the other side of the pipeline
-/// :returns: a detachable outlet for the conduit
+/// :returns: a detachable subscription for the conduit
 public func conduit<A : BaseChannelType, B : BaseChannelType where A.SourceType == B.Element, B.SourceType == A.Element>(source: A, prime: Bool = false)(targets: [B]) -> SubscriptionOf<(A, [B])> {
-    var outlets = [Subscription]()
+    var subscriptions = [Subscription]()
 
     let src = source.subscribe({ for target in targets { target.value = $0 } })
-    outlets += [src as Subscription]
+    subscriptions += [src as Subscription]
 
     if prime { // tell the source to prime their initial value to the targets
-        outlets.map { $0.prime() }
+        subscriptions.map { $0.prime() }
     }
 
     for target in targets {
         let trg = target.subscribe({ source.value = $0 })
-        outlets += [trg as Subscription]
+        subscriptions += [trg as Subscription]
     }
 
-    let outlet = SubscriptionOf(source: (source, targets), primer: { for outlet in outlets { outlet.prime() } }, detacher: { for outlet in outlets { outlet.detach() } })
+    let subscription = SubscriptionOf(source: (source, targets), primer: { for subscription in subscriptions { subscription.prime() } }, detacher: { for subscription in subscriptions { subscription.detach() } })
 
-    return outlet
+    return subscription
 }
 
 public func conduit<A : BaseChannelType, B : BaseChannelType where A.SourceType == B.Element, B.SourceType == A.Element>(source: A, targets: B...) -> SubscriptionOf<(A, [B])> {

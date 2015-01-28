@@ -18,11 +18,11 @@
     }
 
     extension UISlider : KeyValueChannelSupplementing {
-        public func supplementKeyValueChannel(forKeyPath: String, outlet: (AnyObject?)->()) -> (()->())? {
+        public func supplementKeyValueChannel(forKeyPath: String, subscription: (AnyObject?)->()) -> (()->())? {
             if forKeyPath == "value" {
                 // since the slider's "value" field is not completely KVO-compliant, supplement the channel with the value changed contol event
-                let outlet = self.controlz(.ValueChanged).subscribe({ [weak self] _ in outlet(self?.value) })
-                return { outlet.detach() }
+                let subscription = self.controlz(.ValueChanged).subscribe({ [weak self] _ in subscription(self?.value) })
+                return { subscription.detach() }
             }
 
             return nil
@@ -30,11 +30,11 @@
     }
 
     extension UITextField : KeyValueChannelSupplementing {
-        public func supplementKeyValueChannel(forKeyPath: String, outlet: (AnyObject?)->()) -> (()->())? {
+        public func supplementKeyValueChannel(forKeyPath: String, subscription: (AnyObject?)->()) -> (()->())? {
             if forKeyPath == "text" {
                 // since the field's "text" field is not completely KVO-compliant, supplement the channel with the editing changed contol event
-                let outlet = self.controlz(.EditingChanged).subscribe({ [weak self] _ in outlet(self?.text) })
-                return { outlet.detach() }
+                let subscription = self.controlz(.EditingChanged).subscribe({ [weak self] _ in subscription(self?.text) })
+                return { subscription.detach() }
             }
 
             return nil
@@ -59,8 +59,9 @@
             self.events = events
         }
 
-        public func subscribe(outlet: (UIEvent)->())->Subscription {
-            return UIEventObserver(control: control, events: events, handler: { outlet($0) })
+        public func subscribe(subscription: (UIEvent)->())->SubscriptionOf<SelfObservable> {
+            let sub = UIEventSubscription(control: control, events: events, handler: { subscription($0) })
+            return SubscriptionOf(source: self, subscription: sub)
         }
 
         // Boilerplate observable/filter/map
@@ -71,7 +72,7 @@
 
     }
 
-    @objc public class UIEventObserver: NSObject, Subscription {
+    @objc public class UIEventSubscription: NSObject, Subscription {
         let control: UIControl
         let events: UIControlEvents
         var handler: (UIEvent)->(Void)

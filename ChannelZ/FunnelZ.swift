@@ -6,17 +6,17 @@
 //  License: MIT (or whatever)
 //
 
-/// An Observable wraps a type (either a value or a reference) and sends all state operations down to each subscribeed outlet
+/// An Observable wraps a type (either a value or a reference) and sends all state operations down to each subscribeed subscription
 public protocol BaseObservableType {
     typealias Element
 
     /// Returns a type-erasing observable wrapper around the current observable, making the source read-only to subsequent pipeline stages
     func observable() -> ObservableOf<Element>
 
-    /// subscribes an outlet to receive change notifications from the state pipeline
+    /// subscribes an subscription to receive change notifications from the state pipeline
     ///
-    /// :param: outlet the outlet closure to which state will be sent
-    func subscribe(outlet: (Self.Element)->Void)->SubscriptionOf<Self>
+    /// :param: subscription the subscription closure to which state will be sent
+    func subscribe(subscription: (Self.Element)->Void)->SubscriptionOf<Self>
 }
 
 
@@ -25,10 +25,10 @@ public protocol StreamingObservable : BaseObservableType {
 
     /// NOTE: the following methods need to be a separate protocol or else client code cannot reify the types (possibly because FilteredObservable itself implements ObservableType, and so is regarded as a circular protocol declaration)
 
-    /// Returns a filtered observable that only flows elements that pass the predicate through to the outlets
+    /// Returns a filtered observable that only flows elements that pass the predicate through to the subscriptions
     func filter(predicate: (Self.Element)->Bool)->FilteredObservable<Self>
 
-    /// Returns a mapped observable that transforms the elements before passing them through to the outlets
+    /// Returns a mapped observable that transforms the elements before passing them through to the subscriptions
     func map<TransformedType>(transform: (Self.Element)->TransformedType)->MappedObservable<Self, TransformedType>
 }
 
@@ -36,24 +36,24 @@ public protocol ObservableType : BaseObservableType, StreamingObservable {
 }
 
 
-/// A Sink that funnls all elements through to the subscribeed outlets
+/// A Sink that funnls all elements through to the subscribeed subscriptions
 public struct SinkObservable<Element> : ObservableType, SinkType {
 
-    private var outlets = SubscriptionList<Element>()
+    private var subscriptions = SubscriptionList<Element>()
 
     /// Create a SinkObservable with an optional primer callback
     public init() {
     }
 
-    public func subscribe(outlet: (Element)->())->SubscriptionOf<SelfObservable> {
-        let index = outlets.addSubscription(outlet)
+    public func subscribe(subscription: (Element)->())->SubscriptionOf<SelfObservable> {
+        let index = subscriptions.addSubscription(subscription)
         return SubscriptionOf(source: self, primer: { }, detacher: {
-            self.outlets.removeSubscription(index)
+            self.subscriptions.removeSubscription(index)
         })
     }
 
     public func put(x: Element) {
-        outlets.receive(x)
+        subscriptions.receive(x)
     }
 
     // Boilerplate observable/filter/map
@@ -69,15 +69,15 @@ public struct SinkObservable<Element> : ObservableType, SinkType {
 /// Forwards operations to an arbitrary underlying observable with the same
 /// `Element` type, hiding the specifics of the underlying observable.
 public struct ObservableOf<Element> : ObservableType {
-    private let subscribeer: (outlet: (Element) -> Void) -> Subscription
+    private let subscribeer: (subscription: (Element) -> Void) -> Subscription
 
     init<G : BaseObservableType where Element == G.Element>(_ base: G) {
         self.subscribeer = { base.subscribe($0) }
     }
 
-    public func subscribe(outlet: (Element) -> Void) -> SubscriptionOf<SelfObservable> {
-        let olet = self.subscribeer(outlet)
-        return SubscriptionOf(source: self, primer: { olet.prime() }, detacher: { olet.detach() })
+    public func subscribe(subscription: (Element) -> Void) -> SubscriptionOf<SelfObservable> {
+        let sub = self.subscribeer(subscription)
+        return SubscriptionOf(source: self, primer: { sub.prime() }, detacher: { sub.detach() })
     }
 
     // Boilerplate observable/filter/map
@@ -98,11 +98,11 @@ public struct FilteredObservable<S : BaseObservableType> : ObservableType {
         self.predicate = predicate
     }
 
-    /// subscribes an outlet to receive change notifications from the state pipeline
+    /// subscribes an subscription to receive change notifications from the state pipeline
     ///
-    /// :param: outlet the outlet closure to which state will be sent
-    public func subscribe(outlet: (Element)->Void)->SubscriptionOf<SelfObservable> {
-        return SubscriptionOf(source: self, outlet: source.subscribe({ if self.predicate($0) { outlet($0) } }))
+    /// :param: subscription the subscription closure to which state will be sent
+    public func subscribe(subscription: (Element)->Void)->SubscriptionOf<SelfObservable> {
+        return SubscriptionOf(source: self, subscription: source.subscribe({ if self.predicate($0) { subscription($0) } }))
     }
 
     // Boilerplate observable/filter/map
@@ -125,9 +125,9 @@ public struct GeneratorObservable<Element>: BaseObservableType {
         self.generator = { GeneratorOf(seq.generate()) }
     }
 
-    public func subscribe(outlet: (Element) -> Void) -> SubscriptionOf<SelfObservable> {
+    public func subscribe(subscription: (Element) -> Void) -> SubscriptionOf<SelfObservable> {
         for element in generator() {
-            outlet(element)
+            subscription(element)
         }
 
         return SubscriptionOf(source: self, primer: { }, detacher: { })
@@ -154,7 +154,7 @@ public class TrapSubscription<F : BaseObservableType>: SubscriptionType {
 
     public let capacity: Int
 
-    private var outlet: Subscription?
+    private var subscription: Subscription?
 
     public init(source: F, capacity: Int) {
         self.source = source
@@ -162,15 +162,15 @@ public class TrapSubscription<F : BaseObservableType>: SubscriptionType {
         self.capacity = capacity
         self.values.reserveCapacity(capacity)
 
-        let outlet = source.subscribe({ [weak self] (value) -> Void in
+        let subscription = source.subscribe({ [weak self] (value) -> Void in
             let _ = self?.receive(value)
         })
-        self.outlet = outlet
+        self.subscription = subscription
     }
 
-    deinit { outlet?.detach() }
-    public func detach() { outlet?.detach() }
-    public func prime() { outlet?.prime() }
+    deinit { subscription?.detach() }
+    public func detach() { subscription?.detach() }
+    public func prime() { subscription?.prime() }
 
     public func receive(value: SourceType) {
         while values.count >= capacity {
@@ -202,7 +202,7 @@ public func skip<T : ObservableType>(source: T, var skipCount: Int = 1)->Filtere
 }
 
 
-// A mapped observable passes all values through a transformer function before sending them to their subscribeed outlets
+// A mapped observable passes all values through a transformer function before sending them to their subscribeed subscriptions
 public struct MappedObservable<Observable : BaseObservableType, TransformedType> : ObservableType {
     typealias Element = TransformedType
 
@@ -214,11 +214,11 @@ public struct MappedObservable<Observable : BaseObservableType, TransformedType>
         self.transform = transform
     }
 
-    /// subscribes an outlet to receive change notifications from the state pipeline
+    /// subscribes an subscription to receive change notifications from the state pipeline
     ///
-    /// :param: outlet the outlet closure to which state will be sent
-    public func subscribe(outlet: (TransformedType)->Void)->SubscriptionOf<SelfObservable> {
-        return SubscriptionOf(source: self, outlet: source.subscribe({ outlet(self.transform($0)) }))
+    /// :param: subscription the subscription closure to which state will be sent
+    public func subscribe(subscription: (TransformedType)->Void)->SubscriptionOf<SelfObservable> {
+        return SubscriptionOf(source: self, subscription: source.subscribe({ subscription(self.transform($0)) }))
     }
 
     // Boilerplate observable/filter/map
@@ -238,7 +238,7 @@ public func map<Observable : BaseObservableType, TransformedType>(source: Observ
     return mapObservable(source)(transform)
 }
 
-/// A ConcatObservable merges two homogeneous observables and delivers signals to the subscribeed outlets when either of the sources emits an event
+/// A ConcatObservable merges two homogeneous observables and delivers signals to the subscribeed subscriptions when either of the sources emits an event
 public struct ConcatObservable<T, F1 : BaseObservableType, F2 : BaseObservableType where F1.Element == T, F2.Element == T> : ObservableType {
     public typealias Element = T
     private var source1: F1
@@ -249,11 +249,11 @@ public struct ConcatObservable<T, F1 : BaseObservableType, F2 : BaseObservableTy
         self.source2 = source2
     }
 
-    public func subscribe(outlet: Element->Void)->SubscriptionOf<SelfObservable> {
-        let sk1 = source1.subscribe({ v1 in outlet(v1) })
-        let sk2 = source2.subscribe({ v2 in outlet(v2) })
+    public func subscribe(subscription: Element->Void)->SubscriptionOf<SelfObservable> {
+        let sk1 = source1.subscribe({ v1 in subscription(v1) })
+        let sk2 = source2.subscribe({ v2 in subscription(v2) })
 
-        let outlet = SubscriptionOf(source: self, primer: {
+        let subscription = SubscriptionOf(source: self, primer: {
             sk1.prime()
             sk2.prime()
         }, detacher: {
@@ -261,7 +261,7 @@ public struct ConcatObservable<T, F1 : BaseObservableType, F2 : BaseObservableTy
             sk2.detach()
         })
 
-        return outlet
+        return subscription
     }
 
     // Boilerplate observable/filter/map
@@ -281,7 +281,7 @@ public func + <T, L : BaseObservableType, R : BaseObservableType where L.Element
     return concat(lhs, rhs).observable()
 }
 
-/// A AnyObservable merges two hetergeneous observables and delivers signals as a tuple to the subscribeed outlets when any of the sources emits an event
+/// A AnyObservable merges two hetergeneous observables and delivers signals as a tuple to the subscribeed subscriptions when any of the sources emits an event
 public struct AnyObservable<F1 : BaseObservableType, F2 : BaseObservableType> : ObservableType {
     public typealias Element = (F1.Element?, F2.Element?)
     private var source1: F1
@@ -292,11 +292,11 @@ public struct AnyObservable<F1 : BaseObservableType, F2 : BaseObservableType> : 
         self.source2 = source2
     }
 
-    public func subscribe(outlet: Element->Void)->SubscriptionOf<SelfObservable> {
-        let sk1 = source1.subscribe({ v1 in outlet((v1, nil)) })
-        let sk2 = source2.subscribe({ v2 in outlet((nil, v2)) })
+    public func subscribe(subscription: Element->Void)->SubscriptionOf<SelfObservable> {
+        let sk1 = source1.subscribe({ v1 in subscription((v1, nil)) })
+        let sk2 = source2.subscribe({ v2 in subscription((nil, v2)) })
 
-        let outlet = SubscriptionOf(source: self, primer: {
+        let subscription = SubscriptionOf(source: self, primer: {
             sk1.prime()
             sk2.prime()
         }, detacher: {
@@ -304,7 +304,7 @@ public struct AnyObservable<F1 : BaseObservableType, F2 : BaseObservableType> : 
             sk2.detach()
         })
 
-        return outlet
+        return subscription
     }
 
     // Boilerplate observable/filter/map
@@ -411,7 +411,7 @@ public func |<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseObservableType>(lhs: O
 }
 
 
-/// A ZipObservable merges two observables and delivers signals as a tuple to the subscribeed outlets when all of the sources emits an event; note that this is a stateful observable since it needs to remember previous values that it has seen from the sources in order to pass all the non-optional values through
+/// A ZipObservable merges two observables and delivers signals as a tuple to the subscribeed subscriptions when all of the sources emits an event; note that this is a stateful observable since it needs to remember previous values that it has seen from the sources in order to pass all the non-optional values through
 public struct ZipObservable<F1 : BaseObservableType, F2 : BaseObservableType> : ObservableType {
     public typealias Element = (F1.Element, F2.Element)
     private var source1: F1
@@ -422,27 +422,27 @@ public struct ZipObservable<F1 : BaseObservableType, F2 : BaseObservableType> : 
         self.source2 = source2
     }
 
-    public func subscribe(outlet: Element->Void)->SubscriptionOf<SelfObservable> {
+    public func subscribe(subscription: Element->Void)->SubscriptionOf<SelfObservable> {
         var v1s: [F1.Element] = []
         var v2s: [F2.Element] = []
 
-        let outletZipped: ()->() = {
-            // only send the tuple to the outlet when we have
+        let subscriptionZipped: ()->() = {
+            // only send the tuple to the subscription when we have
             while v1s.count > 0 && v2s.count > 0 {
-                outlet((v1s.removeAtIndex(0), v2s.removeAtIndex(0)))
+                subscription((v1s.removeAtIndex(0), v2s.removeAtIndex(0)))
             }
         }
         let sk1 = source1.subscribe({ v1 in
             v1s += [v1]
-            outletZipped()
+            subscriptionZipped()
         })
 
         let sk2 = source2.subscribe({ v2 in
             v2s += [v2]
-            outletZipped()
+            subscriptionZipped()
         })
 
-        let outlet = SubscriptionOf(source: self, primer: {
+        let subscription = SubscriptionOf(source: self, primer: {
             sk1.prime()
             sk2.prime()
             }, detacher: {
@@ -450,7 +450,7 @@ public struct ZipObservable<F1 : BaseObservableType, F2 : BaseObservableType> : 
                 sk2.detach()
         })
 
-        return outlet
+        return subscription
     }
 
     // Boilerplate observable/filter/map
@@ -565,5 +565,4 @@ public func ∞> <T : BaseObservableType>(lhs: T, rhs: T.Element->Void)->Subscri
 
 /// subscribement operation with priming
 public func ∞-> <T : BaseObservableType>(lhs: T, rhs: T.Element->Void)->SubscriptionOf<T> { return prime(lhs.subscribe(rhs)) }
-
 
