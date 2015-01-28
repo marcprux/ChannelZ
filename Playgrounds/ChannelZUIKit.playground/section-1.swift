@@ -40,7 +40,7 @@ func updateSwatch(red: CGFloat? = nil, green: CGFloat? = nil, blue: CGFloat? = n
     swatch.backgroundColor = UIColor(red: red ?? r, green: green ?? g, blue: blue ?? b, alpha: alpha ?? a)
 }
 
-/// Funnel from the model color components to the color of the swatch
+/// Observable from the model color components to the color of the swatch
 model.r += { updateSwatch(red: CGFloat($0)) }
 model.g += { updateSwatch(green: CGFloat($0)) }
 model.b += { updateSwatch(blue: CGFloat($0)) }
@@ -70,4 +70,4 @@ func changeModel(animated: Bool) {
 }
 
 XCPSetExecutionShouldContinueIndefinitely(continueIndefinitely: true)
-changeModel(false)
+changeModel(fal

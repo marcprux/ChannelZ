@@ -1,7 +1,7 @@
 let b1: ChannelZ<Int> = channelField(Int(0))
 let b2: ChannelZ<Int> = channelField(Int(0))
 
-let b1b2: Outlet = conduit(b1, b2)
+let b1b2: Subscription = conduit(b1, b2)
 
 b1.value
 b2.value = 99

@@ -21,6 +21,8 @@ import WebKit
 #endif
 
 
+// TODO make a spec with each of https://github.com/ReactiveX/RxScala/blob/0.x/examples/src/test/scala/rx/lang/scala/examples/RxScalaDemo.scala
+
 public class ChannelZTests: XCTestCase {
 
     func testTraps() {
@@ -40,29 +42,56 @@ public class ChannelZTests: XCTestCase {
     func testGenerators() {
         let seq = [true, false, true, false, true]
 
-//        let gfun1 = GeneratorFunnel(GeneratorOf(seq.generate())) // GeneratorFunnel with generator
+//        let gfun1 = GeneratorObservable(GeneratorOf(seq.generate())) // GeneratorObservable with generator
 //        let trap1 = trap(gfun1, capacity: 3)
 //        XCTAssertEqual(seq[2...4], trap1.values[0...2], "trap should contain the last 3 elements of the sequence generator")
 
-        let gfun2 = GeneratorFunnel(seq) // GeneratorFunnel with sequence
+        let gfun2 = GeneratorObservable(seq) // GeneratorObservable with sequence
         let trap2 = trap(gfun2, capacity: 3)
         XCTAssertEqual(seq[2...4], trap2.values[0...2], "trap should contain the last 3 elements of the sequence generator")
 
-        let trapped = trap(GeneratorFunnel(1...5) & GeneratorFunnel(6...10), capacity: 1000)
+        let trapped = trap(GeneratorObservable(1...5) & GeneratorObservable(6...10), capacity: 1000)
         XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]]) // tupes aren't equatable
 
-        // funnel concatenation
-        let merged = trap(GeneratorFunnel(1...3) + GeneratorFunnel(3...5) + GeneratorFunnel(2...6), capacity: 1000)
+        // observable concatenation
+        // the equivalent of ReactiveX's Range
+        let merged = trap(GeneratorObservable(1...3) + GeneratorObservable(3...5) + GeneratorObservable(2...6), capacity: 1000)
         XCTAssertEqual(merged.values, [1, 2, 3, 3, 4, 5, 2, 3, 4, 5, 6])
+
+        // the equivalent of ReactiveX's Repeat
+        XCTAssertEqual(trap(GeneratorObservable(Repeat(count: 10, repeatedValue: "A")), capacity: 4).values, ["A", "A", "A", "A"])
     }
 
-    func testFunnels() {
+    func testFlatMapObservable() {
+        let numbers = GeneratorObservable(1...3)
+        let multiples: (Int)->(GeneratorObservable<Int>) = { n in GeneratorObservable([n*2, n*3]) }
+
+        // ### TODO: need to move this into FlatMappedObservable to retain the sinks properly
+//        func flatMap<T, U, F1: BaseObservableType, F2: BaseObservableType where T == F1.Element, U == F2.Element>(observable: F1, transformer: (T)->(F2)) -> ObservableOf<U> {
+//            let sink = SinkObservable<T>()
+//            let out1: SubscriptionOf<F1> = observable.subscribe {
+//                let f2 = transformer($0)
+//                let out2 = f2.subscribe {
+//                    sink.put($0)
+//                }
+//            }
+//            return sink.observable()
+//        }
+//
+//        // the equivalent of ReactiveX's FlatMap
+////        numbers.bind(multiples).subscribe({ n in })
+//        var nums: [Int] = []
+//        flatMap(numbers, multiples).subscribe({ nums += [$0] })
+//        XCTAssertEqual([2, 3, 4, 6, 6, 9], nums)
+    }
+
+    func testObservables() {
         var observedBool = ∞(false)∞
         observedBool.value = false
 
         var changeCount: Int = 0
 
-        let ob1 = observedBool.attach { v in
+        let ob1 = observedBool.subscribe { v in
             changeCount = changeCount + 1
         }
 
@@ -102,7 +131,7 @@ public class ChannelZTests: XCTestCase {
             #endif
 
             var stringFieldObserver = state∞(state.optionalStringField)
-            stringFieldObserver.attach { _ in stringFieldChanges += 1 }
+            stringFieldObserver.subscribe { _ in stringFieldChanges += 1 }
 
             state∞state.doubleField ∞> { _ in doubleFieldChanges += 1 }
 
@@ -130,7 +159,7 @@ public class ChannelZTests: XCTestCase {
         #endif
     }
 
-    func testFilteredFunnels() {
+    func testFilteredObservables() {
 
         var strlen = 0
 
@@ -140,7 +169,7 @@ public class ChannelZTests: XCTestCase {
         sv.map(countElements)
 
         var a = sv.filter({ _ in true }).map(countElements).filter({ $0 % 2 == 1 })
-        var aa = a.attach { strlen = $0 }
+        var aa = a.subscribe { strlen = $0 }
 
         a.value = ("AAA")
 
@@ -165,12 +194,12 @@ public class ChannelZTests: XCTestCase {
         var changeCount: Double = 0
         var changeLog: String = ""
 
-        // track the number of changes using two separate attachments
-        x.attach { _ in changeCount += 0.5 }
-        x.attach { _ in changeCount += 0.5 }
+        // track the number of changes using two separate subscribements
+        x.subscribe { _ in changeCount += 0.5 }
+        x.subscribe { _ in changeCount += 0.5 }
 
         let xfm = x.map( { String($0) })
-        let xfma = xfm.attach { s in changeLog += (countElements(changeLog) > 0 ? ", " : "") + s } // create a string log of all the changes
+        let xfma = xfm.subscribe { s in changeLog += (countElements(changeLog) > 0 ? ", " : "") + s } // create a string log of all the changes
 
 
         XCTAssertEqual(0, changeCount)
@@ -206,8 +235,8 @@ public class ChannelZTests: XCTestCase {
         var tc = 0.0
         let t = ∞(1.0)∞
 
-        t.filter({ $0 % 2 == 0 }).filter({ $0 % 9 == 0 }).attach({ n in tc += n })
-//        t.attach({ n in tc += n })
+        t.filter({ $0 % 2 == 0 }).filter({ $0 % 9 == 0 }).subscribe({ n in tc += n })
+//        t.subscribe({ n in tc += n })
 
         for i in 1...100 { t <- Double(i) }
         // FIXME: seems to be getting released somehow
@@ -216,7 +245,7 @@ public class ChannelZTests: XCTestCase {
         var lastt = ""
 
         let tv = t.map({ v in v }).filter({ $0 % 2 == 0 }).map(-).map({ "Even: \($0)" })
-        tv.attach({ lastt = $0 })
+        tv.subscribe({ lastt = $0 })
 
 
         for i in 1...99 { tv <- Double(i) }
@@ -227,7 +256,9 @@ public class ChannelZTests: XCTestCase {
         let ob = ∞(SwiftStruct(intField: 1, stringField: "x", enumField: .Yes))∞
 
         var changes = 0
-        ob.attach({ _ in changes += 1 })
+
+        // subscribe is the equivalent of ReactiveX's Subscribe
+        ob.subscribe({ _ in changes += 1 })
 
         XCTAssertEqual(changes, 0)
         ob.value = SwiftStruct(intField: 2, stringField: nil, enumField: .Yes)
@@ -241,7 +272,7 @@ public class ChannelZTests: XCTestCase {
         let ob = ∞(SwiftEquatableStruct(intField: 1, stringField: "x", enumField: .Yes))∞
 
         var changes = 0
-        ob.attach({ _ in changes += 1 })
+        ob.subscribe({ _ in changes += 1 })
 
         XCTAssertEqual(changes, 0)
         ob.value = SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .Yes)
@@ -283,7 +314,7 @@ public class ChannelZTests: XCTestCase {
         var c = sieveField(xs)
 
         var changes = 0
-        c.attach { _ in changes += 1 }
+        c.subscribe { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
         c.value = (c.value + 1); XCTAssertEqual(0, --changes)
@@ -323,7 +354,7 @@ public class ChannelZTests: XCTestCase {
         c.value = ("B"); c.value = ("B"); XCTAssertEqual(0, --changes, "A to B should change once")
     }
 
-    func testKeyValueSieveUnretainedOutlet() {
+    func testKeyValueSieveUnretainedSubscription() {
         var state = StatefulObject()
         var c = state∞(state.requiredStringField)
 
@@ -399,10 +430,10 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(0, --fooChanges)
     }
 
-    func testFieldChannelFunnel() {
+    func testFieldChannelObservable() {
         var xs: Int = 1
         var x = channelField(xs)
-        var f: FunnelOf<Int> = x.funnel() // read-only funnel of channel x
+        var f: ObservableOf<Int> = x.observable() // read-only observable of channel x
 
         var changes = 0
         var outlet = f ∞> { _ in changes += 1 }
@@ -417,19 +448,19 @@ public class ChannelZTests: XCTestCase {
         x.value = (-1); XCTAssertEqual(0, changes)
     }
 
-    func testFieldChannelMapFunnel() {
+    func testFieldChannelMapObservable() {
         var xs: Bool = true
         var x = channelField(xs)
 
-        var xf: FunnelOf<Bool> = x.funnel() // read-only funnel of channel x
+        var xf: ObservableOf<Bool> = x.observable() // read-only observable of channel x
 
         let fxa = xf ∞> { (x: Bool) in return }
 
         var y = x.map({ "\($0)" })
-        var yf: FunnelOf<String> = y.funnel() // read-only funnel of mapped channel y
+        var yf: ObservableOf<String> = y.observable() // read-only observable of mapped channel y
 
         var changes = 0
-        var fya: Outlet = yf ∞> { (x: String) in changes += 1 }
+        var fya: Subscription = yf ∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(0, changes)
         x.value = (!x.value); XCTAssertEqual(0, --changes)
@@ -441,19 +472,19 @@ public class ChannelZTests: XCTestCase {
         x.value = (true); XCTAssertEqual(0, changes)
     }
 
-    func testFieldSieveChannelMapFunnel() {
+    func testFieldSieveChannelMapObservable() {
         var xs: Double = 1
 
         var x = sieveField(xs)
-        var xf: FunnelOf<Double> = x.funnel() // read-only funnel of channel x
+        var xf: ObservableOf<Double> = x.observable() // read-only observable of channel x
 
         var fxa = xf ∞> { (x: Double) in return }
 
         var y = x.map({ "\($0)" })
-        var yf: FunnelOf<String> = y.funnel() // read-only funnel of channel y
+        var yf: ObservableOf<String> = y.observable() // read-only observable of channel y
 
         var changes = 0
-        var fya: Outlet = yf ∞> { (x: String) in changes += 1 }
+        var fya: Subscription = yf ∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(0, changes)
         x.value = (x.value + 1); XCTAssertEqual(0, --changes)
@@ -577,7 +608,7 @@ public class ChannelZTests: XCTestCase {
 
     }
 
-    func testZippedFunnel() {
+    func testZippedObservable() {
         let a = ∞(Float(3.0))∞
         let b = ∞(UInt(7))∞
         let c = ∞(Bool(false))∞
@@ -645,17 +676,17 @@ public class ChannelZTests: XCTestCase {
     func testMixedCombinations() {
         let a = ∞(Int(0.0))∞
 
-        var and: FunnelOf<(Int, Int, Int, Int)> = a & a & a & a
+        var and: ObservableOf<(Int, Int, Int, Int)> = a & a & a & a
         var andx = 0
-        and.attach({ _ in andx += 1 })
+        and.subscribe({ _ in andx += 1 })
 
-        var or: FunnelOf<(Int?, Int?, Int?, Int?)> = a | a | a | a
+        var or: ObservableOf<(Int?, Int?, Int?, Int?)> = a | a | a | a
         var orx = 0
-        or.attach({ _ in orx += 1 })
+        or.subscribe({ _ in orx += 1 })
 
-        var andor: FunnelOf<((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = a & a | a & a | a & a | a
+        var andor: ObservableOf<((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = a & a | a & a | a & a | a
         var andorx = 0
-        andor.attach({ _ in andorx += 1 })
+        andor.subscribe({ _ in andorx += 1 })
 
         XCTAssertEqual(0, andx)
         XCTAssertEqual(0, orx)
@@ -677,11 +708,11 @@ public class ChannelZTests: XCTestCase {
 
     func testZippedGenerators() {
         let range = 1...6
-        let nums = GeneratorFunnel(1...3) + GeneratorFunnel(4...6)
-        let strs = GeneratorFunnel(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
+        let nums = GeneratorObservable(1...3) + GeneratorObservable(4...6)
+        let strs = GeneratorObservable(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
         var numstrs: [(Int, String)] = []
         let zipped = (nums & strs)
-        zipped.attach({ numstrs += [$0] })
+        zipped.subscribe({ numstrs += [$0] })
         XCTAssertEqual(numstrs.map({ $0.0 }), [1, 2, 3, 4, 5, 6])
         XCTAssertEqual(numstrs.map({ $0.1 }), ["one", "two", "three", "four", "five", "six"])
     }
@@ -692,7 +723,7 @@ public class ChannelZTests: XCTestCase {
         func identity<A>(a: A) -> A { return a }
         func always<A>(a: A) -> Bool { return true }
 
-        let deepNest = t.funnel()
+        let deepNest = t.observable()
             .map(identity).filter(always)
             .map(identity).filter(always)
             .map(identity).filter(always)
@@ -709,13 +740,13 @@ public class ChannelZTests: XCTestCase {
 
 
         // FilteredChannel<MappableChannel<....
-        let flatNest = deepNest.funnel()
+        let flatNest = deepNest.observable()
 
-        let deepOutlet = deepNest.attach({ _ in })
+        let deepSubscription = deepNest.subscribe({ _ in })
 
-        XCTAssertEqual("ChannelZ.FilteredFunnel", _stdlib_getDemangledTypeName(deepNest))
-        XCTAssertEqual("ChannelZ.FunnelOf", _stdlib_getDemangledTypeName(flatNest))
-        XCTAssertEqual("ChannelZ.OutletOf", _stdlib_getDemangledTypeName(deepOutlet))
+        XCTAssertEqual("ChannelZ.FilteredObservable", _stdlib_getDemangledTypeName(deepNest))
+        XCTAssertEqual("ChannelZ.ObservableOf", _stdlib_getDemangledTypeName(flatNest))
+        XCTAssertEqual("ChannelZ.SubscriptionOf", _stdlib_getDemangledTypeName(deepSubscription))
     }
 
     func testDeepNestedChannel() {
@@ -740,18 +771,38 @@ public class ChannelZTests: XCTestCase {
             .map(identity).filter(always)
 
 
+        var changes = 0
+        let deepSubscription = deepNest.subscribe({ _ in changes += 1 })
+
+        deepNest.value = 12
+        XCTAssertEqual(12, t.value)
+        XCTAssertEqual(0, --changes)
+
+        deepSubscription.source.value--
+        XCTAssertEqual(11, t.value)
+        XCTAssertEqual(0, --changes)
+
+        XCTAssertEqual("ChannelZ.FilteredChannel", _stdlib_getDemangledTypeName(deepNest))
+        XCTAssertEqual("ChannelZ.SubscriptionOf", _stdlib_getDemangledTypeName(deepSubscription))
+
         // FilteredChannel<MappableChannel<....
-        let flatFunnel = deepNest.funnel()
+        let flatObservable = deepNest.observable()
         let flatChannel = deepNest.channel()
 
-        let deepOutlet = deepNest.attach({ _ in })
-
-        deepNest.value = 10
-        
-        XCTAssertEqual("ChannelZ.FilteredChannel", _stdlib_getDemangledTypeName(deepNest))
-        XCTAssertEqual("ChannelZ.FunnelOf", _stdlib_getDemangledTypeName(flatFunnel))
+        XCTAssertEqual("ChannelZ.ObservableOf", _stdlib_getDemangledTypeName(flatObservable))
         XCTAssertEqual("ChannelZ.ChannelOf", _stdlib_getDemangledTypeName(flatChannel))
-        XCTAssertEqual("ChannelZ.OutletOf", _stdlib_getDemangledTypeName(deepOutlet))
+
+        let flatSubscription = flatChannel.subscribe({ _ in })
+
+        flatSubscription.source.value--
+        XCTAssertEqual(10, t.value)
+        XCTAssertEqual(0, --changes)
+
+        deepSubscription.prime()
+        XCTAssertEqual(0, --changes)
+
+        flatSubscription.prime()
+//        XCTAssertEqual(0, --changes) // FIXME: prime message is getting lost somehow
     }
 
     func testSimpleConduits() {
@@ -792,90 +843,90 @@ public class ChannelZTests: XCTestCase {
 //        XCTAssertEqual(-1, n3.value)
     }
 
-    func testSinkFunnels() {
-        let funnel = SinkFunnel<Int>()
+    func testSinkObservables() {
+        let observable = SinkObservable<Int>()
 
-        funnel.put(1)
+        observable.put(1)
         var changes = 0
-        let outlet = funnel.attach({ _ in changes += 1 })
+        let outlet = observable.subscribe({ _ in changes += 1 })
 
         XCTAssertEqual(0, changes)
 
-        funnel.put(1)
+        observable.put(1)
         XCTAssertEqual(0, --changes)
 
-        let sink = SinkOf(funnel)
+        let sink = SinkOf(observable)
         sink.put(2)
-        XCTAssertEqual(0, --changes, "sink wrapper around funnel should have passed elements through to outlets")
+        XCTAssertEqual(0, --changes, "sink wrapper around observable should have passed elements through to outlets")
 
         outlet.prime()
-        XCTAssertEqual(0, changes, "prime() should be a no-op for SinkFunnel")
+        XCTAssertEqual(0, changes, "prime() should be a no-op for SinkObservable")
 
         outlet.detach()
         sink.put(2)
         XCTAssertEqual(0, changes, "detached outlet should not be called")
     }
 
-    func testTransformableConduits() {
-
-        var num = ∞(0)∞
-        let state = StatefulObject()
-        let strProxy = state∞(state.optionalStringField as String?)
-        let dict = NSMutableDictionary()
-
-        dict["stringKey"] = "foo"
-        let dictProxy = dict.channelz(dict["stringKey"], keyPath: "stringKey")
-
-        // bind the number value to a string equivalent
-//        num ∞> { num in strProxy.value = "\(num)" }
-//        strProxy ∞> { str in num.value = Int((str as NSString).intValue) }
-
-        let num_strProxy = (num, { "\($0)" }) <~∞~> (strProxy, { $0?.toInt() })
-
-        let strProxy_dictProxy = (strProxy, { $0 }) <~∞~> (dictProxy, { $0 as? String? })
-
-//        let binding = bindz((strProxy, identity), (dictProxy, identity))
-//        let binding = (strProxy, identity) <~∞~> (dictProxy, identity)
-
-//        let sval = reflect(str.optionalStringField).value
-//        str.optionalStringField = nil
-//        dump(reflect(str.optionalStringField).value)
-
-        num <- 10
-        XCTAssertEqual("10", state.optionalStringField ?? "<nil>")
-
-        state.optionalStringField = "123"
-        XCTAssertEqual(123, num.value)
-        
-        num <- 456
-        XCTAssertEqual("456", dict["stringKey"] as NSString? ?? "<nil>")
-
-        dict["stringKey"] = "-98"
-        XCTAssertEqual(-98, num.value)
-
-        // tests re-entrancy with inconsistent equivalencies
-        dict["stringKey"] = "ABC"
-        XCTAssertEqual(-98, num.value)
-
-        dict["stringKey"] = "66"
-        XCTAssertEqual(66, num.value)
-
-        /* ###
-        // nullifying should change the proxy
-        dict.removeObjectForKey("stringKey")
-        XCTAssertEqual(0, num.value)
-
-        // no change from num's value, so don't change
-        num <- 0
-        XCTAssertEqual("", dict["stringKey"] as NSString? ?? "<nil>")
-
-        num <- 1
-        XCTAssertEqual("1", dict["stringKey"] as NSString? ?? "<nil>")
-
-        num <- 0
-        XCTAssertEqual("0", dict["stringKey"] as NSString? ?? "<nil>")
-        */
-    }
+//    func testTransformableConduits() {
+//
+//        var num = ∞(0)∞
+//        let state = StatefulObject()
+//        let strProxy = state∞(state.optionalStringField as String?)
+//        let dict = NSMutableDictionary()
+//
+//        dict["stringKey"] = "foo"
+//        let dictProxy = dict.channelz(dict["stringKey"], keyPath: "stringKey")
+//
+//        // bind the number value to a string equivalent
+////        num ∞> { num in strProxy.value = "\(num)" }
+////        strProxy ∞> { str in num.value = Int((str as NSString).intValue) }
+//
+//        let num_strProxy = (num, { "\($0)" }) <~∞~> (strProxy, { $0?.toInt() })
+//
+//        let strProxy_dictProxy = (strProxy, { $0 }) <~∞~> (dictProxy, { $0 as? String? })
+//
+////        let binding = bindz((strProxy, identity), (dictProxy, identity))
+////        let binding = (strProxy, identity) <~∞~> (dictProxy, identity)
+//
+////        let sval = reflect(str.optionalStringField).value
+////        str.optionalStringField = nil
+////        dump(reflect(str.optionalStringField).value)
+//
+//        num <- 10
+//        XCTAssertEqual("10", state.optionalStringField ?? "<nil>")
+//
+//        state.optionalStringField = "123"
+//        XCTAssertEqual(123, num.value)
+//        
+//        num <- 456
+//        XCTAssertEqual("456", dict["stringKey"] as NSString? ?? "<nil>")
+//
+//        dict["stringKey"] = "-98"
+//        XCTAssertEqual(-98, num.value)
+//
+//        // tests re-entrancy with inconsistent equivalencies
+//        dict["stringKey"] = "ABC"
+//        XCTAssertEqual(-98, num.value)
+//
+//        dict["stringKey"] = "66"
+//        XCTAssertEqual(66, num.value)
+//
+//        /* ###
+//        // nullifying should change the proxy
+//        dict.removeObjectForKey("stringKey")
+//        XCTAssertEqual(0, num.value)
+//
+//        // no change from num's value, so don't change
+//        num <- 0
+//        XCTAssertEqual("", dict["stringKey"] as NSString? ?? "<nil>")
+//
+//        num <- 1
+//        XCTAssertEqual("1", dict["stringKey"] as NSString? ?? "<nil>")
+//
+//        num <- 0
+//        XCTAssertEqual("0", dict["stringKey"] as NSString? ?? "<nil>")
+//        */
+//    }
 
     func testEquivalenceConduits() {
 
@@ -1164,7 +1215,7 @@ public class ChannelZTests: XCTestCase {
 
     }
 
-    func testOptionalFunnels() {
+    func testOptionalObservables() {
         let state = StatefulObject()
 
         #if DEBUG_CHANNELZ
@@ -1172,14 +1223,14 @@ public class ChannelZTests: XCTestCase {
         #endif
 
         var requiredNSStringField: NSString = ""
-        // TODO: funnel immediately gets deallocated unless we hold on to it
-//        let a1a = state.funnel(state.requiredNSStringField, keyPath: "requiredNSStringField").attach({ requiredNSStringField = $0 })
+        // TODO: observable immediately gets deallocated unless we hold on to it
+//        let a1a = state.observable(state.requiredNSStringField, keyPath: "requiredNSStringField").subscribe({ requiredNSStringField = $0 })
 
         // FIXME: this seems to hold on to an extra allocation
-        // let a1 = sieve(state.funnel(state.requiredNSStringField, keyPath: "requiredNSStringField"))
+        // let a1 = sieve(state.observable(state.requiredNSStringField, keyPath: "requiredNSStringField"))
 
         let a1 = state.channelz(state.requiredNSStringField)
-        var a1a = a1.attach({ requiredNSStringField = $0 })
+        var a1a = a1.subscribe({ requiredNSStringField = $0 })
 
         #if DEBUG_CHANNELZ
         XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1, "observer should not have been cleaned up")
@@ -1194,11 +1245,11 @@ public class ChannelZTests: XCTestCase {
 //        XCTAssertEqual(postDetachCount, preDetachCount - 1, "detaching the outlet should have removed it from the outlet list")
 
         state.requiredNSStringField = "foo1"
-        XCTAssertNotEqual(requiredNSStringField, "foo1", "detached funnel should not have fired")
+        XCTAssertNotEqual(requiredNSStringField, "foo1", "detached observable should not have fired")
 
         var optionalNSStringField: NSString?
         let a2 = state∞(state.optionalNSStringField)
-        a2.attach({ optionalNSStringField = $0 })
+        a2.subscribe({ optionalNSStringField = $0 })
         
         XCTAssert(optionalNSStringField == nil)
 
@@ -1411,24 +1462,24 @@ public class ChannelZTests: XCTestCase {
             ctx.persistentStoreCoordinator = psc
 
             var saveCount = 0
-            let saveCountOutlet = ctx.notifyz(NSManagedObjectContextDidSaveNotification).attach { _ in saveCount = saveCount + 1 }
+            let saveCountSubscription = ctx.notifyz(NSManagedObjectContextDidSaveNotification).subscribe { _ in saveCount = saveCount + 1 }
 
 
 
             var inserted = 0
-            ctx.changedInsertedZ.attach { inserted = $0.count }
+            ctx.changedInsertedZ.subscribe { inserted = $0.count }
 
             var updated = 0
-            ctx.changedUpdatedZ.attach { updated = $0.count }
+            ctx.changedUpdatedZ.subscribe { updated = $0.count }
 
             var deleted = 0
-            ctx.changedDeletedZ.attach { deleted = $0.count }
+            ctx.changedDeletedZ.subscribe { deleted = $0.count }
 
             var refreshed = 0
-            ctx.changedRefreshedZ.attach { refreshed = $0.count }
+            ctx.changedRefreshedZ.subscribe { refreshed = $0.count }
 
             var invalidated = 0
-            ctx.chagedInvalidatedZ.attach { invalidated = $0.count }
+            ctx.chagedInvalidatedZ.subscribe { invalidated = $0.count }
 
 
             XCTAssertNil(error)
@@ -1536,11 +1587,11 @@ public class ChannelZTests: XCTestCase {
     #endif
 
 
-    public func testDetachedOutlet() {
-        var outlet: Outlet?
+    public func testDetachedSubscription() {
+        var outlet: Subscription?
         autoreleasepool {
             let state = StatefulObject()
-            outlet = state.channelz(state.requiredNSStringField).attach({ _ in })
+            outlet = state.channelz(state.requiredNSStringField).subscribe({ _ in })
             XCTAssertEqual(1, StatefulObjectCount)
         }
 
@@ -1555,7 +1606,7 @@ public class ChannelZTests: XCTestCase {
             var changes = 0
             let ob = StatefulObject()
             XCTAssertEqual(0, ob.intField)
-            (ob ∞ ob.intField).attach { _ in changes += 1 }
+            (ob ∞ ob.intField).subscribe { _ in changes += 1 }
             XCTAssertEqual(1, ChannelZKeyValueObserverCount - startCount)
 
             XCTAssertEqual(0, changes)
@@ -1569,7 +1620,7 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(0, StatefulObjectCount - startObCount)
     }
 
-    public func testManyKeyOutlets() {
+    public func testManyKeySubscriptions() {
         let startCount = ChannelZKeyValueObserverCount
         let startObCount = StatefulObjectCount
 
@@ -1581,7 +1632,7 @@ public class ChannelZTests: XCTestCase {
 
                 for i in 1...count {
                     // using the keypath name because it is faster than auto-identification
-                    (ob ∞ (ob.intField, "intField")).attach { _ in changes += 1 }
+                    (ob ∞ (ob.intField, "intField")).subscribe { _ in changes += 1 }
                 }
                 XCTAssertEqual(1, ChannelZKeyValueObserverCount - startCount)
 
@@ -1621,14 +1672,14 @@ public class ChannelZTests: XCTestCase {
                 let op = NSOperation()
                 let channel = op∞(op.cancelled, "cancelled")
 
-                var attachments: [Outlet] = []
+                var subscribements: [Subscription] = []
                 for i in 1...10 {
-                    let attachment = channel ∞> { _ in }
-                    attachments += [attachment]
+                    let subscribement = channel ∞> { _ in }
+                    subscribements += [subscribement as Subscription]
                 }
 
                 // we will crash if we rely on the KVO auto-removal here
-                attachments.map { $0.detach() }
+                subscribements.map { $0.detach() }
             }
         }
     }
@@ -1720,10 +1771,14 @@ public class ChannelZTests: XCTestCase {
         let outlet = channel ∞> { _ in count += 1 }
         XCTAssertEqual(0, count)
 
+
         // ensure that priming the channel actually causes it to send out a value
         outlet.prime()
+        XCTAssertEqual(0.0, outlet.source.value)
         XCTAssertEqual(1, count)
+
         outlet.prime()
+        XCTAssertEqual(0.0, outlet.source.value)
         XCTAssertEqual(2, count)
     }
 
@@ -1736,7 +1791,7 @@ public class ChannelZTests: XCTestCase {
 
         let intToUIntChannel = intField.filter({ $0 >= 0 }).map({ UInt($0) })
         var lastUInt = UInt(0)
-        intToUIntChannel.attach({ lastUInt = $0 })
+        intToUIntChannel.subscribe({ lastUInt = $0 })
 
         intField.value = 10
         XCTAssertEqual(UInt(10), lastUInt)
@@ -1773,7 +1828,7 @@ public class ChannelZTests: XCTestCase {
 
     }
 
-    public func testFunnelCleanup() {
+    public func testObservableCleanup() {
 
         autoreleasepool {
             var counter = 0, opened = 0, closed = 0
@@ -1787,8 +1842,8 @@ public class ChannelZTests: XCTestCase {
             undo∞undo.levelsOfUndo ∞> { _ in counter += 1 }
             undo∞undo.undoActionName ∞> { _ in counter += 1 }
             undo∞undo.redoActionName ∞> { _ in counter += 1 }
-            undo.notifyz(NSUndoManagerDidOpenUndoGroupNotification).attach({ _ in opened += 1 })
-            undo.notifyz(NSUndoManagerDidCloseUndoGroupNotification).attach({ _ in closed += 1 })
+            undo.notifyz(NSUndoManagerDidOpenUndoGroupNotification).subscribe({ _ in opened += 1 })
+            undo.notifyz(NSUndoManagerDidCloseUndoGroupNotification).subscribe({ _ in closed += 1 })
 
 
             XCTAssertEqual(0, counter)
@@ -1827,24 +1882,24 @@ public class ChannelZTests: XCTestCase {
             let cancelChannel = op.channelz(op.cancelled)
 
             var cancelled: Bool = false
-            op.channelz(op.cancelled).attach { cancelled = $0 }
+            op.channelz(op.cancelled).subscribe { cancelled = $0 }
             var asynchronous: Bool = false
-            op.channelz(op.asynchronous).attach { asynchronous = $0 }
+            op.channelz(op.asynchronous).subscribe { asynchronous = $0 }
             var executing: Bool = false
 
-            op.channelz(op.executing).attach { [unowned op] in
+            op.channelz(op.executing).subscribe { [unowned op] in
                 executing = $0
                 let str = ("executing=\(executing) op: \(op)")
             }
 
-            op.channelz(op.executing).map({ !$0 }).filter({ $0 }).attach { [unowned op] in
+            op.channelz(op.executing).map({ !$0 }).filter({ $0 }).subscribe { [unowned op] in
                 let str = ("executing=\($0) op: \(op)")
             }
 
             var finished: Bool = false
-            op.channelz(op.finished).attach { finished = $0 }
+            op.channelz(op.finished).subscribe { finished = $0 }
             var ready: Bool = false
-            op.channelz(op.ready).attach { ready = $0 }
+            op.channelz(op.ready).subscribe { ready = $0 }
 
 
             XCTAssertEqual(false, cancelled)
@@ -2032,7 +2087,7 @@ public class ChannelZTests: XCTestCase {
         let state = StatefulObjectSubSubclass()
         var count = 0
 
-        let outlet : Outlet = state.channelz(state.optionalStringField) ∞> { _ in count += 1 }
+        let outlet : Subscription = state.channelz(state.optionalStringField) ∞> { _ in count += 1 }
         state∞state.requiredStringField ∞> { _ in count += 1 }
         state∞state.optionalNSStringField ∞> { _ in count += 1 }
         state∞state.requiredNSStringField ∞> { _ in count += 1 }
@@ -2121,7 +2176,7 @@ public class ChannelZTests: XCTestCase {
         XCTAssertEqual(clicks, 0)
 
         let cmd = button.controlz()
-        var outlet = cmd.attach({ _ in clicks += 1 })
+        var outlet = cmd.subscribe({ _ in clicks += 1 })
 
         button.performClick(self); XCTAssertEqual(--clicks, 0)
         button.performClick(self); XCTAssertEqual(--clicks, 0)
@@ -2143,11 +2198,11 @@ public class ChannelZTests: XCTestCase {
         var text = ""
 
         let textChannel = textField∞(textField.stringValue)
-        var textOutlet = textChannel.attach({ text = $0 })
+        var textSubscription = textChannel.subscribe({ text = $0 })
 
         var enabled = true
         let enabledChannel = textField∞(textField.enabled)
-        var enabledOutlet = enabledChannel.attach({ enabled = $0 })
+        var enabledSubscription = enabledChannel.subscribe({ enabled = $0 })
 
         textField.stringValue = "ABC"
         XCTAssertEqual("ABC", textField.stringValue)
@@ -2164,12 +2219,12 @@ public class ChannelZTests: XCTestCase {
         textField.enabled = true
         XCTAssertEqual(true, enabled)
 
-        textOutlet.detach()
+        textSubscription.detach()
 
         textField.stringValue = "QRS"
         XCTAssertEqual("XYZ", text)
 
-        enabledOutlet.detach()
+        enabledSubscription.detach()
 
         textField.enabled = false
         XCTAssertEqual(true, enabled)
@@ -2284,7 +2339,7 @@ public class ChannelZTests: XCTestCase {
 
         let buttonTapsHappen = true // false && false // or else compiler warning about blocks never executing
 
-        var outlet1 = cmd.attach({ _ in taps += 1 })
+        var outlet1 = cmd.subscribe({ _ in taps += 1 })
         XCTAssertEqual(1, button.allTargets().count)
 
         if buttonTapsHappen {
@@ -2292,7 +2347,7 @@ public class ChannelZTests: XCTestCase {
             tap(); taps -= 1; XCTAssertEqual(taps, 0)
         }
 
-        var outlet2 = cmd.attach({ _ in taps += 1 })
+        var outlet2 = cmd.subscribe({ _ in taps += 1 })
         XCTAssertEqual(2, button.allTargets().count)
         if buttonTapsHappen {
             tap(); taps -= 2; XCTAssertEqual(taps, 0)
@@ -2319,10 +2374,10 @@ public class ChannelZTests: XCTestCase {
 
 
         var text = ""
-        let textOutlet = (textField∞textField.text).map( { $0 } ).attach({ text = $0 })
+        let textSubscription = (textField∞textField.text).map( { $0 } ).subscribe({ text = $0 })
 
         var enabled = true
-        let enabledOutlet = textField.channelz(textField.enabled).attach({ enabled = $0 })
+        let enabledSubscription = textField.channelz(textField.enabled).subscribe({ enabled = $0 })
 
 
         textField.text = "ABC"
@@ -2336,12 +2391,12 @@ public class ChannelZTests: XCTestCase {
         textField.enabled = true
         XCTAssertEqual(true, enabled)
 
-        textOutlet.detach()
+        textSubscription.detach()
 
         textField.text = "XYZ"
         XCTAssertEqual("ABC", text)
         
-        enabledOutlet.detach()
+        enabledSubscription.detach()
         
         textField.enabled = false
         XCTAssertEqual(true, enabled)

@@ -6,7 +6,7 @@
 //  License: MIT (or whatever)
 //
 
-/// Support for Foundation channels and funnels, such as KVO-based channels and NSNotificationCenter funnels
+/// Support for Foundation channels and observables, such as KVO-based channels and NSNotificationCenter observables
 import Foundation
 
 
@@ -141,7 +141,7 @@ private func coerceCocoaType<SourceType>(ob: AnyObject?, type: SourceType.Type) 
 /// A Channel for Cocoa properties that support key-value path observation/coding
 public struct KeyValueRequiredChannel<T>: KeyValueChannel {
     public typealias SourceType = T
-    public typealias OutputType = StateEvent<T>
+    public typealias Element = StateEvent<T>
 
     public private(set) weak var target: NSObject?
     public let keyPath: String
@@ -187,13 +187,13 @@ public struct KeyValueRequiredChannel<T>: KeyValueChannel {
         }
     }
 
-    /// Attaches an outlet to receive change notifications from the state pipeline
+    /// subscribes an outlet to receive change notifications from the state pipeline
     ///
     /// :param: outlet      the outlet closure to which state will be sent
-    public func attach(outlet: (OutputType)->())->Outlet {
+    public func subscribe(outlet: (Element)->())->SubscriptionOf<SelfChannel> {
         if let target = target {
             let kp = keyPath
-            return KeyValueOutlet(target: target, keyPath: keyPath, handler: { (oldv, newv) in
+            let olet = KeyValueSubscription(target: target, keyPath: keyPath, handler: { (oldv, newv) in
                 // for example, we are watching a NSMutableDictionary's key that is set to an NSString and then an NSNumber
                 if let newv = coerceCocoaType(newv, SourceType.self) {
                     // option type check is because Initial option sends oldValue as nil
@@ -206,27 +206,29 @@ public struct KeyValueRequiredChannel<T>: KeyValueChannel {
                     assert(newv is SourceType, "required value for «\(kp)» changed type from \(oldv) to \(newv); use an optional channel if value type can change")
                 }
             })
+            return SubscriptionOf(source: self, outlet: olet)
         } else {
-            NSLog("ChannelZ warning: attempt to attach to a deallocated target keyPath «\(keyPath)»; channels do not retain their targets")
-            return DeallocatedTargetOutlet()
+            NSLog("ChannelZ warning: attempt to subscribe to a deallocated target keyPath «\(keyPath)»; channels do not retain their targets")
+            let olet = DeallocatedTargetSubscription()
+            return SubscriptionOf(source: self, outlet: olet)
         }
     }
 
 
-    // Boilerplate funnel/channel/filter/map
+    // Boilerplate observable/channel/filter/map
     public typealias SelfChannel = KeyValueRequiredChannel
 
-    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
+    /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
-    public func channel() -> ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+    public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
 
     /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
-    public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+    public func filter(predicate: (Element)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
 
     /// Returns a mapped channel that transforms the elements before passing them through to the outlets
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 }
 
 /// A Channel for optional Cocoa properties that support key-value path observation/coding
@@ -235,7 +237,7 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
     // We need separate handling for optionals because the briding between Swift Optionals and Cocoa has some subtle differences
 
     public typealias SourceType = Optional<T>
-    public typealias OutputType = StateEvent<Optional<T>>
+    public typealias Element = StateEvent<Optional<T>>
 
     public private(set) weak var target: NSObject?
     public let keyPath: String
@@ -272,38 +274,40 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
         }
     }
 
-    /// Attaches an outlet to receive change notifications from the state pipeline
+    /// subscribes an outlet to receive change notifications from the state pipeline
     ///
     /// :param: outlet      the outlet closure to which state will be sent
-    public func attach(outlet: (OutputType)->())->Outlet {
+    public func subscribe(outlet: (Element)->())->SubscriptionOf<SelfChannel> {
         if let target = target {
-            return KeyValueOutlet(target: target, keyPath: keyPath, handler: { (oldv, newv) in
+            let olet = KeyValueSubscription(target: target, keyPath: keyPath, handler: { (oldv, newv) in
                 if let oldv : AnyObject = oldv {
                     outlet(StateEvent.change(coerceCocoaType(oldv, T.self), value: coerceCocoaType(newv, T.self)))
                 } else {
                     outlet(StateEvent.push(coerceCocoaType(newv, T.self)))
                 }
             })
+            return SubscriptionOf(source: self, outlet: olet)
         } else {
-            NSLog("ChannelZ warning: attempt to attach to a deallocated target keyPath «\(keyPath)»; channels do not retain their targets")
-            return DeallocatedTargetOutlet()
+            NSLog("ChannelZ warning: attempt to subscribe to a deallocated target keyPath «\(keyPath)»; channels do not retain their targets")
+            let olet = DeallocatedTargetSubscription()
+            return SubscriptionOf(source: self, outlet: olet)
         }
     }
 
-    // Boilerplate funnel/channel/filter/map
+    // Boilerplate observable/channel/filter/map
     public typealias SelfChannel = KeyValueOptionalChannel
 
-    /// Returns a type-erasing funnel around the current channel, making the channel read-only to subsequent pipeline stages
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
+    /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
-    public func channel() -> ChannelOf<SourceType, OutputType> { return ChannelOf(self) }
+    public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
 
     /// Returns a filtered channel that only flows elements that pass the predicate through to the outlets
-    public func filter(predicate: (OutputType)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+    public func filter(predicate: (Element)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
 
     /// Returns a mapped channel that transforms the elements before passing them through to the outlets
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 }
 
 
@@ -319,7 +323,7 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
 }
 
 /// outlet for Cocoa KVO changes
-private struct KeyValueOutlet: Outlet {
+private struct KeyValueSubscription: Subscription {
     typealias HandlerType = ((oldv: AnyObject?, newv: AnyObject?)->Void)
     let observer: TargetAssociatedObserver
     let handler: HandlerType
@@ -676,59 +680,64 @@ private func keyPathForAutoclosure<T>(target: NSObject, accessor: ()->T, require
 }
 
 
-/// A Funnel for events of a custom type
-public struct EventFunnel<T>: FunnelType {
-    public typealias OutputType = T
-    internal var dispatchTarget: NSObject? // object to be retained for as long as someone holds the EventFunnel
-    internal var outlets = OutletList<OutputType>()
+/// A Observable for events of a custom type
+public struct EventObservable<T>: ObservableType {
+    public typealias Element = T
+    internal var dispatchTarget: NSObject? // object to be retained for as long as someone holds the EventObservable
+    internal var outlets = SubscriptionList<Element>()
 
     public init(_ dispatchTarget: NSObject?) {
         self.dispatchTarget = dispatchTarget
     }
 
-    /// Attaches an outlet to receive change notifications from the state pipeline
+    /// subscribes an outlet to receive change notifications from the state pipeline
     ///
     /// :param: outlet      the outlet closure to which state will be sent
-    public func attach(outlet: (OutputType)->())->Outlet { return outlets.addOutlet(outlet) }
+    public func subscribe(outlet: (Element)->())->SubscriptionOf<SelfObservable> {
+        let index = outlets.addSubscription(outlet)
+        return SubscriptionOf(source: self, primer: { }, detacher: { self.outlets.removeSubscription(index) })
+    }
 
-    // Boilerplate funnel/filter/map
-    private typealias SelfFunnel = EventFunnel
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    // Boilerplate observable/filter/map
+    private typealias SelfObservable = EventObservable
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
 }
 
 
-/// A Funnel for NSNotificationCenter events
-public struct NotificationFunnel: FunnelType {
+/// A Observable for NSNotificationCenter events
+public struct NotificationObservable: ObservableType {
     private weak var target: NSObject?
     private let name: String
 
-    public typealias OutputType = [NSObject : AnyObject]
+    public typealias Element = [NSObject : AnyObject]
 
     private init(target: NSObject, name: String) {
         self.target = target
         self.name = name
     }
 
-    /// Attaches an outlet to receive change notifications from the state pipeline
+    /// subscribes an outlet to receive change notifications from the state pipeline
     ///
     /// :param: outlet      the outlet closure to which state will be sent
-    public func attach(outlet: ([NSObject : AnyObject])->())->Outlet {
+    public func subscribe(outlet: ([NSObject : AnyObject])->())->SubscriptionOf<SelfObservable> {
         if let target = target {
-            return NotificationObserver(observee: target, name: name, handler: { outlet($0) })
+            let olet = NotificationObserver(observee: target, name: name, handler: { outlet($0) })
+            return SubscriptionOf(source: self, outlet: olet)
         } else {
-            NSLog("ChannelZ warning: attempt to attach to a deallocated target notification «\(name)»; channels do not retain their targets")
-            return DeallocatedTargetOutlet()
+            NSLog("ChannelZ warning: attempt to subscribe to a deallocated target notification «\(name)»; channels do not retain their targets")
+            let olet = DeallocatedTargetSubscription()
+            return SubscriptionOf(source: self, outlet: olet)
         }
     }
 
 
-    // Boilerplate funnel/filter/map
-    public typealias SelfFunnel = NotificationFunnel
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    // Boilerplate observable/filter/map
+    public typealias SelfObservable = NotificationObservable
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
 }
 
 #if DEBUG_CHANNELZ
@@ -737,7 +746,7 @@ public struct NotificationFunnel: FunnelType {
 #endif
 
 /// Observer for NSNotification changes
-public struct NotificationObserver: Outlet {
+public struct NotificationObserver: Subscription {
     private weak var observer : TargetAssociatedObserver?
 
     init(observee: NSObject, name: String, handler: ([NSObject : AnyObject])->(Void)) {
@@ -751,29 +760,41 @@ public struct NotificationObserver: Outlet {
     }
 
     public func prime() {
-        // notification funnels are read-only
+        // notification observables are read-only
     }
 
 }
 
-
-/// Creates a Funnel on NSNotificationCenter
-private func funnelNotification(target: NSObject, name: String)->NotificationFunnel {
-    return NotificationFunnel(target: target, name: name)
+/// Adapter for the ReactiveX pattern of completion handlers accepting a set of next/error/completed values
+public enum NextErrorCompleted<T> {
+    case Next(BoxOf<T>)
+    case Error(NSError)
+    case Completed
 }
 
-public func funnel(target: NSObject, name: String)->NotificationFunnel {
-    return funnelNotification(target, name)
+/// A boxed value used by `NextErrorCompleted`; it is an implementation detail to get around a swift compiler limitation
+public class BoxOf<T> {
+    public let value: T
+    public init(_ value: T) { self.value = value }
+}
+
+/// Creates a Observable on NSNotificationCenter
+private func observableNotification(target: NSObject, name: String)->NotificationObservable {
+    return NotificationObservable(target: target, name: name)
+}
+
+public func observable(target: NSObject, name: String)->NotificationObservable {
+    return observableNotification(target, name)
 }
 
 /// Extension for listening to notifications of a given type
 extension NSObject {
-    /// Registers with the NSNotificationCenter to funnel event notications of the given name for this object
+    /// Registers with the NSNotificationCenter to observable event notications of the given name for this object
     ///
     /// :param: notificationName    the name of the notification to register
     /// :param: center              the NSNotificationCenter to register with (defaults to defaultCenter())
-    public func notifyz(notificationName: String)->NotificationFunnel {
-        return funnelNotification(self, notificationName)
+    public func notifyz(notificationName: String)->NotificationObservable {
+        return observableNotification(self, notificationName)
     }
 }
 

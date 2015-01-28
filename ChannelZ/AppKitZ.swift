@@ -1,5 +1,5 @@
 //
-//  Funnels+AppKit.swift
+//  Observables+AppKit.swift
 //  ChannelZ
 //
 //  Created by Marc Prud'hommeaux <marc@glimpse.io>
@@ -12,7 +12,7 @@
 
     extension NSControl : KeyValueChannelSupplementing {
 
-        public func controlz() -> EventFunnel<NSEvent> {
+        public func controlz() -> EventObservable<NSEvent> {
 
             if self.target != nil && !(self.target is DispatchTarget) {
                 fatalError("controlz event handling overrides existing target/action for control; if this is really what you want to do, explicitly nil the target & action of the control")
@@ -22,43 +22,43 @@
             self.target = observer
             self.action = Selector("execute")
 
-            var funnel = EventFunnel<NSEvent>(nil)
-            funnel.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
-            observer.actions += [{ funnel.outlets.receive($0) }]
+            var observable = EventObservable<NSEvent>(nil)
+            observable.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
+            observer.actions += [{ observable.outlets.receive($0) }]
 
-            return funnel
+            return observable
         }
 
         public func supplementKeyValueChannel(forKeyPath: String, outlet: (AnyObject?)->()) -> (()->())? {
             // NSControl action events do not trigger KVO notifications, so we manually supplement any outlets with control events
 
             if forKeyPath == "doubleValue" {
-                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.doubleValue) })
+                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.doubleValue) })
                 return { outlet.detach() }
             }
 
             if forKeyPath == "floatValue" {
-                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.floatValue) })
+                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.floatValue) })
                 return { outlet.detach() }
             }
 
             if forKeyPath == "integerValue" {
-                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.integerValue) })
+                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.integerValue) })
                 return { outlet.detach() }
             }
 
             if forKeyPath == "stringValue" {
-                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.stringValue) })
+                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.stringValue) })
                 return { outlet.detach() }
             }
 
             if forKeyPath == "attributedStringValue" {
-                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.attributedStringValue) })
+                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.attributedStringValue) })
                 return { outlet.detach() }
             }
 
             if forKeyPath == "objectValue" {
-                let outlet = self.controlz().attach({ [weak self] _ in outlet(self?.objectValue) })
+                let outlet = self.controlz().subscribe({ [weak self] _ in outlet(self?.objectValue) })
                 return { outlet.detach() }
             }
 
@@ -69,7 +69,7 @@
 
     extension NSMenuItem {
 
-        public func controlz() -> EventFunnel<NSEvent> {
+        public func controlz() -> EventObservable<NSEvent> {
 
             if self.target != nil && !(self.target is DispatchTarget) {
                 fatalError("controlz event handling overrides existing target/action for menu item; if this is really what you want to do, explicitly nil the target & action of the control")
@@ -79,11 +79,11 @@
             self.target = observer
             self.action = Selector("execute")
 
-            var funnel = EventFunnel<NSEvent>(nil)
-            funnel.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
-            observer.actions += [{ funnel.outlets.receive($0) }]
+            var observable = EventObservable<NSEvent>(nil)
+            observable.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
+            observer.actions += [{ observable.outlets.receive($0) }]
             
-            return funnel
+            return observable
         }
     }
 

@@ -1,15 +1,15 @@
 //
-//  Outlets.swift
+//  Subscriptions.swift
 //  ChannelZ
 //
 //  Created by Marc Prud'hommeaux <marc@glimpse.io>
 //  License: MIT (or whatever)
 //
 
-import ObjectiveC // uses for synchronizing OutletList with objc_sync_enter
+import ObjectiveC // uses for synchronizing SubscriptionList with objc_sync_enter
 
-/// An `Outlet` is the result of `attach`ing to a Funnel or Channel
-public protocol Outlet {
+/// An `Subscription` is the result of `subscribe`ing to a Observable or Channel
+public protocol Subscription {
     /// Disconnects this outlet from the source
     func detach()
 
@@ -17,12 +17,12 @@ public protocol Outlet {
     func prime()
 }
 
-/// An OutletType is a receiver for funneled state operations with the ability to detach itself from the source funnel
-public protocol OutletType : Outlet {
+/// An SubscriptionType is a receiver for observableed state operations with the ability to detach itself from the source observable
+public protocol SubscriptionType : Subscription {
     typealias Element
 
-    /// Receives the state element
-//    func receive(value: Element)
+    /// The source of this outlet
+    var source: Element { get }
 }
 
 
@@ -30,18 +30,26 @@ public protocol OutletType : Outlet {
 ///
 /// Forwards operations to an arbitrary underlying outlet with the same
 /// `Element` type, hiding the specifics of the underlying outlet.
-public struct OutletOf<T> : OutletType {
+public struct SubscriptionOf<T> : SubscriptionType {
+    public typealias Element = T
+    
+    public let source: Element
     let primer: ()->()
     let detacher: ()->()
 
-    public typealias Element = T
-
-    public init(primer: ()->(), detacher: ()->()) {
+    internal init(source: Element, primer: ()->(), detacher: ()->()) {
+        self.source = source
         self.primer = primer
         self.detacher = detacher
     }
 
-    /// Disconnects this outlet from the source funnel
+    public init(source: Element, outlet: Subscription) {
+        self.source = source
+        self.primer = { outlet.prime() }
+        self.detacher = { outlet.detach() }
+    }
+
+    /// Disconnects this outlet from the source observable
     public func detach() {
         self.detacher()
     }
@@ -51,8 +59,8 @@ public struct OutletOf<T> : OutletType {
     }
 }
 
-/// A no-op outlet that warns that an attempt was made to attach to a deallocated weak target
-struct DeallocatedTargetOutlet : Outlet {
+/// A no-op outlet that warns that an attempt was made to subscribe to a deallocated weak target
+struct DeallocatedTargetSubscription : Subscription {
     func detach() { }
     func prime() { }
 }
@@ -61,7 +69,7 @@ struct DeallocatedTargetOutlet : Outlet {
 /// How many levels of re-entrancy are permitted when flowing state observations
 public var ChannelZReentrancyLimit: Int = 1
 
-final class OutletList<T> {
+final class SubscriptionList<T> {
     private var outlets: [(index: Int, outlet: (T)->())] = []
     internal var entrancy: Int = 0
     private var outletIndex: Int = 0
@@ -72,7 +80,7 @@ final class OutletList<T> {
             objc_sync_exit(lockObj)
             return retVal
         } else {
-            fatalError("Unable to synchronize on object")
+            fatalError("Unable to synchronize on SubscriptionList")
         }
     }
 
@@ -89,17 +97,16 @@ final class OutletList<T> {
         }
     }
 
-    func addOutlet(outlet: (T)->(), primer: ()->() = { })->OutletOf<T> {
+    func addSubscription(outlet: (T)->(), primer: ()->() = { })->Int {
         return synchronized(self) {
             let index = self.outletIndex++
-            let olet = OutletOf<T>(primer: primer, detacher: { [weak self] in self?.removeOutlet(index); return })
             precondition(self.entrancy == 0, "cannot add to outlets while they are flowing")
             self.outlets += [(index, outlet)]
-            return olet
+            return index
         }
     }
 
-    func removeOutlet(index: Int) {
+    func removeSubscription(index: Int) {
         synchronized(self) {
             self.outlets = self.outlets.filter { $0.index != index }
         }
@@ -114,7 +121,7 @@ final class OutletList<T> {
 }
 
 /// Primes the outlet and returns the outlet itself
-internal func prime(outlet: Outlet) -> Outlet {
+internal func prime<T>(outlet: SubscriptionOf<T>) -> SubscriptionOf<T> {
     outlet.prime()
     return outlet
 }

@@ -1,158 +1,160 @@
 //
-//  Funnels.swift
+//  Observable.swift
 //  ChannelZ
 //
 //  Created by Marc Prud'hommeaux <marc@glimpse.io>
 //  License: MIT (or whatever)
 //
 
-/// An Funnel wraps a type (either a value or a reference) and sends all state operations down to each attached outlet
-public protocol BaseFunnelType {
-    typealias OutputType
+/// An Observable wraps a type (either a value or a reference) and sends all state operations down to each subscribeed outlet
+public protocol BaseObservableType {
+    typealias Element
 
-    /// Returns a type-erasing funnel wrapper around the current funnel, making the source read-only to subsequent pipeline stages
-    func funnel() -> FunnelOf<OutputType>
+    /// Returns a type-erasing observable wrapper around the current observable, making the source read-only to subsequent pipeline stages
+    func observable() -> ObservableOf<Element>
 
-    /// Attaches an outlet to receive change notifications from the state pipeline
+    /// subscribes an outlet to receive change notifications from the state pipeline
     ///
     /// :param: outlet the outlet closure to which state will be sent
-    func attach(outlet: (Self.OutputType)->Void)->Outlet
+    func subscribe(outlet: (Self.Element)->Void)->SubscriptionOf<Self>
 }
 
 
-/// A funnel with support for filtering, mapping, etc.
-public protocol ExtendedFunnelType : BaseFunnelType {
+/// A observable with support for filtering, mapping, etc.
+public protocol StreamingObservable : BaseObservableType {
 
-    /// NOTE: the following methods need to be a separate protocol or else client code cannot reify the types (possibly because FilteredFunnel itself implements FunnelType, and so is regarded as a circular protocol declaration)
+    /// NOTE: the following methods need to be a separate protocol or else client code cannot reify the types (possibly because FilteredObservable itself implements ObservableType, and so is regarded as a circular protocol declaration)
 
-    /// Returns a filtered funnel that only flows elements that pass the predicate through to the outlets
-    func filter(predicate: (Self.OutputType)->Bool)->FilteredFunnel<Self>
+    /// Returns a filtered observable that only flows elements that pass the predicate through to the outlets
+    func filter(predicate: (Self.Element)->Bool)->FilteredObservable<Self>
 
-    /// Returns a mapped funnel that transforms the elements before passing them through to the outlets
-    func map<TransformedType>(transform: (Self.OutputType)->TransformedType)->MappedFunnel<Self, TransformedType>
+    /// Returns a mapped observable that transforms the elements before passing them through to the outlets
+    func map<TransformedType>(transform: (Self.Element)->TransformedType)->MappedObservable<Self, TransformedType>
 }
 
-public protocol FunnelType : BaseFunnelType, ExtendedFunnelType {
+public protocol ObservableType : BaseObservableType, StreamingObservable {
 }
 
-/// A Sink that funnls all elements through to the attached outlets
-public struct SinkFunnel<Element> : FunnelType, SinkType {
-    public typealias OutputType = Element
 
-    private var outlets = OutletList<OutputType>()
+/// A Sink that funnls all elements through to the subscribeed outlets
+public struct SinkObservable<Element> : ObservableType, SinkType {
 
-    /// Create a SinkFunnel with an optional primer callback
+    private var outlets = SubscriptionList<Element>()
+
+    /// Create a SinkObservable with an optional primer callback
     public init() {
     }
 
-    public func attach(outlet: (OutputType)->())->Outlet {
-        return outlets.addOutlet(outlet)
+    public func subscribe(outlet: (Element)->())->SubscriptionOf<SelfObservable> {
+        let index = outlets.addSubscription(outlet)
+        return SubscriptionOf(source: self, primer: { }, detacher: {
+            self.outlets.removeSubscription(index)
+        })
     }
 
     public func put(x: Element) {
         outlets.receive(x)
     }
 
-    // Boilerplate funnel/filter/map
-    public typealias SelfFunnel = SinkFunnel
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return FilteredFunnel(source: self, predicate: predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return MappedFunnel(source: self, transform: transform) }
+    // Boilerplate observable/filter/map
+    public typealias SelfObservable = SinkObservable
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return FilteredObservable(source: self, predicate: predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return MappedObservable(source: self, transform: transform) }
 }
 
 
-/// A type-erased funnel.
+/// A type-erased observable.
 ///
-/// Forwards operations to an arbitrary underlying funnel with the same
-/// `OutputType` type, hiding the specifics of the underlying funnel.
-public struct FunnelOf<OutputType> : FunnelType {
-    private let attacher: (outlet: (OutputType) -> Void) -> Outlet
+/// Forwards operations to an arbitrary underlying observable with the same
+/// `Element` type, hiding the specifics of the underlying observable.
+public struct ObservableOf<Element> : ObservableType {
+    private let subscribeer: (outlet: (Element) -> Void) -> Subscription
 
-    init<G : BaseFunnelType where OutputType == G.OutputType>(_ base: G) {
-        self.attacher = { base.attach($0) }
+    init<G : BaseObservableType where Element == G.Element>(_ base: G) {
+        self.subscribeer = { base.subscribe($0) }
     }
 
-    public func attach(outlet: (OutputType) -> Void) -> Outlet {
-        return attacher(outlet)
+    public func subscribe(outlet: (Element) -> Void) -> SubscriptionOf<SelfObservable> {
+        let olet = self.subscribeer(outlet)
+        return SubscriptionOf(source: self, primer: { olet.prime() }, detacher: { olet.detach() })
     }
 
-    // Boilerplate funnel/filter/map
-    public typealias SelfFunnel = FunnelOf
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return FilteredFunnel(source: self, predicate: predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return MappedFunnel(source: self, transform: transform) }
+    // Boilerplate observable/filter/map
+    public typealias SelfObservable = ObservableOf
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return FilteredObservable(source: self, predicate: predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return MappedObservable(source: self, transform: transform) }
 }
 
-/// A filtered funnel that flows only those values that pass the filter predicate
-public struct FilteredFunnel<S : BaseFunnelType> : FunnelType {
-    typealias OutputType = S.OutputType
-    private var source: S
-    private let predicate: (S.OutputType)->Bool
+/// A filtered observable that flows only those values that pass the filter predicate
+public struct FilteredObservable<S : BaseObservableType> : ObservableType {
+    typealias Element = S.Element
+    public let source: S
+    public let predicate: (S.Element)->Bool
 
-    public init(source: S, predicate: (S.OutputType)->Bool) {
+    public init(source: S, predicate: (S.Element)->Bool) {
         self.source = source
         self.predicate = predicate
     }
 
-    /// Attaches an outlet to receive change notifications from the state pipeline
+    /// subscribes an outlet to receive change notifications from the state pipeline
     ///
     /// :param: outlet the outlet closure to which state will be sent
-    public func attach(outlet: (OutputType)->Void)->Outlet {
-        return source.attach({ if self.predicate($0) { outlet($0) } })
+    public func subscribe(outlet: (Element)->Void)->SubscriptionOf<SelfObservable> {
+        return SubscriptionOf(source: self, outlet: source.subscribe({ if self.predicate($0) { outlet($0) } }))
     }
 
-    // Boilerplate funnel/filter/map
-    public typealias SelfFunnel = FilteredFunnel
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    // Boilerplate observable/filter/map
+    public typealias SelfObservable = FilteredObservable
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
 }
 
 
-/// A GeneratorFunnel wraps a SequenceType or GeneratorType and sends all generated elements whenever an attachment is made
-public struct GeneratorFunnel<T>: BaseFunnelType {
-    typealias OutputType = T
+/// A GeneratorObservable wraps a SequenceType or GeneratorType and sends all generated elements whenever an subscribement is made
+public struct GeneratorObservable<Element>: BaseObservableType {
+    public let generator: ()->GeneratorOf<Element>
 
-    private let generator: ()->GeneratorOf<T>
-
-    public init<G: GeneratorType where T == G.Element>(_ gen: G) {
+    public init<G: GeneratorType where Element == G.Element>(_ gen: G) {
         self.generator = { GeneratorOf(gen) }
     }
 
-    public init<S: SequenceType where T == S.Generator.Element>(_ seq: S) {
+    public init<S: SequenceType where Element == S.Generator.Element>(_ seq: S) {
         self.generator = { GeneratorOf(seq.generate()) }
     }
 
-    public func attach(outlet: (OutputType) -> Void) -> Outlet {
+    public func subscribe(outlet: (Element) -> Void) -> SubscriptionOf<SelfObservable> {
         for element in generator() {
             outlet(element)
         }
 
-        return OutletOf<OutputType>(primer: { }, detacher: { })
+        return SubscriptionOf(source: self, primer: { }, detacher: { })
     }
 
-    // Boilerplate funnel/filter/map
-    public typealias SelfFunnel = GeneratorFunnel
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    // Boilerplate observable/filter/map
+    public typealias SelfObservable = GeneratorObservable
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
 }
 
-/// A TrapOutlet is an attachment to a funnel that retains a number of values (default 1) when they are sent by the source
-public class TrapOutlet<F : BaseFunnelType>: OutletType {
-    typealias Element = F.OutputType
+/// A TrapSubscription is an subscribement to a observable that retains a number of values (default 1) when they are sent by the source
+public class TrapSubscription<F : BaseObservableType>: SubscriptionType {
+    typealias SourceType = F.Element
 
     public let source: F
 
     /// Returns the last value to be added to this trap
-    public var value: F.OutputType? { return values.last }
+    public var value: F.Element? { return values.last }
 
     /// All the values currently held in the trap
-    public var values: [F.OutputType]
+    public var values: [F.Element]
 
     public let capacity: Int
 
-    private var outlet: Outlet?
+    private var outlet: Subscription?
 
     public init(source: F, capacity: Int) {
         self.source = source
@@ -160,7 +162,7 @@ public class TrapOutlet<F : BaseFunnelType>: OutletType {
         self.capacity = capacity
         self.values.reserveCapacity(capacity)
 
-        let outlet = source.attach({ [weak self] (value) -> Void in
+        let outlet = source.subscribe({ [weak self] (value) -> Void in
             let _ = self?.receive(value)
         })
         self.outlet = outlet
@@ -170,7 +172,7 @@ public class TrapOutlet<F : BaseFunnelType>: OutletType {
     public func detach() { outlet?.detach() }
     public func prime() { outlet?.prime() }
 
-    public func receive(value: Element) {
+    public func receive(value: SourceType) {
         while values.count >= capacity {
             values.removeAtIndex(0)
         }
@@ -179,66 +181,66 @@ public class TrapOutlet<F : BaseFunnelType>: OutletType {
     }
 }
 
-/// Creates a trap for the last `count` events of the `source` funnel
-public func trap<F : BaseFunnelType>(source: F, capacity: Int = 1) -> TrapOutlet<F> {
-    return TrapOutlet(source: source, capacity: capacity)
+/// Creates a trap for the last `count` events of the `source` observable
+public func trap<F : BaseObservableType>(source: F, capacity: Int = 1) -> TrapSubscription<F> {
+    return TrapSubscription(source: source, capacity: capacity)
 }
 
-/// Internal FilteredFunnel curried creation
-internal func filterFunnel<T : BaseFunnelType>(source: T)(predicate: (T.OutputType)->Bool)->FilteredFunnel<T> {
-    return FilteredFunnel(source: source, predicate: predicate)
+/// Internal FilteredObservable curried creation
+internal func filterObservable<T : BaseObservableType>(source: T)(predicate: (T.Element)->Bool)->FilteredObservable<T> {
+    return FilteredObservable(source: source, predicate: predicate)
 }
 
-/// Creates a filter around the funnel `source` that only passes elements that satisfy the `predicate` function
-public func filter<T : BaseFunnelType>(source: T, predicate: (T.OutputType)->Bool)->FilteredFunnel<T> {
-    return filterFunnel(source)(predicate)
+/// Creates a filter around the observable `source` that only passes elements that satisfy the `predicate` function
+public func filter<T : BaseObservableType>(source: T, predicate: (T.Element)->Bool)->FilteredObservable<T> {
+    return filterObservable(source)(predicate)
 }
 
 /// Filter that skips the first `skipCount` number of elements
-public func skip<T : FunnelType>(source: T, var skipCount: Int = 1)->FilteredFunnel<T> {
-    return filterFunnel(source)({ _ in skipCount-- > 0 })
+public func skip<T : ObservableType>(source: T, var skipCount: Int = 1)->FilteredObservable<T> {
+    return filterObservable(source)({ _ in skipCount-- > 0 })
 }
 
 
-// A mapped funnel passes all values through a transformer function before sending them to their attached outlets
-public struct MappedFunnel<Funnel : BaseFunnelType, TransformedType> : FunnelType {
-    typealias OutputType = TransformedType
+// A mapped observable passes all values through a transformer function before sending them to their subscribeed outlets
+public struct MappedObservable<Observable : BaseObservableType, TransformedType> : ObservableType {
+    typealias Element = TransformedType
 
-    private var source: Funnel
-    private let transform: (Funnel.OutputType)->TransformedType
+    public let source: Observable
+    public let transform: (Observable.Element)->TransformedType
 
-    public init(source: Funnel, transform: (Funnel.OutputType)->TransformedType) {
+    public init(source: Observable, transform: (Observable.Element)->TransformedType) {
         self.source = source
         self.transform = transform
     }
 
-    /// Attaches an outlet to receive change notifications from the state pipeline
+    /// subscribes an outlet to receive change notifications from the state pipeline
     ///
     /// :param: outlet the outlet closure to which state will be sent
-    public func attach(outlet: (TransformedType)->Void)->Outlet {
-        return source.attach({ outlet(self.transform($0)) })
+    public func subscribe(outlet: (TransformedType)->Void)->SubscriptionOf<SelfObservable> {
+        return SubscriptionOf(source: self, outlet: source.subscribe({ outlet(self.transform($0)) }))
     }
 
-    // Boilerplate funnel/filter/map
-    public typealias SelfFunnel = MappedFunnel
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    // Boilerplate observable/filter/map
+    public typealias SelfObservable = MappedObservable
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
 }
 
-/// Internal MappedFunnel curried creation
-internal func mapFunnel<Funnel : BaseFunnelType, TransformedType>(source: Funnel)(transform: (Funnel.OutputType)->TransformedType)->MappedFunnel<Funnel, TransformedType> {
-    return MappedFunnel(source: source, transform: transform)
+/// Internal MappedObservable curried creation
+internal func mapObservable<Observable : BaseObservableType, TransformedType>(source: Observable)(transform: (Observable.Element)->TransformedType)->MappedObservable<Observable, TransformedType> {
+    return MappedObservable(source: source, transform: transform)
 }
 
-/// Creates a map around the funnel `source` that passes through elements after applying the `transform` function
-public func map<Funnel : BaseFunnelType, TransformedType>(source: Funnel, transform: (Funnel.OutputType)->TransformedType)->MappedFunnel<Funnel, TransformedType> {
-    return mapFunnel(source)(transform)
+/// Creates a map around the observable `source` that passes through elements after applying the `transform` function
+public func map<Observable : BaseObservableType, TransformedType>(source: Observable, transform: (Observable.Element)->TransformedType)->MappedObservable<Observable, TransformedType> {
+    return mapObservable(source)(transform)
 }
 
-/// A ConcatFunnel merges two homogeneous funnels and delivers signals to the attached outlets when either of the sources emits an event
-public struct ConcatFunnel<T, F1 : BaseFunnelType, F2 : BaseFunnelType where F1.OutputType == T, F2.OutputType == T> : FunnelType {
-    public typealias OutputType = T
+/// A ConcatObservable merges two homogeneous observables and delivers signals to the subscribeed outlets when either of the sources emits an event
+public struct ConcatObservable<T, F1 : BaseObservableType, F2 : BaseObservableType where F1.Element == T, F2.Element == T> : ObservableType {
+    public typealias Element = T
     private var source1: F1
     private var source2: F2
 
@@ -247,11 +249,11 @@ public struct ConcatFunnel<T, F1 : BaseFunnelType, F2 : BaseFunnelType where F1.
         self.source2 = source2
     }
 
-    public func attach(outlet: OutputType->Void)->Outlet {
-        let sk1 = source1.attach({ v1 in outlet(v1) })
-        let sk2 = source2.attach({ v2 in outlet(v2) })
+    public func subscribe(outlet: Element->Void)->SubscriptionOf<SelfObservable> {
+        let sk1 = source1.subscribe({ v1 in outlet(v1) })
+        let sk2 = source2.subscribe({ v2 in outlet(v2) })
 
-        let outlet = OutletOf<OutputType>(primer: {
+        let outlet = SubscriptionOf(source: self, primer: {
             sk1.prime()
             sk2.prime()
         }, detacher: {
@@ -262,26 +264,26 @@ public struct ConcatFunnel<T, F1 : BaseFunnelType, F2 : BaseFunnelType where F1.
         return outlet
     }
 
-    // Boilerplate funnel/filter/map
-    public typealias SelfFunnel = ConcatFunnel
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    // Boilerplate observable/filter/map
+    public typealias SelfObservable = ConcatObservable
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
 }
 
-/// Funnel concatination operation for two funnels of the same type
-public func concat <T, L : BaseFunnelType, R : BaseFunnelType where L.OutputType == T, R.OutputType == T>(f1: L, f2: R)->ConcatFunnel<T, L, R> {
-    return ConcatFunnel(source1: f1, source2: f2)
+/// Observable concatination operation for two observables of the same type
+public func concat <T, L : BaseObservableType, R : BaseObservableType where L.Element == T, R.Element == T>(f1: L, f2: R)->ConcatObservable<T, L, R> {
+    return ConcatObservable(source1: f1, source2: f2)
 }
 
-/// Funnel concatination operation for two funnels of the same type (operator form of `concat`)
-public func + <T, L : BaseFunnelType, R : BaseFunnelType where L.OutputType == T, R.OutputType == T>(lhs: L, rhs: R)->FunnelOf<T> {
-    return concat(lhs, rhs).funnel()
+/// Observable concatination operation for two observables of the same type (operator form of `concat`)
+public func + <T, L : BaseObservableType, R : BaseObservableType where L.Element == T, R.Element == T>(lhs: L, rhs: R)->ObservableOf<T> {
+    return concat(lhs, rhs).observable()
 }
 
-/// A AnyFunnel merges two hetergeneous funnels and delivers signals as a tuple to the attached outlets when any of the sources emits an event
-public struct AnyFunnel<F1 : BaseFunnelType, F2 : BaseFunnelType> : FunnelType {
-    public typealias OutputType = (F1.OutputType?, F2.OutputType?)
+/// A AnyObservable merges two hetergeneous observables and delivers signals as a tuple to the subscribeed outlets when any of the sources emits an event
+public struct AnyObservable<F1 : BaseObservableType, F2 : BaseObservableType> : ObservableType {
+    public typealias Element = (F1.Element?, F2.Element?)
     private var source1: F1
     private var source2: F2
 
@@ -290,11 +292,11 @@ public struct AnyFunnel<F1 : BaseFunnelType, F2 : BaseFunnelType> : FunnelType {
         self.source2 = source2
     }
 
-    public func attach(outlet: OutputType->Void)->Outlet {
-        let sk1 = source1.attach({ v1 in outlet((v1, nil)) })
-        let sk2 = source2.attach({ v2 in outlet((nil, v2)) })
+    public func subscribe(outlet: Element->Void)->SubscriptionOf<SelfObservable> {
+        let sk1 = source1.subscribe({ v1 in outlet((v1, nil)) })
+        let sk2 = source2.subscribe({ v2 in outlet((nil, v2)) })
 
-        let outlet = OutletOf<OutputType>(primer: {
+        let outlet = SubscriptionOf(source: self, primer: {
             sk1.prime()
             sk2.prime()
         }, detacher: {
@@ -305,113 +307,113 @@ public struct AnyFunnel<F1 : BaseFunnelType, F2 : BaseFunnelType> : FunnelType {
         return outlet
     }
 
-    // Boilerplate funnel/filter/map
-    public typealias SelfFunnel = AnyFunnel
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    // Boilerplate observable/filter/map
+    public typealias SelfObservable = AnyObservable
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
 }
 
-/// Creates a combination around the funnels `source1` and `source2` that merges elements into a tuple
-public func any<F1 : BaseFunnelType, F2 : BaseFunnelType>(source1: F1, source2: F2)->AnyFunnel<F1, F2> {
-    return AnyFunnel(source1: source1, source2: source2)
-}
-
-
-/// Funnel combination & flattening operation
-public func fany<L : BaseFunnelType, R : BaseFunnelType>(lhs: L, rhs: R)->FunnelOf<(L.OutputType?, R.OutputType?)> {
-    return mapFunnel(any(lhs, rhs))({ (a, b) -> (L.OutputType?, R.OutputType?) in (a?.0, b) }).funnel()
-}
-
-/// Funnel combination & flattening operation (operator form of `fany`)
-public func |<L : BaseFunnelType, R : BaseFunnelType>(lhs: L, rhs: R)->FunnelOf<(L.OutputType?, R.OutputType?)> {
-    return fany(lhs, rhs).funnel()
-}
-
-/// Funnel combination & flattening operation
-public func fany<L1, L2, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?)>, rhs: R)->FunnelOf<(L1?, L2?, R.OutputType?)> {
-    return mapFunnel(any(lhs, rhs))({ (a, b) -> (L1?, L2?, R.OutputType?) in (a?.0, a?.1, b) }).funnel()
-}
-
-/// Funnel combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?)>, rhs: R)->FunnelOf<(L1?, L2?, R.OutputType?)> {
-    return fany(lhs, rhs).funnel()
-}
-
-/// Funnel combination & flattening operation
-public func fany<L1, L2, L3, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, R.OutputType?)> {
-    return mapFunnel(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, R.OutputType?) in (a?.0, a?.1, a?.2, b) }).funnel()
-}
-
-/// Funnel combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, R.OutputType?)> {
-    return fany(lhs, rhs).funnel()
-}
-
-/// Funnel combination & flattening operation
-public func fany<L1, L2, L3, L4, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, R.OutputType?)> {
-    return mapFunnel(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, b) }).funnel()
-}
-
-/// Funnel combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, R.OutputType?)> {
-    return fany(lhs, rhs).funnel()
-}
-
-/// Funnel combination & flattening operation
-public func fany<L1, L2, L3, L4, L5, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, R.OutputType?)> {
-    return mapFunnel(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, a?.4, b) }).funnel()
-}
-
-/// Funnel combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, L5, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, R.OutputType?)> {
-    return fany(lhs, rhs).funnel()
-}
-
-/// Funnel combination & flattening operation
-public func fany<L1, L2, L3, L4, L5, L6, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, R.OutputType?)> {
-    return mapFunnel(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, b) }).funnel()
-}
-
-/// Funnel combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, L5, L6, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, R.OutputType?)> {
-    return fany(lhs, rhs).funnel()
-}
-
-/// Funnel combination & flattening operation
-public func fany<L1, L2, L3, L4, L5, L6, L7, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.OutputType?)> {
-    return mapFunnel(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, b) }).funnel()
-}
-
-/// Funnel combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, L5, L6, L7, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.OutputType?)> {
-    return fany(lhs, rhs).funnel()
-}
-
-/// Funnel combination & flattening operation
-public func fany<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.OutputType?)> {
-    return mapFunnel(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, b) }).funnel()
-}
-
-/// Funnel combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.OutputType?)> {
-    return fany(lhs, rhs).funnel()
-}
-
-/// Funnel combination & flattening operation
-public func fany<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.OutputType?)> {
-    return mapFunnel(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.OutputType?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, a?.8, b) }).funnel()
-}
-
-/// Funnel combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseFunnelType>(lhs: FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?)>, rhs: R)->FunnelOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.OutputType?)> {
-    return fany(lhs, rhs).funnel()
+/// Creates a combination around the observables `source1` and `source2` that merges elements into a tuple
+public func any<F1 : BaseObservableType, F2 : BaseObservableType>(source1: F1, source2: F2)->AnyObservable<F1, F2> {
+    return AnyObservable(source1: source1, source2: source2)
 }
 
 
-/// A ZipFunnel merges two funnels and delivers signals as a tuple to the attached outlets when all of the sources emits an event; note that this is a stateful funnel since it needs to remember previous values that it has seen from the sources in order to pass all the non-optional values through
-public struct ZipFunnel<F1 : BaseFunnelType, F2 : BaseFunnelType> : FunnelType {
-    public typealias OutputType = (F1.OutputType, F2.OutputType)
+/// Observable combination & flattening operation
+public func fany<L : BaseObservableType, R : BaseObservableType>(lhs: L, rhs: R)->ObservableOf<(L.Element?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L.Element?, R.Element?) in (a?.0, b) }).observable()
+}
+
+/// Observable combination & flattening operation (operator form of `fany`)
+public func |<L : BaseObservableType, R : BaseObservableType>(lhs: L, rhs: R)->ObservableOf<(L.Element?, R.Element?)> {
+    return fany(lhs, rhs).observable()
+}
+
+/// Observable combination & flattening operation
+public func fany<L1, L2, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?)>, rhs: R)->ObservableOf<(L1?, L2?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, R.Element?) in (a?.0, a?.1, b) }).observable()
+}
+
+/// Observable combination & flattening operation (operator form of `fany`)
+public func |<L1, L2, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?)>, rhs: R)->ObservableOf<(L1?, L2?, R.Element?)> {
+    return fany(lhs, rhs).observable()
+}
+
+/// Observable combination & flattening operation
+public func fany<L1, L2, L3, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, R.Element?) in (a?.0, a?.1, a?.2, b) }).observable()
+}
+
+/// Observable combination & flattening operation (operator form of `fany`)
+public func |<L1, L2, L3, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, R.Element?)> {
+    return fany(lhs, rhs).observable()
+}
+
+/// Observable combination & flattening operation
+public func fany<L1, L2, L3, L4, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, b) }).observable()
+}
+
+/// Observable combination & flattening operation (operator form of `fany`)
+public func |<L1, L2, L3, L4, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, R.Element?)> {
+    return fany(lhs, rhs).observable()
+}
+
+/// Observable combination & flattening operation
+public func fany<L1, L2, L3, L4, L5, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, b) }).observable()
+}
+
+/// Observable combination & flattening operation (operator form of `fany`)
+public func |<L1, L2, L3, L4, L5, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, R.Element?)> {
+    return fany(lhs, rhs).observable()
+}
+
+/// Observable combination & flattening operation
+public func fany<L1, L2, L3, L4, L5, L6, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, b) }).observable()
+}
+
+/// Observable combination & flattening operation (operator form of `fany`)
+public func |<L1, L2, L3, L4, L5, L6, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, R.Element?)> {
+    return fany(lhs, rhs).observable()
+}
+
+/// Observable combination & flattening operation
+public func fany<L1, L2, L3, L4, L5, L6, L7, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, b) }).observable()
+}
+
+/// Observable combination & flattening operation (operator form of `fany`)
+public func |<L1, L2, L3, L4, L5, L6, L7, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.Element?)> {
+    return fany(lhs, rhs).observable()
+}
+
+/// Observable combination & flattening operation
+public func fany<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, b) }).observable()
+}
+
+/// Observable combination & flattening operation (operator form of `fany`)
+public func |<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.Element?)> {
+    return fany(lhs, rhs).observable()
+}
+
+/// Observable combination & flattening operation
+public func fany<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, a?.8, b) }).observable()
+}
+
+/// Observable combination & flattening operation (operator form of `fany`)
+public func |<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.Element?)> {
+    return fany(lhs, rhs).observable()
+}
+
+
+/// A ZipObservable merges two observables and delivers signals as a tuple to the subscribeed outlets when all of the sources emits an event; note that this is a stateful observable since it needs to remember previous values that it has seen from the sources in order to pass all the non-optional values through
+public struct ZipObservable<F1 : BaseObservableType, F2 : BaseObservableType> : ObservableType {
+    public typealias Element = (F1.Element, F2.Element)
     private var source1: F1
     private var source2: F2
 
@@ -420,9 +422,9 @@ public struct ZipFunnel<F1 : BaseFunnelType, F2 : BaseFunnelType> : FunnelType {
         self.source2 = source2
     }
 
-    public func attach(outlet: OutputType->Void)->Outlet {
-        var v1s: [F1.OutputType] = []
-        var v2s: [F2.OutputType] = []
+    public func subscribe(outlet: Element->Void)->SubscriptionOf<SelfObservable> {
+        var v1s: [F1.Element] = []
+        var v2s: [F2.Element] = []
 
         let outletZipped: ()->() = {
             // only send the tuple to the outlet when we have
@@ -430,17 +432,17 @@ public struct ZipFunnel<F1 : BaseFunnelType, F2 : BaseFunnelType> : FunnelType {
                 outlet((v1s.removeAtIndex(0), v2s.removeAtIndex(0)))
             }
         }
-        let sk1 = source1.attach({ v1 in
+        let sk1 = source1.subscribe({ v1 in
             v1s += [v1]
             outletZipped()
         })
 
-        let sk2 = source2.attach({ v2 in
+        let sk2 = source2.subscribe({ v2 in
             v2s += [v2]
             outletZipped()
         })
 
-        let outlet = OutletOf<OutputType>(primer: {
+        let outlet = SubscriptionOf(source: self, primer: {
             sk1.prime()
             sk2.prime()
             }, detacher: {
@@ -451,106 +453,106 @@ public struct ZipFunnel<F1 : BaseFunnelType, F2 : BaseFunnelType> : FunnelType {
         return outlet
     }
 
-    // Boilerplate funnel/filter/map
-    public typealias SelfFunnel = ZipFunnel
-    public func funnel() -> FunnelOf<OutputType> { return FunnelOf(self) }
-    public func filter(predicate: (OutputType)->Bool)->FilteredFunnel<SelfFunnel> { return filterFunnel(self)(predicate) }
-    public func map<TransformedType>(transform: (OutputType)->TransformedType)->MappedFunnel<SelfFunnel, TransformedType> { return mapFunnel(self)(transform) }
+    // Boilerplate observable/filter/map
+    public typealias SelfObservable = ZipObservable
+    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
 }
 
-/// Creates a combination around the funnels `source1` and `source2` that merges elements into a single tuple
-public func zip<F1 : BaseFunnelType, F2 : BaseFunnelType>(source1: F1, source2: F2)->ZipFunnel<F1, F2> {
-    return ZipFunnel(source1: source1, source2: source2)
+/// Creates a combination around the observables `source1` and `source2` that merges elements into a single tuple
+public func zip<F1 : BaseObservableType, F2 : BaseObservableType>(source1: F1, source2: F2)->ZipObservable<F1, F2> {
+    return ZipObservable(source1: source1, source2: source2)
 }
 
 
-/// Funnel zipping & flattening operation
-public func fzip<L : BaseFunnelType, R : BaseFunnelType>(lhs: L, rhs: R)->FunnelOf<(L.OutputType, R.OutputType)> {
-    return mapFunnel(zip(lhs, rhs))({ (a, b) -> (L.OutputType, R.OutputType) in (a.0, b) }).funnel()
+/// Observable zipping & flattening operation
+public func fzip<L : BaseObservableType, R : BaseObservableType>(lhs: L, rhs: R)->ObservableOf<(L.Element, R.Element)> {
+    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L.Element, R.Element) in (a.0, b) }).observable()
 }
 
-/// Funnel zipping & flattening operation (operator form of `fzip`)
-public func &<L : BaseFunnelType, R : BaseFunnelType>(lhs: L, rhs: R)->FunnelOf<(L.OutputType, R.OutputType)> {
+/// Observable zipping & flattening operation (operator form of `fzip`)
+public func &<L : BaseObservableType, R : BaseObservableType>(lhs: L, rhs: R)->ObservableOf<(L.Element, R.Element)> {
     return fzip(lhs, rhs)
 }
 
-/// Funnel zipping & flattening operation
-public func fzip<L1, L2, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2)>, rhs: R)->FunnelOf<(L1, L2, R.OutputType)> {
-    return mapFunnel(zip(lhs, rhs))({ (a, b) -> (L1, L2, R.OutputType) in (a.0, a.1, b) }).funnel()
+/// Observable zipping & flattening operation
+public func fzip<L1, L2, R : BaseObservableType>(lhs: ObservableOf<(L1, L2)>, rhs: R)->ObservableOf<(L1, L2, R.Element)> {
+    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, R.Element) in (a.0, a.1, b) }).observable()
 }
 
-/// Funnel zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2)>, rhs: R)->FunnelOf<(L1, L2, R.OutputType)> {
+/// Observable zipping & flattening operation (operator form of `fzip`)
+public func &<L1, L2, R : BaseObservableType>(lhs: ObservableOf<(L1, L2)>, rhs: R)->ObservableOf<(L1, L2, R.Element)> {
     return fzip(lhs, rhs)
 }
 
-/// Funnel zipping & flattening operation
-public func fzip<L1, L2, L3, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3)>, rhs: R)->FunnelOf<(L1, L2, L3, R.OutputType)> {
-    return mapFunnel(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, R.OutputType) in (a.0, a.1, a.2, b) }).funnel()
+/// Observable zipping & flattening operation
+public func fzip<L1, L2, L3, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3)>, rhs: R)->ObservableOf<(L1, L2, L3, R.Element)> {
+    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, R.Element) in (a.0, a.1, a.2, b) }).observable()
 }
 
-/// Funnel zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3)>, rhs: R)->FunnelOf<(L1, L2, L3, R.OutputType)> {
+/// Observable zipping & flattening operation (operator form of `fzip`)
+public func &<L1, L2, L3, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3)>, rhs: R)->ObservableOf<(L1, L2, L3, R.Element)> {
     return fzip(lhs, rhs)
 }
 
-/// Funnel zipping & flattening operation
-public func fzip<L1, L2, L3, L4, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, R.OutputType)> {
-    return mapFunnel(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, R.OutputType) in (a.0, a.1, a.2, a.3, b) }).funnel()
+/// Observable zipping & flattening operation
+public func fzip<L1, L2, L3, L4, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, R.Element)> {
+    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, R.Element) in (a.0, a.1, a.2, a.3, b) }).observable()
 }
 
-/// Funnel zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, R.OutputType)> {
+/// Observable zipping & flattening operation (operator form of `fzip`)
+public func &<L1, L2, L3, L4, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, R.Element)> {
     return fzip(lhs, rhs)
 }
 
-/// Funnel zipping & flattening operation
-public func fzip<L1, L2, L3, L4, L5, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, R.OutputType)> {
-    return mapFunnel(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, b) }).funnel()
+/// Observable zipping & flattening operation
+public func fzip<L1, L2, L3, L4, L5, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, R.Element)> {
+    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, R.Element) in (a.0, a.1, a.2, a.3, a.4, b) }).observable()
 }
 
-/// Funnel zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, L5, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, R.OutputType)> {
-    return mapFunnel(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, b) }).funnel()
+/// Observable zipping & flattening operation (operator form of `fzip`)
+public func &<L1, L2, L3, L4, L5, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, R.Element)> {
+    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, R.Element) in (a.0, a.1, a.2, a.3, a.4, b) }).observable()
 }
 
-/// Funnel zipping & flattening operation
-public func fzip<L1, L2, L3, L4, L5, L6, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, R.OutputType)> {
+/// Observable zipping & flattening operation
+public func fzip<L1, L2, L3, L4, L5, L6, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, R.Element)> {
     return fzip(lhs, rhs)
 }
 
-/// Funnel zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, L5, L6, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, R.OutputType)> {
-    return mapFunnel(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, a.5, b) }).funnel()
+/// Observable zipping & flattening operation (operator form of `fzip`)
+public func &<L1, L2, L3, L4, L5, L6, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, R.Element)> {
+    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, b) }).observable()
 }
 
-/// Funnel zipping & flattening operation
-public func fzip<L1, L2, L3, L4, L5, L6, L7, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, R.OutputType)> {
+/// Observable zipping & flattening operation
+public func fzip<L1, L2, L3, L4, L5, L6, L7, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, R.Element)> {
     return fzip(lhs, rhs)
 }
 
-/// Funnel zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, L5, L6, L7, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, R.OutputType)> {
-    return mapFunnel(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, b) }).funnel()
+/// Observable zipping & flattening operation (operator form of `fzip`)
+public func &<L1, L2, L3, L4, L5, L6, L7, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, R.Element)> {
+    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, b) }).observable()
 }
 
-/// Funnel zipping & flattening operation
-public func fzip<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, R.OutputType)> {
-    return mapFunnel(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, L8, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, b) }).funnel()
+/// Observable zipping & flattening operation
+public func fzip<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, R.Element)> {
+    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, L8, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, b) }).observable()
 }
 
-/// Funnel zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, R.OutputType)> {
+/// Observable zipping & flattening operation (operator form of `fzip`)
+public func &<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, R.Element)> {
     return fzip(lhs, rhs)
 }
 
-/// Funnel zipping & flattening operation
-public func fzip<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9, R.OutputType)> {
-    return mapFunnel(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, L8, L9, R.OutputType) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, a.8, b) }).funnel()
+/// Observable zipping & flattening operation
+public func fzip<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9, R.Element)> {
+    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, L8, L9, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, a.8, b) }).observable()
 }
 
-/// Funnel zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseFunnelType>(lhs: FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9)>, rhs: R)->FunnelOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9, R.OutputType)> {
+/// Observable zipping & flattening operation (operator form of `fzip`)
+public func &<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9, R.Element)> {
     return fzip(lhs, rhs)
 }
 
@@ -558,10 +560,10 @@ public func &<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseFunnelType>(lhs: Funne
 infix operator ∞> { }
 infix operator ∞-> { }
 
-/// Attachment operation
-public func ∞> <T : BaseFunnelType>(lhs: T, rhs: T.OutputType->Void)->Outlet { return lhs.attach(rhs) }
+/// subscribement operation
+public func ∞> <T : BaseObservableType>(lhs: T, rhs: T.Element->Void)->SubscriptionOf<T> { return lhs.subscribe(rhs) }
 
-/// Attachment operation with priming
-public func ∞-> <T : BaseFunnelType>(lhs: T, rhs: T.OutputType->Void)->Outlet { return prime(lhs.attach(rhs)) }
+/// subscribement operation with priming
+public func ∞-> <T : BaseObservableType>(lhs: T, rhs: T.Element->Void)->SubscriptionOf<T> { return prime(lhs.subscribe(rhs)) }
 
 

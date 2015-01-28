@@ -8,7 +8,7 @@
 
 import CoreData
 
-/// Extension for funneling notications for various Core Data events
+/// Extension for observableing notications for various Core Data events
 extension NSManagedObjectContext {
     private class func mobs4key(note: [NSObject : AnyObject], keys: [NSString]) -> [NSManagedObject] {
         var mobs = [NSManagedObject]()
@@ -18,102 +18,102 @@ extension NSManagedObjectContext {
         return mobs
     }
 
-    private func typeChangeFunnel(noteType: NSString, changeTypes: NSString...) -> FunnelOf<[NSManagedObject]> {
-        return self.notifyz(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }.funnel()
+    private func typeChangeObservable(noteType: NSString, changeTypes: NSString...) -> ObservableOf<[NSManagedObject]> {
+        return self.notifyz(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }.observable()
     }
 
-    /// Funnels notifications of inserted objects after the changes have been processed in the context
-    public var changedInsertedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInsertedObjectsKey)
+    /// Observables notifications of inserted objects after the changes have been processed in the context
+    public var changedInsertedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInsertedObjectsKey)
     }
 
-    /// Funnels notifications of updated objects after the changes have been processed in the context
-    public var changedUpdatedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSUpdatedObjectsKey)
+    /// Observables notifications of updated objects after the changes have been processed in the context
+    public var changedUpdatedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSUpdatedObjectsKey)
     }
 
-    /// Funnels notifications of deleted objects after the changes have been processed in the context
-    public var changedDeletedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSDeletedObjectsKey)
+    /// Observables notifications of deleted objects after the changes have been processed in the context
+    public var changedDeletedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSDeletedObjectsKey)
     }
 
-    /// Funnels notifications of changed (updated/inserted/deleted) objects after the changes have been processed in the context
-    public var changedAlteredZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey)
+    /// Observables notifications of changed (updated/inserted/deleted) objects after the changes have been processed in the context
+    public var changedAlteredZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey)
     }
 
-    /// Funnels notifications of refreshed objects after the changes have been processed in the context
-    public var changedRefreshedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSRefreshedObjectsKey)
+    /// Observables notifications of refreshed objects after the changes have been processed in the context
+    public var changedRefreshedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSRefreshedObjectsKey)
     }
 
-    /// Funnels notifications of invalidated objects after the changes have been processed in the context
-    public var chagedInvalidatedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInvalidatedObjectsKey)
-    }
-
-
-
-    /// Funnels notifications of inserted objects before they are being saved in the context
-    public var savingInsertedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextWillSaveNotification, changeTypes: NSInsertedObjectsKey)
-    }
-
-    /// Funnels notifications of updated objects before they are being saved in the context
-    public var savingUpdatedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextWillSaveNotification, changeTypes: NSUpdatedObjectsKey)
-    }
-
-    /// Funnels notifications of deleted objects before they are being saved in the context
-    public var savingDeletedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextWillSaveNotification, changeTypes: NSDeletedObjectsKey)
-    }
-
-    /// Funnels notifications of changed (updated/inserted/deleted) objects before they are being saved in the context
-    public var savingAlteredZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextWillSaveNotification, changeTypes: NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey)
-    }
-
-    /// Funnels notifications of refreshed objects before they are being saved in the context
-    public var savingRefreshedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextWillSaveNotification, changeTypes: NSRefreshedObjectsKey)
-    }
-
-    /// Funnels notifications of invalidated objects before they are being saved in the context
-    public var savingInvalidatedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextWillSaveNotification, changeTypes: NSInvalidatedObjectsKey)
+    /// Observables notifications of invalidated objects after the changes have been processed in the context
+    public var chagedInvalidatedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInvalidatedObjectsKey)
     }
 
 
 
-    /// Funnels notifications of inserted objects after they have been saved in the context
-    public var savedInsertedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextDidSaveNotification, changeTypes: NSInsertedObjectsKey)
+    /// Observables notifications of inserted objects before they are being saved in the context
+    public var savingInsertedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextWillSaveNotification, changeTypes: NSInsertedObjectsKey)
     }
 
-    /// Funnels notifications of updated objects after they have been saved in the context
-    public var savedUpdatedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextDidSaveNotification, changeTypes: NSUpdatedObjectsKey)
+    /// Observables notifications of updated objects before they are being saved in the context
+    public var savingUpdatedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextWillSaveNotification, changeTypes: NSUpdatedObjectsKey)
     }
 
-    /// Funnels notifications of deleted objects after they have been saved in the context
-    public var savedDeletedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextDidSaveNotification, changeTypes: NSDeletedObjectsKey)
+    /// Observables notifications of deleted objects before they are being saved in the context
+    public var savingDeletedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextWillSaveNotification, changeTypes: NSDeletedObjectsKey)
     }
 
-    /// Funnels notifications of changed (updated/inserted/deleted) objects after they have been saved in the context
-    public var savedAlteredZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextDidSaveNotification, changeTypes: NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey)
+    /// Observables notifications of changed (updated/inserted/deleted) objects before they are being saved in the context
+    public var savingAlteredZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextWillSaveNotification, changeTypes: NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey)
     }
 
-    /// Funnels notifications of refreshed objects after they have been saved in the context
-    public var savedRefreshedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextDidSaveNotification, changeTypes: NSRefreshedObjectsKey)
+    /// Observables notifications of refreshed objects before they are being saved in the context
+    public var savingRefreshedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextWillSaveNotification, changeTypes: NSRefreshedObjectsKey)
     }
 
-    /// Funnels notifications of invalidated objects after they have been saved in the context
-    public var savedInvalidatedZ: FunnelOf<[NSManagedObject]> {
-        return typeChangeFunnel(NSManagedObjectContextDidSaveNotification, changeTypes: NSInvalidatedObjectsKey)
+    /// Observables notifications of invalidated objects before they are being saved in the context
+    public var savingInvalidatedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextWillSaveNotification, changeTypes: NSInvalidatedObjectsKey)
+    }
+
+
+
+    /// Observables notifications of inserted objects after they have been saved in the context
+    public var savedInsertedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextDidSaveNotification, changeTypes: NSInsertedObjectsKey)
+    }
+
+    /// Observables notifications of updated objects after they have been saved in the context
+    public var savedUpdatedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextDidSaveNotification, changeTypes: NSUpdatedObjectsKey)
+    }
+
+    /// Observables notifications of deleted objects after they have been saved in the context
+    public var savedDeletedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextDidSaveNotification, changeTypes: NSDeletedObjectsKey)
+    }
+
+    /// Observables notifications of changed (updated/inserted/deleted) objects after they have been saved in the context
+    public var savedAlteredZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextDidSaveNotification, changeTypes: NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey)
+    }
+
+    /// Observables notifications of refreshed objects after they have been saved in the context
+    public var savedRefreshedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextDidSaveNotification, changeTypes: NSRefreshedObjectsKey)
+    }
+
+    /// Observables notifications of invalidated objects after they have been saved in the context
+    public var savedInvalidatedZ: ObservableOf<[NSManagedObject]> {
+        return typeChangeObservable(NSManagedObjectContextDidSaveNotification, changeTypes: NSInvalidatedObjectsKey)
     }
     
 }
