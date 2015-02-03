@@ -187,10 +187,10 @@ public struct KeyValueRequiredChannel<T>: KeyValueChannel {
         }
     }
 
-    /// subscribes an subscription to receive change notifications from the state pipeline
+    /// subscribes a subscription to receive change notifications from the state pipeline
     ///
     /// :param: subscription      the subscription closure to which state will be sent
-    public func subscribe(subscription: (Element)->())->SubscriptionOf<SelfChannel> {
+    public func subscribe(subscription: (Element)->())->Subscription {
         if let target = target {
             let kp = keyPath
             let sub = KeyValueSubscription(target: target, keyPath: keyPath, handler: { (oldv, newv) in
@@ -206,11 +206,11 @@ public struct KeyValueRequiredChannel<T>: KeyValueChannel {
                     assert(newv is SourceType, "required value for «\(kp)» changed type from \(oldv) to \(newv); use an optional channel if value type can change")
                 }
             })
-            return SubscriptionOf(source: self, subscription: sub)
+            return SubscriptionOf(subscription: sub)
         } else {
             NSLog("ChannelZ warning: attempt to subscribe to a deallocated target keyPath «\(keyPath)»; channels do not retain their targets")
             let sub = DeallocatedTargetSubscription()
-            return SubscriptionOf(source: self, subscription: sub)
+            return SubscriptionOf(subscription: sub)
         }
     }
 
@@ -219,7 +219,7 @@ public struct KeyValueRequiredChannel<T>: KeyValueChannel {
     public typealias SelfChannel = KeyValueRequiredChannel
 
     /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func observable() -> Observable<Element> { return Observable(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -274,10 +274,10 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
         }
     }
 
-    /// subscribes an subscription to receive change notifications from the state pipeline
+    /// subscribes a subscription to receive change notifications from the state pipeline
     ///
     /// :param: subscription      the subscription closure to which state will be sent
-    public func subscribe(subscription: (Element)->())->SubscriptionOf<SelfChannel> {
+    public func subscribe(subscription: (Element)->())->Subscription {
         if let target = target {
             let sub = KeyValueSubscription(target: target, keyPath: keyPath, handler: { (oldv, newv) in
                 if let oldv : AnyObject = oldv {
@@ -286,11 +286,11 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
                     subscription(StateEvent.push(coerceCocoaType(newv, T.self)))
                 }
             })
-            return SubscriptionOf(source: self, subscription: sub)
+            return SubscriptionOf(subscription: sub)
         } else {
             NSLog("ChannelZ warning: attempt to subscribe to a deallocated target keyPath «\(keyPath)»; channels do not retain their targets")
             let sub = DeallocatedTargetSubscription()
-            return SubscriptionOf(source: self, subscription: sub)
+            return SubscriptionOf(subscription: sub)
         }
     }
 
@@ -298,7 +298,7 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
     public typealias SelfChannel = KeyValueOptionalChannel
 
     /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func observable() -> Observable<Element> { return Observable(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -318,7 +318,7 @@ public struct KeyValueOptionalChannel<T>: KeyValueChannel {
 
 /// Optional protocol for target objects to implement when they need to supplement key-value observing with additional events
 @objc public protocol KeyValueChannelSupplementing {
-    /// Add additional observers for the specified keyPath, returning the detacher for any supplements
+    /// Add additional observers for the specified keyPath, returning the unsubscriber for any supplements
     func supplementKeyValueChannel(forKeyPath: String, subscription: (AnyObject?)->()) -> (()->())?
 }
 
@@ -366,12 +366,12 @@ private struct KeyValueSubscription: Subscription {
 
     }
 
-    func detach() {
-        observer.detach()
+    func unsubscribe() {
+        observer.unsubscribe()
         supplementaryDetachable?()
     }
 
-    func prime() {
+    func request() {
         if let target = self.observer.target {
             if let keyPath = self.observer.keyPath {
                 self.handler(oldv: nil, newv: target.valueForKeyPath(keyPath))
@@ -556,7 +556,7 @@ final class TargetAssociatedObserver {
         self.notificationName = notificationName
     }
 
-    func detach() {
+    func unsubscribe() {
         if let target = target {
             let map = TargetObserverRegister.get(target)
             if let keyPath = keyPath {
@@ -565,7 +565,7 @@ final class TargetAssociatedObserver {
                 map.removeNotification(notificationName, identifier: identifier)
             }
 
-            self.target = nil // manually clear the target so we don't detach twice
+            self.target = nil // manually clear the target so we don't unsubscribe twice
         }
     }
 }
@@ -690,19 +690,19 @@ public struct EventObservable<T>: ObservableType {
         self.dispatchTarget = dispatchTarget
     }
 
-    /// subscribes an subscription to receive change notifications from the state pipeline
+    /// subscribes a subscription to receive change notifications from the state pipeline
     ///
     /// :param: subscription      the subscription closure to which state will be sent
-    public func subscribe(subscription: (Element)->())->SubscriptionOf<SelfObservable> {
+    public func subscribe(subscription: (Element)->())->Subscription {
         let index = subscriptions.addSubscription(subscription)
-        return SubscriptionOf(source: self, primer: { }, detacher: { self.subscriptions.removeSubscription(index) })
+        return SubscriptionOf(requester: { }, unsubscriber: { self.subscriptions.removeSubscription(index) })
     }
 
     // Boilerplate observable/filter/map
     private typealias SelfObservable = EventObservable
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
-    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
-    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
+    public func observable() -> Observable<Element> { return Observable(self) }
+    public func filter(predicate: (Element)->Bool)->Observable<Element> { return filterObservable(self)(predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->Observable<TransformedType> { return mapObservable(self)(transform).observable() }
 }
 
 
@@ -718,26 +718,26 @@ public struct NotificationObservable: ObservableType {
         self.name = name
     }
 
-    /// subscribes an subscription to receive change notifications from the state pipeline
+    /// subscribes a subscription to receive change notifications from the state pipeline
     ///
     /// :param: subscription      the subscription closure to which state will be sent
-    public func subscribe(subscription: ([NSObject : AnyObject])->())->SubscriptionOf<SelfObservable> {
+    public func subscribe(subscription: ([NSObject : AnyObject])->())->Subscription {
         if let target = target {
             let sub = NotificationObserver(observee: target, name: name, handler: { subscription($0) })
-            return SubscriptionOf(source: self, subscription: sub)
+            return SubscriptionOf(subscription: sub)
         } else {
             NSLog("ChannelZ warning: attempt to subscribe to a deallocated target notification «\(name)»; channels do not retain their targets")
             let sub = DeallocatedTargetSubscription()
-            return SubscriptionOf(source: self, subscription: sub)
+            return SubscriptionOf(subscription: sub)
         }
     }
 
 
     // Boilerplate observable/filter/map
     public typealias SelfObservable = NotificationObservable
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
-    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
-    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
+    public func observable() -> Observable<Element> { return Observable(self) }
+    public func filter(predicate: (Element)->Bool)->Observable<Element> { return filterObservable(self)(predicate) }
+    public func map<TransformedType>(transform: (Element)->TransformedType)->Observable<TransformedType> { return mapObservable(self)(transform).observable() }
 }
 
 #if DEBUG_CHANNELZ
@@ -755,11 +755,11 @@ public struct NotificationObserver: Subscription {
         })
     }
 
-    public func detach() {
-        self.observer?.detach()
+    public func unsubscribe() {
+        self.observer?.unsubscribe()
     }
 
-    public func prime() {
+    public func request() {
         // notification observables are read-only
     }
 

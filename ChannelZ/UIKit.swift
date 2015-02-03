@@ -22,7 +22,7 @@
             if forKeyPath == "value" {
                 // since the slider's "value" field is not completely KVO-compliant, supplement the channel with the value changed contol event
                 let subscription = self.controlz(.ValueChanged).subscribe({ [weak self] _ in subscription(self?.value) })
-                return { subscription.detach() }
+                return { subscription.unsubscribe() }
             }
 
             return nil
@@ -34,7 +34,7 @@
             if forKeyPath == "text" {
                 // since the field's "text" field is not completely KVO-compliant, supplement the channel with the editing changed contol event
                 let subscription = self.controlz(.EditingChanged).subscribe({ [weak self] _ in subscription(self?.text) })
-                return { subscription.detach() }
+                return { subscription.unsubscribe() }
             }
 
             return nil
@@ -59,14 +59,14 @@
             self.events = events
         }
 
-        public func subscribe(subscription: (UIEvent)->())->SubscriptionOf<SelfObservable> {
+        public func subscribe(subscription: (UIEvent)->())->Subscription {
             let sub = UIEventSubscription(control: control, events: events, handler: { subscription($0) })
             return SubscriptionOf(source: self, subscription: sub)
         }
 
         // Boilerplate observable/filter/map
         public typealias SelfObservable = UIEventObservable
-        public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+        public func observable() -> Observable<Element> { return Observable(self) }
         public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
         public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
 
@@ -77,7 +77,7 @@
         let events: UIControlEvents
         var handler: (UIEvent)->(Void)
         var ctx = UnsafeMutablePointer<Void>()
-        var subscribeed: Bool = false
+        var subscribed: Bool = false
 
         init(control: UIControl, events: UIControlEvents, handler: (UIEvent)->(Void)) {
             self.control = control
@@ -88,23 +88,23 @@
 
             control.addTarget(self, action: Selector("handleControlEvent:"), forControlEvents: events)
             objc_setAssociatedObject(control, &ctx, self, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
-            self.subscribeed = true
+            self.subscribed = true
 
         }
 
         deinit {
-            detach()
+            unsubscribe()
         }
 
-        public func detach() {
-            if self.subscribeed {
+        public func unsubscribe() {
+            if self.subscribed {
                 control.removeTarget(self, action: Selector("handleControlEvent:"), forControlEvents: events)
                 objc_setAssociatedObject(control, &ctx, nil, objc_AssociationPolicy(OBJC_ASSOCIATION_ASSIGN))
-                self.subscribeed = false
+                self.subscribed = false
             }
         }
 
-        public func prime() {
+        public func request() {
             // no-op, since events are push
         }
 

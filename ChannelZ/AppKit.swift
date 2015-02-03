@@ -34,32 +34,32 @@
 
             if forKeyPath == "doubleValue" {
                 let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.doubleValue) })
-                return { subscription.detach() }
+                return { subscription.unsubscribe() }
             }
 
             if forKeyPath == "floatValue" {
                 let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.floatValue) })
-                return { subscription.detach() }
+                return { subscription.unsubscribe() }
             }
 
             if forKeyPath == "integerValue" {
                 let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.integerValue) })
-                return { subscription.detach() }
+                return { subscription.unsubscribe() }
             }
 
             if forKeyPath == "stringValue" {
                 let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.stringValue) })
-                return { subscription.detach() }
+                return { subscription.unsubscribe() }
             }
 
             if forKeyPath == "attributedStringValue" {
                 let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.attributedStringValue) })
-                return { subscription.detach() }
+                return { subscription.unsubscribe() }
             }
 
             if forKeyPath == "objectValue" {
                 let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.objectValue) })
-                return { subscription.detach() }
+                return { subscription.unsubscribe() }
             }
 
             return nil

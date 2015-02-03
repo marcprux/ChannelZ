@@ -6,563 +6,441 @@
 //  License: MIT (or whatever)
 //
 
-/// An Observable wraps a type (either a value or a reference) and sends all state operations down to each subscribeed subscription
-public protocol BaseObservableType {
+/// An Observable wraps a type (either a value or a reference) and sends all state operations down to each subscribed subscription
+public protocol ObservableType {
     typealias Element
 
     /// Returns a type-erasing observable wrapper around the current observable, making the source read-only to subsequent pipeline stages
-    func observable() -> ObservableOf<Element>
+    func observable() -> Observable<Element>
 
-    /// subscribes an subscription to receive change notifications from the state pipeline
+    /// subscribes a subscription to receive change notifications from the state pipeline
     ///
-    /// :param: subscription the subscription closure to which state will be sent
-    func subscribe(subscription: (Self.Element)->Void)->SubscriptionOf<Self>
+    /// :param: subscription the subscription closure to which items will be sent
+    func subscribe(subscription: Element->Void)->Subscription
 }
 
+/// The Observable interface that implements the Reactive Pattern.
+public struct Observable<T> : ObservableType {
+    private let subscriptionHandler: (subscription: T->Void)->Subscription
 
-/// A observable with support for filtering, mapping, etc.
-public protocol StreamingObservable : BaseObservableType {
-
-    /// NOTE: the following methods need to be a separate protocol or else client code cannot reify the types (possibly because FilteredObservable itself implements ObservableType, and so is regarded as a circular protocol declaration)
-
-    /// Returns a filtered observable that only flows elements that pass the predicate through to the subscriptions
-    func filter(predicate: (Self.Element)->Bool)->FilteredObservable<Self>
-
-    /// Returns a mapped observable that transforms the elements before passing them through to the subscriptions
-    func map<TransformedType>(transform: (Self.Element)->TransformedType)->MappedObservable<Self, TransformedType>
-}
-
-public protocol ObservableType : BaseObservableType, StreamingObservable {
-}
-
-
-/// A Sink that funnls all elements through to the subscribeed subscriptions
-public struct SinkObservable<Element> : ObservableType, SinkType {
-
-    private var subscriptions = SubscriptionList<Element>()
-
-    /// Create a SinkObservable with an optional primer callback
-    public init() {
+    public init(subscriptionHandler: (subscription: T->Void) -> Subscription) {
+        self.subscriptionHandler = subscriptionHandler
     }
 
-    public func subscribe(subscription: (Element)->())->SubscriptionOf<SelfObservable> {
-        let index = subscriptions.addSubscription(subscription)
-        return SubscriptionOf(source: self, primer: { }, detacher: {
-            self.subscriptions.removeSubscription(index)
-        })
-    }
-
-    public func put(x: Element) {
-        subscriptions.receive(x)
-    }
-
-    // Boilerplate observable/filter/map
-    public typealias SelfObservable = SinkObservable
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
-    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return FilteredObservable(source: self, predicate: predicate) }
-    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return MappedObservable(source: self, transform: transform) }
-}
-
-
-/// A type-erased observable.
-///
-/// Forwards operations to an arbitrary underlying observable with the same
-/// `Element` type, hiding the specifics of the underlying observable.
-public struct ObservableOf<Element> : ObservableType {
-    private let subscribeer: (subscription: (Element) -> Void) -> Subscription
-
-    init<G : BaseObservableType where Element == G.Element>(_ base: G) {
-        self.subscribeer = { base.subscribe($0) }
-    }
-
-    public func subscribe(subscription: (Element) -> Void) -> SubscriptionOf<SelfObservable> {
-        let sub = self.subscribeer(subscription)
-        return SubscriptionOf(source: self, primer: { sub.prime() }, detacher: { sub.detach() })
-    }
-
-    // Boilerplate observable/filter/map
-    public typealias SelfObservable = ObservableOf
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
-    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return FilteredObservable(source: self, predicate: predicate) }
-    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return MappedObservable(source: self, transform: transform) }
-}
-
-/// A filtered observable that flows only those values that pass the filter predicate
-public struct FilteredObservable<S : BaseObservableType> : ObservableType {
-    typealias Element = S.Element
-    public let source: S
-    public let predicate: (S.Element)->Bool
-
-    public init(source: S, predicate: (S.Element)->Bool) {
-        self.source = source
-        self.predicate = predicate
-    }
-
-    /// subscribes an subscription to receive change notifications from the state pipeline
+    /// Adds the given block to this Observables list of receivers for items
     ///
-    /// :param: subscription the subscription closure to which state will be sent
-    public func subscribe(subscription: (Element)->Void)->SubscriptionOf<SelfObservable> {
-        return SubscriptionOf(source: self, subscription: source.subscribe({ if self.predicate($0) { subscription($0) } }))
+    /// :param: `subscription` the block to be executed whenever this Observable emits an item
+    ///
+    /// :returns: a `Subscription`, which can be used to later `unsubscribe` from receiving items
+    public func subscribe(subscription: T->Void)->Subscription {
+        return subscriptionHandler(subscription)
     }
 
-    // Boilerplate observable/filter/map
-    public typealias SelfObservable = FilteredObservable
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
-    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
-    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
+    /// Returns a type-erasing observable wrapper around the current observable, making the source read-only to subsequent pipeline stages
+    public func observable() -> Observable<T> {
+        return self
+    }
+
 }
 
-
-/// A GeneratorObservable wraps a SequenceType or GeneratorType and sends all generated elements whenever an subscribement is made
-public struct GeneratorObservable<Element>: BaseObservableType {
-    public let generator: ()->GeneratorOf<Element>
-
-    public init<G: GeneratorType where Element == G.Element>(_ gen: G) {
-        self.generator = { GeneratorOf(gen) }
+public extension Observable {
+    /// Construct this Observable by wrapping another Observable
+    public init<G : ObservableType where T == G.Element>(_ base: G) {
+        self.init(subscriptionHandler: { base.subscribe($0) })
     }
 
-    public init<S: SequenceType where Element == S.Generator.Element>(_ seq: S) {
-        self.generator = { GeneratorOf(seq.generate()) }
-    }
-
-    public func subscribe(subscription: (Element) -> Void) -> SubscriptionOf<SelfObservable> {
-        for element in generator() {
-            subscription(element)
+    public init<G: GeneratorType where T == G.Element>(generator: G) {
+        subscriptionHandler = { sub in
+            for item in GeneratorOf<T>(generator) { sub(item) }
+            return SubscriptionOf(requester: { }, unsubscriber: { })
         }
-
-        return SubscriptionOf(source: self, primer: { }, detacher: { })
     }
 
-    // Boilerplate observable/filter/map
-    public typealias SelfObservable = GeneratorObservable
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
-    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
-    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
-}
-
-/// A TrapSubscription is an subscribement to a observable that retains a number of values (default 1) when they are sent by the source
-public class TrapSubscription<F : BaseObservableType>: SubscriptionType {
-    typealias SourceType = F.Element
-
-    public let source: F
-
-    /// Returns the last value to be added to this trap
-    public var value: F.Element? { return values.last }
-
-    /// All the values currently held in the trap
-    public var values: [F.Element]
-
-    public let capacity: Int
-
-    private var subscription: Subscription?
-
-    public init(source: F, capacity: Int) {
-        self.source = source
-        self.values = []
-        self.capacity = capacity
-        self.values.reserveCapacity(capacity)
-
-        let subscription = source.subscribe({ [weak self] (value) -> Void in
-            let _ = self?.receive(value)
-        })
-        self.subscription = subscription
-    }
-
-    deinit { subscription?.detach() }
-    public func detach() { subscription?.detach() }
-    public func prime() { subscription?.prime() }
-
-    public func receive(value: SourceType) {
-        while values.count >= capacity {
-            values.removeAtIndex(0)
+    public init<S: SequenceType where T == S.Generator.Element>(from: S) {
+        subscriptionHandler = { sub in
+            for item in GeneratorOf<T>(from.generate()) { sub(item) }
+            return SubscriptionOf(requester: { }, unsubscriber: { })
         }
+    }
 
-        values.append(value)
+    public init(just: T) {
+        self.init(from: [just])
+    }
+
+    /// Lifts a function to the current Observable and returns a new Observable that when subscribed to will pass
+    /// the values of the current Observable through the Operator function.
+    public func lift<U>(f: (U->Void)->(T->Void)) -> Observable<U> {
+        return Observable<U> { g in self.subscribe(f(g)) }
+    }
+
+    /// Returns an Observable which only emits those items for which a given predicate holds.
+    ///
+    /// :param: `predicate` a function that evaluates the items emitted by the source Observable, returning `true` if they pass the filter
+    ///
+    /// :returns: an Observable that emits only those items in the original Observable that the filter evaluates as `true`
+    public func filter(predicate: T->Bool)->Observable<T> {
+        return lift { receive in { item in if predicate(item) { receive(item) } } }
+    }
+
+    /// Returns an Observable that applies the given function to each item emitted by an Observable and emits the result.
+    ///
+    /// :param: `transform` a function to apply to each item emitted by the Observable
+    ///
+    /// :returns: an Observable that emits the items from the source Observable, transformed by the given function
+    public func map<U>(transform: T->U)->Observable<U> {
+        return lift { receive in { item in receive(transform(item)) } }
+    }
+
+    /// Creates a new Observable by applying a function that you supply to each item emitted by
+    /// the source Observable, where that function returns an Observable, and then merging those
+    /// resulting Observables and emitting the results of this merger.
+    ///
+    /// :param: `transform` a function that, when applied to an item emitted by the source Observable, returns an Observable
+    ///
+    /// :returns: an Observable that emits the result of applying the transformation function to each
+    ///         item emitted by the source Observable and merging the results of the Observables
+    ///         obtained from this transformation.
+    public func flatMap<U>(transform: T->Observable<U>)->Observable<U> {
+        return flatten(map(transform))
+    }
+
+    /// Creates an Observable that emits items only when the items pass the filter predicate against the most
+    /// recent emitted item. For example, to create a filter for distinct equatable items, you would do:
+    /// `filterLast(!=)`
+    ///
+    /// :param: `predicate` a function that evaluates the current item against the previous item
+    ///
+    /// :returns: an Observable that emits the the items that pass the predicate
+    ///
+    /// **Note:** the most recent value will be retained by the Observable for as long as there are subscribers
+    public func filterLast(predicate: (T, T)->Bool)->Observable<T> {
+        var previous: T?
+        return lift { receive in { item in
+            if let previous = previous {
+                if predicate(previous, item) {
+                    receive(item)
+                }
+            } else {
+                receive(item)
+            }
+
+            previous = item
+            }
+        }
+    }
+
+    /// Flattens two Observables into one Observable, without any transformation, so they act like a single Observable.
+    ///
+    /// :param: `with` an Observable to be merged
+    ///
+    /// :returns: an Observable that emits items from `self` and `with`
+    public func merge(with: Observable<T>)->Observable<T> {
+        return Observable<T> { f in
+            return SubscriptionOf(subscriptions: [self.subscribe(f), with.subscribe(f)])
+        }
+    }
+
+    /// Returns an Observable formed from this Observable and another Observable by combining
+    /// corresponding elements in pairs.
+    /// The number of subscriber invocations of the resulting `Observable<(T, U)>`
+    /// is the minumum of the number of invications invocations of `self` and `with`.
+    ///
+    /// :param: `with` the Observable to zip with
+    /// :param: `capacity` (optional) the maximum buffer size for the observables; if either buffer 
+    ///     exceeds capacity, earlier elements will be dropped silently
+    ///
+    /// :returns: an Observable that pairs up values from `self` and `with` Observables.
+    public func zip<U>(with: Observable<U>, capacity: Int? = nil)->Observable<(T, U)> {
+        return Observable<(T, U)> { (sub: (T, U) -> Void) in
+
+            var v1s: [T] = []
+            var v2s: [U] = []
+
+            let zipped: ()->() = {
+                // only send the tuple to the subscription when we have at least one
+                while v1s.count > 0 && v2s.count > 0 {
+                    sub(v1s.removeAtIndex(0), v2s.removeAtIndex(0))
+                }
+
+                // trim to capacity if it was specified
+                if let capacity = capacity {
+                    while v1s.count > capacity {
+                        v1s.removeAtIndex(0)
+                    }
+                    while v2s.count > capacity {
+                        v2s.removeAtIndex(0)
+                    }
+                }
+            }
+
+            let sk1 = self.subscribe({ v1 in
+                v1s += [v1]
+                zipped()
+            })
+
+            let sk2 = with.subscribe({ v2 in
+                v2s += [v2]
+                zipped()
+            })
+            
+            return SubscriptionOf(subscriptions: [sk1, sk2])
+        }
+    }
+
+    /// Creates a combination around the observables `source1` and `source2` that merges elements into a tuple of optionals that will be emitted when either of the elements change
+    public func either<U>(other: Observable<U>)->Observable<(T?, U?)> {
+        return Observable<(T?, U?)> { (sub: ((T?, U?) -> Void)) in
+            let sk1 = self.subscribe({ v1 in sub((v1 as T?, nil as U?)) })
+            let sk2 = other.subscribe({ v2 in sub((nil as T?, v2 as U?)) })
+            return SubscriptionOf(subscriptions: [sk1, sk2])
+        }
     }
 }
 
-/// Creates a trap for the last `count` events of the `source` observable
-public func trap<F : BaseObservableType>(source: F, capacity: Int = 1) -> TrapSubscription<F> {
-    return TrapSubscription(source: source, capacity: capacity)
+/// Creates a SinkType that can accept an element as well as an observable for that element; useful for testing
+public func sinkObservable<Element>(type: Element.Type) -> (SinkOf<Element>, Observable<Element>) {
+    var subscriptions = SubscriptionList<Element>()
+    let sink = SinkOf { subscriptions.receive($0) }
+    return (sink, subscriptions.observable())
 }
 
-/// Internal FilteredObservable curried creation
-internal func filterObservable<T : BaseObservableType>(source: T)(predicate: (T.Element)->Bool)->FilteredObservable<T> {
-    return FilteredObservable(source: source, predicate: predicate)
+internal func filterObservable<T : ObservableType>(source: T)(predicate: (T.Element)->Bool)->Observable<T.Element> {
+    return source.observable().lift({ receive in { item in if predicate(item) { receive(item) } } })
+}
+
+/// Flattens an Observable that emits Observables into a single Observable that emits the items emitted by
+/// those Observables, without any transformation.
+public func flatten<T>(observable: Observable<Observable<T>>)->Observable<T> {
+    return Observable<T>(subscriptionHandler: { (subscription: T->Void) -> Subscription in
+        var subs: [Subscription] = []
+        let sub1 = observable.subscribe { (subobv: Observable<T>) in
+            let sub2 = subobv.subscribe { (item: T) in
+                subscription(item)
+            }
+            subs += [sub2]
+        }
+        subs += [sub1]
+
+        return SubscriptionOf(subscriptions: subs)
+    })
 }
 
 /// Creates a filter around the observable `source` that only passes elements that satisfy the `predicate` function
-public func filter<T : BaseObservableType>(source: T, predicate: (T.Element)->Bool)->FilteredObservable<T> {
+public func filter<T : ObservableType>(source: T, predicate: (T.Element)->Bool)->Observable<T.Element> {
     return filterObservable(source)(predicate)
 }
 
 /// Filter that skips the first `skipCount` number of elements
-public func skip<T : ObservableType>(source: T, var skipCount: Int = 1)->FilteredObservable<T> {
+public func skip<T : ObservableType>(source: T, var skipCount: Int = 1)->Observable<T.Element> {
     return filterObservable(source)({ _ in skipCount-- > 0 })
 }
 
-
-// A mapped observable passes all values through a transformer function before sending them to their subscribeed subscriptions
-public struct MappedObservable<Observable : BaseObservableType, TransformedType> : ObservableType {
-    typealias Element = TransformedType
-
-    public let source: Observable
-    public let transform: (Observable.Element)->TransformedType
-
-    public init(source: Observable, transform: (Observable.Element)->TransformedType) {
-        self.source = source
-        self.transform = transform
-    }
-
-    /// subscribes an subscription to receive change notifications from the state pipeline
-    ///
-    /// :param: subscription the subscription closure to which state will be sent
-    public func subscribe(subscription: (TransformedType)->Void)->SubscriptionOf<SelfObservable> {
-        return SubscriptionOf(source: self, subscription: source.subscribe({ subscription(self.transform($0)) }))
-    }
-
-    // Boilerplate observable/filter/map
-    public typealias SelfObservable = MappedObservable
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
-    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
-    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
-}
-
 /// Internal MappedObservable curried creation
-internal func mapObservable<Observable : BaseObservableType, TransformedType>(source: Observable)(transform: (Observable.Element)->TransformedType)->MappedObservable<Observable, TransformedType> {
-    return MappedObservable(source: source, transform: transform)
+internal func mapObservable<O : ObservableType, TransformedType>(source: O)(transform: (O.Element)->TransformedType)->Observable<TransformedType> {
+    return source.observable().lift({ receive in { item in receive(transform(item)) } })
 }
 
 /// Creates a map around the observable `source` that passes through elements after applying the `transform` function
-public func map<Observable : BaseObservableType, TransformedType>(source: Observable, transform: (Observable.Element)->TransformedType)->MappedObservable<Observable, TransformedType> {
+public func map<O : ObservableType, TransformedType>(source: O, transform: (O.Element)->TransformedType)->Observable<TransformedType> {
     return mapObservable(source)(transform)
 }
 
-/// A ConcatObservable merges two homogeneous observables and delivers signals to the subscribeed subscriptions when either of the sources emits an event
-public struct ConcatObservable<T, F1 : BaseObservableType, F2 : BaseObservableType where F1.Element == T, F2.Element == T> : ObservableType {
-    public typealias Element = T
-    private var source1: F1
-    private var source2: F2
-
-    public init(source1: F1, source2: F2) {
-        self.source1 = source1
-        self.source2 = source2
-    }
-
-    public func subscribe(subscription: Element->Void)->SubscriptionOf<SelfObservable> {
-        let sk1 = source1.subscribe({ v1 in subscription(v1) })
-        let sk2 = source2.subscribe({ v2 in subscription(v2) })
-
-        let subscription = SubscriptionOf(source: self, primer: {
-            sk1.prime()
-            sk2.prime()
-        }, detacher: {
-            sk1.detach()
-            sk2.detach()
-        })
-
-        return subscription
-    }
-
-    // Boilerplate observable/filter/map
-    public typealias SelfObservable = ConcatObservable
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
-    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
-    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
+/// Observable merge operation for two observables of the same type (operator form of `concat`)
+public func +<T>(lhs: Observable<T>, rhs: Observable<T>)->Observable<T> {
+    return lhs.merge(rhs)
 }
 
-/// Observable concatination operation for two observables of the same type
-public func concat <T, L : BaseObservableType, R : BaseObservableType where L.Element == T, R.Element == T>(f1: L, f2: R)->ConcatObservable<T, L, R> {
-    return ConcatObservable(source1: f1, source2: f2)
-}
-
-/// Observable concatination operation for two observables of the same type (operator form of `concat`)
-public func + <T, L : BaseObservableType, R : BaseObservableType where L.Element == T, R.Element == T>(lhs: L, rhs: R)->ObservableOf<T> {
-    return concat(lhs, rhs).observable()
-}
-
-/// A AnyObservable merges two hetergeneous observables and delivers signals as a tuple to the subscribeed subscriptions when any of the sources emits an event
-public struct AnyObservable<F1 : BaseObservableType, F2 : BaseObservableType> : ObservableType {
-    public typealias Element = (F1.Element?, F2.Element?)
-    private var source1: F1
-    private var source2: F2
-
-    public init(source1: F1, source2: F2) {
-        self.source1 = source1
-        self.source2 = source2
-    }
-
-    public func subscribe(subscription: Element->Void)->SubscriptionOf<SelfObservable> {
-        let sk1 = source1.subscribe({ v1 in subscription((v1, nil)) })
-        let sk2 = source2.subscribe({ v2 in subscription((nil, v2)) })
-
-        let subscription = SubscriptionOf(source: self, primer: {
-            sk1.prime()
-            sk2.prime()
-        }, detacher: {
-            sk1.detach()
-            sk2.detach()
-        })
-
-        return subscription
-    }
-
-    // Boilerplate observable/filter/map
-    public typealias SelfObservable = AnyObservable
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
-    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
-    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
-}
-
-/// Creates a combination around the observables `source1` and `source2` that merges elements into a tuple
-public func any<F1 : BaseObservableType, F2 : BaseObservableType>(source1: F1, source2: F2)->AnyObservable<F1, F2> {
-    return AnyObservable(source1: source1, source2: source2)
-}
-
-
-/// Observable combination & flattening operation
-public func fany<L : BaseObservableType, R : BaseObservableType>(lhs: L, rhs: R)->ObservableOf<(L.Element?, R.Element?)> {
-    return mapObservable(any(lhs, rhs))({ (a, b) -> (L.Element?, R.Element?) in (a?.0, b) }).observable()
-}
-
-/// Observable combination & flattening operation (operator form of `fany`)
-public func |<L : BaseObservableType, R : BaseObservableType>(lhs: L, rhs: R)->ObservableOf<(L.Element?, R.Element?)> {
-    return fany(lhs, rhs).observable()
+/// Creates a combination around the observables `source1` and `source2` that merges elements into a tuple of optionals that will be emitted when any of the tuples change
+public func any<F1 : ObservableType, F2 : ObservableType>(source1: F1, source2: F2)->Observable<(F1.Element?, F2.Element?)> {
+    return source1.observable().either(source2.observable())
 }
 
 /// Observable combination & flattening operation
-public func fany<L1, L2, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?)>, rhs: R)->ObservableOf<(L1?, L2?, R.Element?)> {
-    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, R.Element?) in (a?.0, a?.1, b) }).observable()
+public func flatAny<L : ObservableType, R : ObservableType>(lhs: L, rhs: R)->Observable<(L.Element?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L.Element?, R.Element?) in (a?.0, b) })
 }
 
-/// Observable combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?)>, rhs: R)->ObservableOf<(L1?, L2?, R.Element?)> {
-    return fany(lhs, rhs).observable()
-}
-
-/// Observable combination & flattening operation
-public func fany<L1, L2, L3, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, R.Element?)> {
-    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, R.Element?) in (a?.0, a?.1, a?.2, b) }).observable()
-}
-
-/// Observable combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, R.Element?)> {
-    return fany(lhs, rhs).observable()
+/// Observable combination & flattening operation (operator form of `flatAny`)
+public func |<L : ObservableType, R : ObservableType>(lhs: L, rhs: R)->Observable<(L.Element?, R.Element?)> {
+    return flatAny(lhs, rhs)
 }
 
 /// Observable combination & flattening operation
-public func fany<L1, L2, L3, L4, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, R.Element?)> {
-    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, b) }).observable()
+public func flatAny<L1, L2, R : ObservableType>(lhs: Observable<(L1?, L2?)>, rhs: R)->Observable<(L1?, L2?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, R.Element?) in (a?.0, a?.1, b) })
 }
 
-/// Observable combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, R.Element?)> {
-    return fany(lhs, rhs).observable()
-}
-
-/// Observable combination & flattening operation
-public func fany<L1, L2, L3, L4, L5, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, R.Element?)> {
-    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, b) }).observable()
-}
-
-/// Observable combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, L5, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, R.Element?)> {
-    return fany(lhs, rhs).observable()
+/// Observable combination & flattening operation (operator form of `flatAny`)
+public func |<L1, L2, R : ObservableType>(lhs: Observable<(L1?, L2?)>, rhs: R)->Observable<(L1?, L2?, R.Element?)> {
+    return flatAny(lhs, rhs)
 }
 
 /// Observable combination & flattening operation
-public func fany<L1, L2, L3, L4, L5, L6, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, R.Element?)> {
-    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, b) }).observable()
+public func flatAny<L1, L2, L3, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?)>, rhs: R)->Observable<(L1?, L2?, L3?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, R.Element?) in (a?.0, a?.1, a?.2, b) })
 }
 
-/// Observable combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, L5, L6, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, R.Element?)> {
-    return fany(lhs, rhs).observable()
-}
-
-/// Observable combination & flattening operation
-public func fany<L1, L2, L3, L4, L5, L6, L7, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.Element?)> {
-    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, b) }).observable()
-}
-
-/// Observable combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, L5, L6, L7, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.Element?)> {
-    return fany(lhs, rhs).observable()
+/// Observable combination & flattening operation (operator form of `flatAny`)
+public func |<L1, L2, L3, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?)>, rhs: R)->Observable<(L1?, L2?, L3?, R.Element?)> {
+    return flatAny(lhs, rhs)
 }
 
 /// Observable combination & flattening operation
-public func fany<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.Element?)> {
-    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, b) }).observable()
+public func flatAny<L1, L2, L3, L4, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, b) })
 }
 
-/// Observable combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.Element?)> {
-    return fany(lhs, rhs).observable()
+/// Observable combination & flattening operation (operator form of `flatAny`)
+public func |<L1, L2, L3, L4, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, R.Element?)> {
+    return flatAny(lhs, rhs)
 }
 
 /// Observable combination & flattening operation
-public func fany<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.Element?)> {
-    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, a?.8, b) }).observable()
+public func flatAny<L1, L2, L3, L4, L5, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?, L5?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, L5?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, b) })
 }
 
-/// Observable combination & flattening operation (operator form of `fany`)
-public func |<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseObservableType>(lhs: ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?)>, rhs: R)->ObservableOf<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.Element?)> {
-    return fany(lhs, rhs).observable()
+/// Observable combination & flattening operation (operator form of `flatAny`)
+public func |<L1, L2, L3, L4, L5, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?, L5?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, L5?, R.Element?)> {
+    return flatAny(lhs, rhs)
 }
 
-
-/// A ZipObservable merges two observables and delivers signals as a tuple to the subscribeed subscriptions when all of the sources emits an event; note that this is a stateful observable since it needs to remember previous values that it has seen from the sources in order to pass all the non-optional values through
-public struct ZipObservable<F1 : BaseObservableType, F2 : BaseObservableType> : ObservableType {
-    public typealias Element = (F1.Element, F2.Element)
-    private var source1: F1
-    private var source2: F2
-
-    public init(source1: F1, source2: F2) {
-        self.source1 = source1
-        self.source2 = source2
-    }
-
-    public func subscribe(subscription: Element->Void)->SubscriptionOf<SelfObservable> {
-        var v1s: [F1.Element] = []
-        var v2s: [F2.Element] = []
-
-        let subscriptionZipped: ()->() = {
-            // only send the tuple to the subscription when we have
-            while v1s.count > 0 && v2s.count > 0 {
-                subscription((v1s.removeAtIndex(0), v2s.removeAtIndex(0)))
-            }
-        }
-        let sk1 = source1.subscribe({ v1 in
-            v1s += [v1]
-            subscriptionZipped()
-        })
-
-        let sk2 = source2.subscribe({ v2 in
-            v2s += [v2]
-            subscriptionZipped()
-        })
-
-        let subscription = SubscriptionOf(source: self, primer: {
-            sk1.prime()
-            sk2.prime()
-            }, detacher: {
-                sk1.detach()
-                sk2.detach()
-        })
-
-        return subscription
-    }
-
-    // Boilerplate observable/filter/map
-    public typealias SelfObservable = ZipObservable
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
-    public func filter(predicate: (Element)->Bool)->FilteredObservable<SelfObservable> { return filterObservable(self)(predicate) }
-    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedObservable<SelfObservable, TransformedType> { return mapObservable(self)(transform) }
+/// Observable combination & flattening operation
+public func flatAny<L1, L2, L3, L4, L5, L6, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?, L5?, L6?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, L5?, L6?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, b) })
 }
 
-/// Creates a combination around the observables `source1` and `source2` that merges elements into a single tuple
-public func zip<F1 : BaseObservableType, F2 : BaseObservableType>(source1: F1, source2: F2)->ZipObservable<F1, F2> {
-    return ZipObservable(source1: source1, source2: source2)
+/// Observable combination & flattening operation (operator form of `flatAny`)
+public func |<L1, L2, L3, L4, L5, L6, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?, L5?, L6?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, L5?, L6?, R.Element?)> {
+    return flatAny(lhs, rhs)
 }
 
-
-/// Observable zipping & flattening operation
-public func fzip<L : BaseObservableType, R : BaseObservableType>(lhs: L, rhs: R)->ObservableOf<(L.Element, R.Element)> {
-    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L.Element, R.Element) in (a.0, b) }).observable()
+/// Observable combination & flattening operation
+public func flatAny<L1, L2, L3, L4, L5, L6, L7, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, b) })
 }
 
-/// Observable zipping & flattening operation (operator form of `fzip`)
-public func &<L : BaseObservableType, R : BaseObservableType>(lhs: L, rhs: R)->ObservableOf<(L.Element, R.Element)> {
-    return fzip(lhs, rhs)
+/// Observable combination & flattening operation (operator form of `flatAny`)
+public func |<L1, L2, L3, L4, L5, L6, L7, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, R.Element?)> {
+    return flatAny(lhs, rhs)
+}
+
+/// Observable combination & flattening operation
+public func flatAny<L1, L2, L3, L4, L5, L6, L7, L8, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, b) })
+}
+
+/// Observable combination & flattening operation (operator form of `flatAny`)
+public func |<L1, L2, L3, L4, L5, L6, L7, L8, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, R.Element?)> {
+    return flatAny(lhs, rhs)
+}
+
+/// Observable combination & flattening operation
+public func flatAny<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.Element?)> {
+    return mapObservable(any(lhs, rhs))({ (a, b) -> (L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.Element?) in (a?.0, a?.1, a?.2, a?.3, a?.4, a?.5, a?.6, a?.7, a?.8, b) })
+}
+
+/// Observable combination & flattening operation (operator form of `flatAny`)
+public func |<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : ObservableType>(lhs: Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?)>, rhs: R)->Observable<(L1?, L2?, L3?, L4?, L5?, L6?, L7?, L8?, L9?, R.Element?)> {
+    return flatAny(lhs, rhs)
 }
 
 /// Observable zipping & flattening operation
-public func fzip<L1, L2, R : BaseObservableType>(lhs: ObservableOf<(L1, L2)>, rhs: R)->ObservableOf<(L1, L2, R.Element)> {
-    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, R.Element) in (a.0, a.1, b) }).observable()
+public func flatZip<L : ObservableType, R : ObservableType>(lhs: L, rhs: R)->Observable<(L.Element, R.Element)> {
+    return mapObservable(lhs.observable().zip(rhs.observable()))({ (a, b) -> (L.Element, R.Element) in (a.0, b) })
 }
 
-/// Observable zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, R : BaseObservableType>(lhs: ObservableOf<(L1, L2)>, rhs: R)->ObservableOf<(L1, L2, R.Element)> {
-    return fzip(lhs, rhs)
-}
-
-/// Observable zipping & flattening operation
-public func fzip<L1, L2, L3, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3)>, rhs: R)->ObservableOf<(L1, L2, L3, R.Element)> {
-    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, R.Element) in (a.0, a.1, a.2, b) }).observable()
-}
-
-/// Observable zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3)>, rhs: R)->ObservableOf<(L1, L2, L3, R.Element)> {
-    return fzip(lhs, rhs)
+/// Observable zipping & flattening operation (operator form of `flatZip`)
+public func &<L : ObservableType, R : ObservableType>(lhs: L, rhs: R)->Observable<(L.Element, R.Element)> {
+    return flatZip(lhs, rhs)
 }
 
 /// Observable zipping & flattening operation
-public func fzip<L1, L2, L3, L4, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, R.Element)> {
-    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, R.Element) in (a.0, a.1, a.2, a.3, b) }).observable()
+public func flatZip<L1, L2, R : ObservableType>(lhs: Observable<(L1, L2)>, rhs: R)->Observable<(L1, L2, R.Element)> {
+    return mapObservable(lhs.observable().zip(rhs.observable()))({ (a, b) -> (L1, L2, R.Element) in (a.0, a.1, b) })
 }
 
-/// Observable zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, R.Element)> {
-    return fzip(lhs, rhs)
-}
-
-/// Observable zipping & flattening operation
-public func fzip<L1, L2, L3, L4, L5, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, R.Element)> {
-    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, R.Element) in (a.0, a.1, a.2, a.3, a.4, b) }).observable()
-}
-
-/// Observable zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, L5, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, R.Element)> {
-    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, R.Element) in (a.0, a.1, a.2, a.3, a.4, b) }).observable()
+/// Observable zipping & flattening operation (operator form of `flatZip`)
+public func &<L1, L2, R : ObservableType>(lhs: Observable<(L1, L2)>, rhs: R)->Observable<(L1, L2, R.Element)> {
+    return flatZip(lhs, rhs)
 }
 
 /// Observable zipping & flattening operation
-public func fzip<L1, L2, L3, L4, L5, L6, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, R.Element)> {
-    return fzip(lhs, rhs)
+public func flatZip<L1, L2, L3, R : ObservableType>(lhs: Observable<(L1, L2, L3)>, rhs: R)->Observable<(L1, L2, L3, R.Element)> {
+    return mapObservable(lhs.observable().zip(rhs.observable()))({ (a, b) -> (L1, L2, L3, R.Element) in (a.0, a.1, a.2, b) })
 }
 
-/// Observable zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, L5, L6, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, R.Element)> {
-    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, b) }).observable()
-}
-
-/// Observable zipping & flattening operation
-public func fzip<L1, L2, L3, L4, L5, L6, L7, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, R.Element)> {
-    return fzip(lhs, rhs)
-}
-
-/// Observable zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, L5, L6, L7, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, R.Element)> {
-    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, b) }).observable()
+/// Observable zipping & flattening operation (operator form of `flatZip`)
+public func &<L1, L2, L3, R : ObservableType>(lhs: Observable<(L1, L2, L3)>, rhs: R)->Observable<(L1, L2, L3, R.Element)> {
+    return flatZip(lhs, rhs)
 }
 
 /// Observable zipping & flattening operation
-public func fzip<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, R.Element)> {
-    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, L8, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, b) }).observable()
+public func flatZip<L1, L2, L3, L4, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4)>, rhs: R)->Observable<(L1, L2, L3, L4, R.Element)> {
+    return mapObservable(lhs.observable().zip(rhs.observable()))({ (a, b) -> (L1, L2, L3, L4, R.Element) in (a.0, a.1, a.2, a.3, b) })
 }
 
-/// Observable zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, L5, L6, L7, L8, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, R.Element)> {
-    return fzip(lhs, rhs)
+/// Observable zipping & flattening operation (operator form of `flatZip`)
+public func &<L1, L2, L3, L4, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4)>, rhs: R)->Observable<(L1, L2, L3, L4, R.Element)> {
+    return flatZip(lhs, rhs)
 }
 
 /// Observable zipping & flattening operation
-public func fzip<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9, R.Element)> {
-    return mapObservable(zip(lhs, rhs))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, L8, L9, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, a.8, b) }).observable()
+public func flatZip<L1, L2, L3, L4, L5, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4, L5)>, rhs: R)->Observable<(L1, L2, L3, L4, L5, R.Element)> {
+    return mapObservable(lhs.observable().zip(rhs.observable()))({ (a, b) -> (L1, L2, L3, L4, L5, R.Element) in (a.0, a.1, a.2, a.3, a.4, b) })
 }
 
-/// Observable zipping & flattening operation (operator form of `fzip`)
-public func &<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : BaseObservableType>(lhs: ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9)>, rhs: R)->ObservableOf<(L1, L2, L3, L4, L5, L6, L7, L8, L9, R.Element)> {
-    return fzip(lhs, rhs)
+/// Observable zipping & flattening operation (operator form of `flatZip`)
+public func &<L1, L2, L3, L4, L5, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4, L5)>, rhs: R)->Observable<(L1, L2, L3, L4, L5, R.Element)> {
+    return mapObservable(lhs.observable().zip(rhs.observable()))({ (a, b) -> (L1, L2, L3, L4, L5, R.Element) in (a.0, a.1, a.2, a.3, a.4, b) })
+}
+
+/// Observable zipping & flattening operation
+public func flatZip<L1, L2, L3, L4, L5, L6, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4, L5, L6)>, rhs: R)->Observable<(L1, L2, L3, L4, L5, L6, R.Element)> {
+    return flatZip(lhs, rhs)
+}
+
+/// Observable zipping & flattening operation (operator form of `flatZip`)
+public func &<L1, L2, L3, L4, L5, L6, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4, L5, L6)>, rhs: R)->Observable<(L1, L2, L3, L4, L5, L6, R.Element)> {
+    return mapObservable(lhs.observable().zip(rhs.observable()))({ (a, b) -> (L1, L2, L3, L4, L5, L6, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, b) })
+}
+
+/// Observable zipping & flattening operation
+public func flatZip<L1, L2, L3, L4, L5, L6, L7, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4, L5, L6, L7)>, rhs: R)->Observable<(L1, L2, L3, L4, L5, L6, L7, R.Element)> {
+    return flatZip(lhs, rhs)
+}
+
+/// Observable zipping & flattening operation (operator form of `flatZip`)
+public func &<L1, L2, L3, L4, L5, L6, L7, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4, L5, L6, L7)>, rhs: R)->Observable<(L1, L2, L3, L4, L5, L6, L7, R.Element)> {
+    return mapObservable(lhs.observable().zip(rhs.observable()))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, b) })
+}
+
+/// Observable zipping & flattening operation
+public func flatZip<L1, L2, L3, L4, L5, L6, L7, L8, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4, L5, L6, L7, L8)>, rhs: R)->Observable<(L1, L2, L3, L4, L5, L6, L7, L8, R.Element)> {
+    return mapObservable(lhs.observable().zip(rhs.observable()))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, L8, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, b) })
+}
+
+/// Observable zipping & flattening operation (operator form of `flatZip`)
+public func &<L1, L2, L3, L4, L5, L6, L7, L8, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4, L5, L6, L7, L8)>, rhs: R)->Observable<(L1, L2, L3, L4, L5, L6, L7, L8, R.Element)> {
+    return flatZip(lhs, rhs)
+}
+
+/// Observable zipping & flattening operation
+public func flatZip<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4, L5, L6, L7, L8, L9)>, rhs: R)->Observable<(L1, L2, L3, L4, L5, L6, L7, L8, L9, R.Element)> {
+    return mapObservable(lhs.observable().zip(rhs.observable()))({ (a, b) -> (L1, L2, L3, L4, L5, L6, L7, L8, L9, R.Element) in (a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, a.8, b) })
+}
+
+/// Observable zipping & flattening operation (operator form of `flatZip`)
+public func &<L1, L2, L3, L4, L5, L6, L7, L8, L9, R : ObservableType>(lhs: Observable<(L1, L2, L3, L4, L5, L6, L7, L8, L9)>, rhs: R)->Observable<(L1, L2, L3, L4, L5, L6, L7, L8, L9, R.Element)> {
+    return flatZip(lhs, rhs)
 }
 
 
 infix operator ∞> { }
 infix operator ∞-> { }
 
-/// subscribement operation
-public func ∞> <T : BaseObservableType>(lhs: T, rhs: T.Element->Void)->SubscriptionOf<T> { return lhs.subscribe(rhs) }
+/// subscription operation
+public func ∞> <T : ObservableType>(lhs: T, rhs: T.Element->Void)->Subscription { return lhs.subscribe(rhs) }
 
-/// subscribement operation with priming
-public func ∞-> <T : BaseObservableType>(lhs: T, rhs: T.Element->Void)->SubscriptionOf<T> { return prime(lhs.subscribe(rhs)) }
-
+/// subscription operation with priming
+public func ∞-> <T : ObservableType>(lhs: T, rhs: T.Element->Void)->Subscription { return request(lhs.subscribe(rhs)) }

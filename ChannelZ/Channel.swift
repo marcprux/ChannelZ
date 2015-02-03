@@ -7,7 +7,7 @@
 //
 
 /// A Channel is a observable that has direct access to the underlying source value
-public protocol BaseChannelType : BaseObservableType {
+public protocol BaseChannelType : ObservableType {
     /// The type of element produced by the source of the Observable
     typealias SourceType
 
@@ -41,7 +41,7 @@ public protocol ChannelType : BaseChannelType, ExtendedChannelType { }
 ///
 /// See also: `ChannelZ<T>`.
 public struct ChannelOf<SourceType, Element> : ChannelType {
-    private let subscribeer: (subscription: (Element) -> (Void)) -> Subscription
+    private let subscriber: (subscription: (Element) -> (Void)) -> Subscription
     private let setter: (SourceType) -> ()
     private let getter: () -> (SourceType)
 
@@ -51,14 +51,14 @@ public struct ChannelOf<SourceType, Element> : ChannelType {
     }
 
     init<G : BaseChannelType where SourceType == G.SourceType, Element == G.Element>(_ base: G) {
-        self.subscribeer = { base.subscribe($0) }
+        self.subscriber = { base.subscribe($0) }
         self.setter = { base.value = $0 }
         self.getter = { base.value }
     }
 
-    public func subscribe(subscription: (Element) -> Void) -> SubscriptionOf<SelfChannel> {
-        let sub = subscribeer(subscription)
-        return SubscriptionOf(source: self, primer: { sub.prime() }, detacher: { sub.detach() })
+    public func subscribe(subscription: (Element) -> Void) -> Subscription {
+        let sub = subscriber(subscription)
+        return SubscriptionOf(requester: { sub.request() }, unsubscriber: { sub.unsubscribe() })
     }
 
 
@@ -66,7 +66,7 @@ public struct ChannelOf<SourceType, Element> : ChannelType {
     public typealias SelfChannel = ChannelOf
 
     /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func observable() -> Observable<Element> { return Observable(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -88,7 +88,7 @@ public struct ChannelZ<T> : ChannelType {
     typealias SourceType = T
     typealias Element = T
 
-    private let subscribeer: (subscription: (T) -> (Void)) -> Subscription
+    private let subscriber: (subscription: (T) -> (Void)) -> Subscription
     private let setter: (T) -> ()
     private let getter: () -> (T)
 
@@ -98,21 +98,21 @@ public struct ChannelZ<T> : ChannelType {
     }
 
     init<G : BaseChannelType where SourceType == G.SourceType, Element == G.Element>(_ base: G) {
-        self.subscribeer = { base.subscribe($0) }
+        self.subscriber = { base.subscribe($0) }
         self.setter = { base.value = $0 }
         self.getter = { base.value }
     }
 
-    public func subscribe(subscription: (Element) -> Void) -> SubscriptionOf<SelfChannel> {
-        let sub = subscribeer(subscription)
-        return SubscriptionOf(source: self, primer: { sub.prime() }, detacher: { sub.detach() })
+    public func subscribe(subscription: (Element) -> Void) -> Subscription {
+        let sub = subscriber(subscription)
+        return SubscriptionOf(requester: { sub.request() }, unsubscriber: { sub.unsubscribe() })
     }
 
     // Boilerplate observable/channel/filter/map
     public typealias SelfChannel = ChannelZ
 
     /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func observable() -> Observable<Element> { return Observable(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -151,13 +151,13 @@ public final class FieldChannel<T> : ChannelType {
         sourceValue = v
     }
 
-    public func subscribe(subscription: (Element)->())->SubscriptionOf<SelfChannel> {
+    public func subscribe(subscription: (Element)->())->Subscription {
         let index = subscriptions.addSubscription(subscription)
-        return SubscriptionOf(source: self, primer: { [weak self] in
+        return SubscriptionOf(requester: { [weak self] in
             if let this = self {
                 subscription(StateEvent.push(this.value))
             }
-        }, detacher: { [weak self] in
+        }, unsubscriber: { [weak self] in
             let _ = self?.subscriptions.removeSubscription(index)
         })
     }
@@ -167,7 +167,7 @@ public final class FieldChannel<T> : ChannelType {
     public typealias SelfChannel = FieldChannel
 
     /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func observable() -> Observable<Element> { return Observable(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -219,16 +219,16 @@ public struct FilteredChannel<Source : BaseChannelType> : ChannelType {
         self.predicate = predicate
     }
 
-    public func subscribe(subscription: (Source.Element)->Void)->SubscriptionOf<SelfChannel> {
+    public func subscribe(subscription: (Source.Element)->Void)->Subscription {
         let sub = source.subscribe({ if self.predicate($0) { subscription($0) } })
-        return SubscriptionOf(source: self, primer: { sub.prime() }, detacher: { sub.detach() })
+        return SubscriptionOf(requester: { sub.request() }, unsubscriber: { sub.unsubscribe() })
     }
 
     // Boilerplate observable/channel/filter/map
     public typealias SelfChannel = FilteredChannel
 
     /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func observable() -> Observable<Element> { return Observable(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -258,7 +258,7 @@ public func skip<T : BaseChannelType>(source: T, count: UInt = 1)->FilteredChann
 }
 
 
-/// A mapped channel passes all values through a transformer function before sending them to its subscribeed subscriptions
+/// A mapped channel passes all values through a transformer function before sending them to its subscribed subscriptions
 public struct MappedChannel<Source : BaseChannelType, TransformedType> : ChannelType {
     public typealias Element = TransformedType
     public typealias SourceType = Source.SourceType
@@ -276,16 +276,16 @@ public struct MappedChannel<Source : BaseChannelType, TransformedType> : Channel
         self.transformer = transformer
     }
 
-    public func subscribe(subscription: (TransformedType)->Void)->SubscriptionOf<SelfChannel> {
+    public func subscribe(subscription: (TransformedType)->Void)->Subscription {
         let sub = source.subscribe({ subscription(self.transformer($0)) })
-        return SubscriptionOf(source: self, primer: { sub.prime() }, detacher: { sub.detach() })
+        return SubscriptionOf(requester: { sub.request() }, unsubscriber: { sub.unsubscribe() })
     }
 
     // Boilerplate observable/channel/filter/map
     public typealias SelfChannel = MappedChannel
 
     /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-    public func observable() -> ObservableOf<Element> { return ObservableOf(self) }
+    public func observable() -> Observable<Element> { return Observable(self) }
 
     /// Returns a type-erasing channel wrapper around the current channel
     public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -388,15 +388,15 @@ internal func channelOptionalStateChanges<T where T : Equatable>(source: Channel
 /// :param: source one side of the pipeline
 /// :param: prime whether to prime the targets with source's value
 /// :param: targets the other side of the pipeline
-/// :returns: a detachable subscription for the conduit
-public func conduit<A : BaseChannelType, B : BaseChannelType where A.SourceType == B.Element, B.SourceType == A.Element>(source: A, prime: Bool = false)(targets: [B]) -> SubscriptionOf<(A, [B])> {
+/// :returns: a unsubscribeable subscription for the conduit
+public func conduit<A : BaseChannelType, B : BaseChannelType where A.SourceType == B.Element, B.SourceType == A.Element>(source: A, prime: Bool = false)(targets: [B]) -> Subscription {
     var subscriptions = [Subscription]()
 
     let src = source.subscribe({ for target in targets { target.value = $0 } })
     subscriptions += [src as Subscription]
 
     if prime { // tell the source to prime their initial value to the targets
-        subscriptions.map { $0.prime() }
+        subscriptions.map { $0.request() }
     }
 
     for target in targets {
@@ -404,12 +404,12 @@ public func conduit<A : BaseChannelType, B : BaseChannelType where A.SourceType 
         subscriptions += [trg as Subscription]
     }
 
-    let subscription = SubscriptionOf(source: (source, targets), primer: { for subscription in subscriptions { subscription.prime() } }, detacher: { for subscription in subscriptions { subscription.detach() } })
+    let subscription = SubscriptionOf(requester: { for subscription in subscriptions { subscription.request() } }, unsubscriber: { for subscription in subscriptions { subscription.unsubscribe() } })
 
     return subscription
 }
 
-public func conduit<A : BaseChannelType, B : BaseChannelType where A.SourceType == B.Element, B.SourceType == A.Element>(source: A, targets: B...) -> SubscriptionOf<(A, [B])> {
+public func conduit<A : BaseChannelType, B : BaseChannelType where A.SourceType == B.Element, B.SourceType == A.Element>(source: A, targets: B...) -> Subscription {
     return conduit(source)(targets: targets)
 }
 
@@ -451,52 +451,52 @@ infix operator <-=∞ { }
 
 
 /// Bi-directional conduit operator with natural equivalence between two identical types
-public func <=∞=><L : ChannelType, R : ChannelType where L.Element == R.SourceType, L.SourceType == R.Element>(lhs: L, rhs: R)->SubscriptionOf<(L, [R])> {
+public func <=∞=><L : ChannelType, R : ChannelType where L.Element == R.SourceType, L.SourceType == R.Element>(lhs: L, rhs: R)->Subscription {
     return conduit(lhs, rhs)
 }
 
 /// Bi-directional conduit operator with natural equivalence between two identical types
-public func <=∞=><L : ChannelType, R : ChannelType where L.Element == R.SourceType, L.SourceType == R.Element>(lhs: L, rhs: [R])->SubscriptionOf<(L, [R])> {
+public func <=∞=><L : ChannelType, R : ChannelType where L.Element == R.SourceType, L.SourceType == R.Element>(lhs: L, rhs: [R])->Subscription {
     return conduit(lhs)(targets: rhs)
 }
 
 /// One-sided conduit operator with natural equivalence between two identical types
-public func ∞=><L : BaseObservableType, R : ChannelType where L.Element == R.SourceType>(lhs: L, rhs: R)->SubscriptionOf<L> {
+public func ∞=><L : ObservableType, R : ChannelType where L.Element == R.SourceType>(lhs: L, rhs: R)->Subscription {
     let lsink = lhs.subscribe { rhs.value = $0 }
-    return SubscriptionOf(source: lhs, primer: { lsink.prime() }, detacher: { lsink.detach() })
+    return SubscriptionOf(requester: { lsink.request() }, unsubscriber: { lsink.unsubscribe() })
 }
 
 /// One-sided conduit operator with natural equivalence between two identical types with priming
-public func ∞=-><L : BaseObservableType, R : ChannelType where L.Element == R.SourceType>(lhs: L, rhs: R)->SubscriptionOf<L> {
-    return prime(lhs ∞=> rhs)
+public func ∞=-><L : ObservableType, R : ChannelType where L.Element == R.SourceType>(lhs: L, rhs: R)->Subscription {
+    return request(lhs ∞=> rhs)
 }
 
 // this source compiles, but any source that references it crashes the compiler
 /// One-sided conduit operator with natural equivalence between two types where the receiver is the optional of the sender
-//public func ∞~-><T, L : BaseObservableType, R : ChannelType where L.Element == T, R.SourceType == Optional<T>>(lhs: L, rhs: R)->Subscription {
+//public func ∞~-><T, L : ObservableType, R : ChannelType where L.Element == T, R.SourceType == Optional<T>>(lhs: L, rhs: R)->Subscription {
 //    let lsink = lhs.subscribe { rhs.value = $0 }
-//    return SubscriptionOf<(L.Element, R.Element)>(primer: { lsink.prime() }, detacher: { lsink.detach() })
+//    return SubscriptionOf(requester: { lsink.request() }, unsubscriber: { lsink.unsubscribe() })
 //}
 
 // limited workaround for the above compiler crash by constraining the RHS to the ChannelZ and ChannelOf implementations
 
 /// One-sided conduit operator with natural equivalence between two types where the receiver is the optional of the sender
-public func ∞=><T, L : BaseObservableType where L.Element == T>(lhs: L, rhs: ChannelZ<Optional<T>>)->SubscriptionOf<L> {
+public func ∞=><T, L : ObservableType where L.Element == T>(lhs: L, rhs: ChannelZ<Optional<T>>)->Subscription {
     return lhs.subscribe { rhs.value = $0 }
 }
 
 /// One-sided conduit operator with natural equivalence between two types where the receiver is the optional of the sender
-public func ∞=><T, U, L : BaseObservableType where L.Element == T>(lhs: L, rhs: ChannelOf<Optional<T>, U>)->SubscriptionOf<L> {
+public func ∞=><T, U, L : ObservableType where L.Element == T>(lhs: L, rhs: ChannelOf<Optional<T>, U>)->Subscription {
     return lhs.subscribe { rhs.value = $0 }
 }
 
 /// Bi-directional conduit operator with natural equivalence between two identical types where the left side is primed
-public func <=∞=-><L : ChannelType, R : ChannelType where L.Element == R.SourceType, L.SourceType == R.Element>(lhs: L, rhs: R)->SubscriptionOf<(L, [R])> {
+public func <=∞=-><L : ChannelType, R : ChannelType where L.Element == R.SourceType, L.SourceType == R.Element>(lhs: L, rhs: R)->Subscription {
     return conduit(lhs, prime: true)(targets: [rhs])
 }
 
 /// Bi-directional conduit operator with natural equivalence between two identical types where the left side is primed
-public func <=∞=-><L : ChannelType, R : ChannelType where L.Element == R.SourceType, L.SourceType == R.Element>(lhs: L, rhs: [R])->SubscriptionOf<(L, [R])> {
+public func <=∞=-><L : ChannelType, R : ChannelType where L.Element == R.SourceType, L.SourceType == R.Element>(lhs: L, rhs: [R])->Subscription {
     return conduit(lhs, prime: true)(targets: rhs)
 }
 
@@ -508,7 +508,7 @@ infix operator <~∞ { }
 
 
 /// Conduit operator that filters out nil values with a custom transformer
-public func <~∞~> <L : ChannelType, R : ChannelType>(lhs: (o: L, f: L.Element->Optional<R.SourceType>), rhs: (o: R, f: R.Element->Optional<L.SourceType>))->SubscriptionOf<(ChannelOf<L.SourceType, R.SourceType>, [ChannelOf<R.SourceType, L.SourceType>])> {
+public func <~∞~> <L : ChannelType, R : ChannelType>(lhs: (o: L, f: L.Element->Optional<R.SourceType>), rhs: (o: R, f: R.Element->Optional<L.SourceType>))->Subscription {
     let lhsm = lhs.o.map({ lhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! }).channel()
     let rhsm = rhs.o.map({ rhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! }).channel()
 
@@ -517,21 +517,21 @@ public func <~∞~> <L : ChannelType, R : ChannelType>(lhs: (o: L, f: L.Element-
 
 
 /// Convert (possibly lossily) between two numeric types
-public func <~∞~> <L : ChannelType, R : ChannelType where L.SourceType: ConduitNumericCoercible, L.Element: ConduitNumericCoercible, R.SourceType: ConduitNumericCoercible, R.Element: ConduitNumericCoercible>(lhs: L, rhs: R)->SubscriptionOf<(ChannelOf<L.SourceType, R.SourceType>, [ChannelOf<R.SourceType, L.SourceType>])> {
+public func <~∞~> <L : ChannelType, R : ChannelType where L.SourceType: ConduitNumericCoercible, L.Element: ConduitNumericCoercible, R.SourceType: ConduitNumericCoercible, R.Element: ConduitNumericCoercible>(lhs: L, rhs: R)->Subscription {
     return conduit(lhs.map({ convertNumericType($0) }).channel(), rhs.map({ convertNumericType($0) }).channel())
 }
 
 
 ///// Convert (possibly lossily) between two numeric types
-//public func ∞~> <L : ChannelType, R : ChannelType where L.Element: ConduitNumericCoercible, R.SourceType: ConduitNumericCoercible>(lhs: L, rhs: R)->SubscriptionOf<L> {
+//public func ∞~> <L : ChannelType, R : ChannelType where L.Element: ConduitNumericCoercible, R.SourceType: ConduitNumericCoercible>(lhs: L, rhs: R)->Subscription {
 //    let lsink = lhs.map({ convertNumericType($0) }).subscribe { rhs.value = $0 }
-//    return SubscriptionOf<(L.Element, R.Element)>(detacher: { lsink.detach() })
+//    return SubscriptionOf(unsubscriber: { lsink.unsubscribe() })
 //}
 //
 ///// Convert (possibly lossily) between two numeric types
-//public func <~∞ <L : ChannelType, R : ChannelType where R.Element: ConduitNumericCoercible, L.SourceType: ConduitNumericCoercible>(lhs: L, rhs: R)->SubscriptionOf<L> {
+//public func <~∞ <L : ChannelType, R : ChannelType where R.Element: ConduitNumericCoercible, L.SourceType: ConduitNumericCoercible>(lhs: L, rhs: R)->Subscription {
 //    let rsink = rhs.map({ convertNumericType($0) }).subscribe { lhs.value = $0 }
-//    return SubscriptionOf<(L.Element, R.Element)>(detacher: { rsink.detach() })
+//    return SubscriptionOf(unsubscriber: { rsink.unsubscribe() })
 //}
 
 
@@ -542,27 +542,27 @@ public func <~∞~> <L : ChannelType, R : ChannelType where L.SourceType: Condui
 //infix operator <?∞ { }
 //
 ///// Conduit operator to convert (possibly lossily) between optionally castable types
-//public func <?∞?><L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->SubscriptionOf<L> {
+//public func <?∞?><L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Subscription {
 //    let lsink = lhs.map({ $0 as? R.SourceType }).filter({ $0 != nil }).map({ $0! }).subscribe { rhs.value = $0 }
 //    let rsink = rhs.map({ $0 as? L.SourceType }).filter({ $0 != nil }).map({ $0! }).subscribe { lhs.value = $0 }
-//    return SubscriptionOf<(L.Element, R.Element)>(primer: {
-//        rsink.prime()
-//        lsink.prime()
-//    }, detacher: {
-//        rsink.detach()
-//        lsink.detach()
+//    return SubscriptionOf(requester: {
+//        rsink.request()
+//        lsink.request()
+//    }, unsubscriber: {
+//        rsink.unsubscribe()
+//        lsink.unsubscribe()
 //    })
 //}
 //
 //
 ///// Conduit operator to convert (possibly lossily) between optionally castable types
-//public func ∞?> <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->SubscriptionOf<L> {
+//public func ∞?> <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Subscription {
 //    let lsink = lhs.map({ $0 as? R.SourceType }).filter({ $0 != nil }).map({ $0! }).subscribe { rhs.value = $0 }
-//    return SubscriptionOf<(L.Element, R.Element)>(primer: { lsink.prime() }, detacher: { lsink.detach() })
+//    return SubscriptionOf(requester: { lsink.request() }, unsubscriber: { lsink.unsubscribe() })
 //}
 //
 ///// Conduit operator to convert (possibly lossily) between optionally castable types
-//public func <?∞ <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->SubscriptionOf<L> {
+//public func <?∞ <L : ChannelType, R : ChannelType>(lhs: L, rhs: R)->Subscription {
 //    let rsink = rhs.map({ $0 as? L.SourceType }).filter({ $0 != nil }).map({ $0! }).subscribe { lhs.value = $0 }
-//    return SubscriptionOf<(L.Element, R.Element)>(primer: { rsink.prime() }, detacher: { rsink.detach() })
+//    return SubscriptionOf(requester: { rsink.request() }, unsubscriber: { rsink.unsubscribe() })
 //}
