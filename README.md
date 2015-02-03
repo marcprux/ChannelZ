@@ -48,7 +48,7 @@ b1.value
 assert(b1.value == 99)
 assert(b2.value == 99)
 
-b1b2.detach() // you can manually disconnect the conduit if you like
+b1b2.unsubscribe() // you can manually disconnect the conduit if you like
 ```
 <!--`-->
 
@@ -183,7 +183,7 @@ ojic.intField // will be 89
 
 ### Channels and Observables
 
-A `Channel` is bi-directional access to some underlying state. It is always backed by a reference type, either a class in Objective-C or a reference wrapper around a Swift value type. A `Channel` is a specialization of a `Observable`, which provides uni-directional flow of events. Events are not limited to state changes. For example, you Observable button tap events to a custom subscribeed subscription using the `∞>` operator.
+A `Channel` is bi-directional access to some underlying state. It is always backed by a reference type, either a class in Objective-C or a reference wrapper around a Swift value type. A `Channel` is a specialization of a `Observable`, which provides uni-directional flow of events. Events are not limited to state changes. For example, you Observable button tap events to a custom subscribed subscription using the `∞>` operator.
 
 #### Example: Observableing Button Taps
 
@@ -264,8 +264,8 @@ Following is a list of the variants of the ∞ operator that is used throughout 
 * `∞(SWTYPE)∞`: Wraps the given Swift reference type in a field channel
 * `ObjC ∞ ObjC.key`: Creates a channel to the given Objective-C object's auto-detected KVO-compliant key.
 * `ObjC ∞ (ObjC.key, "keyPath")`: Creates a channel to the given Objective-C's property with a manually specified keypath.
-* `Fz ∞> { (arg: Type) -> Void }`: subscribes an subscription to the given Observable or channel.
-* `Fz ∞-> { (arg: Type) -> Void }`: subscribes an subscription to the given Observable or channel and primes it with the current value.
+* `Fz ∞> { (arg: Type) -> Void }`: subscribes a subscription to the given Observable or channel.
+* `Fz ∞-> { (arg: Type) -> Void }`: subscribes a subscription to the given Observable or channel and primes it with the current value.
 * `Cz1 ∞=> Cz2`: Unidirectionally conduits state from channel `Cz1` to channel `Cz2`.
 * `Cz1 ∞=-> Cz2`: Unidirectionally conduits state from channel `Cz1` to channel `Cz2` and primes the subscription.
 * `Cz1 <-=∞ Cz2`: Unidirectionally conduits state from channel `Cz2` to channel `Cz1` and primes the subscription.
@@ -273,8 +273,8 @@ Following is a list of the variants of the ∞ operator that is used throughout 
 * `Cz1 <=∞=-> Cz2`: Bidirectionally conduits state between channels `Cz1` and `Cz2` and primes the right side subscription.
 * `Cz1 <~∞~> Cz2`: Bidirectionally conduits state between channels `Cz1` and `Cz2` by coercing numeric types.
 * `Cz1 <?∞?> Cz2`: Bidirectionally conduits state between channels `Cz1` and `Cz2` by attempting an optional cast.
-* `(Cz1 | Cz2) ∞> { (cz1Type?, cz2Type?) -> Void }`: subscribe an subscription to the combination of `Cz1` and `Cz2` such that when either changes, the subscription will be fired.
-* `(Cz1 & Cz2) ∞> { (cz1Type, cz2Type) -> Void }`: subscribe an subscription to the combination of `Cz1` and `Cz2` such that when both change, the subscription will be fired.
+* `(Cz1 | Cz2) ∞> { (cz1Type?, cz2Type?) -> Void }`: subscribe a subscription to the combination of `Cz1` and `Cz2` such that when either changes, the subscription will be fired.
+* `(Cz1 & Cz2) ∞> { (cz1Type, cz2Type) -> Void }`: subscribe a subscription to the combination of `Cz1` and `Cz2` such that when both change, the subscription will be fired.
 
 ### Setting up ChannelZ
 
@@ -308,10 +308,10 @@ Following is a list of the variants of the ∞ operator that is used throughout 
 1. **System requirements?** ChannelZ requires Xcode 6.1+ with iOS 8.1+ or Mac OS 10.10+.
 1. **How is automatic keypath identification done?** In order to turn the code `ob∞ob.someField` into a KVO subscription, we need to figure out that `someField` is equivalent to the `"someField"` key path. This is accomplished by temporarily swizzling the class at the time of channel creation in order to instrument the properties and track which property is accessed by the autoclosure, and then immediately swizzling it back to the original class. This is usually transparent, but may fail on classes that dynamically implement their properties, such as Core Data's '`NSManagedObject`. In those cases, you can always manually specify the key path of a field with the operator variant that takes a tuple with the original value and the name of the property: `ob∞(ob.someField, "someField")`
 1. **Automatic Keypath Identification Performance?** `ob∞ob.someField` is about 12x slower than `ob∞(ob.someField, "someField")`
-1. **Memory management?** All channels are rooted in a reference type: either a reference wrapper around a Swift value, or by the owning class instance itself for KVO. The reference type owns all the subscribeed subscriptions, and they are deallocated whenever the reference is released. You shouldn't need to manually track subscriptions and detach them, although there is nothing preventing you from doing so if you wish.
-1. **Unstable conduit & reentrancy?** A state channel conduit is considered *unstable* when it cannot reach equilibrium. For example, `ob1∞ob1.intField <=∞=> (ob2∞ob2.intField).map({ $0 + 1 })` would mean that setting `ob1.intField` to 1 would set `ob2.intField` to 1, and then the map on the channel would cause `ob1.intField` to be set to 2. This cycle is prevented by limited the levels of re-entrancy that an subscription will allow, and is controlled by the global `ChannelZReentrancyLimit` field, which default to 1. You can change this value globally if you have channel cycles that may take a few passes to settle into equilibrium.
-1. **Threading & Queuing?** ChannelZ doesn't touch threads or queues. You can always perform queue jumping yourself in an subscription.
-1. **UIKit/AppKit and KVO?** `UIKit`'s `UIControl` and `AppKit`'s `NSControl` are not KVO-compliant for user interaction. For example, the `value` field of a `UISlider` does not receive KVO messages when the user drags the slider. We work around this by supplementing channel subscribements with an additional Observable for the control events. See the `KeyValueChannelSupplementing` implementation in the `UIControl` extension for an example of how you can supplement your own control events.
+1. **Memory management?** All channels are rooted in a reference type: either a reference wrapper around a Swift value, or by the owning class instance itself for KVO. The reference type owns all the subscribed subscriptions, and they are deallocated whenever the reference is released. You shouldn't need to manually track subscriptions and unsubscribe them, although there is nothing preventing you from doing so if you wish.
+1. **Unstable conduit & reentrancy?** A state channel conduit is considered *unstable* when it cannot reach equilibrium. For example, `ob1∞ob1.intField <=∞=> (ob2∞ob2.intField).map({ $0 + 1 })` would mean that setting `ob1.intField` to 1 would set `ob2.intField` to 1, and then the map on the channel would cause `ob1.intField` to be set to 2. This cycle is prevented by limited the levels of re-entrancy that a subscription will allow, and is controlled by the global `ChannelZReentrancyLimit` field, which default to 1. You can change this value globally if you have channel cycles that may take a few passes to settle into equilibrium.
+1. **Threading & Queuing?** ChannelZ doesn't touch threads or queues. You can always perform queue jumping yourself in a subscription.
+1. **UIKit/AppKit and KVO?** `UIKit`'s `UIControl` and `AppKit`'s `NSControl` are not KVO-compliant for user interaction. For example, the `value` field of a `UISlider` does not receive KVO messages when the user drags the slider. We work around this by supplementing channel subscriptions with an additional Observable for the control events. See the `KeyValueChannelSupplementing` implementation in the `UIControl` extension for an example of how you can supplement your own control events.
 1. **Problems?** Please file a Github [ChannelZ issue](https://github.com/mprudhom/ChannelZ/issues/new).
 1. **Questions** Please use StackOverflow's [#channelz tag](http://stackoverflow.com/questions/tagged/channelz).
 

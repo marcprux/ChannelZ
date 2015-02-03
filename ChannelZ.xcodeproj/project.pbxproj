@@ -17,6 +17,8 @@
 		7E43C2D71A10763D003747B6 /* UIKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D61A10763D003747B6 /* UIKit.swift */; };
 		7E4E53CA1A21578700B1016C /* PlayMarker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4E53C91A21578700B1016C /* PlayMarker.swift */; };
 		7E7E35461A152CCD00777D72 /* CoreData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7E35451A152CCD00777D72 /* CoreData.swift */; };
+		7E806D521A7F4C6F00CB3992 /* Dispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E806D511A7F4C6F00CB3992 /* Dispatch.swift */; };
+		7E8C00031A80099F00180DB1 /* Network.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8C00021A80099F00180DB1 /* Network.swift */; };
 		7ECE513B1A60A29600924B8E /* Coercible.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ECE513A1A60A29600924B8E /* Coercible.swift */; };
 		7EE45E221A210FFE00E9AB52 /* PlayMarkerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */; };
 /* End PBXBuildFile section */
@@ -49,6 +51,8 @@
 		7E4E53C91A21578700B1016C /* PlayMarker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayMarker.swift; sourceTree = "<group>"; };
 		7E4E53CB1A21749F00B1016C /* Introduction.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = Introduction.playground; sourceTree = "<group>"; };
 		7E7E35451A152CCD00777D72 /* CoreData.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CoreData.swift; sourceTree = "<group>"; };
+		7E806D511A7F4C6F00CB3992 /* Dispatch.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Dispatch.swift; sourceTree = "<group>"; };
+		7E8C00021A80099F00180DB1 /* Network.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Network.swift; sourceTree = "<group>"; };
 		7ECE513A1A60A29600924B8E /* Coercible.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Coercible.swift; sourceTree = "<group>"; };
 		7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayMarkerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -96,9 +100,11 @@
 			isa = PBXGroup;
 			children = (
 				7E30DC341A0D6A510050EC52 /* Info.plist */,
-				7E43C2CC1A1072AC003747B6 /* Channel.swift */,
-				7E43C2CE1A1073CA003747B6 /* Subscription.swift */,
 				7E43C2CA1A1072A4003747B6 /* Observable.swift */,
+				7E8C00021A80099F00180DB1 /* Network.swift */,
+				7E806D511A7F4C6F00CB3992 /* Dispatch.swift */,
+				7E43C2CE1A1073CA003747B6 /* Subscription.swift */,
+				7E43C2CC1A1072AC003747B6 /* Channel.swift */,
 				7E30DC591A0D6B1B0050EC52 /* Foundation.swift */,
 				7E7E35451A152CCD00777D72 /* CoreData.swift */,
 				7E43C2D21A1075D0003747B6 /* AppKit.swift */,
@@ -236,6 +242,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7E8C00031A80099F00180DB1 /* Network.swift in Sources */,
+				7E806D521A7F4C6F00CB3992 /* Dispatch.swift in Sources */,
 				7E30DC5D1A0D6B1B0050EC52 /* Foundation.swift in Sources */,
 				7E43C2D31A1075D0003747B6 /* AppKit.swift in Sources */,
 				7E43C2D71A10763D003747B6 /* UIKit.swift in Sources */,

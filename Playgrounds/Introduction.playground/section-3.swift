@@ -10,4 +10,4 @@ b1.value
 assert(b1.value == 99)
 assert(b2.value == 99)
 
-b1b2.detach() // you can manually disconnect the conduit if you like
+b1b2.unsubscribe() // you can manually disconnect the conduit if you like

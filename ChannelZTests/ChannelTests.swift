@@ -42,47 +42,178 @@ public class ChannelTests: XCTestCase {
     func testGenerators() {
         let seq = [true, false, true, false, true]
 
-//        let gfun1 = GeneratorObservable(GeneratorOf(seq.generate())) // GeneratorObservable with generator
+//        let gfun1 = Observable(from: GeneratorOf(seq.generate())) // GeneratorObservable with generator
 //        let trap1 = trap(gfun1, capacity: 3)
 //        XCTAssertEqual(seq[2...4], trap1.values[0...2], "trap should contain the last 3 elements of the sequence generator")
 
-        let gfun2 = GeneratorObservable(seq) // GeneratorObservable with sequence
+        let gfun2 = Observable(from: seq) // GeneratorObservable with sequence
         let trap2 = trap(gfun2, capacity: 3)
         XCTAssertEqual(seq[2...4], trap2.values[0...2], "trap should contain the last 3 elements of the sequence generator")
 
-        let trapped = trap(GeneratorObservable(1...5) & GeneratorObservable(6...10), capacity: 1000)
+        let trapped = trap(Observable(from: 1...5) & Observable(from: 6...10), capacity: 1000)
         XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]]) // tupes aren't equatable
 
         // observable concatenation
         // the equivalent of ReactiveX's Range
-        let merged = trap(GeneratorObservable(1...3) + GeneratorObservable(3...5) + GeneratorObservable(2...6), capacity: 1000)
+        let merged = trap(Observable(from: 1...3) + Observable(from: 3...5) + Observable(from: 2...6), capacity: 1000)
         XCTAssertEqual(merged.values, [1, 2, 3, 3, 4, 5, 2, 3, 4, 5, 6])
 
         // the equivalent of ReactiveX's Repeat
-        XCTAssertEqual(trap(GeneratorObservable(Repeat(count: 10, repeatedValue: "A")), capacity: 4).values, ["A", "A", "A", "A"])
+        XCTAssertEqual(trap(Observable(from: Repeat(count: 10, repeatedValue: "A")), capacity: 4).values, ["A", "A", "A", "A"])
+    }
+
+    func testMergedUnsubscribe() {
+        let o1 = Observable(from: 1...3)
+        let (s2, o2) = sinkObservable(Int)
+        let cc = o1 + o2
+
+        var count = 0
+        let sub = cc.subscribe({ _ in count += 1 })
+        XCTAssertEqual(3, count)
+
+        s2.put(4)
+        XCTAssertEqual(4, count)
+
+        s2.put(5)
+        XCTAssertEqual(5, count)
+
+        sub.unsubscribe()
+        s2.put(6)
+
+        XCTAssertEqual(5, count)
+    }
+
+    func testStreamExtensions() {
+        if let stream = NSInputStream(fileAtPath: __FILE__) {
+            weak var xpc: XCTestExpectation? = expectationWithDescription("input stream")
+
+            let obv = stream.observable()
+            var openCount = 0
+            var closeCount = 0
+            var count = 0
+            let sub = obv.subscribe { switch $0 {
+                case .Opened:
+                    openCount++
+                case .Data(let d):
+                    count += d.length
+                case .Error(let e):
+                    XCTFail(e.description)
+                    xpc?.fulfill()
+                case .Closed:
+                    closeCount++
+                    xpc?.fulfill()
+                }
+            }
+
+            stream.scheduleInRunLoop(NSRunLoop.currentRunLoop(), forMode: NSDefaultRunLoopMode)
+            stream.open()
+
+            waitForExpectationsWithTimeout(1, handler: { _ in })
+
+            XCTAssertEqual(1, openCount)
+            XCTAssertEqual(1, closeCount)
+            XCTAssertGreaterThan(count, 1000)
+            sub.unsubscribe()
+        }
+    }
+    
+    func testFilterObservable() {
+        let (sink, obv) = sinkObservable(Int)
+
+        var count = 0
+        let sub = obv.filter({ $0 > 0 }).subscribe({ _ in count += 1 })
+
+        let nums = -10...3
+        nums.map { sink.put($0) }
+
+        XCTAssertEqual(3, count)
+    }
+
+    func testMapObservable() {
+        let (sink, obv) = sinkObservable(Int)
+
+        var count = 0
+        let sub = obv.map({ String($0) }).filter({ countElements($0) >= 2 }).subscribe({ _ in count += 1 })
+
+        for i in 1...10 {
+            let nums = -2...11
+            nums.map { sink.put($0) }
+            XCTAssertEqual(4, count)
+            sub.unsubscribe() // make sure the count is still 4...
+        }
+    }
+
+    func testDispatchObservable() {
+        let (sink, obv) = sinkObservable(Int)
+
+        weak var xpc: XCTestExpectation? = expectationWithDescription("queue delay")
+
+        var count = 0
+        let sub = obv.dispatch(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), time: dispatch_time(DISPATCH_TIME_NOW, 2_000_000)).filter({ $0 > 0 }).subscribe({ _ in
+            XCTAssertFalse(NSThread.isMainThread())
+            count += 1
+            if count >= 3 {
+                xpc?.fulfill()
+            }
+        })
+
+        let nums = -10...3
+        nums.map { sink.put($0) }
+
+        XCTAssertNotEqual(3, count, "should have been a delay")
+        waitForExpectationsWithTimeout(1, handler: { _ in })
+        XCTAssertEqual(3, count)
+        
+    }
+
+    func testDistinctObservable() {
+        var nums1: [Int] = []
+        var nums2: [UInt32] = []
+        let numbers = Observable(from: [1, 1, 2, 1, 2, 2, 2, 3, 3, 4])
+        let distinctor = numbers.filterLast(!=)
+        let sub1 = distinctor.subscribe({ nums1 += [$0] })
+        let sub2 = distinctor.map({ _ in arc4random() }).subscribe({ nums2 += [$0] })
+        XCTAssertEqual([1, 2, 1, 2, 3, 4], nums1)
+        XCTAssertEqual(6, nums2.count)
+    }
+
+    func testFilterAs() {
+        let source: [Int?] = [1, nil, 2, nil, 4, nil]
+//        let source: [Int] = [1, 2, 4]
+        let numbers = Observable(from: source)
+
+        var nums: [Int] = []
+//        let sub1 = numbers.filterType(Int).subscribe({ nums += [$0] })
+        let sub1 = numbers.filter({ $0 != nil }).map({ $0! }).subscribe({ nums += [$0] })
+//        let sub1 = numbers.map({ $0 as Any as Int? }).filter({ $0 != nil }).map({ $0! }).subscribe({ nums += [$0] })
+        XCTAssertEqual([1, 2, 4], nums)
+
+//        var nsnums: [NSNumber] = []
+//        numbers.to(NSNumber).subscribe({ nsnums += [$0] })
+//        XCTAssertEqual([1, 2, 1, 2, 3, 4], nums)
+
     }
 
     func testFlatMapObservable() {
-        let numbers = GeneratorObservable(1...3)
-        let multiples: (Int)->(GeneratorObservable<Int>) = { n in GeneratorObservable([n*2, n*3]) }
+        let numbers = Observable(from: 1...3)
+        let multiples = { (n: Int) in Observable(from: [n*2, n*3]) }
 
-        // ### TODO: need to move this into FlatMappedObservable to retain the sinks properly
-//        func flatMap<T, U, F1: BaseObservableType, F2: BaseObservableType where T == F1.Element, U == F2.Element>(observable: F1, transformer: (T)->(F2)) -> ObservableOf<U> {
-//            let sink = SinkObservable<T>()
-//            let out1: SubscriptionOf<F1> = observable.subscribe {
-//                let f2 = transformer($0)
-//                let out2 = f2.subscribe {
-//                    sink.put($0)
-//                }
-//            }
-//            return sink.observable()
-//        }
-//
-//        // the equivalent of ReactiveX's FlatMap
-////        numbers.bind(multiples).subscribe({ n in })
-//        var nums: [Int] = []
-//        flatMap(numbers, multiples).subscribe({ nums += [$0] })
-//        XCTAssertEqual([2, 3, 4, 6, 6, 9], nums)
+        var nums: [Int] = []
+        let sub = numbers.flatMap(multiples).subscribe({ nums += [$0] })
+
+        XCTAssertEqual([2, 3, 4, 6, 6, 9], nums)
+        sub.unsubscribe()
+    }
+
+    func testFlatMapTransformObservable() {
+        let numbers = Observable(from: 1...3)
+        let divisibles = { (n: Int) in Observable(from: [Double(n)/2.0, Double(n)/4.0]) }
+
+        var nums: [Double] = []
+        let sub = numbers.flatMap(divisibles).subscribe({ nums += [$0] })
+
+        XCTAssertEqual([0.5, 0.25, 1.0, 0.5, 1.5, 0.75], nums)
+        sub.unsubscribe()
     }
 
     func testObservables() {
@@ -194,7 +325,7 @@ public class ChannelTests: XCTestCase {
         var changeCount: Double = 0
         var changeLog: String = ""
 
-        // track the number of changes using two separate subscribements
+        // track the number of changes using two separate subscriptions
         x.subscribe { _ in changeCount += 0.5 }
         x.subscribe { _ in changeCount += 0.5 }
 
@@ -433,7 +564,7 @@ public class ChannelTests: XCTestCase {
     func testFieldChannelObservable() {
         var xs: Int = 1
         var x = channelField(xs)
-        var f: ObservableOf<Int> = x.observable() // read-only observable of channel x
+        var f: Observable<Int> = x.observable() // read-only observable of channel x
 
         var changes = 0
         var subscription = f ∞> { _ in changes += 1 }
@@ -444,7 +575,7 @@ public class ChannelTests: XCTestCase {
         x.value = (2); XCTAssertEqual(0, --changes)
         x.value = (9);XCTAssertEqual(0, --changes)
 
-        subscription.detach()
+        subscription.unsubscribe()
         x.value = (-1); XCTAssertEqual(0, changes)
     }
 
@@ -452,12 +583,12 @@ public class ChannelTests: XCTestCase {
         var xs: Bool = true
         var x = channelField(xs)
 
-        var xf: ObservableOf<Bool> = x.observable() // read-only observable of channel x
+        var xf: Observable<Bool> = x.observable() // read-only observable of channel x
 
         let fxa = xf ∞> { (x: Bool) in return }
 
         var y = x.map({ "\($0)" })
-        var yf: ObservableOf<String> = y.observable() // read-only observable of mapped channel y
+        var yf: Observable<String> = y.observable() // read-only observable of mapped channel y
 
         var changes = 0
         var fya: Subscription = yf ∞> { (x: String) in changes += 1 }
@@ -468,7 +599,7 @@ public class ChannelTests: XCTestCase {
         x.value = (true); XCTAssertEqual(0, --changes)
         x.value = (false); XCTAssertEqual(0, --changes)
 
-        fya.detach()
+        fya.unsubscribe()
         x.value = (true); XCTAssertEqual(0, changes)
     }
 
@@ -476,12 +607,12 @@ public class ChannelTests: XCTestCase {
         var xs: Double = 1
 
         var x = sieveField(xs)
-        var xf: ObservableOf<Double> = x.observable() // read-only observable of channel x
+        var xf: Observable<Double> = x.observable() // read-only observable of channel x
 
         var fxa = xf ∞> { (x: Double) in return }
 
         var y = x.map({ "\($0)" })
-        var yf: ObservableOf<String> = y.observable() // read-only observable of channel y
+        var yf: Observable<String> = y.observable() // read-only observable of channel y
 
         var changes = 0
         var fya: Subscription = yf ∞> { (x: String) in changes += 1 }
@@ -492,8 +623,8 @@ public class ChannelTests: XCTestCase {
         x.value = (2); x.value = (2); XCTAssertEqual(0, changes)
         x.value = (9); x.value = (9); XCTAssertEqual(0, --changes)
 
-        fxa.detach()
-        fya.detach()
+        fxa.unsubscribe()
+        fya.unsubscribe()
         x.value = (-1); XCTAssertEqual(0, changes)
     }
 
@@ -574,7 +705,7 @@ public class ChannelTests: XCTestCase {
         var lastString : String = ""
 
         var combo1 = (a | b)
-        combo1 ∞> { (floatChange: Float?, uintChange: UInt?) in }
+//        combo1.subscribe({ (floatChange: Float?, uintChange: UInt?) in })
 
         var combo2 = (a | b | d)
 
@@ -608,6 +739,20 @@ public class ChannelTests: XCTestCase {
 
     }
 
+    func testList() {
+        func stringsToChars(f: Character->Void) -> String->Void {
+            return { (str: String) in for c in str { f(c) } }
+        }
+
+        let strings: Observable<String> = Observable(from: ["abc"]).observable()
+        let chars1 = strings.lift(stringsToChars)
+        let chars2 = strings.lift { (f: Character->Void) in { (str: String) in let _ = map(str, f) } }
+
+        var buf: [Character] = []
+        chars2.subscribe({ buf += [$0] })
+        XCTAssertEqual(buf, ["a", "b", "c"])
+    }
+
     func testZippedObservable() {
         let a = ∞(Float(3.0))∞
         let b = ∞(UInt(7))∞
@@ -635,7 +780,7 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual("", lastString)
         XCTAssertEqual(Float(0.0), lastFloat)
 
-        subscription.prime()
+        subscription.request()
 
         XCTAssertEqual(0, --changes)
         XCTAssertEqual("false", lastString)
@@ -676,15 +821,15 @@ public class ChannelTests: XCTestCase {
     func testMixedCombinations() {
         let a = ∞(Int(0.0))∞
 
-        var and: ObservableOf<(Int, Int, Int, Int)> = a & a & a & a
+        var and: Observable<(Int, Int, Int, Int)> = a & a & a & a
         var andx = 0
         and.subscribe({ _ in andx += 1 })
 
-        var or: ObservableOf<(Int?, Int?, Int?, Int?)> = a | a | a | a
+        var or: Observable<(Int?, Int?, Int?, Int?)> = a | a | a | a
         var orx = 0
         or.subscribe({ _ in orx += 1 })
 
-        var andor: ObservableOf<((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = a & a | a & a | a & a | a
+        var andor: Observable<((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = a & a | a & a | a & a | a
         var andorx = 0
         andor.subscribe({ _ in andorx += 1 })
 
@@ -708,8 +853,8 @@ public class ChannelTests: XCTestCase {
 
     func testZippedGenerators() {
         let range = 1...6
-        let nums = GeneratorObservable(1...3) + GeneratorObservable(4...6)
-        let strs = GeneratorObservable(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
+        let nums = Observable(from: 1...3) + Observable(from: 4...5) + Observable(just: 6)
+        let strs = Observable(from: range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
         var numstrs: [(Int, String)] = []
         let zipped = (nums & strs)
         zipped.subscribe({ numstrs += [$0] })
@@ -744,8 +889,8 @@ public class ChannelTests: XCTestCase {
 
         let deepSubscription = deepNest.subscribe({ _ in })
 
-        XCTAssertEqual("ChannelZ.FilteredObservable", _stdlib_getDemangledTypeName(deepNest))
-        XCTAssertEqual("ChannelZ.ObservableOf", _stdlib_getDemangledTypeName(flatNest))
+//        XCTAssertEqual("ChannelZ.FilteredObservable", _stdlib_getDemangledTypeName(deepNest))
+        XCTAssertEqual("ChannelZ.Observable", _stdlib_getDemangledTypeName(flatNest))
         XCTAssertEqual("ChannelZ.SubscriptionOf", _stdlib_getDemangledTypeName(deepSubscription))
     }
 
@@ -778,7 +923,7 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(12, t.value)
         XCTAssertEqual(0, --changes)
 
-        deepSubscription.source.value--
+        deepNest.value--
         XCTAssertEqual(11, t.value)
         XCTAssertEqual(0, --changes)
 
@@ -789,19 +934,19 @@ public class ChannelTests: XCTestCase {
         let flatObservable = deepNest.observable()
         let flatChannel = deepNest.channel()
 
-        XCTAssertEqual("ChannelZ.ObservableOf", _stdlib_getDemangledTypeName(flatObservable))
+        XCTAssertEqual("ChannelZ.Observable", _stdlib_getDemangledTypeName(flatObservable))
         XCTAssertEqual("ChannelZ.ChannelOf", _stdlib_getDemangledTypeName(flatChannel))
 
         let flatSubscription = flatChannel.subscribe({ _ in })
 
-        flatSubscription.source.value--
+        deepNest.value--
         XCTAssertEqual(10, t.value)
         XCTAssertEqual(0, --changes)
 
-        deepSubscription.prime()
+        deepSubscription.request()
         XCTAssertEqual(0, --changes)
 
-        flatSubscription.prime()
+        flatSubscription.request()
 //        XCTAssertEqual(0, --changes) // FIXME: prime message is getting lost somehow
     }
 
@@ -844,27 +989,27 @@ public class ChannelTests: XCTestCase {
     }
 
     func testSinkObservables() {
-        let observable = SinkObservable<Int>()
+        let (sink, observable) = sinkObservable(Int)
 
-        observable.put(1)
+        sink.put(1)
         var changes = 0
         let subscription = observable.subscribe({ _ in changes += 1 })
 
         XCTAssertEqual(0, changes)
 
-        observable.put(1)
+        sink.put(1)
         XCTAssertEqual(0, --changes)
 
-        let sink = SinkOf(observable)
-        sink.put(2)
+        let sinkof = SinkOf(sink)
+        sinkof.put(2)
         XCTAssertEqual(0, --changes, "sink wrapper around observable should have passed elements through to subscriptions")
 
-        subscription.prime()
-        XCTAssertEqual(0, changes, "prime() should be a no-op for SinkObservable")
+        subscription.request()
+        XCTAssertEqual(0, changes, "request() should be a no-op for SinkObservable")
 
-        subscription.detach()
-        sink.put(2)
-        XCTAssertEqual(0, changes, "detached subscription should not be called")
+        subscription.unsubscribe()
+        sinkof.put(2)
+        XCTAssertEqual(0, changes, "unsubscribeed subscription should not be called")
     }
 
 //    func testTransformableConduits() {
@@ -972,7 +1117,7 @@ public class ChannelTests: XCTestCase {
 //        XCTAssertEqual("XX", state.optionalStringField ?? "<nil>")
 //
 //        /// Test that disconnecting the binding actually removes the observers
-//        qsb.detach()
+//        qsb.unsubscribe()
 //        qs1.value += "XYZ"
 //        XCTAssertEqual("XX", state.optionalStringField ?? "<nil>")
     }
@@ -1240,12 +1385,12 @@ public class ChannelTests: XCTestCase {
         XCTAssert(requiredNSStringField == "foo", "failed: \(requiredNSStringField)")
 
 //        let preDetachCount = countElements(a1.subscriptions)
-        a1a.detach()
+        a1a.unsubscribe()
 //        let postDetachCount = countElements(a1.subscriptions)
-//        XCTAssertEqual(postDetachCount, preDetachCount - 1, "detaching the subscription should have removed it from the subscription list")
+//        XCTAssertEqual(postDetachCount, preDetachCount - 1, "unsubscribeing the subscription should have removed it from the subscription list")
 
         state.requiredNSStringField = "foo1"
-        XCTAssertNotEqual(requiredNSStringField, "foo1", "detached observable should not have fired")
+        XCTAssertNotEqual(requiredNSStringField, "foo1", "unsubscribeed observable should not have fired")
 
         var optionalNSStringField: NSString?
         let a2 = state∞(state.optionalNSStringField)
@@ -1596,7 +1741,7 @@ public class ChannelTests: XCTestCase {
         }
 
         XCTAssertEqual(0, StatefulObjectCount)
-        subscription!.detach() // ensure that the subscription doesn't try to access a bad pointer
+        subscription!.unsubscribe() // ensure that the subscription doesn't try to access a bad pointer
     }
 
     public func teststFieldRemoval() {
@@ -1672,14 +1817,14 @@ public class ChannelTests: XCTestCase {
                 let op = NSOperation()
                 let channel = op∞(op.cancelled, "cancelled")
 
-                var subscribements: [Subscription] = []
+                var subscriptions: [Subscription] = []
                 for i in 1...10 {
-                    let subscribement = channel ∞> { _ in }
-                    subscribements += [subscribement as Subscription]
+                    let subscription = channel ∞> { _ in }
+                    subscriptions += [subscription as Subscription]
                 }
 
                 // we will crash if we rely on the KVO auto-removal here
-                subscribements.map { $0.detach() }
+                subscriptions.map { $0.unsubscribe() }
             }
         }
     }
@@ -1773,12 +1918,12 @@ public class ChannelTests: XCTestCase {
 
 
         // ensure that priming the channel actually causes it to send out a value
-        subscription.prime()
-        XCTAssertEqual(0.0, subscription.source.value)
+        subscription.request()
+        XCTAssertEqual(0.0, channel.value)
         XCTAssertEqual(1, count)
 
-        subscription.prime()
-        XCTAssertEqual(0.0, subscription.source.value)
+        subscription.request()
+        XCTAssertEqual(0.0, channel.value)
         XCTAssertEqual(2, count)
     }
 
@@ -2181,7 +2326,7 @@ public class ChannelTests: XCTestCase {
         button.performClick(self); XCTAssertEqual(--clicks, 0)
         button.performClick(self); XCTAssertEqual(--clicks, 0)
 
-        subscription.detach()
+        subscription.unsubscribe()
 
         button.performClick(self); XCTAssertEqual(clicks, 0)
         button.performClick(self); XCTAssertEqual(clicks, 0)
@@ -2219,12 +2364,12 @@ public class ChannelTests: XCTestCase {
         textField.enabled = true
         XCTAssertEqual(true, enabled)
 
-        textSubscription.detach()
+        textSubscription.unsubscribe()
 
         textField.stringValue = "QRS"
         XCTAssertEqual("XYZ", text)
 
-        enabledSubscription.detach()
+        enabledSubscription.unsubscribe()
 
         textField.enabled = false
         XCTAssertEqual(true, enabled)
@@ -2354,14 +2499,14 @@ public class ChannelTests: XCTestCase {
             tap(); taps -= 2; XCTAssertEqual(taps, 0)
         }
 
-        subscription1.detach()
+        subscription1.unsubscribe()
         XCTAssertEqual(1, button.allTargets().count)
         if buttonTapsHappen {
             tap(); taps -= 1; XCTAssertEqual(taps, 0)
             tap(); taps -= 1; XCTAssertEqual(taps, 0)
         }
 
-        subscription2.detach()
+        subscription2.unsubscribe()
         XCTAssertEqual(0, button.allTargets().count)
         if buttonTapsHappen {
             tap(); taps -= 0; XCTAssertEqual(taps, 0)
@@ -2391,12 +2536,12 @@ public class ChannelTests: XCTestCase {
         textField.enabled = true
         XCTAssertEqual(true, enabled)
 
-        textSubscription.detach()
+        textSubscription.unsubscribe()
 
         textField.text = "XYZ"
         XCTAssertEqual("ABC", text)
         
-        enabledSubscription.detach()
+        enabledSubscription.unsubscribe()
         
         textField.enabled = false
         XCTAssertEqual(true, enabled)
@@ -2453,8 +2598,8 @@ public class ChannelTests: XCTestCase {
 //        
 //        println("progress: \(textField.text)") // “progress: 15% completed”
 
-        subscription.detach() // FIXME: memory leak
-        pout.detach() // FIXME: crash
+        subscription.unsubscribe() // FIXME: memory leak
+        pout.unsubscribe() // FIXME: crash
     }
     #endif
 
