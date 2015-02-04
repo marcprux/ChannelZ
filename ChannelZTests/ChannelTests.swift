@@ -296,7 +296,7 @@ public class ChannelTests: XCTestCase {
 
     func testReduceNumbers() {
         var numberz = (1...100).channel()
-        let bufferer = numberz.reduce(0, combine: +, isTerminator: { $0 % 7 == 0 })
+        let bufferer = numberz.reduce(0, combine: +, isTerminator: { b,x in x % 7 == 0 })
         let a1 = 1+2+3+4+5+6+7
         let a2 = 8+9+10+11+12+13+14
         XCTAssertEqual([a1, a2, 126, 175, 224, 273, 322, 371, 420, 469, 518, 567, 616, 665], bufferer.immediateItems)
@@ -322,7 +322,7 @@ public class ChannelTests: XCTestCase {
     }
 
     func testReduceStrings() {
-        func isSpace(str: String)->Bool { return str == " " }
+        func isSpace(buf: String, str: String)->Bool { return str == " " }
         let characters = map("this is a pretty good string!", { String($0) })
         var characterz = characters.channel()
         let reductor = characterz.reduce("", combine: +, isTerminator: isSpace, includeTerminators: false)
@@ -559,7 +559,7 @@ public class ChannelTests: XCTestCase {
                 reduce(2...n, "S1", { s,i in s + ", S\(i)" + ")" }),
                 ", T>)->Channel",
                 "<(" + types("S", n) + "), T>",
-                " { return Channel(source: (" + flatTuple(n, "\(pname).source", false) + "), rcvr.reception) }",
+                " { let src = \(pname).source; return Channel(source: (" + flatTuple(n, "src", false) + "), rcvr.reception) }",
             ]
 
             return join("", parts)
@@ -567,7 +567,7 @@ public class ChannelTests: XCTestCase {
 
 
         
-        let flattenSources5 = "private func flattenSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((((S1, S2), S3), S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { return Channel(source: (rcvr.source.0.0.0.0, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.reception) }"
+        let flattenSources5 = "private func flattenSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((((S1, S2), S3), S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { let src = \(pname).source; return Channel(source: (src.0.0.0.0, src.0.0.0.1, src.0.0.1, src.0.1, src.1), rcvr.reception) }"
         XCTAssert(flattenSources5.hasPrefix(genFlatSource(5)), "\nGEN: \(genFlatSource(5))\nVS.: \(flattenSources5)")
         XCTAssertEqual(genFlatSource(5), flattenSources5)
 
@@ -584,13 +584,13 @@ public class ChannelTests: XCTestCase {
                 types("S", n-1),
                 "), S\(n)), T>)->Channel",
                 "<(" + types("S", n) + "), T>",
-                " { return Channel(source: (" + combineTuple(n, "\(pname).source", false) + "), rcvr.reception) }",
+                " { let src = \(pname).source; return Channel(source: (" + combineTuple(n, "src", false) + "), rcvr.reception) }",
             ]
 
             return join("", parts)
         }
 
-        let comboSources5 = "private func combineSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((S1, S2, S3, S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.1), rcvr.reception) }"
+        let comboSources5 = "private func combineSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((S1, S2, S3, S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { let src = \(pname).source; return Channel(source: (src.0.0, src.0.1, src.0.2, src.0.3, src.1), rcvr.reception) }"
         XCTAssert(comboSources5.hasPrefix(genComboSource(5)), "\nGEN: \(genComboSource(5))\nVS.: \(comboSources5)")
         XCTAssertEqual(genComboSource(5), comboSources5)
 
@@ -646,7 +646,7 @@ public class ChannelTests: XCTestCase {
             for i in 3...max { println(genComboElement(i)) }
         }
 
-//        dumptups(20)
+        dumptups(12)
     }
 
 

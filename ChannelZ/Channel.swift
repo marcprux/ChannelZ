@@ -6,17 +6,19 @@
 //  License: MIT (or whatever)
 //
 
+// MARK: Channel Basics
+
 /// A Channel is a passive multi-phase receiver of items of a given type. It is a push-based version
 /// of Swift's pull-based `Generator` type. Channels can add phases that transform, filter, merge
 /// and aggregate items that are passed through the channel. They are well-suited to handling
-/// an asynchronous stream of events such as networking and UI interactions.
+/// asynchronous stream of events such as networking and UI interactions.
 ///
-/// To listen for items, call the `receive` function with a closure that accepts the Channel's element.
+/// To listen for items, call the `receive` function with a closure that accepts the Channel's element type.
 /// This will return a `Receipt`, which can later be used to cancel reception.  A `Channel` can have multiple 
 /// receivers active, and receivers can be added to different phases of the Channel without interfering with each other.
 ///
-/// A `Channel` is roughly analogous to the `Observable` in the ReactiveX pattern,
-/// as described at: http://reactivex.io/documentation/observable.html
+/// A `Channel` is roughly analogous to the `Observable` in the ReactiveX pattern, as described at: 
+/// http://reactivex.io/documentation/observable.html
 /// The primary differences are that a `Channel` keeps a reference to its source which allows `conduit`s
 /// to be created, and that a `Channel` doesn't have any `onError` or `onCompletion`
 /// signale handlers, which means that a `Channel` is effectively infinite.
@@ -47,6 +49,13 @@ public struct Channel<S, T> {
         return reception(receiver)
     }
 
+    /// Erases the source type from this `Channel` to `Void`, which can be useful for simplyfying the signature
+    /// for functions that don't care about the source's type or for channel phases that want to ensure the source
+    /// cannot be accessed
+    public func void()->Channel<Void, T> {
+        return Channel<Void, T>(source: Void(), self.reception)
+    }
+
     /// Adds a receiver that will forward all values to the target `SinkType`
     ///
     /// :param: sink the sink that will accept all the items from the Channel
@@ -59,7 +68,7 @@ public struct Channel<S, T> {
     /// Lifts a function to the current Channel and returns a new channel phase that when received to will pass
     /// the values of the current Channel through the Operator function.
     public func lift<U>(f: (U->Void)->(T->Void))->Channel<S, U> {
-        return Channel<S, U>(source: source) { g in self.receive(f(g)) }
+        return Channel<S, U>(source: self.source) { g in self.receive(f(g)) }
     }
 
     /// Adds a channel phase which only emits those items for which a given predicate holds.
@@ -79,33 +88,10 @@ public struct Channel<S, T> {
     public func map<U>(transform: T->U)->Channel<S, U> {
         return lift { receive in { item in receive(transform(item)) } }
     }
+}
 
-    /// Adds a channel phase that spits the channel in two, where the first channel accepts elements that
-    /// fail the given predicate filter, and the second channel emits the elements that pass the predicate
-    /// (mnemonic: "right" also means "correct").
-    ///
-    /// Note that the predicate will be evaluated exactly twice for each emitted item
-    ///
-    /// :param: predicate a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
-    ///
-    /// :returns: a stateless Channel pair that passes elements depending on whether they pass or fail the predicate, respectively
-    public func split(predicate: T->Bool)->(Channel<S, T>, Channel<S, T>) {
-        return (filter({ !predicate($0) }), filter({ predicate($0) }))
-    }
-
-    /// Creates a new channel phase by applying a function that you supply to each item emitted by
-    /// the source Channel, where that function returns a Channel, and then merging those
-    /// resulting Channels and emitting the results of this merger.
-    ///
-    /// :param: transform a function that, when applied to an item emitted by the source Channel, returns a Channel
-    ///
-    /// :returns: a stateless Channel that emits the result of applying the transformation function to each
-    ///         item emitted by the source Channel and merging the results of the Channels
-    ///         obtained from this transformation.
-    public func flatMap<S2, U>(transform: T->Channel<S2, U>)->Channel<(S, [S2]), U> {
-        return flatten(map(transform))
-    }
-
+/// MARK: Stateful Channel operations (accumulators, etc.)
+public extension Channel {
     /// Adds a channel phase that will cease sending items once the terminator predicate is satisfied.
     ///
     /// :param: terminator a predicate function that will result in cancellation of all receipts when it evaluates to `true`
@@ -116,7 +102,7 @@ public struct Channel<S, T> {
         var receipts: [Receipt] = []
         var terminated = false
 
-        return Channel<S, T>(source: self.source) { f in
+        return Channel(source: self.source) { f in
             var receipt = self.receive { x in
                 if terminated { return }
                 if terminator(x) {
@@ -135,7 +121,7 @@ public struct Channel<S, T> {
     }
 
     /// Adds a channel phase that emits items only when the items pass the filter predicate against the most
-    /// recent emitted or passed item. 
+    /// recent emitted or passed item.
     ///
     /// For example, to create a filter for distinct equatable items, you would do: `sieve(!=)`
     ///
@@ -166,37 +152,6 @@ public struct Channel<S, T> {
         }
     }
 
-    /// Adds a channel phase that flattens two Channels with heterogeneous `Source` and homogeneous `Element`s
-    /// into one Channel, without any transformation, so they act like a single Channel.
-    ///
-    /// :param: with a Channel to be merged
-    ///
-    /// :returns: an stateless Channel that emits items from `self` and `with`
-    public func merge<S2>(with: Channel<S2, T>)->Channel<(S, S2), T> {
-        return Channel<(S, S2), T>(source: (self.source, with.source)) { f in
-            return ReceiptOf(receipts: [self.receive(f), with.receive(f)])
-        }
-    }
-
-    /// Adds a channel phase that buffers emitted items such that the receiver will
-    /// receive a array of the buffered items
-    ///
-    /// :param: count the size of the buffer
-    ///
-    /// :returns: a stateful Channel that buffers its items until it the buffer reaches `count`
-    public func buffer(count: Int)->Channel<S, [T]> {
-        var buffer: [T] = []
-        buffer.reserveCapacity(count)
-
-        return lift { receive in { item in
-            buffer += [item]
-            if buffer.count >= count {
-                receive(buffer)
-                buffer.removeAll(keepCapacity: true)
-            }
-        }
-        }
-    }
 
     /// Adds a channel phase that drops the first `count` elements.
     ///
@@ -207,8 +162,8 @@ public struct Channel<S, T> {
         return enumerate().filter({ $0.0 >= count }).map({ $0.1 })
     }
 
-    /// Adds a channel phase that emits a tuples of pairs (*n*, *x*), 
-    /// where *n*\ s are consecutive `Int`\ s starting at zero, 
+    /// Adds a channel phase that emits a tuples of pairs (*n*, *x*),
+    /// where *n*\ s are consecutive `Int`\ s starting at zero,
     /// and *x*\ s are the elements
     ///
     /// :returns: a stateful Channel that emits a tuple with the element's index
@@ -227,17 +182,71 @@ public struct Channel<S, T> {
     /// :param: clearAfterEmission if true (the default), the accumulated value will be cleared after each emission
     ///
     /// :returns: a stateful Channel that buffers its accumulated items until the terminator predicate passes
-    public func reduce<U>(initial: U, combine: (U, T)->U, isTerminator: T->Bool, includeTerminators: Bool = true, clearAfterEmission: Bool = true)->Channel<S, U> {
+    public func reduce<U>(initial: U, combine: (U, T)->U, isTerminator: (U, T)->Bool, includeTerminators: Bool = true, clearAfterEmission: Bool = true)->Channel<S, U> {
         var accumulation = initial
         return lift { receive in { item in
-            if isTerminator(item) {
+            if isTerminator(accumulation, item) {
                 if includeTerminators { accumulation = combine(accumulation, item) }
                 receive(accumulation)
                 if clearAfterEmission { accumulation = initial }
             } else {
                 accumulation = combine(accumulation, item)
             }
+            }
         }
+    }
+
+    /// Adds a channel phase that buffers emitted items such that the receiver will
+    /// receive a array of the buffered items
+    ///
+    /// :param: count the size of the buffer
+    ///
+    /// :returns: a stateful Channel that buffers its items until it the buffer reaches `count`
+    public func buffer(count: Int)->Channel<S, [T]> {
+        // note: a more optimized version of this could append to a single buffer with capacity set the count
+        // similar to how Java 8 streams implement their "mutable reduction operation" collect() method
+        // http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html#MutableReduction
+        return reduce([], combine: { b,x in b + [x] }, isTerminator: { b,x in b.count >= count-1 })
+    }
+}
+
+/// MARK: Muti-Channel combination operations
+public extension Channel {
+    /// Adds a channel phase that spits the channel in two, where the first channel accepts elements that
+    /// fail the given predicate filter, and the second channel emits the elements that pass the predicate
+    /// (mnemonic: "right" also means "correct").
+    ///
+    /// Note that the predicate will be evaluated exactly twice for each emitted item
+    ///
+    /// :param: predicate a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
+    ///
+    /// :returns: a stateless Channel pair that passes elements depending on whether they pass or fail the predicate, respectively
+    public func split(predicate: T->Bool)->(Channel<S, T>, Channel<S, T>) {
+        return (filter({ !predicate($0) }), filter({ predicate($0) }))
+    }
+
+    /// Creates a new channel phase by applying a function that you supply to each item emitted by
+    /// the source Channel, where that function returns a Channel, and then merging those
+    /// resulting Channels and emitting the results of this merger.
+    ///
+    /// :param: transform a function that, when applied to an item emitted by the source Channel, returns a Channel
+    ///
+    /// :returns: a stateless Channel that emits the result of applying the transformation function to each
+    ///         item emitted by the source Channel and merging the results of the Channels
+    ///         obtained from this transformation.
+    public func flatMap<S2, U>(transform: T->Channel<S2, U>)->Channel<(S, [S2]), U> {
+        return flatten(map(transform))
+    }
+
+    /// Adds a channel phase that flattens two Channels with heterogeneous `Source` and homogeneous `Element`s
+    /// into one Channel, without any transformation, so they act like a single Channel.
+    ///
+    /// :param: with a Channel to be merged
+    ///
+    /// :returns: an stateless Channel that emits items from `self` and `with`
+    public func merge<S2>(with: Channel<S2, T>)->Channel<(S, S2), T> {
+        return Channel<(S, S2), T>(source: (self.source, with.source)) { f in
+            return ReceiptOf(receipts: [self.receive(f), with.receive(f)])
         }
     }
 
@@ -336,15 +345,36 @@ public struct Channel<S, T> {
             return ReceiptOf(receipts: [rcpt1, rcpt2])
         }
     }
-
-    /// Erases the source type from this `Channel` to `Void`, which can be useful for simplyfying the signature
-    /// for functions that don't care about the source's type or for channel phases that want to ensure the source
-    /// cannot be accessed
-    public func void()->Channel<Void, T> {
-        return Channel<Void, T>(source: Void(), self.reception)
-    }
 }
 
+/// Flattens a Channel that emits Channels into a single Channel that emits the items emitted by
+/// those Channels, without any transformation.
+/// Note: this operation does not retain the sub-sources, since it can merge a heterogeneously-sourced series of channels
+public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>)->Channel<(S1, [S2]), T> {
+    // note that the Channel will always be an empty array of S2s; making the source type a closure returning the array would work, but it crashes the compiler
+    var s2s: [S2] = []
+    return Channel<(S1, [S2]), T>(source: (channel.source, s2s), reception: { (rcv: T->Void)->Receipt in
+        var rcpts: [Receipt] = []
+        let rcpt = channel.receive { (subobv: Channel<S2, T>) in
+            s2s += [subobv.source]
+            rcpts += [subobv.receive { (item: T) in rcv(item) }]
+        }
+        rcpts += [rcpt]
+
+        return ReceiptOf(receipts: rcpts)
+    })
+}
+
+
+/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
+/// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
+public func conduit<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt {
+    let (rcv1, rcv2) = (r1.channel(), r2.channel())
+    return ReceiptOf(receipts: [rcv1∞=>rcv2.source, rcv2∞=>rcv1.source])
+}
+
+
+// MARK: Receivables
 
 /// A `Receivable` is a type that is able to generate a `Channel`. It is a push-based version
 /// of Swift's pull-based `Sequence` type.
@@ -363,10 +393,8 @@ extension Channel : Receivable {
     public func channel()->Channel<S, T> { return self }
 }
 
-/// Channel merge operation for two receivers of the same type (operator form of `merge`)
-public func +<S1, S2, T>(lhs: Channel<S1, T>, rhs: Channel<S2, T>)->Channel<(S1, S2), T> {
-    return lhs.merge(rhs)
-}
+
+// MARK: Utilities
 
 /// Filters the given `Channel` for distinct items that conform to `Equatable`
 public func sieveDistinct<S, T where T: Equatable>(channel: Channel<S, T>)->Channel<S, T> {
@@ -422,49 +450,3 @@ public final class PropertyChannel<T>: Receivable, SinkType {
         }
     }
 }
-
-
-/// Creates a one-way pipe betweek a `Channel` and a `SinkType`, such that all receiver emissions are sent to the sink.
-/// This is the operator form of `pipe`
-public func ∞-><S1, T, S2: SinkType where T == S2.Element>(r: Channel<S1, T>, s: S2)->Receipt { return r.pipe(s) }
-infix operator ∞-> { }
-
-
-/// Creates a one-way pipe betweek a `Channel` and an `Equatable` `SinkType`, such that all receiver emissions are sent to the sink.
-/// This is the operator form of `pipe`
-public func ∞=><S1, T, S2: SinkType where T == S2.Element, T: Equatable>(r: Channel<S1, T>, s: S2)->Receipt { return r.sieve(!=).pipe(s) }
-infix operator ∞=> { }
-
-
-/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
-/// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
-public func conduit<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt {
-    let (rcv1, rcv2) = (r1.channel(), r2.channel())
-    return ReceiptOf(receipts: [rcv1∞=>rcv2.source, rcv2∞=>rcv1.source])
-}
-
-/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
-/// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
-/// This is the operator form of `channel`
-public func <=∞=><S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
-infix operator <=∞=> { }
-
-
-/// Flattens a Channel that emits Channels into a single Channel that emits the items emitted by
-/// those Channels, without any transformation.
-/// Note: this operation does not retain the sub-sources, since it can merge a heterogeneously-sourced series of receivers
-public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>)->Channel<(S1, [S2]), T> {
-    // note that the Channel will always be an empty array of S2s; making the source type a closure returning the array would work, but it crashes the compiler
-    var s2s: [S2] = []
-    return Channel<(S1, [S2]), T>(source: (channel.source, s2s), reception: { (rcv: T->Void)->Receipt in
-        var rcpts: [Receipt] = []
-        let rcpt = channel.receive { (subobv: Channel<S2, T>) in
-            s2s += [subobv.source]
-            rcpts += [subobv.receive { (item: T) in rcv(item) }]
-        }
-        rcpts += [rcpt]
-
-        return ReceiptOf(receipts: rcpts)
-    })
-}
-
