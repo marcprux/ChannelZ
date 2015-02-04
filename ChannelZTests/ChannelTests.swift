@@ -170,7 +170,7 @@ public class ChannelTests: XCTestCase {
         let obv = receiveSink(Int)
 
         var count1 = 0, count2 = 0
-        let (channel1, channel2) = obv.split({ $0 > 0 })
+        let (channel1, channel2) = obv.split({ $0 <= 0 })
 
         let rcpt1 = channel1.receive({ _ in count1 += 1 })
         let rcpt2 = channel2.receive({ _ in count2 += 1 })
@@ -313,7 +313,7 @@ public class ChannelTests: XCTestCase {
         func always<T>(_: T)->Bool { return true }
         
         var numberz = (1...10).channel()
-        let avg1 = numberz.map({ Double($0) }).map(index()).reduce(0, combine: runningAverage, isTerminator: always, includeTerminators: true, clearAfterEmission: false)
+        let avg1 = numberz.map({ Double($0) }).enumerate().reduce(0, combine: runningAverage, isTerminator: always, includeTerminators: true, clearAfterEmission: false)
         XCTAssertEqual([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5], avg1.immediateItems)
 
         let avg2 = numberz.map({ Double($0 * 10) }).map(index()).reduce(0, combine: runningAverage, isTerminator: always, includeTerminators: true, clearAfterEmission: false)

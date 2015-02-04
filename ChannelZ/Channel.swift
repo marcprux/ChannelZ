@@ -40,7 +40,7 @@ public struct Channel<S, T> {
 
     /// Adds the given receiver block to this Channel's list to receive all items it emits
     ///
-    /// :param: `receiver` the block to be executed whenever this Channel emits an item
+    /// :param: receiver the block to be executed whenever this Channel emits an item
     ///
     /// :returns: a `Receipt`, which can be used to later `cancel` from receiving items
     public func receive(receiver: T->Void)->Receipt {
@@ -49,7 +49,7 @@ public struct Channel<S, T> {
 
     /// Adds a receiver that will forward all values to the target `SinkType`
     ///
-    /// :param: `sink` the sink that will accept all the items from the Channel
+    /// :param: sink the sink that will accept all the items from the Channel
     ///
     /// :returns: a `Receipt` for the pipe
     public func pipe<S2: SinkType where S2.Element == T>(var sink: S2)->Receipt {
@@ -64,7 +64,7 @@ public struct Channel<S, T> {
 
     /// Adds a channel phase which only emits those items for which a given predicate holds.
     ///
-    /// :param: `predicate` a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
+    /// :param: predicate a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
     ///
     /// :returns: a stateless Channel that emits only those items in the original Channel that the filter evaluates as `true`
     public func filter(predicate: T->Bool)->Channel<S, T> {
@@ -73,7 +73,7 @@ public struct Channel<S, T> {
 
     /// Adds a channel phase that applies the given function to each item emitted by a Channel and emits the result.
     ///
-    /// :param: `transform` a function to apply to each item emitted by the Channel
+    /// :param: transform a function to apply to each item emitted by the Channel
     ///
     /// :returns: a stateless Channel that emits the items from the source Channel, transformed by the given function
     public func map<U>(transform: T->U)->Channel<S, U> {
@@ -81,20 +81,23 @@ public struct Channel<S, T> {
     }
 
     /// Adds a channel phase that spits the channel in two, where the first channel accepts elements that
-    /// pass the given predicate filter, and the second channel accepts the elements that fail the predicate
+    /// fail the given predicate filter, and the second channel emits the elements that pass the predicate
+    /// (mnemonic: "right" also means "correct").
     ///
-    /// :param: `predicate` a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
+    /// Note that the predicate will be evaluated exactly twice for each emitted item
+    ///
+    /// :param: predicate a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
     ///
     /// :returns: a stateless Channel pair that passes elements depending on whether they pass or fail the predicate, respectively
     public func split(predicate: T->Bool)->(Channel<S, T>, Channel<S, T>) {
-        return (filter({ predicate($0) }), filter({ !predicate($0) }))
+        return (filter({ !predicate($0) }), filter({ predicate($0) }))
     }
 
     /// Creates a new channel phase by applying a function that you supply to each item emitted by
     /// the source Channel, where that function returns a Channel, and then merging those
     /// resulting Channels and emitting the results of this merger.
     ///
-    /// :param: `transform` a function that, when applied to an item emitted by the source Channel, returns a Channel
+    /// :param: transform a function that, when applied to an item emitted by the source Channel, returns a Channel
     ///
     /// :returns: a stateless Channel that emits the result of applying the transformation function to each
     ///         item emitted by the source Channel and merging the results of the Channels
@@ -105,8 +108,8 @@ public struct Channel<S, T> {
 
     /// Adds a channel phase that will cease sending items once the terminator predicate is satisfied.
     ///
-    /// :param: `terminator` a predicate function that will result in cancellation of all receipts when it evaluates to `true`
-    /// :param: `terminus` an optional final sentinal closure that will be sent once after the `terminator` evaluates to `true`
+    /// :param: terminator a predicate function that will result in cancellation of all receipts when it evaluates to `true`
+    /// :param: terminus an optional final sentinal closure that will be sent once after the `terminator` evaluates to `true`
     ///
     /// :returns: a stateful Channel that emits items until the `terminator` evaluates to true
     public func terminate(terminator: T->Bool, terminus: (()->T)? = nil)->Channel<S, T> {
@@ -138,9 +141,9 @@ public struct Channel<S, T> {
     ///
     /// **Note:** the most recent value will be retained by the Channel for as long as there are receivers
     ///
-    /// :param: `predicate` a function that evaluates the current item against the previous item
-    /// :param: `lastPassed`    when `false` (the default), the `previous` will always be the most recent item in the sequence
-    ///                         when `true`, the `previous` wil be the last item that passed the predicate
+    /// :param: predicate a function that evaluates the current item against the previous item
+    /// :param: lastPassed  when `false` (the default), the `previous` will always be the most recent item in the sequence
+    ///                     when `true`, the `previous` wil be the last item that passed the predicate
     ///
     /// :returns: a stateful Channel that emits the the items that pass the predicate
     public func sieve(predicate: (current: T, previous: T)->Bool, lastPassed: Bool = false)->Channel<S, T> {
@@ -166,7 +169,7 @@ public struct Channel<S, T> {
     /// Adds a channel phase that flattens two Channels with heterogeneous `Source` and homogeneous `Element`s
     /// into one Channel, without any transformation, so they act like a single Channel.
     ///
-    /// :param: `with` a Channel to be merged
+    /// :param: with a Channel to be merged
     ///
     /// :returns: an stateless Channel that emits items from `self` and `with`
     public func merge<S2>(with: Channel<S2, T>)->Channel<(S, S2), T> {
@@ -178,7 +181,7 @@ public struct Channel<S, T> {
     /// Adds a channel phase that buffers emitted items such that the receiver will
     /// receive a array of the buffered items
     ///
-    /// :param: `count` the size of the buffer
+    /// :param: count the size of the buffer
     ///
     /// :returns: a stateful Channel that buffers its items until it the buffer reaches `count`
     public func buffer(count: Int)->Channel<S, [T]> {
@@ -197,22 +200,31 @@ public struct Channel<S, T> {
 
     /// Adds a channel phase that drops the first `count` elements.
     ///
-    /// :param: `count` the number of elements to skip before emitting items
+    /// :param: count the number of elements to skip before emitting items
     ///
     /// :returns: a stateful Channel that drops the first `count` elements.
     public func drop(count: Int)->Channel<S, T> {
-        var seen = -count
-        return filter { _ in seen++ >= 0 }
+        return enumerate().filter({ $0.0 >= count }).map({ $0.1 })
+    }
+
+    /// Adds a channel phase that emits a tuples of pairs (*n*, *x*), 
+    /// where *n*\ s are consecutive `Int`\ s starting at zero, 
+    /// and *x*\ s are the elements
+    ///
+    /// :returns: a stateful Channel that emits a tuple with the element's index
+    public func enumerate()->Channel<S, (Int, T)> {
+        var index = 0
+        return map({ (index++, $0) })
     }
 
     /// Adds a channel phase that aggregates items with the given combine function and then
     /// emits the items when the terminator predicate is satisified.
     ///
-    /// :param: `initial` the initial accumulated value
-    /// :param: `combine` the combinator function to call with the accumulated value
-    /// :param: `isTerminator` the predicate that signifies whether an item should cause the accumulated value to be emitted and cleared
-    /// :param: `includeTerminators` if true (the default), then terminator items will be included in the accumulation
-    /// :param: `clearAfterEmission` if true (the default), the accumulated value will be cleared after each emission
+    /// :param: initial the initial accumulated value
+    /// :param: combine the combinator function to call with the accumulated value
+    /// :param: isTerminator the predicate that signifies whether an item should cause the accumulated value to be emitted and cleared
+    /// :param: includeTerminators if true (the default), then terminator items will be included in the accumulation
+    /// :param: clearAfterEmission if true (the default), the accumulated value will be cleared after each emission
     ///
     /// :returns: a stateful Channel that buffers its accumulated items until the terminator predicate passes
     public func reduce<U>(initial: U, combine: (U, T)->U, isTerminator: T->Bool, includeTerminators: Bool = true, clearAfterEmission: Bool = true)->Channel<S, U> {
@@ -234,8 +246,8 @@ public struct Channel<S, T> {
     /// The number of receiver invocations of the resulting `Channel<(T, U)>`
     /// is the minumum of the number of invocations of `self` and `with`.
     ///
-    /// :param: `with` the Channel to zip with
-    /// :param: `capacity` (optional) the maximum buffer size for the channels; if either buffer
+    /// :param: with the Channel to zip with
+    /// :param: capacity (optional) the maximum buffer size for the channels; if either buffer
     ///     exceeds capacity, earlier elements will be dropped silently
     ///
     /// :returns: a stateful Channel that pairs up values from `self` and `with` Channels.
@@ -277,14 +289,48 @@ public struct Channel<S, T> {
     }
 
     /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
-    /// into a tuple of optionals that will be emitted when either of the elements change
+    /// into a tuple of the latest vaues that have been received on either channel; note that that 
+    /// latest version of each of the channels will be retained, and that no tuples will be emitted
+    /// until both the channels have had at least one event. If `source1` emits 2 events followed by
+    /// `source` emitting 1 event, only a tuple with `source1`'s second item will be emitted; the first
+    /// item will be lost.
     ///
-    /// :param: `other` the Channel to zip with
+    /// Unlike `zip`, `combine` does not index the values with each other, but instead emits an event
+    /// whenever either channel emits an event once it has been primed.
+    ///
+    /// :param: other the Channel to combine with
+    ///
+    /// :returns: a stateful Channel that emits the item of both `self` or `other`.
+    public func combine<S2, T2>(other: Channel<S2, T2>)->Channel<(S, S2), (T, T2)> {
+        typealias Both = (T, T2)
+        var lasta: T?
+        var lastb: T2?
+
+        return Channel<(S, S2), Both>(source: (self.source, other.source)) { (sub: (Both->Void)) in
+            let rcpt1 = self.receive { a in
+                lasta = a
+                if let lastb = lastb { sub(Both(a, lastb)) }
+
+            }
+            let rcpt2 = other.receive { b in
+                lastb = b
+                if let lasta = lasta { sub(Both(lasta, b)) }
+            }
+            return ReceiptOf(receipts: [rcpt1, rcpt2])
+        }
+    }
+
+    /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
+    /// into a tuple of optionals that will be emitted when either of the elements change.
+    /// Unlike `combine`, this phase will begin emitting events immediately upon either of the combined
+    /// channels emitting events; previous values are not retained, so this Channel is stateless.
+    ///
+    /// :param: other the Channel to either with
     ///
     /// :returns: a stateless Channel that emits the item of either `self` or `other`.
     public func either<S2, T2>(other: Channel<S2, T2>)->Channel<(S, S2), (T?, T2?)> {
         typealias Either = (T?, T2?)
-        return Channel<(S, S2), (T?, T2?)>(source: (self.source, other.source)) { (sub: (Either->Void)) in
+        return Channel<(S, S2), Either>(source: (self.source, other.source)) { (sub: (Either->Void)) in
             let rcpt1 = self.receive { v1 in sub(Either(v1, nil)) }
             let rcpt2 = other.receive { v2 in sub(Either(nil, v2)) }
             return ReceiptOf(receipts: [rcpt1, rcpt2])
@@ -292,7 +338,8 @@ public struct Channel<S, T> {
     }
 
     /// Erases the source type from this `Channel` to `Void`, which can be useful for simplyfying the signature
-    /// for functions that don't care about the source or for releasing the source when it isn't needed
+    /// for functions that don't care about the source's type or for channel phases that want to ensure the source
+    /// cannot be accessed
     public func void()->Channel<Void, T> {
         return Channel<Void, T>(source: Void(), self.reception)
     }
