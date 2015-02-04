@@ -6,21 +6,23 @@
 //  License: MIT (or whatever)
 //
 
-/// A Channel is a passive multi-stage receiver of items of a given type. It is a push-based version
+/// A Channel is a passive multi-phase receiver of items of a given type. It is a push-based version
 /// of Swift's pull-based `Generator` type. Channels can add phases that transform, filter, merge
-/// and aggregate items that are passed through the channel.
+/// and aggregate items that are passed through the channel. They are well-suited to handling
+/// an asynchronous stream of events such as networking and UI interactions.
 ///
-/// To listen for items, call the `receive` function with the block that accepts the typed item. This will
-/// return a `Receipt`, which can later be used to cancel reception. A `Channel` can have multiple
-/// receivers active at any time.
+/// To listen for items, call the `receive` function with a closure that accepts the Channel's element.
+/// This will return a `Receipt`, which can later be used to cancel reception.  A `Channel` can have multiple 
+/// receivers active, and receivers can be added to different phases of the Channel without interfering with each other.
 ///
 /// A `Channel` is roughly analogous to the `Observable` in the ReactiveX pattern,
 /// as described at: http://reactivex.io/documentation/observable.html
-/// The primary differences are that a `Channel` doesn't have any `onError` or `onCompletion`
-/// signale handlers, which means that a `Channel` is effectively infinite. Error and completion
-/// handling should be implemented at a higher level, where, for example, they could be supported
-/// by having the Channel type be a Swift enum with cases for `.Value(T)`, `.Error(X)`, and `.Completion`,
-/// and by adding a `terminate` phase to the `Channel`
+/// The primary differences are that a `Channel` keeps a reference to its source which allows `conduit`s
+/// to be created, and that a `Channel` doesn't have any `onError` or `onCompletion`
+/// signale handlers, which means that a `Channel` is effectively infinite.
+/// Error and completion handling should be implemented at a higher level, where, for example, they 
+/// might be supported by having the Channel's Element type be a Swift enum with cases for 
+/// `.Value(T)`, `.Error(X)`, and `.Completion`, and by adding a `terminate` phase to the `Channel`
 public struct Channel<S, T> {
     /// The underlying unconstrained source of this `Channel`
     public let source: S
@@ -29,11 +31,11 @@ public struct Channel<S, T> {
     public typealias Receiver = T->Void
 
     /// The closure to be executed whenever a receiver is added, where all the receiver logic is performed
-    internal let recipio: Receiver->Receipt
+    internal let reception: Receiver->Receipt
 
-    public init(source: S, recipio: Receiver->Receipt) {
+    public init(source: S, reception: Receiver->Receipt) {
         self.source = source
-        self.recipio = recipio
+        self.reception = reception
     }
 
     /// Adds the given receiver block to this Channel's list to receive all items it emits
@@ -42,7 +44,7 @@ public struct Channel<S, T> {
     ///
     /// :returns: a `Receipt`, which can be used to later `cancel` from receiving items
     public func receive(receiver: T->Void)->Receipt {
-        return recipio(receiver)
+        return reception(receiver)
     }
 
     /// Adds a receiver that will forward all values to the target `SinkType`
@@ -76,6 +78,16 @@ public struct Channel<S, T> {
     /// :returns: a stateless Channel that emits the items from the source Channel, transformed by the given function
     public func map<U>(transform: T->U)->Channel<S, U> {
         return lift { receive in { item in receive(transform(item)) } }
+    }
+
+    /// Adds a channel phase that spits the channel in two, where the first channel accepts elements that
+    /// pass the given predicate filter, and the second channel accepts the elements that fail the predicate
+    ///
+    /// :param: `predicate` a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
+    ///
+    /// :returns: a stateless Channel pair that passes elements depending on whether they pass or fail the predicate, respectively
+    public func split(predicate: T->Bool)->(Channel<S, T>, Channel<S, T>) {
+        return (filter({ predicate($0) }), filter({ !predicate($0) }))
     }
 
     /// Creates a new channel phase by applying a function that you supply to each item emitted by
@@ -124,13 +136,13 @@ public struct Channel<S, T> {
     ///
     /// For example, to create a filter for distinct equatable items, you would do: `sieve(!=)`
     ///
+    /// **Note:** the most recent value will be retained by the Channel for as long as there are receivers
+    ///
     /// :param: `predicate` a function that evaluates the current item against the previous item
     /// :param: `lastPassed`    when `false` (the default), the `previous` will always be the most recent item in the sequence
     ///                         when `true`, the `previous` wil be the last item that passed the predicate
     ///
     /// :returns: a stateful Channel that emits the the items that pass the predicate
-    ///
-    /// **Note:** the most recent value will be retained by the Channel for as long as there are receivers
     public func sieve(predicate: (current: T, previous: T)->Bool, lastPassed: Bool = false)->Channel<S, T> {
         var previous: T?
         return lift { receive in { item in
@@ -282,7 +294,7 @@ public struct Channel<S, T> {
     /// Erases the source type from this `Channel` to `Void`, which can be useful for simplyfying the signature
     /// for functions that don't care about the source or for releasing the source when it isn't needed
     public func void()->Channel<Void, T> {
-        return Channel<Void, T>(source: Void(), self.recipio)
+        return Channel<Void, T>(source: Void(), self.reception)
     }
 }
 
@@ -397,7 +409,7 @@ infix operator <=∞=> { }
 public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>)->Channel<(S1, [S2]), T> {
     // note that the Channel will always be an empty array of S2s; making the source type a closure returning the array would work, but it crashes the compiler
     var s2s: [S2] = []
-    return Channel<(S1, [S2]), T>(source: (channel.source, s2s), recipio: { (rcv: T->Void)->Receipt in
+    return Channel<(S1, [S2]), T>(source: (channel.source, s2s), reception: { (rcv: T->Void)->Receipt in
         var rcpts: [Receipt] = []
         let rcpt = channel.receive { (subobv: Channel<S2, T>) in
             s2s += [subobv.source]
