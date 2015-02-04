@@ -10,12 +10,12 @@ import Foundation
 
 public extension NSInputStream {
 
-    /// Creates an Observable for the stream and assigns it to handle `NSStreamDelegate` delegate callbacks
+    /// Creates a Receiver for the stream and assigns it to handle `NSStreamDelegate` delegate callbacks
     /// for stream events
-    public func observable(bufferLength: Int = 1024) -> Observable<InputStreamEvent> {
-        var subscriptions = SubscriptionList<InputStreamEvent>()
+    public func receive(bufferLength: Int = 1024) -> Receiver<NSInputStream, InputStreamEvent> {
+        var subscriptions = ReceptorList<InputStreamEvent>()
 
-        let delegate = ObservableStreamDelegate { event in
+        let delegate = ReceiverStreamDelegate { event in
             switch event.rawValue {
             case NSStreamEvent.None.rawValue:
                 break
@@ -47,11 +47,11 @@ public extension NSInputStream {
             }
         }
 
-        return Observable { sub in
+        return Receiver(source: self) { sub in
             self.delegate = delegate
-            let index = subscriptions.addSubscription(sub)
-            return SubscriptionOf(requester: { }, unsubscriber: {
-                subscriptions.removeSubscription(index)
+            let index = subscriptions.addReceptor(sub)
+            return ReceiptOf(requester: { }, canceller: {
+                subscriptions.removeReceptor(index)
                 if subscriptions.count == 0 {
                     self.delegate = nil
                 }
@@ -72,7 +72,7 @@ public enum InputStreamEvent {
     case Closed
 }
 
-@objc private class ObservableStreamDelegate: NSObject, NSStreamDelegate {
+@objc private class ReceiverStreamDelegate: NSObject, NSStreamDelegate {
     let handler: NSStreamEvent->Void
     init(handler: NSStreamEvent->Void) { self.handler = handler }
     func stream(aStream: NSStream, handleEvent eventCode: NSStreamEvent) { handler(eventCode) }

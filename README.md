@@ -39,7 +39,7 @@ ChannelZ's central operator is **∞**, which can be entered with `Option-5` on 
 let b1: ChannelZ<Int> = channelField(Int(0))
 let b2: ChannelZ<Int> = channelField(Int(0))
 
-let b1b2: Subscription = conduit(b1, b2)
+let b1b2: Receptor = conduit(b1, b2)
 
 b1.value
 b2.value = 99
@@ -254,7 +254,7 @@ println("slider: \(slider.value) stepper: \(stepper.value) progress: \(progbar.p
 
 ### Memory Management
 
-Subscriptions are weakly associated with their target objects, so when the objects are released, their subscriptions are also released. Note that when using closures, the standard practice of declaring `[unowned self]` is recommended in order to avert retain cycles in your own code.
+Receptors are weakly associated with their target objects, so when the objects are released, their subscriptions are also released. Note that when using closures, the standard practice of declaring `[unowned self]` is recommended in order to avert retain cycles in your own code.
 
 
 ### Operator Glossary

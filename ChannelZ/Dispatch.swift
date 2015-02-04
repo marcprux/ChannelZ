@@ -8,11 +8,11 @@
 
 import Dispatch
 
-/// Observable extension that provides dispatch queue support for scheduling the delivery of events on specific queues
-extension Observable {
+/// Receiver extension that provides dispatch queue support for scheduling the delivery of events on specific queues
+extension Receiver {
 
-    /// Instructs the observable to emit elements on the specified `queue` with an optional `time` and `barrier`
-    public func dispatch(queue: dispatch_queue_t, time: dispatch_time_t? = DISPATCH_TIME_NOW, barrier: Bool = false)->Observable<T> {
+    /// Instructs the observable to emit its items on the specified `queue` with an optional `time` delay and write `barrier`
+    public func dispatch(queue: dispatch_queue_t, time: dispatch_time_t? = DISPATCH_TIME_NOW, barrier: Bool = false)->Receiver<S, T> {
         return lift { emit in { event in
             let block = { emit(event) }
              if let time = time {
@@ -35,5 +35,9 @@ extension Observable {
             }
         }
     }
-    
+
+    /// Instructs the observable to synchronize on the specified `lockQueue`
+    public func sync(lockQueue: dispatch_queue_t = dispatch_queue_create("io.glimpse.Receiver.sync", DISPATCH_QUEUE_SERIAL))->Receiver<S, T> {
+        return lift { emit in { event in dispatch_sync(lockQueue, { emit(event) }) } }
+    }
 }
