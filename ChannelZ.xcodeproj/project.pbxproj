@@ -10,9 +10,9 @@
 		7E30DC3C1A0D6A510050EC52 /* ChannelZ.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E30DC301A0D6A510050EC52 /* ChannelZ.framework */; };
 		7E30DC431A0D6A510050EC52 /* ChannelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC421A0D6A510050EC52 /* ChannelTests.swift */; };
 		7E30DC5D1A0D6B1B0050EC52 /* Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC591A0D6B1B0050EC52 /* Foundation.swift */; };
-		7E43C2CB1A1072A4003747B6 /* Observable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CA1A1072A4003747B6 /* Observable.swift */; };
+		7E43C2CB1A1072A4003747B6 /* Receiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CA1A1072A4003747B6 /* Receiver.swift */; };
 		7E43C2CD1A1072AC003747B6 /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CC1A1072AC003747B6 /* Channel.swift */; };
-		7E43C2CF1A1073CA003747B6 /* Subscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CE1A1073CA003747B6 /* Subscription.swift */; };
+		7E43C2CF1A1073CA003747B6 /* Receptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CE1A1073CA003747B6 /* Receptor.swift */; };
 		7E43C2D31A1075D0003747B6 /* AppKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D21A1075D0003747B6 /* AppKit.swift */; };
 		7E43C2D71A10763D003747B6 /* UIKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D61A10763D003747B6 /* UIKit.swift */; };
 		7E4E53CA1A21578700B1016C /* PlayMarker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4E53C91A21578700B1016C /* PlayMarker.swift */; };
@@ -42,9 +42,9 @@
 		7E30DC591A0D6B1B0050EC52 /* Foundation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Foundation.swift; sourceTree = "<group>"; };
 		7E30DC5F1A0D6B230050EC52 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		7E30DC611A0D73690050EC52 /* ChannelZUIKit.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = ChannelZUIKit.playground; sourceTree = "<group>"; };
-		7E43C2CA1A1072A4003747B6 /* Observable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Observable.swift; sourceTree = "<group>"; };
+		7E43C2CA1A1072A4003747B6 /* Receiver.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Receiver.swift; sourceTree = "<group>"; };
 		7E43C2CC1A1072AC003747B6 /* Channel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
-		7E43C2CE1A1073CA003747B6 /* Subscription.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Subscription.swift; sourceTree = "<group>"; };
+		7E43C2CE1A1073CA003747B6 /* Receptor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Receptor.swift; sourceTree = "<group>"; };
 		7E43C2D21A1075D0003747B6 /* AppKit.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppKit.swift; sourceTree = "<group>"; };
 		7E43C2D61A10763D003747B6 /* UIKit.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIKit.swift; sourceTree = "<group>"; };
 		7E4CA3BD1A1D605F00F34E41 /* ChannelZMac.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = ChannelZMac.playground; sourceTree = "<group>"; };
@@ -100,10 +100,10 @@
 			isa = PBXGroup;
 			children = (
 				7E30DC341A0D6A510050EC52 /* Info.plist */,
-				7E43C2CA1A1072A4003747B6 /* Observable.swift */,
+				7E43C2CA1A1072A4003747B6 /* Receiver.swift */,
+				7E43C2CE1A1073CA003747B6 /* Receptor.swift */,
 				7E8C00021A80099F00180DB1 /* Network.swift */,
 				7E806D511A7F4C6F00CB3992 /* Dispatch.swift */,
-				7E43C2CE1A1073CA003747B6 /* Subscription.swift */,
 				7E43C2CC1A1072AC003747B6 /* Channel.swift */,
 				7E30DC591A0D6B1B0050EC52 /* Foundation.swift */,
 				7E7E35451A152CCD00777D72 /* CoreData.swift */,
@@ -248,9 +248,9 @@
 				7E43C2D31A1075D0003747B6 /* AppKit.swift in Sources */,
 				7E43C2D71A10763D003747B6 /* UIKit.swift in Sources */,
 				7E7E35461A152CCD00777D72 /* CoreData.swift in Sources */,
-				7E43C2CF1A1073CA003747B6 /* Subscription.swift in Sources */,
+				7E43C2CF1A1073CA003747B6 /* Receptor.swift in Sources */,
 				7ECE513B1A60A29600924B8E /* Coercible.swift in Sources */,
-				7E43C2CB1A1072A4003747B6 /* Observable.swift in Sources */,
+				7E43C2CB1A1072A4003747B6 /* Receiver.swift in Sources */,
 				7E43C2CD1A1072AC003747B6 /* Channel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
