@@ -7,8 +7,8 @@
 ////
 //
 ///// A Channel is a observable that has direct access to the underlying source value
-//public protocol BaseChannelType : ReceiverType {
-//    /// The type of element produced by the source of the Receiver
+//public protocol BaseChannelType : ChannelType {
+//    /// The type of element produced by the source of the Channel
 //    typealias SourceType
 //
 //    /// The underlying value of the channel's source
@@ -66,7 +66,7 @@
 //    public typealias SelfChannel = ChannelOf
 //
 //    /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-//    public func observable() -> Receiver<Element> { return Receiver(self) }
+//    public func observable() -> Channel<Element> { return Channel(self) }
 //
 //    /// Returns a type-erasing channel wrapper around the current channel
 //    public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -112,7 +112,7 @@
 //    public typealias SelfChannel = ChannelZ
 //
 //    /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-//    public func observable() -> Receiver<Element> { return Receiver(self) }
+//    public func observable() -> Channel<Element> { return Channel(self) }
 //
 //    /// Returns a type-erasing channel wrapper around the current channel
 //    public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -167,7 +167,7 @@
 //    public typealias SelfChannel = FieldChannel
 //
 //    /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-//    public func observable() -> Receiver<Element> { return Receiver(self) }
+//    public func observable() -> Channel<Element> { return Channel(self) }
 //
 //    /// Returns a type-erasing channel wrapper around the current channel
 //    public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -179,7 +179,7 @@
 //    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 //}
 //
-///// Creates an embedded Receiver field source
+///// Creates an embedded Channel field source
 //public func channelField<T>(source: T)->ChannelZ<T> {
 //    return ChannelZ(FieldChannel(source: source).map({ $0.value }))
 //}
@@ -228,7 +228,7 @@
 //    public typealias SelfChannel = FilteredChannel
 //
 //    /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-//    public func observable() -> Receiver<Element> { return Receiver(self) }
+//    public func observable() -> Channel<Element> { return Channel(self) }
 //
 //    /// Returns a type-erasing channel wrapper around the current channel
 //    public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -285,7 +285,7 @@
 //    public typealias SelfChannel = MappedChannel
 //
 //    /// Returns a type-erasing observable around the current channel, making the channel read-only to subsequent pipeline stages
-//    public func observable() -> Receiver<Element> { return Receiver(self) }
+//    public func observable() -> Channel<Element> { return Channel(self) }
 //
 //    /// Returns a type-erasing channel wrapper around the current channel
 //    public func channel() -> ChannelOf<SourceType, Element> { return ChannelOf(self) }
@@ -461,19 +461,19 @@
 //}
 //
 ///// One-sided conduit operator with natural equivalence between two identical types
-//public func ∞=><L : ReceiverType, R : ChannelType where L.Element == R.SourceType>(lhs: L, rhs: R)->Receptor {
+//public func ∞=><L : ChannelType, R : ChannelType where L.Element == R.SourceType>(lhs: L, rhs: R)->Receptor {
 //    let lsink = lhs.subscribe { rhs.value = $0 }
 //    return ReceptorOf(requester: { lsink.request() }, unsubscriber: { lsink.unsubscribe() })
 //}
 //
 ///// One-sided conduit operator with natural equivalence between two identical types with priming
-//public func ∞=-><L : ReceiverType, R : ChannelType where L.Element == R.SourceType>(lhs: L, rhs: R)->Receptor {
+//public func ∞=-><L : ChannelType, R : ChannelType where L.Element == R.SourceType>(lhs: L, rhs: R)->Receptor {
 //    return request(lhs ∞=> rhs)
 //}
 //
 //// this source compiles, but any source that references it crashes the compiler
 ///// One-sided conduit operator with natural equivalence between two types where the receiver is the optional of the sender
-////public func ∞~-><T, L : ReceiverType, R : ChannelType where L.Element == T, R.SourceType == Optional<T>>(lhs: L, rhs: R)->Receptor {
+////public func ∞~-><T, L : ChannelType, R : ChannelType where L.Element == T, R.SourceType == Optional<T>>(lhs: L, rhs: R)->Receptor {
 ////    let lsink = lhs.subscribe { rhs.value = $0 }
 ////    return ReceptorOf(requester: { lsink.request() }, unsubscriber: { lsink.unsubscribe() })
 ////}
@@ -481,12 +481,12 @@
 //// limited workaround for the above compiler crash by constraining the RHS to the ChannelZ and ChannelOf implementations
 //
 ///// One-sided conduit operator with natural equivalence between two types where the receiver is the optional of the sender
-//public func ∞=><T, L : ReceiverType where L.Element == T>(lhs: L, rhs: ChannelZ<Optional<T>>)->Receptor {
+//public func ∞=><T, L : ChannelType where L.Element == T>(lhs: L, rhs: ChannelZ<Optional<T>>)->Receptor {
 //    return lhs.subscribe { rhs.value = $0 }
 //}
 //
 ///// One-sided conduit operator with natural equivalence between two types where the receiver is the optional of the sender
-//public func ∞=><T, U, L : ReceiverType where L.Element == T>(lhs: L, rhs: ChannelOf<Optional<T>, U>)->Receptor {
+//public func ∞=><T, U, L : ChannelType where L.Element == T>(lhs: L, rhs: ChannelOf<Optional<T>, U>)->Receptor {
 //    return lhs.subscribe { rhs.value = $0 }
 //}
 //

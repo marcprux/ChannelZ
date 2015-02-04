@@ -1,5 +1,5 @@
 ////
-////  Receivers+UIKit.swift
+////  Channels+UIKit.swift
 ////  ChannelZ
 ////
 ////  Created by Marc Prud'hommeaux <marc@glimpse.io>
@@ -12,8 +12,8 @@
 //
 //    public extension UIControl {
 //        /// Creates a observable for various control event such as button pressed or editing changes
-//        public func controlz(_ events: UIControlEvents = .AllEvents) -> UIEventReceiver {
-//            return UIEventReceiver(control: self, events: events)
+//        public func controlz(_ events: UIControlEvents = .AllEvents) -> UIEventChannel {
+//            return UIEventChannel(control: self, events: events)
 //        }
 //    }
 //
@@ -47,8 +47,8 @@
 //        public let action: (UIEvent) -> ()
 //    }
 //
-//    /// A Receiver for UIEvent events
-//    public struct UIEventReceiver: ReceiverType {
+//    /// A Channel for UIEvent events
+//    public struct UIEventChannel: ChannelType {
 //        private let control: UIControl
 //        private let events: UIControlEvents
 //
@@ -65,10 +65,10 @@
 //        }
 //
 //        // Boilerplate observable/filter/map
-//        public typealias SelfReceiver = UIEventReceiver
-//        public func observable() -> Receiver<Element> { return Receiver(self) }
-//        public func filter(predicate: (Element)->Bool)->FilteredReceiver<SelfReceiver> { return filterReceiver(self)(predicate) }
-//        public func map<TransformedType>(transform: (Element)->TransformedType)->MappedReceiver<SelfReceiver, TransformedType> { return mapReceiver(self)(transform) }
+//        public typealias SelfChannel = UIEventChannel
+//        public func observable() -> Channel<Element> { return Channel(self) }
+//        public func filter(predicate: (Element)->Bool)->FilteredChannel<SelfChannel> { return filterChannel(self)(predicate) }
+//        public func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapChannel(self)(transform) }
 //
 //    }
 //

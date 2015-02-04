@@ -21,17 +21,12 @@ public protocol Receipt {
     func request()
 }
 
-/// An ReceiptType is a receiver for observableed state operations with the ability to cancel itself from the source observable
-public protocol ReceiptType : Receipt {
-}
-
-
 /// A type-erased receipt.
 ///
 /// Forwards operations to an arbitrary underlying receipt with the same
 /// `Element` type, hiding the specifics of the underlying receipt.
-public class ReceiptOf : ReceiptType {
-    public var cancelled: Bool = false
+public class ReceiptOf: Receipt {
+    public private(set) var cancelled: Bool = false
     let requester: ()->()
     let canceller: ()->()
 
@@ -40,13 +35,21 @@ public class ReceiptOf : ReceiptType {
         self.canceller = canceller
     }
 
+    /// Creates a Receipt backed by one or more other Receipts
     public init(receipts: [Receipt]) {
+        self.cancelled = receipts.count == 0 // no receipts means that it is cancelled already
         self.requester = { for s in receipts { s.request() } }
         self.canceller = { for s in receipts { s.cancel() } }
     }
 
+    /// Creates a Receipt backed by another Receipt
     public convenience init(receipt: Receipt) {
         self.init(receipts: [receipt])
+    }
+
+    /// Creates an empty cancelled Receipt
+    public convenience init() {
+        self.init(receipts: [])
     }
 
     /// Disconnects this receipt from the source observable
@@ -87,16 +90,6 @@ final class ReceptorList<T> {
         }
     }
 
-    /// Generates an Observable that will receive to this list
-//    func observable() -> Observable<ReceptorList<T>, T> {
-//        return Observable(self) { sub in
-//            let index = self.addReceptor(sub)
-//            return ReceptorOf(requester: { }, canceller: {
-//                self.removeReceptor(index)
-//            })
-//        }
-//    }
-
     func receive(element: T) {
         synchronized(self) { ()->(Void) in
             if self.entrancy++ > ChannelZReentrancyLimit {
@@ -110,7 +103,12 @@ final class ReceptorList<T> {
         }
     }
 
-    func addReceptor(receptor: (T)->(), requester: ()->() = { })->Int {
+    func addReceipt(receptor: (T)->(), requestor: ()->(T?))->Receipt {
+        let token = addReceptor(receptor)
+        return ReceiptOf(requester: { if let x = requestor() { self.receive(x) } }, canceller: { self.removeReceptor(token) })
+    }
+
+    func addReceptor(receptor: (T)->())->Int {
         return synchronized(self) {
             let index = self.receptorIndex++
             precondition(self.entrancy == 0, "cannot add to receptors while they are flowing")
@@ -141,9 +139,9 @@ internal func request(receipt: Receipt) -> Receipt {
 
 
 /// A TrapReceipt is a receptor to a observable that retains a number of values (default 1) when they are sent by the source
-public class TrapReceipt<S, T>: ReceiptType {
+public class TrapReceipt<S, T>: Receipt {
     public var cancelled: Bool = false
-    public let source: Receiver<S, T>
+    public let source: Channel<S, T>
 
     /// Returns the last value to be added to this trap
     public var value: T? { return values.last }
@@ -155,7 +153,7 @@ public class TrapReceipt<S, T>: ReceiptType {
 
     private var receipt: Receipt?
 
-    public init(source: Receiver<S, T>, capacity: Int) {
+    public init(source: Channel<S, T>, capacity: Int) {
         self.source = source
         self.values = []
         self.capacity = capacity
@@ -181,6 +179,6 @@ public class TrapReceipt<S, T>: ReceiptType {
 }
 
 /// Creates a trap for the last `capacity` (default 1) events of the `source` observable
-public func trap<S, T>(source: Receiver<S, T>, capacity: Int = 1) -> TrapReceipt<S, T> {
+public func trap<S, T>(source: Channel<S, T>, capacity: Int = 1) -> TrapReceipt<S, T> {
     return TrapReceipt(source: source, capacity: capacity)
 }
