@@ -6,7 +6,7 @@
 //  License: MIT (or whatever)
 //
 
-import ObjectiveC // uses for synchronizing ReceptorList with objc_sync_enter
+import ObjectiveC // uses for synchronizing ReceiverList with objc_sync_enter
 
 /// An `Receipt` is the result of `receive`ing to a Observable or Channel
 public protocol Receipt {
@@ -73,12 +73,12 @@ public class ReceiptOf: Receipt {
 /// How many levels of re-entrancy are permitted when flowing state observations
 public var ChannelZReentrancyLimit: Int = 1
 
-final class ReceptorList<T> {
-    private var receptors: [(index: Int, receptor: (T)->())] = []
+final class ReceiverList<T> {
+    private var receivers: [(index: Int, receptor: (T)->())] = []
     internal var entrancy: Int = 0
     private var receptorIndex: Int = 0
 
-    var count: Int { return receptors.count }
+    var count: Int { return receivers.count }
 
     private func synchronized<X>(lockObj: AnyObject!, closure: ()->X) -> X {
         if objc_sync_enter(lockObj) == Int32(OBJC_SYNC_SUCCESS) {
@@ -86,7 +86,7 @@ final class ReceptorList<T> {
             objc_sync_exit(lockObj)
             return retVal
         } else {
-            fatalError("Unable to synchronize on ReceptorList")
+            fatalError("Unable to synchronize on ReceiverList")
         }
     }
 
@@ -94,39 +94,39 @@ final class ReceptorList<T> {
         synchronized(self) { ()->(Void) in
             if self.entrancy++ > ChannelZReentrancyLimit {
                 #if DEBUG_CHANNELZ
-                    println("re-entrant value change limit of \(ChannelZReentrancyLimit) reached for receptors")
+                    println("re-entrant value change limit of \(ChannelZReentrancyLimit) reached for receivers")
                 #endif
             } else {
-                for (index, receptor) in self.receptors { receptor(element) }
+                for (index, receptor) in self.receivers { receptor(element) }
             }
             self.entrancy--
         }
     }
 
     func addReceipt(receptor: (T)->(), requestor: ()->(T?))->Receipt {
-        let token = addReceptor(receptor)
+        let token = addReceiver(receptor)
         return ReceiptOf(requester: { if let x = requestor() { self.receive(x) } }, canceller: { self.removeReceptor(token) })
     }
 
-    func addReceptor(receptor: (T)->())->Int {
+    func addReceiver(receptor: (T)->())->Int {
         return synchronized(self) {
             let index = self.receptorIndex++
-            precondition(self.entrancy == 0, "cannot add to receptors while they are flowing")
-            self.receptors += [(index, receptor)]
+            precondition(self.entrancy == 0, "cannot add to receivers while they are flowing")
+            self.receivers += [(index, receptor)]
             return index
         }
     }
 
     func removeReceptor(index: Int) {
         synchronized(self) {
-            self.receptors = self.receptors.filter { $0.index != index }
+            self.receivers = self.receivers.filter { $0.index != index }
         }
     }
 
-    /// Clear all the receptors
+    /// Clear all the receivers
     func clear() {
         synchronized(self) {
-            self.receptors = []
+            self.receivers = []
         }
     }
 }

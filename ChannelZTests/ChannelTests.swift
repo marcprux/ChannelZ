@@ -31,8 +31,8 @@ extension Channel {
 }
 
 /// Handy extensions to create a sequence from an arrays and ranges
-extension Array { func receiver()->Channel<Array, T> { return receiveSequence(self) } }
-extension Range { func receiver()->Channel<Range, T> { return receiveSequence(self) } }
+extension Array { func channel()->Channel<Array, T> { return channelSequence(self) } }
+extension Range { func channel()->Channel<Range, T> { return channelSequence(self) } }
 
 
 // TODO make a spec with each of https://github.com/ReactiveX/RxScala/blob/0.x/examples/src/test/scala/rx/lang/scala/examples/RxScalaDemo.scala
@@ -90,7 +90,7 @@ public class ChannelTests: XCTestCase {
         typealias S2 = SinkOf<(Float)>
         typealias S3 = ()->Void?
 
-        let o1: Channel<S1, Int> = (1...3).receiver()
+        let o1: Channel<S1, Int> = (1...3).channel()
         let o2: Channel<S2, Int> = receiveSink(Float).map({ Int($0) })
         let o3: Channel<S3, Void> = receiveClosure(coinFlip)
 
@@ -124,7 +124,7 @@ public class ChannelTests: XCTestCase {
         if let stream = NSInputStream(fileAtPath: __FILE__) {
             weak var xpc: XCTestExpectation? = expectationWithDescription("input stream")
 
-            let obv = stream.receiver()
+            let obv = stream.channel()
             var openCount = 0
             var closeCount = 0
             var count = 0
@@ -232,52 +232,71 @@ public class ChannelTests: XCTestCase {
     }
 
     func testSieveDistinct() {
-        var numberz = [1, 1, 2, 1, 2, 2, 2, 3, 3, 4].receiver()
+        var numberz = [1, 1, 2, 1, 2, 2, 2, 3, 3, 4].channel()
         let distinctor = numberz.sieve(!=)
         XCTAssertEqual([1, 2, 1, 2, 3, 4], distinctor.immediateItems)
         XCTAssertEqual(6, distinctor.map({ _ in arc4random() }).immediateItems.count)
     }
 
     func testSieveLastIncrementing() {
-        var numberz = [1, 1, 2, 1, 2, 2, 2, 3, 3, 4, 1, 3].receiver()
+        var numberz = [1, 1, 2, 1, 2, 2, 2, 3, 3, 4, 1, 3].channel()
         let incrementor = numberz.sieve(>)
         XCTAssertEqual([1, 2, 2, 3, 4, 3], incrementor.immediateItems)
     }
 
     func testSieveLastIncrementingPassed() {
-        var numberz = [1, 1, 2, 1, 2, 2, 2, 3, 3, 4, 1, 3].receiver()
+        var numberz = [1, 1, 2, 1, 2, 2, 2, 3, 3, 4, 1, 3].channel()
         let incrementor = numberz.sieve(>, lastPassed: true)
         XCTAssertEqual([1, 2, 3, 4], incrementor.immediateItems)
     }
 
     func testBuffer() {
-        var numberz = [1, 2, 3, 4, 5, 6, 7].receiver()
+        var numberz = [1, 2, 3, 4, 5, 6, 7].channel()
         let bufferer = numberz.buffer(3)
         XCTAssertEqual([[1, 2, 3], [4, 5, 6]], bufferer.immediateItems)
     }
 
     func testTerminate() {
-        var boolz = [true, true, true, false, true, false, false, true].receiver()
+        var boolz = [true, true, true, false, true, false, false, true].channel()
         let finite = boolz.terminate(!)
         XCTAssertEqual([true, true, true], finite.immediateItems)
 
-        var boolz2 = [true, true, true, false, true, false, false, true].receiver()
+        var boolz2 = [true, true, true, false, true, false, false, true].channel()
         let finite2 = boolz2.terminate(~, terminus: { false })
         XCTAssertEqual([true, true, true, false], finite2.immediateItems)
     }
 
     func testReduceNumbers() {
-        var numberz = (1...100).receiver()
+        var numberz = (1...100).channel()
         let bufferer = numberz.reduce(0, combine: +, isTerminator: { $0 % 7 == 0 })
         let a1 = 1+2+3+4+5+6+7
         let a2 = 8+9+10+11+12+13+14
         XCTAssertEqual([a1, a2, 126, 175, 224, 273, 322, 371, 420, 469, 518, 567, 616, 665], bufferer.immediateItems)
     }
 
+    func testReduceRunningAverage() {
+        // index creates an indexed pair of elements, a lazy version of Swift's EnumerateGenerator
+        func index<T>()->(item: T)->(index: Int, item: T) { var index = 0; return { item in return (index++, item) } }
+
+        // runningAgerage computes the next average in a sequence given the previous average and the current index
+        func runningAverage(prev: Double, pair: (Int, Double))->Double { return (prev * Double(pair.0) + pair.1) / Double(pair.0+1) }
+
+        // always always returns true
+        func always<T>(_: T)->Bool { return true }
+        
+        var numberz = (1...10).channel()
+        let avg1 = numberz.map({ Double($0) }).map(index()).reduce(0, combine: runningAverage, isTerminator: always, includeTerminators: true, clearAfterEmission: false)
+        XCTAssertEqual([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5], avg1.immediateItems)
+
+        let avg2 = numberz.map({ Double($0 * 10) }).map(index()).reduce(0, combine: runningAverage, isTerminator: always, includeTerminators: true, clearAfterEmission: false)
+        XCTAssertEqual([10, 15, 20, 25, 30, 35, 40, 45, 50, 55], avg2.immediateItems)
+
+    }
+
     func testReduceStrings() {
         func isSpace(str: String)->Bool { return str == " " }
         let characters = map("this is a pretty good string!", { String($0) })
-        var characterz = characters.receiver()
+        var characterz = characters.channel()
         let reductor = characterz.reduce("", combine: +, isTerminator: isSpace, includeTerminators: false)
         XCTAssertEqual(["this", "is", "a", "pretty", "good"], reductor.immediateItems)
     }
@@ -301,17 +320,17 @@ public class ChannelTests: XCTestCase {
 //    }
 
     func testFlatMapChannel() {
-        let numbers = (1...3).receiver()
-        let multiples = { (n: Int) in [n*2, n*3].receiver() }
+        let numbers = (1...3).channel()
+        let multiples = { (n: Int) in [n*2, n*3].channel() }
         let flatMapped: Channel<(Range<Int>, [[Int]]), Int> = numbers.flatMap(multiples)
         XCTAssertEqual([2, 3, 4, 6, 6, 9], flatMapped.immediateItems)
     }
 
 
     func testFlatMapTransformChannel() {
-        let numbers = (1...3).receiver()
-        let quotients = { (n: Int) in [Double(n)/2.0, Double(n)/4.0].receiver() }
-        let multiples = { (n: Double) in [Float(n)*3.0, Float(n)*5.0, Float(n)*7.0].receiver() }
+        let numbers = (1...3).channel()
+        let quotients = { (n: Int) in [Double(n)/2.0, Double(n)/4.0].channel() }
+        let multiples = { (n: Double) in [Float(n)*3.0, Float(n)*5.0, Float(n)*7.0].channel() }
         let flatMapped = numbers.flatMap(quotients).flatMap(multiples)
         XCTAssertEqual([1.5, 2.5, 3.5, 0.75, 1.25, 1.75, 3, 5, 7, 1.5, 2.5, 3.5, 4.5, 7.5, 10.5, 2.25, 3.75, 5.25], flatMapped.immediateItems)
     }
@@ -325,7 +344,7 @@ public class ChannelTests: XCTestCase {
 
         let person = Person()
 
-        let fnamez = person.fname.receiver().sieve(!=).drop(1) + person.lname.receiver().sieve(!=).drop(1)
+        let fnamez = person.fname.channel().sieve(!=).drop(1) + person.lname.channel().sieve(!=).drop(1)
         var names: [String] = []
         let rcpt = fnamez.receive { names += [$0] }
 
@@ -345,7 +364,7 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(["Marc", "Prud'hommeaux"], names)
 
         var levels: [Int] = []
-        let rcpt1 = person.level.receiver().sieve(>).receive({ levels += [$0] })
+        let rcpt1 = person.level.channel().sieve(>).receive({ levels += [$0] })
         person.level.value = 1
         person.level.value = 2
         person.level.value = 2
@@ -358,7 +377,7 @@ public class ChannelTests: XCTestCase {
         let propa = PropertyChannel("A")
         let propb = PropertyChannel("B")
 
-        let rcpt = propa.receiver() <=∞=> propb.receiver()
+        let rcpt = propa.channel() <=∞=> propb.channel()
 
         XCTAssertEqual("A", propa.value)
         XCTAssertEqual("A", propb.value)
@@ -375,14 +394,14 @@ public class ChannelTests: XCTestCase {
 
         propa.value = "Z"
         XCTAssertEqual("Z", propa.value)
-        XCTAssertEqual("Y", propb.value, "cancelled receptor should not have channeled the value")
+        XCTAssertEqual("Y", propb.value, "cancelled receiver should not have channeled the value")
     }
 
     func testConversionChannels() {
         let propa = PropertyChannel(0)
         let propb = PropertyChannel(0.0)
 
-        let rcpt = propa.receiver().map({ Double($0) }) <=∞=> propb.receiver().map({ Int($0) })
+        let rcpt = propa.channel().map({ Double($0) }) <=∞=> propb.channel().map({ Int($0) })
 
         XCTAssertEqual(0, propa.value)
         XCTAssertEqual(0.0, propb.value)
@@ -399,14 +418,14 @@ public class ChannelTests: XCTestCase {
 
         propa.value--
         XCTAssertEqual(1, propa.value)
-        XCTAssertEqual(2.0, propb.value, "cancelled receptor should not have channeled the value")
+        XCTAssertEqual(2.0, propb.value, "cancelled receiver should not have channeled the value")
     }
 
     func testUnstableChannels() {
         let propa = PropertyChannel(0)
         let propb = PropertyChannel(0)
 
-        let rcpt = propa.receiver() <=∞=> propb.receiver().map({ $0 + 1 })
+        let rcpt = propa.channel() <=∞=> propb.channel().map({ $0 + 1 })
 
         XCTAssertEqual(1, propa.value)
         XCTAssertEqual(1, propb.value)
@@ -423,7 +442,7 @@ public class ChannelTests: XCTestCase {
 
         propa.value--
         XCTAssertEqual(5, propa.value)
-        XCTAssertEqual(6, propb.value, "cancelled receptor should not have channeled the value")
+        XCTAssertEqual(6, propb.value, "cancelled receiver should not have channeled the value")
     }
 
     func memblock<T where T: Equatable>(check: @autoclosure ()->T, code: ()->(), file: String = __FILE__, line: UInt = __LINE__) {
@@ -438,7 +457,7 @@ public class ChannelTests: XCTestCase {
         var receipt: Receipt!
         memblock(ChannelThingsInstances, code: {
             let thing = ChannelThing()
-            receipt = thing.stringish.receiver().drop(1).sieve(!=).filter({ $0 != nil }).map({ $0! }).receive({ strs += [$0] })
+            receipt = thing.stringish.channel().drop(1).sieve(!=).filter({ $0 != nil }).map({ $0! }).receive({ strs += [$0] })
             var strings: [String?] = ["a", "b", nil, "b", "b", "c"]
             strings.map { thing.stringish.put($0) }
             XCTAssertFalse(receipt.cancelled)
@@ -452,10 +471,10 @@ public class ChannelTests: XCTestCase {
     /// We use this test to generate the hairy tuple unwrapping code for the Reveicer's flatSink, &, and | functions
     func testGenerateTuples() {
 
-        /// Takes an `Channel` with a nested tuple of outputs types and flattens the outputs into a single tuple
+        /// Takes a `Channel` with a nested tuple of outputs types and flattens the outputs into a single tuple
         let flattenElements4 = "private func flattenElements<S, T1, T2, T3, T4>(rcvr: Channel<S, (((T1, T2), T3), T4)>)->Channel<S, (T1, T2, T3, T4)> { return rcvr.map { ($0.0.0.0, $0.0.0.1, $0.0.1, $0.1) } }"
 
-        /// Takes an `Channel` with a nested tuple of outputs types and flattens the outputs into a single tuple
+        /// Takes a `Channel` with a nested tuple of outputs types and flattens the outputs into a single tuple
         let flatOptionalSink4 = "private func flatOptionalSink<S, T1, T2, T3, T4>(rcvr: Channel<S, (((T1?, T2?)?, T3?)?, T4?)>)->Channel<S, (T1?, T2?, T3?, T4?)> { return rcvr.map { ($0.0?.0?.0, $0.0?.0?.1, $0.0?.1, $0.1) } }"
 
 
@@ -872,7 +891,7 @@ public class ChannelTests: XCTestCase {
 //        c.value = ("B"); c.value = ("B"); XCTAssertEqual(0, --changes, "A to B should change once")
 //    }
 //
-//    func testKeyValueSieveUnretainedReceptor() {
+//    func testKeyValueSieveUnretainedReceiver() {
 //        var state = StatefulObject()
 //        var c = state∞(state.requiredStringField)
 //
@@ -978,7 +997,7 @@ public class ChannelTests: XCTestCase {
 //        var yf: Observable<String> = y.observable() // read-only observable of mapped channel y
 //
 //        var changes = 0
-//        var fya: Receptor = yf ∞> { (x: String) in changes += 1 }
+//        var fya: Receiver = yf ∞> { (x: String) in changes += 1 }
 //
 //        XCTAssertEqual(0, changes)
 //        x.value = (!x.value); XCTAssertEqual(0, --changes)
@@ -1002,7 +1021,7 @@ public class ChannelTests: XCTestCase {
 //        var yf: Observable<String> = y.observable() // read-only observable of channel y
 //
 //        var changes = 0
-//        var fya: Receptor = yf ∞> { (x: String) in changes += 1 }
+//        var fya: Receiver = yf ∞> { (x: String) in changes += 1 }
 //
 //        XCTAssertEqual(0, changes)
 //        x.value = (x.value + 1); XCTAssertEqual(0, --changes)
@@ -1274,11 +1293,11 @@ public class ChannelTests: XCTestCase {
 //        // FilteredChannel<MappableChannel<....
 //        let flatNest = deepNest.observable()
 //
-//        let deepReceptor = deepNest.receive({ _ in })
+//        let deepReceiver = deepNest.receive({ _ in })
 //
 ////        XCTAssertEqual("ChannelZ.FilteredObservable", _stdlib_getDemangledTypeName(deepNest))
 //        XCTAssertEqual("ChannelZ.Observable", _stdlib_getDemangledTypeName(flatNest))
-//        XCTAssertEqual("ChannelZ.ReceptorOf", _stdlib_getDemangledTypeName(deepReceptor))
+//        XCTAssertEqual("ChannelZ.ReceiverOf", _stdlib_getDemangledTypeName(deepReceiver))
 //    }
 //
 //    func testDeepNestedChannel() {
@@ -1304,7 +1323,7 @@ public class ChannelTests: XCTestCase {
 //
 //
 //        var changes = 0
-//        let deepReceptor = deepNest.receive({ _ in changes += 1 })
+//        let deepReceiver = deepNest.receive({ _ in changes += 1 })
 //
 //        deepNest.value = 12
 //        XCTAssertEqual(12, t.value)
@@ -1315,7 +1334,7 @@ public class ChannelTests: XCTestCase {
 //        XCTAssertEqual(0, --changes)
 //
 //        XCTAssertEqual("ChannelZ.FilteredChannel", _stdlib_getDemangledTypeName(deepNest))
-//        XCTAssertEqual("ChannelZ.ReceptorOf", _stdlib_getDemangledTypeName(deepReceptor))
+//        XCTAssertEqual("ChannelZ.ReceiverOf", _stdlib_getDemangledTypeName(deepReceiver))
 //
 //        // FilteredChannel<MappableChannel<....
 //        let flatObservable = deepNest.observable()
@@ -1324,16 +1343,16 @@ public class ChannelTests: XCTestCase {
 //        XCTAssertEqual("ChannelZ.Observable", _stdlib_getDemangledTypeName(flatObservable))
 //        XCTAssertEqual("ChannelZ.ChannelOf", _stdlib_getDemangledTypeName(flatChannel))
 //
-//        let flatReceptor = flatChannel.receive({ _ in })
+//        let flatReceiver = flatChannel.receive({ _ in })
 //
 //        deepNest.value--
 //        XCTAssertEqual(10, t.value)
 //        XCTAssertEqual(0, --changes)
 //
-//        deepReceptor.request()
+//        deepReceiver.request()
 //        XCTAssertEqual(0, --changes)
 //
-//        flatReceptor.request()
+//        flatReceiver.request()
 ////        XCTAssertEqual(0, --changes) // FIXME: prime message is getting lost somehow
 //    }
 //
@@ -1994,7 +2013,7 @@ public class ChannelTests: XCTestCase {
 //            ctx.persistentStoreCoordinator = psc
 //
 //            var saveCount = 0
-//            let saveCountReceptor = ctx.notifyz(NSManagedObjectContextDidSaveNotification).receive { _ in saveCount = saveCount + 1 }
+//            let saveCountReceiver = ctx.notifyz(NSManagedObjectContextDidSaveNotification).receive { _ in saveCount = saveCount + 1 }
 //
 //
 //
@@ -2119,8 +2138,8 @@ public class ChannelTests: XCTestCase {
 //    #endif
 //
 //
-//    public func testDetachedReceptor() {
-//        var subscription: Receptor?
+//    public func testDetachedReceiver() {
+//        var subscription: Receiver?
 //        autoreleasepool {
 //            let state = StatefulObject()
 //            subscription = state.channelz(state.requiredNSStringField).receive({ _ in })
@@ -2152,7 +2171,7 @@ public class ChannelTests: XCTestCase {
 //        XCTAssertEqual(0, StatefulObjectCount - startObCount)
 //    }
 //
-//    public func testManyKeyReceptors() {
+//    public func testManyKeyReceivers() {
 //        let startCount = ChannelZKeyValueObserverCount
 //        let startObCount = StatefulObjectCount
 //
@@ -2204,10 +2223,10 @@ public class ChannelTests: XCTestCase {
 //                let op = NSOperation()
 //                let channel = op∞(op.cancelled, "cancelled")
 //
-//                var subscriptions: [Receptor] = []
+//                var subscriptions: [Receiver] = []
 //                for i in 1...10 {
 //                    let subscription = channel ∞> { _ in }
-//                    subscriptions += [subscription as Receptor]
+//                    subscriptions += [subscription as Receiver]
 //                }
 //
 //                // we will crash if we rely on the KVO auto-removal here
@@ -2619,7 +2638,7 @@ public class ChannelTests: XCTestCase {
 //        let state = StatefulObjectSubSubclass()
 //        var count = 0
 //
-//        let subscription : Receptor = state.channelz(state.optionalStringField) ∞> { _ in count += 1 }
+//        let subscription : Receiver = state.channelz(state.optionalStringField) ∞> { _ in count += 1 }
 //        state∞state.requiredStringField ∞> { _ in count += 1 }
 //        state∞state.optionalNSStringField ∞> { _ in count += 1 }
 //        state∞state.requiredNSStringField ∞> { _ in count += 1 }
@@ -2730,11 +2749,11 @@ public class ChannelTests: XCTestCase {
 //        var text = ""
 //
 //        let textChannel = textField∞(textField.stringValue)
-//        var textReceptor = textChannel.receive({ text = $0 })
+//        var textReceiver = textChannel.receive({ text = $0 })
 //
 //        var enabled = true
 //        let enabledChannel = textField∞(textField.enabled)
-//        var enabledReceptor = enabledChannel.receive({ enabled = $0 })
+//        var enabledReceiver = enabledChannel.receive({ enabled = $0 })
 //
 //        textField.stringValue = "ABC"
 //        XCTAssertEqual("ABC", textField.stringValue)
@@ -2751,12 +2770,12 @@ public class ChannelTests: XCTestCase {
 //        textField.enabled = true
 //        XCTAssertEqual(true, enabled)
 //
-//        textReceptor.cancel()
+//        textReceiver.cancel()
 //
 //        textField.stringValue = "QRS"
 //        XCTAssertEqual("XYZ", text)
 //
-//        enabledReceptor.cancel()
+//        enabledReceiver.cancel()
 //
 //        textField.enabled = false
 //        XCTAssertEqual(true, enabled)
@@ -2859,7 +2878,7 @@ public class ChannelTests: XCTestCase {
 //        let tap: ()->() = {
 //            let event = UIEvent()
 //
-//            for target in button.allTargets().allObjects as [UIEventReceptor] {
+//            for target in button.allTargets().allObjects as [UIEventReceiver] {
 //                // button.sendAction also doesn't work from a test case
 //                for action in button.actionsForTarget(target, forControlEvent: eventType) as [String] {
 ////                    button.sendAction(Selector(action), to: target, forEvent: event)
@@ -2906,10 +2925,10 @@ public class ChannelTests: XCTestCase {
 //
 //
 //        var text = ""
-//        let textReceptor = (textField∞textField.text).map( { $0 } ).receive({ text = $0 })
+//        let textReceiver = (textField∞textField.text).map( { $0 } ).receive({ text = $0 })
 //
 //        var enabled = true
-//        let enabledReceptor = textField.channelz(textField.enabled).receive({ enabled = $0 })
+//        let enabledReceiver = textField.channelz(textField.enabled).receive({ enabled = $0 })
 //
 //
 //        textField.text = "ABC"
@@ -2923,12 +2942,12 @@ public class ChannelTests: XCTestCase {
 //        textField.enabled = true
 //        XCTAssertEqual(true, enabled)
 //
-//        textReceptor.cancel()
+//        textReceiver.cancel()
 //
 //        textField.text = "XYZ"
 //        XCTAssertEqual("ABC", text)
 //        
-//        enabledReceptor.cancel()
+//        enabledReceiver.cancel()
 //        
 //        textField.enabled = false
 //        XCTAssertEqual(true, enabled)

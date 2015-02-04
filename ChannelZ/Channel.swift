@@ -6,44 +6,46 @@
 //  License: MIT (or whatever)
 //
 
-/// A Channel is a passive handler of items of a given type. It is a push-based version 
-/// of Swift's pull-based `Generator` type. 
+/// A Channel is a passive multi-stage receiver of items of a given type. It is a push-based version
+/// of Swift's pull-based `Generator` type. Channels can add phases that transform, filter, merge
+/// and aggregate items that are passed through the channel.
 ///
 /// To listen for items, call the `receive` function with the block that accepts the typed item. This will
-/// return a `Receptor`, which can later be used to cancel the receipt. A `Channel` can have multiple
-/// `Receptors` activate at any time.
+/// return a `Receipt`, which can later be used to cancel reception. A `Channel` can have multiple
+/// receivers active at any time.
 ///
-/// A `Channel` is roughly analogous to an `Observable` in the ReactiveX pattern,
+/// A `Channel` is roughly analogous to the `Observable` in the ReactiveX pattern,
 /// as described at: http://reactivex.io/documentation/observable.html
 /// The primary differences are that a `Channel` doesn't have any `onError` or `onCompletion`
 /// signale handlers, which means that a `Channel` is effectively infinite. Error and completion
-/// handling are pushed up into the application domain, where, for example, they could be supported 
-/// by having the Channel type be a Swift enum with cases for `.Value(T)`, `.Error(X)`, and `.Completion`.
+/// handling should be implemented at a higher level, where, for example, they could be supported
+/// by having the Channel type be a Swift enum with cases for `.Value(T)`, `.Error(X)`, and `.Completion`,
+/// and by adding a `terminate` phase to the `Channel`
 public struct Channel<S, T> {
     /// The underlying unconstrained source of this `Channel`
     public let source: S
 
     /// The closure that will be performed whenever an item is emitted; analogous to ReactiveX's `onNext`
-    public typealias Receptor = T->Void
+    public typealias Receiver = T->Void
 
-    /// The closure to be executed whenever a receptor is added, where all the receiver logic is performed
-    private let recipio: Receptor->Receipt
+    /// The closure to be executed whenever a receiver is added, where all the receiver logic is performed
+    internal let recipio: Receiver->Receipt
 
-    public init(source: S, recipio: Receptor->Receipt) {
+    public init(source: S, recipio: Receiver->Receipt) {
         self.source = source
         self.recipio = recipio
     }
 
-    /// Adds the given receptor block to this Channel's list to receive all items it emits
+    /// Adds the given receiver block to this Channel's list to receive all items it emits
     ///
-    /// :param: `receptor` the block to be executed whenever this Channel emits an item
+    /// :param: `receiver` the block to be executed whenever this Channel emits an item
     ///
     /// :returns: a `Receipt`, which can be used to later `cancel` from receiving items
-    public func receive(receptor: T->Void)->Receipt {
-        return recipio(receptor)
+    public func receive(receiver: T->Void)->Receipt {
+        return recipio(receiver)
     }
 
-    /// Adds a receptor that will forward all values to the target `SinkType`
+    /// Adds a receiver that will forward all values to the target `SinkType`
     ///
     /// :param: `sink` the sink that will accept all the items from the Channel
     ///
@@ -52,13 +54,13 @@ public struct Channel<S, T> {
         return receive({ sink.put($0) })
     }
 
-    /// Lifts a function to the current Channel and returns a new Channel that when received to will pass
+    /// Lifts a function to the current Channel and returns a new channel phase that when received to will pass
     /// the values of the current Channel through the Operator function.
     public func lift<U>(f: (U->Void)->(T->Void))->Channel<S, U> {
         return Channel<S, U>(source: source) { g in self.receive(f(g)) }
     }
 
-    /// Returns a Channel which only emits those items for which a given predicate holds.
+    /// Adds a channel phase which only emits those items for which a given predicate holds.
     ///
     /// :param: `predicate` a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
     ///
@@ -67,7 +69,7 @@ public struct Channel<S, T> {
         return lift { receive in { item in if predicate(item) { receive(item) } } }
     }
 
-    /// Returns a Channel that applies the given function to each item emitted by a Channel and emits the result.
+    /// Adds a channel phase that applies the given function to each item emitted by a Channel and emits the result.
     ///
     /// :param: `transform` a function to apply to each item emitted by the Channel
     ///
@@ -76,7 +78,7 @@ public struct Channel<S, T> {
         return lift { receive in { item in receive(transform(item)) } }
     }
 
-    /// Creates a new Channel by applying a function that you supply to each item emitted by
+    /// Creates a new channel phase by applying a function that you supply to each item emitted by
     /// the source Channel, where that function returns a Channel, and then merging those
     /// resulting Channels and emitting the results of this merger.
     ///
@@ -89,7 +91,7 @@ public struct Channel<S, T> {
         return flatten(map(transform))
     }
 
-    /// Creates a new Channel that will cease sending items once the terminator predicate is satisfied.
+    /// Adds a channel phase that will cease sending items once the terminator predicate is satisfied.
     ///
     /// :param: `terminator` a predicate function that will result in cancellation of all receipts when it evaluates to `true`
     /// :param: `terminus` an optional final sentinal closure that will be sent once after the `terminator` evaluates to `true`
@@ -117,7 +119,7 @@ public struct Channel<S, T> {
         }
     }
 
-    /// Creates a Channel that emits items only when the items pass the filter predicate against the most
+    /// Adds a channel phase that emits items only when the items pass the filter predicate against the most
     /// recent emitted or passed item. 
     ///
     /// For example, to create a filter for distinct equatable items, you would do: `sieve(!=)`
@@ -137,7 +139,7 @@ public struct Channel<S, T> {
                     receive(item)
                     previous = item
                 }
-            } else {
+            } else { // the initial item is always passed
                 receive(item)
                 previous = item
             }
@@ -149,7 +151,7 @@ public struct Channel<S, T> {
         }
     }
 
-    /// Flattens two Channels with heterogeneous `Source` and homogeneous `Element`s
+    /// Adds a channel phase that flattens two Channels with heterogeneous `Source` and homogeneous `Element`s
     /// into one Channel, without any transformation, so they act like a single Channel.
     ///
     /// :param: `with` a Channel to be merged
@@ -161,7 +163,7 @@ public struct Channel<S, T> {
         }
     }
 
-    /// Returns a Channel that buffers emitted items such that the receiver will
+    /// Adds a channel phase that buffers emitted items such that the receiver will
     /// receive a array of the buffered items
     ///
     /// :param: `count` the size of the buffer
@@ -181,7 +183,7 @@ public struct Channel<S, T> {
         }
     }
 
-    /// Returns a Channel that drops the first `count` elements.
+    /// Adds a channel phase that drops the first `count` elements.
     ///
     /// :param: `count` the number of elements to skip before emitting items
     ///
@@ -191,7 +193,7 @@ public struct Channel<S, T> {
         return filter { _ in seen++ >= 0 }
     }
 
-    /// Returns a Channel that aggregates items with the given combine function and then
+    /// Adds a channel phase that aggregates items with the given combine function and then
     /// emits the items when the terminator predicate is satisified.
     ///
     /// :param: `initial` the initial accumulated value
@@ -215,13 +217,13 @@ public struct Channel<S, T> {
         }
     }
 
-    /// Returns a Channel formed from this Channel and another Channel by combining
+    /// Adds a channel phase formed from this Channel and another Channel by combining
     /// corresponding elements in pairs.
     /// The number of receiver invocations of the resulting `Channel<(T, U)>`
     /// is the minumum of the number of invocations of `self` and `with`.
     ///
     /// :param: `with` the Channel to zip with
-    /// :param: `capacity` (optional) the maximum buffer size for the receivers; if either buffer
+    /// :param: `capacity` (optional) the maximum buffer size for the channels; if either buffer
     ///     exceeds capacity, earlier elements will be dropped silently
     ///
     /// :returns: a stateful Channel that pairs up values from `self` and `with` Channels.
@@ -262,8 +264,8 @@ public struct Channel<S, T> {
         }
     }
 
-    /// Creates a combination around the receivers `source1` and `source2` that merges elements into a tuple of
-    /// optionals that will be emitted when either of the elements change
+    /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
+    /// into a tuple of optionals that will be emitted when either of the elements change
     ///
     /// :param: `other` the Channel to zip with
     ///
@@ -292,14 +294,14 @@ protocol Receivable {
     typealias Element
 
     /// Creates a Channel from this Receivable
-    func receiver()->Channel<Source, Element>
+    func channel()->Channel<Source, Element>
 }
 
 /// A Channel's Receivable implementation merely returns itself
 extension Channel : Receivable {
     public typealias Source = S
     public typealias Element = T
-    public func receiver()->Channel<S, T> { return self }
+    public func channel()->Channel<S, T> { return self }
 }
 
 /// Channel merge operation for two receivers of the same type (operator form of `merge`)
@@ -308,38 +310,38 @@ public func +<S1, S2, T>(lhs: Channel<S1, T>, rhs: Channel<S2, T>)->Channel<(S1,
 }
 
 /// Filters the given `Channel` for distinct items that conform to `Equatable`
-public func sieveDistinct<S, T where T: Equatable>(receiver: Channel<S, T>)->Channel<S, T> {
-    return receiver.sieve(!=)
+public func sieveDistinct<S, T where T: Equatable>(channel: Channel<S, T>)->Channel<S, T> {
+    return channel.sieve(!=)
 }
 
 /// Creates a Channel sourced by a `SinkOf` that will be used to send elements to the receivers
 public func receiveSink<T>(type: T.Type)->Channel<SinkOf<T>, T> {
-    var subs = ReceptorList<T>()
+    var subs = ReceiverList<T>()
     let sink = SinkOf { subs.receive($0) }
     return Channel<SinkOf<T>, T>(source: sink) { subs.addReceipt($0, { nil }) }
 }
 
-/// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receptors
-public func receiveSequence<S, T where S: SequenceType, S.Generator.Element == T>(from: S)->Channel<S, T> {
-    var receptors = ReceptorList<T>()
+/// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receivers
+public func channelSequence<S, T where S: SequenceType, S.Generator.Element == T>(from: S)->Channel<S, T> {
+    var receivers = ReceiverList<T>()
     return Channel(source: from) { sub in
         for item in from { sub(item) }
         return ReceiptOf() // cancelled receipt since it will never receive more items
     }
 }
 
-/// Creates a Channel sourced by a `GeneratorType` that will emit all its elements to new receptors
+/// Creates a Channel sourced by a `GeneratorType` that will emit all its elements to new receivers
 public func receiveGenerator<S, T where S: GeneratorType, S.Element == T>(from: S)->Channel<S, T> {
-    var receptors = ReceptorList<T>()
+    var receivers = ReceiverList<T>()
     return Channel(source: from) { sub in
         for item in GeneratorOf(from) { sub(item) }
         return ReceiptOf() // cancelled receipt since it will never receive more items
     }
 }
 
-/// Creates a Channel sourced by an optional Closure that will be send all execution results to new receptors until it returns `.None`
+/// Creates a Channel sourced by an optional Closure that will be send all execution results to new receivers until it returns `.None`
 public func receiveClosure<T>(from: ()->T?)->Channel<()->T?, T> {
-    var receptors = ReceptorList<T>()
+    var receivers = ReceiverList<T>()
     return Channel(source: from) { sub in
         while let item = from() { sub(item) }
         return ReceiptOf() // cancelled receipt since it will never receive more items
@@ -349,15 +351,15 @@ public func receiveClosure<T>(from: ()->T?)->Channel<()->T?, T> {
 /// A PropertyChannel can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
 public final class PropertyChannel<T>: Receivable, SinkType {
     public typealias Element = T
-    public var value: T { didSet { receptors.receive(value) } }
-    private let receptors = ReceptorList<T>()
+    public var value: T { didSet { receivers.receive(value) } }
+    private let receivers = ReceiverList<T>()
     public init(_ value: T) { self.value = value }
     public func put(x: T) { value = x }
 
-    public func receiver()->Channel<PropertyChannel<Element>, Element> {
+    public func channel()->Channel<PropertyChannel<Element>, Element> {
         return Channel(source: self) { sub in
             sub(self.value) // immediately issue the original value
-            return self.receptors.addReceipt(sub, { self.value })
+            return self.receivers.addReceipt(sub, { self.value })
         }
     }
 }
@@ -369,50 +371,35 @@ public func ∞-><S1, T, S2: SinkType where T == S2.Element>(r: Channel<S1, T>, 
 infix operator ∞-> { }
 
 
-/// Creates a two-way pipe betweek two `Channel`s whose source is a `SinkType`, such that when either side is
-/// set, the other side is updated; each source must be a reference type for the `sink` to not be mutative
-func conduit<R1, R2 where R1: Receivable, R2: Receivable, R1.Source: SinkType, R2.Source: SinkType, R1.Source.Element == R2.Element, R2.Source.Element == R1.Element>(r1: R1, r2: R2)->Receipt {
-    let (rcv1, rcv2) = (r1.receiver(), r2.receiver())
-    return ReceiptOf(receipts: [rcv1∞->rcv2.source, rcv2∞->rcv1.source])
-}
-
-
-/// Creates a two-way pipe betweek two `Channel`s whose source is a `SinkType`, such that when either side is
-/// set, the other side is updated; each source must be a reference type for the `sink` to not be mutative
-/// This is the operator form of `conduit`
-public func <-∞-><S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
-infix operator <-∞-> { }
-
-
 /// Creates a one-way pipe betweek a `Channel` and an `Equatable` `SinkType`, such that all receiver emissions are sent to the sink.
 /// This is the operator form of `pipe`
 public func ∞=><S1, T, S2: SinkType where T == S2.Element, T: Equatable>(r: Channel<S1, T>, s: S2)->Receipt { return r.sieve(!=).pipe(s) }
 infix operator ∞=> { }
 
 
-/// Creates a two-way channel pipe betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
+/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
 /// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
-public func channel<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt {
-    let (rcv1, rcv2) = (r1.receiver(), r2.receiver())
+public func conduit<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt {
+    let (rcv1, rcv2) = (r1.channel(), r2.channel())
     return ReceiptOf(receipts: [rcv1∞=>rcv2.source, rcv2∞=>rcv1.source])
 }
 
-/// Creates a two-way channel pipe betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
+/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
 /// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
 /// This is the operator form of `channel`
-public func <=∞=><S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return channel(r1, r2) }
+public func <=∞=><S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
 infix operator <=∞=> { }
 
 
 /// Flattens a Channel that emits Channels into a single Channel that emits the items emitted by
 /// those Channels, without any transformation.
 /// Note: this operation does not retain the sub-sources, since it can merge a heterogeneously-sourced series of receivers
-public func flatten<S1, S2, T>(receiver: Channel<S1, Channel<S2, T>>)->Channel<(S1, [S2]), T> {
+public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>)->Channel<(S1, [S2]), T> {
     // note that the Channel will always be an empty array of S2s; making the source type a closure returning the array would work, but it crashes the compiler
     var s2s: [S2] = []
-    return Channel<(S1, [S2]), T>(source: (receiver.source, s2s), recipio: { (rcv: T->Void)->Receipt in
+    return Channel<(S1, [S2]), T>(source: (channel.source, s2s), recipio: { (rcv: T->Void)->Receipt in
         var rcpts: [Receipt] = []
-        let rcpt = receiver.receive { (subobv: Channel<S2, T>) in
+        let rcpt = channel.receive { (subobv: Channel<S2, T>) in
             s2s += [subobv.source]
             rcpts += [subobv.receive { (item: T) in rcv(item) }]
         }
@@ -421,128 +408,4 @@ public func flatten<S1, S2, T>(receiver: Channel<S1, Channel<S2, T>>)->Channel<(
         return ReceiptOf(receipts: rcpts)
     })
 }
-
-
-/// Takes an `Channel` with a nested tuple of outputs types and flattens the outputs into a single tuple
-private func flatOptionalSink<S, T1, T2, T3>(ob: Channel<S, ((T1?, T2?)?, T3?)>)->Channel<S, (T1?, T2?, T3?)> {
-    return ob.map { ($0.0?.0, $0.0?.1, $0.1) }
-}
-
-/// Takes an `Channel` with a nested tuple of outputs types and flattens the outputs into a single tuple
-private func flatOptionalSink<S, T1, T2, T3, T4>(ob: Channel<S, (((T1?, T2?)?, T3?)?, T4?)>)->Channel<S, (T1?, T2?, T3?, T4?)> {
-    return ob.map { ($0.0?.0?.0, $0.0?.0?.1, $0.0?.1, $0.1) }
-}
-
-/// Channel combination & flattening operation (operator form of `flatAny`)
-public func |<S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>)->Channel<(S1, S2), (T1?, T2?)> {
-    return lhs.either(rhs)
-}
-
-/// Channel zipping & flattening operation
-public func &<S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>)->Channel<(S1, S2), (T1, T2)> {
-    return lhs.zip(rhs)
-}
-
-/// Channel combination & flattening operation (operator form of `flatAny`)
-public func |<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1?, T2?)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1?, T2?, T3?)> {
-    return flatOptionalSink(flattenSources(lhs.either(rhs)))
-}
-
-
-// MARK: Tuple-flattening boilerplate follows
-
-public func &<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1, T2)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1, T2, T3)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, T1, T2, T3, T4>(lhs: Channel<(S1, S2, S3), (T1, T2, T3)>, rhs: Channel<S4, T4>)->Channel<(S1, S2, S3, S4), (T1, T2, T3, T4)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, T1, T2, T3, T4, T5>(lhs: Channel<(S1, S2, S3, S4), (T1, T2, T3, T4)>, rhs: Channel<S5, T5>)->Channel<(S1, S2, S3, S4, S5), (T1, T2, T3, T4, T5)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, T1, T2, T3, T4, T5, T6>(lhs: Channel<(S1, S2, S3, S4, S5), (T1, T2, T3, T4, T5)>, rhs: Channel<S6, T6>)->Channel<(S1, S2, S3, S4, S5, S6), (T1, T2, T3, T4, T5, T6)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, T1, T2, T3, T4, T5, T6, T7>(lhs: Channel<(S1, S2, S3, S4, S5, S6), (T1, T2, T3, T4, T5, T6)>, rhs: Channel<S7, T7>)->Channel<(S1, S2, S3, S4, S5, S6, S7), (T1, T2, T3, T4, T5, T6, T7)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, T1, T2, T3, T4, T5, T6, T7, T8>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7), (T1, T2, T3, T4, T5, T6, T7)>, rhs: Channel<S8, T8>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8), (T1, T2, T3, T4, T5, T6, T7, T8)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, T1, T2, T3, T4, T5, T6, T7, T8, T9>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8), (T1, T2, T3, T4, T5, T6, T7, T8)>, rhs: Channel<S9, T9>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), (T1, T2, T3, T4, T5, T6, T7, T8, T9)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), (T1, T2, T3, T4, T5, T6, T7, T8, T9)>, rhs: Channel<S10, T10>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)>, rhs: Channel<S11, T11>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)>, rhs: Channel<S12, T12>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12)>, rhs: Channel<S13, T13>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13)>, rhs: Channel<S14, T14>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14)>, rhs: Channel<S15, T15>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15)>, rhs: Channel<S16, T16>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16)>, rhs: Channel<S17, T17>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17)>, rhs: Channel<S18, T18>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18)>, rhs: Channel<S19, T19>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19)> { return combineSources(combineElements(lhs.zip(rhs))) }
-public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19)>, rhs: Channel<S20, T20>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20)> { return combineSources(combineElements(lhs.zip(rhs))) }
-
-private func flattenSources<S1, S2, S3, T>(rcvr: Channel<((S1, S2), S3), T>)->Channel<(S1, S2, S3), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, T>(rcvr: Channel<(((S1, S2), S3), S4), T>)->Channel<(S1, S2, S3, S4), T> { return Channel(source: (rcvr.source.0.0.0, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((((S1, S2), S3), S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { return Channel(source: (rcvr.source.0.0.0.0, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, T>(rcvr: Channel<(((((S1, S2), S3), S4), S5), S6), T>)->Channel<(S1, S2, S3, S4, S5, S6), T> { return Channel(source: (rcvr.source.0.0.0.0.0, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, T>(rcvr: Channel<((((((S1, S2), S3), S4), S5), S6), S7), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, T>(rcvr: Channel<(((((((S1, S2), S3), S4), S5), S6), S7), S8), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, T>(rcvr: Channel<((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T>(rcvr: Channel<(((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T>(rcvr: Channel<((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T>(rcvr: Channel<(((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, T>(rcvr: Channel<((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, T>(rcvr: Channel<(((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, T>(rcvr: Channel<((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, T>(rcvr: Channel<(((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, T>(rcvr: Channel<((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, T>(rcvr: Channel<(((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), S18), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, T>(rcvr: Channel<((((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), S18), S19), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T>(rcvr: Channel<(((((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), S18), S19), S20), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), T> { return Channel(source: (rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.0.1, rcvr.source.0.0.0.0.0.1, rcvr.source.0.0.0.0.1, rcvr.source.0.0.0.1, rcvr.source.0.0.1, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-
-private func combineSources<S1, S2, S3, T>(rcvr: Channel<((S1, S2), S3), T>)->Channel<(S1, S2, S3), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, T>(rcvr: Channel<((S1, S2, S3), S4), T>)->Channel<(S1, S2, S3, S4), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((S1, S2, S3, S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, T>(rcvr: Channel<((S1, S2, S3, S4, S5), S6), T>)->Channel<(S1, S2, S3, S4, S5, S6), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6), S7), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7), S8), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8), S9), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9), S10), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), S11), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.0.9, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), S12), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.0.9, rcvr.source.0.10, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), S13), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.0.9, rcvr.source.0.10, rcvr.source.0.11, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), S14), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.0.9, rcvr.source.0.10, rcvr.source.0.11, rcvr.source.0.12, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), S15), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.0.9, rcvr.source.0.10, rcvr.source.0.11, rcvr.source.0.12, rcvr.source.0.13, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), S16), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.0.9, rcvr.source.0.10, rcvr.source.0.11, rcvr.source.0.12, rcvr.source.0.13, rcvr.source.0.14, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), S17), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.0.9, rcvr.source.0.10, rcvr.source.0.11, rcvr.source.0.12, rcvr.source.0.13, rcvr.source.0.14, rcvr.source.0.15, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), S18), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.0.9, rcvr.source.0.10, rcvr.source.0.11, rcvr.source.0.12, rcvr.source.0.13, rcvr.source.0.14, rcvr.source.0.15, rcvr.source.0.16, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), S19), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.0.9, rcvr.source.0.10, rcvr.source.0.11, rcvr.source.0.12, rcvr.source.0.13, rcvr.source.0.14, rcvr.source.0.15, rcvr.source.0.16, rcvr.source.0.17, rcvr.source.1), rcvr.recipio) }
-private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), S20), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), T> { return Channel(source: (rcvr.source.0.0, rcvr.source.0.1, rcvr.source.0.2, rcvr.source.0.3, rcvr.source.0.4, rcvr.source.0.5, rcvr.source.0.6, rcvr.source.0.7, rcvr.source.0.8, rcvr.source.0.9, rcvr.source.0.10, rcvr.source.0.11, rcvr.source.0.12, rcvr.source.0.13, rcvr.source.0.14, rcvr.source.0.15, rcvr.source.0.16, rcvr.source.0.17, rcvr.source.0.18, rcvr.source.1), rcvr.recipio) }
-
-private func flattenElements<S, T1, T2, T3>(rcvr: Channel<S, ((T1, T2), T3)>)->Channel<S, (T1, T2, T3)> { return rcvr.map { ($0.0.0, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4>(rcvr: Channel<S, (((T1, T2), T3), T4)>)->Channel<S, (T1, T2, T3, T4)> { return rcvr.map { ($0.0.0.0, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5>(rcvr: Channel<S, ((((T1, T2), T3), T4), T5)>)->Channel<S, (T1, T2, T3, T4, T5)> { return rcvr.map { ($0.0.0.0.0, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6>(rcvr: Channel<S, (((((T1, T2), T3), T4), T5), T6)>)->Channel<S, (T1, T2, T3, T4, T5, T6)> { return rcvr.map { ($0.0.0.0.0.0, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7>(rcvr: Channel<S, ((((((T1, T2), T3), T4), T5), T6), T7)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7)> { return rcvr.map { ($0.0.0.0.0.0.0, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8>(rcvr: Channel<S, (((((((T1, T2), T3), T4), T5), T6), T7), T8)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8)> { return rcvr.map { ($0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9>(rcvr: Channel<S, ((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(rcvr: Channel<S, (((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(rcvr: Channel<S, ((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(rcvr: Channel<S, (((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(rcvr: Channel<S, ((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(rcvr: Channel<S, (((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(rcvr: Channel<S, ((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(rcvr: Channel<S, (((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(rcvr: Channel<S, ((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(rcvr: Channel<S, (((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17), T18)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(rcvr: Channel<S, ((((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17), T18), T19)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(rcvr: Channel<S, (((((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17), T18), T19), T20)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-
-private func combineElements<S, T1, T2, T3>(rcvr: Channel<S, ((T1, T2), T3)>)->Channel<S, (T1, T2, T3)> { return rcvr.map { ($0.0.0, $0.0.1, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4>(rcvr: Channel<S, ((T1, T2, T3), T4)>)->Channel<S, (T1, T2, T3, T4)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5>(rcvr: Channel<S, ((T1, T2, T3, T4), T5)>)->Channel<S, (T1, T2, T3, T4, T5)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6>(rcvr: Channel<S, ((T1, T2, T3, T4, T5), T6)>)->Channel<S, (T1, T2, T3, T4, T5, T6)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6), T7)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7), T8)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8), T9)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9), T10)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10), T11)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11), T12)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12), T13)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.0.11, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13), T14)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.0.11, $0.0.12, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14), T15)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.0.11, $0.0.12, $0.0.13, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15), T16)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.0.11, $0.0.12, $0.0.13, $0.0.14, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16), T17)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.0.11, $0.0.12, $0.0.13, $0.0.14, $0.0.15, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17), T18)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.0.11, $0.0.12, $0.0.13, $0.0.14, $0.0.15, $0.0.16, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18), T19)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.0.11, $0.0.12, $0.0.13, $0.0.14, $0.0.15, $0.0.16, $0.0.17, $0.1) } }
-private func combineElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19), T20)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.0.11, $0.0.12, $0.0.13, $0.0.14, $0.0.15, $0.0.16, $0.0.17, $0.0.18, $0.1) } }
 

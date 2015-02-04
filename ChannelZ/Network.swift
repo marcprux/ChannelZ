@@ -12,15 +12,15 @@ public extension NSInputStream {
 
     /// Creates a Channel for the stream and assigns it to handle `NSStreamDelegate` delegate callbacks
     /// for stream events
-    public func receiver(bufferLength: Int = 1024) -> Channel<NSInputStream, InputStreamEvent> {
-        var subscriptions = ReceptorList<InputStreamEvent>()
+    public func channel(bufferLength: Int = 1024) -> Channel<NSInputStream, InputStreamEvent> {
+        var receivers = ReceiverList<InputStreamEvent>()
 
         let delegate = ChannelStreamDelegate { event in
             switch event.rawValue {
             case NSStreamEvent.None.rawValue:
                 break
             case NSStreamEvent.OpenCompleted.rawValue:
-                subscriptions.receive(.Opened)
+                receivers.receive(.Opened)
                 break
             case NSStreamEvent.HasBytesAvailable.rawValue:
                 var buffer = UnsafeMutablePointer<UInt8>.alloc(bufferLength)
@@ -30,29 +30,29 @@ public extension NSInputStream {
                         buffer.destroy()
                         break
                     } else {
-                        subscriptions.receive(.Data(NSData(bytes: buffer, length: readlen)))
+                        receivers.receive(.Data(NSData(bytes: buffer, length: readlen)))
                     }
                 }
                 break
             case NSStreamEvent.HasSpaceAvailable.rawValue:
                 break
             case NSStreamEvent.ErrorOccurred.rawValue:
-                subscriptions.receive(.Error(self.streamError ?? NSError()))
+                receivers.receive(.Error(self.streamError ?? NSError()))
                 break
             case NSStreamEvent.EndEncountered.rawValue:
-                subscriptions.receive(.Closed)
+                receivers.receive(.Closed)
                 break
             default:
                 break
             }
         }
 
-        return Channel(source: self) { sub in
+        return Channel(source: self) { receiver in
             self.delegate = delegate
-            let index = subscriptions.addReceptor(sub)
+            let index = receivers.addReceiver(receiver)
             return ReceiptOf(requester: { }, canceller: {
-                subscriptions.removeReceptor(index)
-                if subscriptions.count == 0 {
+                receivers.removeReceptor(index)
+                if receivers.count == 0 {
                     self.delegate = nil
                 }
             })
