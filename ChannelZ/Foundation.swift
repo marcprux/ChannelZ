@@ -1,26 +1,38 @@
-////
-////  ChannelZ+Foundation.swift
-////  GlimpseCore
-////
-////  Created by Marc Prud'hommeaux <marc@glimpse.io>
-////  License: MIT (or whatever)
-////
 //
-///// Support for Foundation channels and observables, such as KVO-based channels and NSNotificationCenter observables
-//import Foundation
+//  ChannelZ+Foundation.swift
+//  GlimpseCore
+//
+//  Created by Marc Prud'hommeaux <marc@glimpse.io>
+//  License: MIT (or whatever)
 //
 //
-///// Extension on NSObject that permits creating a channel from a key-value compliant property
-//extension NSObject {
-//
-//    /// Creates a channel for all state operations for the given key-value-coding compliant property
+/// Support for Foundation channels and observables, such as KVO-based channels and NSNotificationCenter observables
+import Foundation
+
+
+/// Extension on NSObject that permits creating a channel from a key-value compliant property
+extension NSObject {
+
+    /// Creates a channel for all state operations for the given key-value-coding compliant primitive property
+    ///
+    /// :param: getter an accessor for the value of the property (autoclosure)
+    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    ///
+    /// :returns: a channel backed by the KVO property that will receive items for every time the state changes
+    public func channelZKey<T>(getter: @autoclosure ()->T, keyPath: String = "")->Channel<KeyValueSource<T>, T> {
+        let src = KeyValueSource(target: self, keyPath: keyPath != "" ? keyPath : keyPathForAutoclosure(self, getter, true)!, getter: getter)
+        return src.channelz()
+    }
+
+//    /// Creates a channel for all state operations for the given key-value-coding compliant object property
 //    ///
-//    /// :param: getter      an autoclosure accessor for the value of the property
-//    /// :param: keyPath     the keyPath for the value; if ommitted, auto-discovery will be attempted
-//    public func channelz<T>(getter: @autoclosure ()->T, keyPath: String = "")->ChannelZ<T> {
-//        return channelRequired(self, getter, keyPath: keyPath)
+//    /// :param: getter an autoclosure accessor for the value of the property
+//    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+//    public func channel<T where T: NSObject>(getter: @autoclosure ()->T, keyPath: String = "")->Channel<SinkOf<T?>, T?> {
+//        fatalError("")
+////        return channelRequired(self, getter, keyPath: keyPath)
 //    }
-//
+
 //    /// Creates a sieve for all state changes for the given key-value-coding compliant property
 //    ///
 //    /// :param: getter     an autoclosure accessor for the value of the property
@@ -44,8 +56,8 @@
 //    public func sievez<T : Equatable>(getter: @autoclosure ()->Optional<T>, keyPath: String = "")->ChannelZ<Optional<T>> {
 //        return sieveOptional(self, getter, keyPath: keyPath)
 //    }
-//}
-//
+}
+
 //private func channelRequired<T>(target: NSObject, getter: @autoclosure ()->T, keyPath: String = "")->ChannelZ<T> {
 //    return ChannelZ(channelRequiredKeyValue(target, keyPath != "" ? keyPath : keyPathForAutoclosure(target, getter, true)!, getter()).map({ $0.value }))
 //}
@@ -77,67 +89,183 @@
 //    /// The target object of this channel
 //    var target: NSObject? { get }
 //}
+
+private func setValueForKeyPath<T>(target: NSObject, keyPath: NSString, nullable: Bool, value: T?) {
+    if nullable && value is NSNull { target.setValue(nil, forKeyPath: keyPath) }
+    else if let ob = value as? NSObject { target.setValue(ob, forKeyPath: keyPath) }
+    // manual numeric coercion: because only “the following types are automatically bridged to NSNumber: Int, UInt, Float, Double, Bool”
+    else if let value = value as? Bool { target.setValue(NSNumber(bool: value), forKeyPath: keyPath) }
+    else if let value = value as? Int8 { target.setValue(NSNumber(char: value), forKeyPath: keyPath) }
+    else if let value = value as? UInt8 { target.setValue(NSNumber(unsignedChar: value), forKeyPath: keyPath) }
+    else if let value = value as? Int16 { target.setValue(NSNumber(short: value), forKeyPath: keyPath) }
+    else if let value = value as? UInt16 { target.setValue(NSNumber(unsignedShort: value), forKeyPath: keyPath) }
+    else if let value = value as? Int32 { target.setValue(NSNumber(int: value), forKeyPath: keyPath) }
+    else if let value = value as? UInt32 { target.setValue(NSNumber(unsignedInt: value), forKeyPath: keyPath) }
+    else if let value = value as? Int { target.setValue(NSNumber(unsignedInteger: value), forKeyPath: keyPath) }
+    else if let value = value as? UInt { target.setValue(NSNumber(unsignedLong: value), forKeyPath: keyPath) }
+    else if let value = value as? Int64 { target.setValue(NSNumber(longLong: value), forKeyPath: keyPath) }
+    else if let value = value as? UInt64 { target.setValue(NSNumber(unsignedLongLong: value), forKeyPath: keyPath) }
+    else if let value = value as? Float { target.setValue(NSNumber(float: value), forKeyPath: keyPath) }
+    // else if let value = value as? Float80 { target.setValue(NSNumber(double: value), forKeyPath: keyPath) }
+    else if let value = value as? Double { target.setValue(NSNumber(double: value), forKeyPath: keyPath) }
+    else if nullable { target.setValue(nil, forKeyPath: keyPath) }
+    else { preconditionFailure("unable to coerce value «\(value.dynamicType)» into Foundation type for non-nullable keyPath «\(keyPath)»") }
+}
+
+private func coerceCocoaType<SourceType>(ob: AnyObject?, type: SourceType.Type) -> SourceType? {
+    if let ob = ob as? SourceType {
+        return ob // always first try to get automatic coercion (e.g., NSString to String)
+    } else if let ob = ob as? NSNumber {
+        // when an NSNumber is sent to an observer that is listening for a particular primitive, try to coerce it
+        if SourceType.self is UInt64.Type {
+            return ob.unsignedLongLongValue as? SourceType
+        } else if SourceType.self is Int64.Type {
+            return ob.longLongValue as? SourceType
+        } else if SourceType.self is Double.Type {
+            return ob.doubleValue as? SourceType
+        } else if SourceType.self is Float.Type {
+            return ob.floatValue as? SourceType
+        } else if SourceType.self is UInt.Type {
+            return ob.unsignedLongValue as? SourceType
+        } else if SourceType.self is Int.Type {
+            return ob.integerValue as? SourceType
+        } else if SourceType.self is UInt32.Type {
+            return ob.unsignedIntValue as? SourceType
+        } else if SourceType.self is Int32.Type {
+            return ob.intValue as? SourceType
+        } else if SourceType.self is UInt16.Type {
+            return ob.unsignedShortValue as? SourceType
+        } else if SourceType.self is Int16.Type {
+            return ob.shortValue as? SourceType
+        } else if SourceType.self is UInt8.Type {
+            return ob.unsignedCharValue as? SourceType
+        } else if SourceType.self is Int8.Type {
+            return ob.charValue as? SourceType
+        } else if SourceType.self is Bool.Type {
+            return ob.boolValue as? SourceType
+        }
+    }
+
+    return nil
+}
+
+/// A Channel for Cocoa properties that support key-value path observation/coding
+public class KeyValueSource<T>: SinkType {
+    public private(set) weak var target: NSObject?
+    public let keyPath: String
+    private let getter: ()->T
+    private let receivers = ReceiverList<T>()
+    private var observer: TargetAssociatedObserver?
+
+    public init(target: NSObject, keyPath: String, getter: ()->T) {
+        self.target = target
+        self.keyPath = keyPath
+        self.getter = getter
+
+        // validate the keyPath by checking that the initialized value matched the actual key path
+        let initialValue: AnyObject? = target.valueForKeyPath(self.keyPath)
+        if let initialValueActual: AnyObject = initialValue {
+            if let gotten = getter() as? NSObject {
+                if let eq1 = initialValueActual as? NSObjectProtocol {
+                    // make sure the key path is really returning the specified value
+                    assert(eq1.isEqual(gotten), "valueForKeyPath(\(keyPath)): «\(initialValue)» did not equal initialized value: «\(gotten)»")
+                }
+            }
+        } else {
+            preconditionFailure("valueForKeyPath(\(keyPath)): non-optional keyPath returned nil")
+        }
+    }
+
+    private func observedValueForKeyPath(change: [NSObject : AnyObject]) {
+        self.receivers.receive(get())
+    }
+
+    /// access to the underlying source value
+    public var value: T {
+        get { return get() }
+        set(v) { set(v) }
+    }
+
+    /// Sets the current value (SinkType implementation)
+    public func put(value: T) -> Void {
+        set(value)
+    }
+
+    public func set(value: T) -> Bool {
+        if let target = self.target {
+            setValueForKeyPath(target, keyPath, false, value)
+            return true
+        } else {
+            return false
+        }
+    }
+
+    private func get() -> T {
+        return getter()
+//        if let target = target {
+//            return target.valueForKeyPath(self.keyPath) as T
+//        } else {
+//            preconditionFailure("attempt to pull from keyPath «\(keyPath)» of a deallocated instance; channels do not retain their targets")
+//        }
+    }
+
+    private func addReceiver(receiver: T->Void)->Receipt {
+        if let target = target {
+            if self.observer == nil {
+                self.observer = TargetAssociatedObserver(target: target, keyPath: keyPath, observedValueForKeyPath)
+            }
+
+            let index = self.receivers.addReceipt(receiver, requestor: { self.get() })
+            return ReceiptOf(canceler: {
+    //            self.receivers.removeReceptor(index)
+                if self.receivers.count == 0 {
+                    self.observer = nil // clear the observer whenever the receiver count drops to zero
+                }
+            })
+        } else {
+            preconditionFailure("attempt to pull from keyPath «\(keyPath)» of a deallocated instance; channels do not retain their targets")
+        }
+    }
+
+    public func channelz()->Channel<KeyValueSource, T> {
+        return Channel(source: self, reception: addReceiver)
+    }
+
+    /// subscribes a subscription to receive change notifications from the state pipeline
+    ///
+    /// :param: subscription      the subscription closure to which state will be sent
+//    public func subscribe(subscription: (T)->())->Receipt {
 //
-//private func setValueForKeyPath<T>(target: NSObject, keyPath: NSString, nullable: Bool, value: T?) {
-//    if nullable && value is NSNull { target.setValue(nil, forKeyPath: keyPath) }
-//    else if let ob = value as? NSObject { target.setValue(ob, forKeyPath: keyPath) }
-//    // manual numeric coercion: because only “the following types are automatically bridged to NSNumber: Int, UInt, Float, Double, Bool”
-//    else if let value = value as? Bool { target.setValue(NSNumber(bool: value), forKeyPath: keyPath) }
-//    else if let value = value as? Int8 { target.setValue(NSNumber(char: value), forKeyPath: keyPath) }
-//    else if let value = value as? UInt8 { target.setValue(NSNumber(unsignedChar: value), forKeyPath: keyPath) }
-//    else if let value = value as? Int16 { target.setValue(NSNumber(short: value), forKeyPath: keyPath) }
-//    else if let value = value as? UInt16 { target.setValue(NSNumber(unsignedShort: value), forKeyPath: keyPath) }
-//    else if let value = value as? Int32 { target.setValue(NSNumber(int: value), forKeyPath: keyPath) }
-//    else if let value = value as? UInt32 { target.setValue(NSNumber(unsignedInt: value), forKeyPath: keyPath) }
-//    else if let value = value as? Int { target.setValue(NSNumber(unsignedInteger: value), forKeyPath: keyPath) }
-//    else if let value = value as? UInt { target.setValue(NSNumber(unsignedLong: value), forKeyPath: keyPath) }
-//    else if let value = value as? Int64 { target.setValue(NSNumber(longLong: value), forKeyPath: keyPath) }
-//    else if let value = value as? UInt64 { target.setValue(NSNumber(unsignedLongLong: value), forKeyPath: keyPath) }
-//    else if let value = value as? Float { target.setValue(NSNumber(float: value), forKeyPath: keyPath) }
-//    // else if let value = value as? Float80 { target.setValue(NSNumber(double: value), forKeyPath: keyPath) }
-//    else if let value = value as? Double { target.setValue(NSNumber(double: value), forKeyPath: keyPath) }
-//    else if nullable { target.setValue(nil, forKeyPath: keyPath) }
-//    else { preconditionFailure("unable to coerce value «\(value.dynamicType)» into Foundation type for non-nullable keyPath «\(keyPath)»") }
-//}
+//        return Channel(source: from) { sub in
+//            while let item = from() { sub(item) }
+//            return ReceiptOf() // cancelled receipt since it will never receive more items
+//        }
 //
-//private func coerceCocoaType<SourceType>(ob: AnyObject?, type: SourceType.Type) -> SourceType? {
-//    if let ob = ob as? SourceType {
-//        return ob // always first try to get automatic coercion (e.g., NSString to String)
-//    } else if let ob = ob as? NSNumber {
-//        // when an NSNumber is sent to an observer that is listening for a particular primitive, try to coerce it
-//        if SourceType.self is UInt64.Type {
-//            return ob.unsignedLongLongValue as? SourceType
-//        } else if SourceType.self is Int64.Type {
-//            return ob.longLongValue as? SourceType
-//        } else if SourceType.self is Double.Type {
-//            return ob.doubleValue as? SourceType
-//        } else if SourceType.self is Float.Type {
-//            return ob.floatValue as? SourceType
-//        } else if SourceType.self is UInt.Type {
-//            return ob.unsignedLongValue as? SourceType
-//        } else if SourceType.self is Int.Type {
-//            return ob.integerValue as? SourceType
-//        } else if SourceType.self is UInt32.Type {
-//            return ob.unsignedIntValue as? SourceType
-//        } else if SourceType.self is Int32.Type {
-//            return ob.intValue as? SourceType
-//        } else if SourceType.self is UInt16.Type {
-//            return ob.unsignedShortValue as? SourceType
-//        } else if SourceType.self is Int16.Type {
-//            return ob.shortValue as? SourceType
-//        } else if SourceType.self is UInt8.Type {
-//            return ob.unsignedCharValue as? SourceType
-//        } else if SourceType.self is Int8.Type {
-//            return ob.charValue as? SourceType
-//        } else if SourceType.self is Bool.Type {
-//            return ob.boolValue as? SourceType
+//        if let target = target {
+//            let kp = keyPath
+//            let sub = KeyValueReceptor(target: target, keyPath: keyPath, handler: { (oldv, newv) in
+//                // for example, we are watching a NSMutableDictionary's key that is set to an NSString and then an NSNumber
+//                if let newv = coerceCocoaType(newv, T.self) {
+//                    // option type check is because Initial option sends oldValue as nil
+//                    if let old = coerceCocoaType(oldv, T.self) {
+//                        subscription(StateEvent.change(old, value: newv))
+//                    } else {
+//                        subscription(StateEvent.push(newv))
+//                    }
+//                } else {
+//                    assert(newv is T, "required value for «\(kp)» changed type from \(oldv) to \(newv); use an optional channel if value type can change")
+//                }
+//            })
+//            return ReceptorOf(subscription: sub)
+//        } else {
+//            NSLog("ChannelZ warning: attempt to subscribe to a deallocated target keyPath «\(keyPath)»; channels do not retain their targets")
+//            return ReceptorOf()
 //        }
 //    }
-//
-//    return nil
-//}
-//
-//
+}
+
+
+
 ///// A Channel for Cocoa properties that support key-value path observation/coding
 //public struct KeyValueRequiredChannel<T>: KeyValueChannel {
 //    public typealias SourceType = T
@@ -309,377 +437,377 @@
 //    /// Returns a mapped channel that transforms the elements before passing them through to the subscriptions
 //    public func map<TransformedType>(transform: (Element)->TransformedType)->MappedChannel<SelfChannel, TransformedType> { return mapOutput(self, transform) }
 //}
-//
-//
-//#if DEBUG_CHANNELZ
-//    /// Track how many observers we have created and released; useful for ensuring that subscriptions are correctly cleaned up
-//    public var ChannelZKeyValueObserverCount = 0
-//#endif
-//
-///// Optional protocol for target objects to implement when they need to supplement key-value observing with additional events
-//@objc public protocol KeyValueChannelSupplementing {
-//    /// Add additional observers for the specified keyPath, returning the unsubscriber for any supplements
-//    func supplementKeyValueChannel(forKeyPath: String, subscription: (AnyObject?)->()) -> (()->())?
-//}
-//
-///// subscription for Cocoa KVO changes
-//private struct KeyValueReceptor: Receptor {
-//    typealias HandlerType = ((oldv: AnyObject?, newv: AnyObject?)->Void)
-//    let observer: TargetAssociatedObserver
-//    let handler: HandlerType
-//    var supplementaryDetachable: (()->())?
-//
-//    init(target: NSObject, keyPath: String, handler: HandlerType) {
-//        var entrancy: Int = 0
-//
-//        self.handler = handler
-//        self.observer = TargetAssociatedObserver(target: target, keyPath: keyPath, callback: { (change: [NSObject : AnyObject]) -> () in
-//
-//            if entrancy++ > ChannelZReentrancyLimit {
-//                #if DEBUG_CHANNELZ
-//                    NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(ChannelZReentrancyLimit) reached for «\(keyPath)»")
-//                #endif
-//            } else {
-//                if let valueChangeType = change[NSKeyValueChangeKindKey] as? NSNumber {
-//                    if let valueChange = NSKeyValueChange(rawValue: valueChangeType.unsignedLongValue) {
-//                        switch valueChange {
-//                        case .Setting:
-//                            handler(oldv: change[NSKeyValueChangeOldKey]!, newv: change[NSKeyValueChangeNewKey]!)
-//                        case .Insertion, .Removal, .Replacement:
-//                            // TODO: handle NSKeyValueChangeKindKey and NSKeyValueChangeIndexesKey keys for collection changes
-//                            handler(oldv: change[NSKeyValueChangeOldKey], newv: change[NSKeyValueChangeNewKey])
-//                            break
-//                        }
-//                    }
-//                }
-//                entrancy--
-//            }
-//        })
-//
-//        // If the target object supports supplementing the KVO, install their subscriptions here
-//        if let supplementable = target as? KeyValueChannelSupplementing {
-//            supplementaryDetachable = supplementable.supplementKeyValueChannel(keyPath) { value in
-//                // we don't have access to the previous value here, so send nil to force it to pass any sieves
-//                handler(oldv: nil, newv: value)
-//            }
-//        }
-//
-//    }
-//
-//    func unsubscribe() {
-//        observer.unsubscribe()
-//        supplementaryDetachable?()
-//    }
-//
-//    func request() {
-//        if let target = self.observer.target {
-//            if let keyPath = self.observer.keyPath {
-//                self.handler(oldv: nil, newv: target.valueForKeyPath(keyPath))
-//            }
-//        }
-//    }
-//
-//}
-//
-///// An observer register that is stored as an associated object in the target and is automatically removed when the target is deallocated; can be with either KVO or NSNotificationCenter depending on the constructor arguments
-//@objc final class TargetObserverRegister : NSObject {
-//    // note: it would make sense to declare this as TargetObserverRegister<T:NSObject>, but the class won't receive any KVO notifications if it is a generic
-//
-//    private struct Context {
-//        /// Global pointer to the context that will holder the observer list
-//        private static var ObserverListAssociatedKey = UnsafePointer<Void>()
-//
-//        /// Global lock for getting/setting the observer
-//        private static var RegisterLock = NSLock()
-//
-//        /// Singleton notification center; we don't currently support multiple NSNotificationCenter observers
-//        private static let RegisterNotificationCenter = NSNotificationCenter.defaultCenter()
-//
-//        private static let KVOOptions = NSKeyValueObservingOptions(NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue)
-//    }
-//
-//    /// The signature for the callback when a change occurs
-//    typealias Callback = ([NSObject : AnyObject])->()
-//
-//    typealias Observer = (identifier: Int, handler: Callback)
-//
-//    /// since this associated object is deallocated as part of the owning object's dealloc (see objc_destructInstance in <http://opensource.apple.com/source/objc4/objc4-646/runtime/objc-runtime-new.mm>), we can't rely on the weak reference not having been zeroed, so use an extra unmanaged pointer to the target object that we can use to remove the observer
-//    private let targetPtr: Unmanaged<NSObject>
-//
-//    private var target : NSObject { return targetPtr.takeUnretainedValue() }
-//
-//    private var keyObservers = [String: [Observer]]()
-//
-//    private var noteObservers = [String: [Observer]]()
-//
-//    /// The internal counter of identifiers
-//    private var identifierCounter : Int = 0
-//
-//    class func get(target: NSObject) -> TargetObserverRegister {
-//        Context.RegisterLock.lock()
-//        if let ob = objc_getAssociatedObject(target, &Context.ObserverListAssociatedKey) as? TargetObserverRegister {
-//            Context.RegisterLock.unlock()
-//            return ob
-//        } else {
-//            let ob = TargetObserverRegister(targetPtr: Unmanaged.passUnretained(target))
-//            objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, ob, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
-//            #if DEBUG_CHANNELZ
-//                ChannelZKeyValueObserverCount++
-//            #endif
-//            Context.RegisterLock.unlock()
-//            return ob
-//        }
-//    }
-//
-//    private init(targetPtr: Unmanaged<NSObject>) {
-//        self.targetPtr = targetPtr
-//    }
-//
-//    deinit {
-//        #if DEBUG_CHANNELZ
-//            ChannelZKeyValueObserverCount--
-//        #endif
-//        clear()
-//    }
-//
-//    func addObserver(keyPath: String, handler: Callback) -> Int {
-//        let observer = Observer(identifier: ++identifierCounter, handler: handler)
-//
-//        var observers = keyObservers[keyPath] ?? []
-//        keyObservers[keyPath] = observers + [observer]
-//
-//        if observers.count == 0 { // this is the first observer: actually add it to the target
-//            target.addObserver(self, forKeyPath: keyPath, options: Context.KVOOptions, context: nil)
-//        }
-//
-//        return observer.identifier
-//    }
-//
-//    func addNotification(name: String, handler: Callback) -> Int {
-//        var observers = noteObservers[name] ?? []
-//        if observers.count == 0 { // this is the first observer: actually add it to the target
-//            Context.RegisterNotificationCenter.addObserver(self, selector: Selector("notificationReceived:"), name: name, object: target)
-//        }
-//
-//        let observer = Observer(identifier: ++identifierCounter, handler: handler)
-//        noteObservers[name] = observers + [observer]
-//        return observer.identifier
-//    }
-//    
-//    /// Removes all the observers and clears the map
-//    private func clear() {
-//        let target = self.target // hang on to the target since the getter won't be valid after we remove the associated object
-//
-//        // remove the associated object
-//        objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, nil, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
-//
-//        for keyPath in keyObservers.keys {
-//            // FIXME: random crash with certain classes: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x1057715e0> for the key path "isFinished" from <NSBlockOperation 0x105769810> because it is not registered as an observer."
-//            if target is NSBlockOperation {
-//                // NSBlockOperation doesn't seem to require observers to be removed?
-//                // target.addObserver(self, forKeyPath: keyPath, options: Context.KVOOptions, context: nil) // crash
-//            } else {
-//                target.removeObserver(self, forKeyPath: keyPath, context: nil)
-//            }
-//        }
-//        keyObservers = [:]
-//
-//        for name in noteObservers.keys {
-//            Context.RegisterNotificationCenter.removeObserver(self, name: name, object: target)
-//        }
-//        noteObservers = [:]
-//    }
-//
-//    func removeObserver(keyPath: String, identifier: Int) {
-//        if let observers = keyObservers[keyPath] {
-//            var filtered = observers.filter { $0.identifier != identifier }
-//            if filtered.count == 0 { // no more observers left: remove ourselves as the observer
-//                // FIXME: random crashes in certain specific observed classes, such as NSBlockOperation:
-//                // error: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x109c0daa0> for the key path "isExecuting" from <NSBlockOperation 0x109c07830> because it is not registered as an observer."
-//                keyObservers.removeValueForKey(keyPath)
-//                target.removeObserver(self, forKeyPath: keyPath, context: nil)
-//            } else {
-//                keyObservers[keyPath] = filtered
-//            }
-//        }
-//    }
-//
-//    func removeNotification(name: String, identifier: Int) {
-//        if let observers = noteObservers[name] {
-//            var filtered = observers.filter { $0.identifier != identifier }
-//            if filtered.count == 0 { // no more observers left: remove ourselves as the observer
-//                noteObservers.removeValueForKey(name)
-//                Context.RegisterNotificationCenter.removeObserver(self, name: name, object: nil)
-//            } else {
-//                noteObservers[name] = filtered
-//            }
-//        }
-//    }
-//
-//    /// Callback for KVO
-//    override func observeValueForKeyPath(keyPath: String, ofObject object: AnyObject, change: [NSObject : AnyObject], context: UnsafeMutablePointer<Void>) {
-//        if let observers = keyObservers[keyPath] {
-//            for observer in observers {
-//                observer.handler(change)
-//            }
-//        }
-//    }
-//
-//    /// Callback for in NSNotificationCenter
-//    func notificationReceived(note: NSNotification) {
-//        let change = note.userInfo ?? [:]
-//        if let observers = noteObservers[note.name] {
-//            for observer in observers {
-//                observer.handler(change)
-//            }
-//        }
-//    }
-//}
-//
-//final class TargetAssociatedObserver {
-//    let identifier: Int
-//    let keyPath: String?
-//    let notificationName: String?
-//    weak var target: NSObject?
-//
-//    init(target: NSObject, keyPath: String, callback: ([NSObject : AnyObject])->()) {
-//        self.target = target
-//        let map = TargetObserverRegister.get(target)
-//        self.identifier = map.addObserver(keyPath, handler: callback)
-//        self.keyPath = keyPath
-//    }
-//
-//    init(target: NSObject, notificationName: String, callback: ([NSObject : AnyObject])->()) {
-//        self.target = target
-//        let map = TargetObserverRegister.get(target)
-//        self.identifier = map.addNotification(notificationName, handler: callback)
-//        self.notificationName = notificationName
-//    }
-//
-//    func unsubscribe() {
-//        if let target = target {
-//            let map = TargetObserverRegister.get(target)
-//            if let keyPath = keyPath {
-//                map.removeObserver(keyPath, identifier: identifier)
-//            } else if let notificationName = notificationName {
-//                map.removeNotification(notificationName, identifier: identifier)
-//            }
-//
-//            self.target = nil // manually clear the target so we don't unsubscribe twice
-//        }
-//    }
-//}
-//
-//
-//    /// The class prefix that Cocoa prepends to the generated subclass that is swizzled in for KVO handling
-//let ChannelZKVOSwizzledISAPrefix = "NSKVONotifying_"
-//
-///// The class prefix that ChannelZ appends to the generated subclass that is swizzled in for automatic keyPath identification
-//let ChannelZInstrumentorSwizzledISASuffix = "_ChannelZKeyInspection"
-//
-///// The shared lock used for swizzling in for instrumentation subclass creation
-//let ChannelZKeyPathForAutoclosureLock = NSLock()
-//
-///// Attempts to determine the properties that are accessed by the given autoclosure; does so by temporarily swizzling the object's isa pointer to a generated subclass that instruments access to all the properties; note that this is not thread-safe in the unlikely event that another method (e.g., KVO swizzling) is being used at the same time for the class on another thread
-//private func keyPathForAutoclosure<T>(target: NSObject, accessor: ()->T, required: Bool) -> String? {
-//    var keyPath: String?
-//
-//    let origclass : AnyClass = object_getClass(target)
-//    var className = NSStringFromClass(origclass)
-//
-//    let subclassName = className + ChannelZInstrumentorSwizzledISASuffix // unique subclass name
-//    let subclass : AnyClass = objc_allocateClassPair(origclass, subclassName, 0)
-//    var propSelIMPs: [IMP] = []
-//
-//    let nsobjectclass : AnyClass = object_getClass(NSObject())
-//
-//    for var propclass : AnyClass = origclass; propclass !== nsobjectclass; propclass = class_getSuperclass(propclass) {
-//
-//        var propCount : UInt32 = 0
-//        let propList = class_copyPropertyList(propclass, &propCount)
-//        // println("instrumenting \(propCount) properties of \(NSStringFromClass(propclass))")
-//
-//        for i in 0..<propCount {
-//            let prop = propList[Int(i)]
-//
-//            let pname = property_getName(prop)
-//            let propName = String.fromCString(pname)
-//
-//            // the selector we will implement will be the getter for the property; these often differ with bools (e.g. "enabled" vs. "isEnabled")
-//            let gname = property_copyAttributeValue(prop, "G") // the getter name
-//            let getterName = String.fromCString(gname)
-//            free(gname)
-//
-//            let ronly = property_copyAttributeValue(prop, "R") // whether the property is read-only
-//            let readonly = ronly != nil
-//            free(ronly)
-//
-//            if let propName = propName {
-//                if let propSelName = getterName ?? propName {
-//                    // println("instrumenting \(NSStringFromClass(propclass)).\(propSelName) (prop=\(propName) getter=\(getterName) readonly=\(readonly))")
-//                    let propSel = Selector(propSelName)
-//
-//                    let method = class_getInstanceMethod(propclass, propSel)
-//                    if method == nil { continue }
-//
-//                    if class_getInstanceMethod(nsobjectclass, propSel) != nil { continue }
-//
-//                    let typeEncoding = method_getTypeEncoding(method)
-//                    if typeEncoding == nil { continue }
-//
-//                    let returnTypePtr = method_copyReturnType(method)
-//                    let returnType = String.fromCString(returnTypePtr) ?? "@"
-//                    free(returnTypePtr)
-//
-//                    let propBlock : @objc_block (AnyObject) -> AnyObject? = { (sself : AnyObject) -> (AnyObject?) in
-//                        // add the name of the property that was accessed; read-only properties tend to use their getterName as the key path (e.g., NSOperation.isFinished)
-//                        let keyName = readonly && getterName != nil ? getterName! : propName
-//                        keyPath = keyName // remember the keyPath for later
-//                        object_setClass(target, origclass) // immediately swap the isa back to the original
-//                        return target.valueForKey(keyName) // and defer the invocation to the discovered keyPath (throwing a helpful exception is we are wrong)
-//                    }
-//
-//                    let propSelIMP = imp_implementationWithBlock(unsafeBitCast(propBlock, AnyObject.self))
-//                    if !class_addMethod(subclass, propSel, propSelIMP, typeEncoding) {
-//                        // ignore errors; sometimes happens with UITextField.inputView or NSView.tag
-//                        // println("could not add method implementation")
-//                    }
-//                    propSelIMPs += [propSelIMP]
-//
-//                }
-//            }
-//        }
-//
-//        free(propList)
-//    }
-//
-//    ChannelZKeyPathForAutoclosureLock.lock()
-//    objc_registerClassPair(subclass)
-//    object_setClass(target, subclass)
-//
-//    accessor() // invoke the accessor to see what instrumented properties are accessed
-//
-//    // resore the isa if we haven't done already and destroy the instrumenter subclass
-//    if object_getClass(target) !== origclass {
-//        object_setClass(target, origclass)
-//    }
-//
-//    // clear the implementation blocks
-//    for propSelIMP in propSelIMPs { imp_removeBlock(propSelIMP) }
-//
-//    // remove the subclass
-//    objc_disposeClassPair(subclass)
-//    ChannelZKeyPathForAutoclosureLock.unlock()
-//
-//    if required && keyPath == nil {
-//        fatalError("could not determine autoclosure key path through instrumentation of «\(className)»; ensure that the property is accessed directly in the invocation and that it is key-vaue compliant, or else manually specify the keyPath parameter")
-//    }
-//
-//    // println("returning property «\(keyPath)»")
-//    return keyPath
-//}
-//
-//
+
+
+#if DEBUG_CHANNELZ
+    /// Track how many observers we have created and released; useful for ensuring that subscriptions are correctly cleaned up
+    public var ChannelZKeyValueObserverCount = 0
+#endif
+
+/// Optional protocol for target objects to implement when they need to supplement key-value observing with additional events
+@objc public protocol KeyValueChannelSupplementing {
+    /// Add additional observers for the specified keyPath, returning the unsubscriber for any supplements
+    func supplementKeyValueChannel(forKeyPath: String, subscription: (AnyObject?)->()) -> (()->())?
+}
+
+/// subscription for Cocoa KVO changes
+private struct KeyValueReceptor {
+    typealias HandlerType = ((oldv: AnyObject?, newv: AnyObject?)->Void)
+    let observer: TargetAssociatedObserver
+    let handler: HandlerType
+    var supplementaryDetachable: (()->())?
+
+    init(target: NSObject, keyPath: String, handler: HandlerType) {
+        var entrancy: Int = 0
+
+        self.handler = handler
+        self.observer = TargetAssociatedObserver(target: target, keyPath: keyPath, callback: { (change: [NSObject : AnyObject]) -> () in
+
+            if entrancy++ > ChannelZReentrancyLimit {
+                #if DEBUG_CHANNELZ
+                    NSLog("\(__FILE__.lastPathComponent):\(__LINE__): re-entrant value change limit of \(ChannelZReentrancyLimit) reached for «\(keyPath)»")
+                #endif
+            } else {
+                if let valueChangeType = change[NSKeyValueChangeKindKey] as? NSNumber {
+                    if let valueChange = NSKeyValueChange(rawValue: valueChangeType.unsignedLongValue) {
+                        switch valueChange {
+                        case .Setting:
+                            handler(oldv: change[NSKeyValueChangeOldKey]!, newv: change[NSKeyValueChangeNewKey]!)
+                        case .Insertion, .Removal, .Replacement:
+                            // TODO: handle NSKeyValueChangeKindKey and NSKeyValueChangeIndexesKey keys for collection changes
+                            handler(oldv: change[NSKeyValueChangeOldKey], newv: change[NSKeyValueChangeNewKey])
+                            break
+                        }
+                    }
+                }
+                entrancy--
+            }
+        })
+
+        // If the target object supports supplementing the KVO, install their subscriptions here
+        if let supplementable = target as? KeyValueChannelSupplementing {
+            supplementaryDetachable = supplementable.supplementKeyValueChannel(keyPath) { value in
+                // we don't have access to the previous value here, so send nil to force it to pass any sieves
+                handler(oldv: nil, newv: value)
+            }
+        }
+
+    }
+
+    func unsubscribe() {
+        observer.unsubscribe()
+        supplementaryDetachable?()
+    }
+
+    func request() {
+        if let target = self.observer.target {
+            if let keyPath = self.observer.keyPath {
+                self.handler(oldv: nil, newv: target.valueForKeyPath(keyPath))
+            }
+        }
+    }
+
+}
+
+/// An observer register that is stored as an associated object in the target and is automatically removed when the target is deallocated; can be with either KVO or NSNotificationCenter depending on the constructor arguments
+@objc final class TargetObserverRegister : NSObject {
+    // note: it would make sense to declare this as TargetObserverRegister<T:NSObject>, but the class won't receive any KVO notifications if it is a generic
+
+    private struct Context {
+        /// Global pointer to the context that will holder the observer list
+        private static var ObserverListAssociatedKey = UnsafePointer<Void>()
+
+        /// Global lock for getting/setting the observer
+        private static var RegisterLock = NSLock()
+
+        /// Singleton notification center; we don't currently support multiple NSNotificationCenter observers
+        private static let RegisterNotificationCenter = NSNotificationCenter.defaultCenter()
+
+        private static let KVOOptions = NSKeyValueObservingOptions(NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue)
+    }
+
+    /// The signature for the callback when a change occurs
+    typealias Callback = ([NSObject : AnyObject])->()
+
+    typealias Observer = (identifier: Int, handler: Callback)
+
+    // since this associated object is deallocated as part of the owning object's dealloc (see objc_destructInstance in <http://opensource.apple.com/source/objc4/objc4-646/runtime/objc-runtime-new.mm>), we can't rely on the weak reference not having been zeroed, so use an extra unmanaged pointer to the target object that we can use to remove the observer
+    private let targetPtr: Unmanaged<NSObject>
+
+    private var target : NSObject { return targetPtr.takeUnretainedValue() }
+
+    private var keyObservers = [String: [Observer]]()
+
+    private var noteObservers = [String: [Observer]]()
+
+    /// The internal counter of identifiers
+    private var identifierCounter : Int = 0
+
+    class func get(target: NSObject) -> TargetObserverRegister {
+        Context.RegisterLock.lock()
+        if let ob = objc_getAssociatedObject(target, &Context.ObserverListAssociatedKey) as? TargetObserverRegister {
+            Context.RegisterLock.unlock()
+            return ob
+        } else {
+            let ob = TargetObserverRegister(targetPtr: Unmanaged.passUnretained(target))
+            objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, ob, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+            #if DEBUG_CHANNELZ
+                ChannelZKeyValueObserverCount++
+            #endif
+            Context.RegisterLock.unlock()
+            return ob
+        }
+    }
+
+    private init(targetPtr: Unmanaged<NSObject>) {
+        self.targetPtr = targetPtr
+    }
+
+    deinit {
+        #if DEBUG_CHANNELZ
+            ChannelZKeyValueObserverCount--
+        #endif
+        clear()
+    }
+
+    func addObserver(keyPath: String, handler: Callback) -> Int {
+        let observer = Observer(identifier: ++identifierCounter, handler: handler)
+
+        var observers = keyObservers[keyPath] ?? []
+        keyObservers[keyPath] = observers + [observer]
+
+        if observers.count == 0 { // this is the first observer: actually add it to the target
+            target.addObserver(self, forKeyPath: keyPath, options: Context.KVOOptions, context: nil)
+        }
+
+        return observer.identifier
+    }
+
+    func addNotification(name: String, handler: Callback) -> Int {
+        var observers = noteObservers[name] ?? []
+        if observers.count == 0 { // this is the first observer: actually add it to the target
+            Context.RegisterNotificationCenter.addObserver(self, selector: Selector("notificationReceived:"), name: name, object: target)
+        }
+
+        let observer = Observer(identifier: ++identifierCounter, handler: handler)
+        noteObservers[name] = observers + [observer]
+        return observer.identifier
+    }
+    
+    /// Removes all the observers and clears the map
+    private func clear() {
+        let target = self.target // hang on to the target since the getter won't be valid after we remove the associated object
+
+        // remove the associated object
+        objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, nil, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+
+        for keyPath in keyObservers.keys {
+            // FIXME: random crash with certain classes: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x1057715e0> for the key path "isFinished" from <NSBlockOperation 0x105769810> because it is not registered as an observer."
+            if target is NSBlockOperation {
+                // NSBlockOperation doesn't seem to require observers to be removed?
+                // target.addObserver(self, forKeyPath: keyPath, options: Context.KVOOptions, context: nil) // crash
+            } else {
+                target.removeObserver(self, forKeyPath: keyPath, context: nil)
+            }
+        }
+        keyObservers = [:]
+
+        for name in noteObservers.keys {
+            Context.RegisterNotificationCenter.removeObserver(self, name: name, object: target)
+        }
+        noteObservers = [:]
+    }
+
+    func removeObserver(keyPath: String, identifier: Int) {
+        if let observers = keyObservers[keyPath] {
+            var filtered = observers.filter { $0.identifier != identifier }
+            if filtered.count == 0 { // no more observers left: remove ourselves as the observer
+                // FIXME: random crashes in certain specific observed classes, such as NSBlockOperation:
+                // error: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x109c0daa0> for the key path "isExecuting" from <NSBlockOperation 0x109c07830> because it is not registered as an observer."
+                keyObservers.removeValueForKey(keyPath)
+                target.removeObserver(self, forKeyPath: keyPath, context: nil)
+            } else {
+                keyObservers[keyPath] = filtered
+            }
+        }
+    }
+
+    func removeNotification(name: String, identifier: Int) {
+        if let observers = noteObservers[name] {
+            var filtered = observers.filter { $0.identifier != identifier }
+            if filtered.count == 0 { // no more observers left: remove ourselves as the observer
+                noteObservers.removeValueForKey(name)
+                Context.RegisterNotificationCenter.removeObserver(self, name: name, object: nil)
+            } else {
+                noteObservers[name] = filtered
+            }
+        }
+    }
+
+    /// Callback for KVO
+    override func observeValueForKeyPath(keyPath: String, ofObject object: AnyObject, change: [NSObject : AnyObject], context: UnsafeMutablePointer<Void>) {
+        if let observers = keyObservers[keyPath] {
+            for observer in observers {
+                observer.handler(change)
+            }
+        }
+    }
+
+    /// Callback for in NSNotificationCenter
+    func notificationReceived(note: NSNotification) {
+        let change = note.userInfo ?? [:]
+        if let observers = noteObservers[note.name] {
+            for observer in observers {
+                observer.handler(change)
+            }
+        }
+    }
+}
+
+final class TargetAssociatedObserver {
+    let identifier: Int
+    let keyPath: String?
+    let notificationName: String?
+    weak var target: NSObject?
+
+    init(target: NSObject, keyPath: String, callback: ([NSObject : AnyObject])->()) {
+        self.target = target
+        let map = TargetObserverRegister.get(target)
+        self.identifier = map.addObserver(keyPath, handler: callback)
+        self.keyPath = keyPath
+    }
+
+    init(target: NSObject, notificationName: String, callback: ([NSObject : AnyObject])->()) {
+        self.target = target
+        let map = TargetObserverRegister.get(target)
+        self.identifier = map.addNotification(notificationName, handler: callback)
+        self.notificationName = notificationName
+    }
+
+    func unsubscribe() {
+        if let target = target {
+            let map = TargetObserverRegister.get(target)
+            if let keyPath = keyPath {
+                map.removeObserver(keyPath, identifier: identifier)
+            } else if let notificationName = notificationName {
+                map.removeNotification(notificationName, identifier: identifier)
+            }
+
+            self.target = nil // manually clear the target so we don't unsubscribe twice
+        }
+    }
+}
+
+
+/// The class prefix that Cocoa prepends to the generated subclass that is swizzled in for KVO handling
+let ChannelZKVOSwizzledISAPrefix = "NSKVONotifying_"
+
+/// The class prefix that ChannelZ appends to the generated subclass that is swizzled in for automatic keyPath identification
+let ChannelZInstrumentorSwizzledISASuffix = "_ChannelZKeyInspection"
+
+/// The shared lock used for swizzling in for instrumentation subclass creation
+let ChannelZKeyPathForAutoclosureLock = NSLock()
+
+/// Attempts to determine the properties that are accessed by the given autoclosure; does so by temporarily swizzling the object's isa pointer to a generated subclass that instruments access to all the properties; note that this is not thread-safe in the unlikely event that another method (e.g., KVO swizzling) is being used at the same time for the class on another thread
+private func keyPathForAutoclosure<T>(target: NSObject, accessor: ()->T, required: Bool) -> String? {
+    var keyPath: String?
+
+    let origclass : AnyClass = object_getClass(target)
+    var className = NSStringFromClass(origclass)
+
+    let subclassName = className + ChannelZInstrumentorSwizzledISASuffix // unique subclass name
+    let subclass : AnyClass = objc_allocateClassPair(origclass, subclassName, 0)
+    var propSelIMPs: [IMP] = []
+
+    let nsobjectclass : AnyClass = object_getClass(NSObject())
+
+    for var propclass : AnyClass = origclass; propclass !== nsobjectclass; propclass = class_getSuperclass(propclass) {
+
+        var propCount : UInt32 = 0
+        let propList = class_copyPropertyList(propclass, &propCount)
+        // println("instrumenting \(propCount) properties of \(NSStringFromClass(propclass))")
+
+        for i in 0..<propCount {
+            let prop = propList[Int(i)]
+
+            let pname = property_getName(prop)
+            let propName = String.fromCString(pname)
+
+            // the selector we will implement will be the getter for the property; these often differ with bools (e.g. "enabled" vs. "isEnabled")
+            let gname = property_copyAttributeValue(prop, "G") // the getter name
+            let getterName = String.fromCString(gname)
+            free(gname)
+
+            let ronly = property_copyAttributeValue(prop, "R") // whether the property is read-only
+            let readonly = ronly != nil
+            free(ronly)
+
+            if let propName = propName {
+                if let propSelName = getterName ?? propName {
+                    // println("instrumenting \(NSStringFromClass(propclass)).\(propSelName) (prop=\(propName) getter=\(getterName) readonly=\(readonly))")
+                    let propSel = Selector(propSelName)
+
+                    let method = class_getInstanceMethod(propclass, propSel)
+                    if method == nil { continue }
+
+                    if class_getInstanceMethod(nsobjectclass, propSel) != nil { continue }
+
+                    let typeEncoding = method_getTypeEncoding(method)
+                    if typeEncoding == nil { continue }
+
+                    let returnTypePtr = method_copyReturnType(method)
+                    let returnType = String.fromCString(returnTypePtr) ?? "@"
+                    free(returnTypePtr)
+
+                    let propBlock : @objc_block (AnyObject) -> AnyObject? = { (sself : AnyObject) -> (AnyObject?) in
+                        // add the name of the property that was accessed; read-only properties tend to use their getterName as the key path (e.g., NSOperation.isFinished)
+                        let keyName = readonly && getterName != nil ? getterName! : propName
+                        keyPath = keyName // remember the keyPath for later
+                        object_setClass(target, origclass) // immediately swap the isa back to the original
+                        return target.valueForKey(keyName) // and defer the invocation to the discovered keyPath (throwing a helpful exception is we are wrong)
+                    }
+
+                    let propSelIMP = imp_implementationWithBlock(unsafeBitCast(propBlock, AnyObject.self))
+                    if !class_addMethod(subclass, propSel, propSelIMP, typeEncoding) {
+                        // ignore errors; sometimes happens with UITextField.inputView or NSView.tag
+                        // println("could not add method implementation")
+                    }
+                    propSelIMPs += [propSelIMP]
+
+                }
+            }
+        }
+
+        free(propList)
+    }
+
+    ChannelZKeyPathForAutoclosureLock.lock()
+    objc_registerClassPair(subclass)
+    object_setClass(target, subclass)
+
+    accessor() // invoke the accessor to see what instrumented properties are accessed
+
+    // resore the isa if we haven't done already and destroy the instrumenter subclass
+    if object_getClass(target) !== origclass {
+        object_setClass(target, origclass)
+    }
+
+    // clear the implementation blocks
+    for propSelIMP in propSelIMPs { imp_removeBlock(propSelIMP) }
+
+    // remove the subclass
+    objc_disposeClassPair(subclass)
+    ChannelZKeyPathForAutoclosureLock.unlock()
+
+    if required && keyPath == nil {
+        fatalError("could not determine autoclosure key path through instrumentation of «\(className)»; ensure that the property is accessed directly in the invocation and that it is key-vaue compliant, or else manually specify the keyPath parameter")
+    }
+
+    // println("returning property «\(keyPath)»")
+    return keyPath
+}
+
+
 ///// A Observable for events of a custom type
 //public struct EventObservable<T>: ObservableType {
 //    public typealias Element = T

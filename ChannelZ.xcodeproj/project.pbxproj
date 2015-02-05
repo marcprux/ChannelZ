@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		7E2AB9BD1A82B90100AFBD4F /* Operators.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2AB9BC1A82B90100AFBD4F /* Operators.swift */; };
+		7E2AB9BF1A83C21A00AFBD4F /* FoundationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2AB9BE1A83C21A00AFBD4F /* FoundationTests.swift */; };
 		7E30DC3C1A0D6A510050EC52 /* ChannelZ.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E30DC301A0D6A510050EC52 /* ChannelZ.framework */; };
 		7E30DC431A0D6A510050EC52 /* ChannelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC421A0D6A510050EC52 /* ChannelTests.swift */; };
 		7E30DC5D1A0D6B1B0050EC52 /* Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC591A0D6B1B0050EC52 /* Foundation.swift */; };
@@ -35,6 +36,7 @@
 
 /* Begin PBXFileReference section */
 		7E2AB9BC1A82B90100AFBD4F /* Operators.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Operators.swift; sourceTree = "<group>"; };
+		7E2AB9BE1A83C21A00AFBD4F /* FoundationTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FoundationTests.swift; sourceTree = "<group>"; };
 		7E30DC301A0D6A510050EC52 /* ChannelZ.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ChannelZ.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E30DC341A0D6A510050EC52 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7E30DC3B1A0D6A510050EC52 /* ChannelZTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChannelZTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -119,6 +121,7 @@
 			children = (
 				7E30DC411A0D6A510050EC52 /* Info.plist */,
 				7E30DC421A0D6A510050EC52 /* ChannelTests.swift */,
+				7E2AB9BE1A83C21A00AFBD4F /* FoundationTests.swift */,
 				7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */,
 				7E4E53C91A21578700B1016C /* PlayMarker.swift */,
 			);
@@ -261,6 +264,7 @@
 			files = (
 				7E30DC431A0D6A510050EC52 /* ChannelTests.swift in Sources */,
 				7EE45E221A210FFE00E9AB52 /* PlayMarkerTests.swift in Sources */,
+				7E2AB9BF1A83C21A00AFBD4F /* FoundationTests.swift in Sources */,
 				7E4E53CA1A21578700B1016C /* PlayMarker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

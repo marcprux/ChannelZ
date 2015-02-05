@@ -261,7 +261,7 @@ public extension Channel {
     ///
     /// :returns: a stateful Channel that pairs up values from `self` and `with` Channels.
     public func zip<S2, T2>(with: Channel<S2, T2>, capacity: Int? = nil)->Channel<(S, S2), (T, T2)> {
-        return Channel<(S, S2), (T, T2)>(source: (self.source, with.source)) { (sub: (T, T2)->Void) in
+        return Channel<(S, S2), (T, T2)>(source: (self.source, with.source)) { (rcvr: (T, T2)->Void) in
 
             var v1s: [T] = []
             var v2s: [T2] = []
@@ -269,7 +269,7 @@ public extension Channel {
             let zipper: ()->() = {
                 // only send the tuple to the subscription when we have at least one
                 while v1s.count > 0 && v2s.count > 0 {
-                    sub(v1s.removeAtIndex(0), v2s.removeAtIndex(0))
+                    rcvr(v1s.removeAtIndex(0), v2s.removeAtIndex(0))
                 }
 
                 // trim to capacity if it was specified
@@ -315,15 +315,15 @@ public extension Channel {
         var lasta: T?
         var lastb: T2?
 
-        return Channel<(S, S2), Both>(source: (self.source, other.source)) { (sub: (Both->Void)) in
+        return Channel<(S, S2), Both>(source: (self.source, other.source)) { (rcvr: (Both->Void)) in
             let rcpt1 = self.receive { a in
                 lasta = a
-                if let lastb = lastb { sub(Both(a, lastb)) }
+                if let lastb = lastb { rcvr(Both(a, lastb)) }
 
             }
             let rcpt2 = other.receive { b in
                 lastb = b
-                if let lasta = lasta { sub(Both(lasta, b)) }
+                if let lasta = lasta { rcvr(Both(lasta, b)) }
             }
             return ReceiptOf(receipts: [rcpt1, rcpt2])
         }
@@ -339,9 +339,9 @@ public extension Channel {
     /// :returns: a stateless Channel that emits the item of either `self` or `other`.
     public func either<S2, T2>(other: Channel<S2, T2>)->Channel<(S, S2), (T?, T2?)> {
         typealias Either = (T?, T2?)
-        return Channel<(S, S2), Either>(source: (self.source, other.source)) { (sub: (Either->Void)) in
-            let rcpt1 = self.receive { v1 in sub(Either(v1, nil)) }
-            let rcpt2 = other.receive { v2 in sub(Either(nil, v2)) }
+        return Channel<(S, S2), Either>(source: (self.source, other.source)) { (rcvr: (Either->Void)) in
+            let rcpt1 = self.receive { v1 in rcvr(Either(v1, nil)) }
+            let rcpt2 = other.receive { v2 in rcvr(Either(nil, v2)) }
             return ReceiptOf(receipts: [rcpt1, rcpt2])
         }
     }
@@ -355,9 +355,9 @@ public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>)->Channel<(S
     var s2s: [S2] = []
     return Channel<(S1, [S2]), T>(source: (channel.source, s2s), reception: { (rcv: T->Void)->Receipt in
         var rcpts: [Receipt] = []
-        let rcpt = channel.receive { (subobv: Channel<S2, T>) in
-            s2s += [subobv.source]
-            rcpts += [subobv.receive { (item: T) in rcv(item) }]
+        let rcpt = channel.receive { (rcvrobv: Channel<S2, T>) in
+            s2s += [rcvrobv.source]
+            rcpts += [rcvrobv.receive { (item: T) in rcv(item) }]
         }
         rcpts += [rcpt]
 
@@ -396,41 +396,36 @@ extension Channel : Receivable {
 
 // MARK: Utilities
 
-/// Filters the given `Channel` for distinct items that conform to `Equatable`
-public func sieveDistinct<S, T where T: Equatable>(channel: Channel<S, T>)->Channel<S, T> {
-    return channel.sieve(!=)
-}
-
 /// Creates a Channel sourced by a `SinkOf` that will be used to send elements to the receivers
-public func receiveSink<T>(type: T.Type)->Channel<SinkOf<T>, T> {
-    var subs = ReceiverList<T>()
-    let sink = SinkOf { subs.receive($0) }
-    return Channel<SinkOf<T>, T>(source: sink) { subs.addReceipt($0, { nil }) }
+public func channelZSink<T>(type: T.Type)->Channel<SinkOf<T>, T> {
+    var rcvrs = ReceiverList<T>()
+    let sink = SinkOf { rcvrs.receive($0) }
+    return Channel<SinkOf<T>, T>(source: sink) { rcvrs.addReceipt($0, { nil }) }
 }
 
 /// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receivers
-public func channelSequence<S, T where S: SequenceType, S.Generator.Element == T>(from: S)->Channel<S, T> {
+public func channelZSequence<S, T where S: SequenceType, S.Generator.Element == T>(from: S)->Channel<S, T> {
     var receivers = ReceiverList<T>()
-    return Channel(source: from) { sub in
-        for item in from { sub(item) }
+    return Channel(source: from) { rcvr in
+        for item in from { rcvr(item) }
         return ReceiptOf() // cancelled receipt since it will never receive more items
     }
 }
 
 /// Creates a Channel sourced by a `GeneratorType` that will emit all its elements to new receivers
-public func receiveGenerator<S, T where S: GeneratorType, S.Element == T>(from: S)->Channel<S, T> {
+public func channelZGenerator<S, T where S: GeneratorType, S.Element == T>(from: S)->Channel<S, T> {
     var receivers = ReceiverList<T>()
-    return Channel(source: from) { sub in
-        for item in GeneratorOf(from) { sub(item) }
+    return Channel(source: from) { rcvr in
+        for item in GeneratorOf(from) { rcvr(item) }
         return ReceiptOf() // cancelled receipt since it will never receive more items
     }
 }
 
 /// Creates a Channel sourced by an optional Closure that will be send all execution results to new receivers until it returns `.None`
-public func receiveClosure<T>(from: ()->T?)->Channel<()->T?, T> {
+public func channelZClosure<T>(from: ()->T?)->Channel<()->T?, T> {
     var receivers = ReceiverList<T>()
-    return Channel(source: from) { sub in
-        while let item = from() { sub(item) }
+    return Channel(source: from) { rcvr in
+        while let item = from() { rcvr(item) }
         return ReceiptOf() // cancelled receipt since it will never receive more items
     }
 }
@@ -444,9 +439,9 @@ public final class PropertyChannel<T>: Receivable, SinkType {
     public func put(x: T) { value = x }
 
     public func channel()->Channel<PropertyChannel<Element>, Element> {
-        return Channel(source: self) { sub in
-            sub(self.value) // immediately issue the original value
-            return self.receivers.addReceipt(sub, { self.value })
+        return Channel(source: self) { rcvr in
+            rcvr(self.value) // immediately issue the original value
+            return self.receivers.addReceipt(rcvr, { self.value })
         }
     }
 }

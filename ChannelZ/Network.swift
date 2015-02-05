@@ -50,7 +50,7 @@ public extension NSInputStream {
         return Channel(source: self) { receiver in
             self.delegate = delegate
             let index = receivers.addReceiver(receiver)
-            return ReceiptOf(requester: { }, canceller: {
+            return ReceiptOf(canceler: {
                 receivers.removeReceptor(index)
                 if receivers.count == 0 {
                     self.delegate = nil

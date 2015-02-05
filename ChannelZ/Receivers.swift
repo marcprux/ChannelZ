@@ -16,30 +16,21 @@ public protocol Receipt {
 
     /// Disconnects this receptor from the source
     func cancel()
-
-    /// Requests that the source issue an element to this receptor; note that priming does not guarantee that the receptor will be received since the underlying source may be push-only source or the element may be blocked by an intermediate filter
-    func request()
 }
 
-/// A type-erased receipt.
-///
-/// Forwards operations to an arbitrary underlying receipt with the same
-/// `Element` type, hiding the specifics of the underlying receipt.
+// A receipt implementation
 public class ReceiptOf: Receipt {
     public private(set) var cancelled: Bool = false
-    let requester: ()->()
-    let canceller: ()->()
+    let canceler: ()->()
 
-    internal init(requester: ()->(), canceller: ()->()) {
-        self.requester = requester
-        self.canceller = canceller
+    internal init(canceler: ()->()) {
+        self.canceler = canceler
     }
 
     /// Creates a Receipt backed by one or more other Receipts
     public init(receipts: [Receipt]) {
         self.cancelled = receipts.count == 0 // no receipts means that it is cancelled already
-        self.requester = { for s in receipts { s.request() } }
-        self.canceller = { for s in receipts { s.cancel() } }
+        self.canceler = { for s in receipts { s.cancel() } }
     }
 
     /// Creates a Receipt backed by another Receipt
@@ -54,12 +45,8 @@ public class ReceiptOf: Receipt {
 
     /// Disconnects this receipt from the source observable
     public func cancel() {
-        if !cancelled { canceller() }
+        if !cancelled { canceler() }
         cancelled = true
-    }
-
-    public func request() {
-        if !cancelled { requester() }
     }
 }
 
@@ -105,7 +92,7 @@ final class ReceiverList<T> {
 
     func addReceipt(receptor: (T)->(), requestor: ()->(T?))->Receipt {
         let token = addReceiver(receptor)
-        return ReceiptOf(requester: { if let x = requestor() { self.receive(x) } }, canceller: { self.removeReceptor(token) })
+        return ReceiptOf(canceler: { self.removeReceptor(token) })
     }
 
     func addReceiver(receptor: (T)->())->Int {
@@ -129,12 +116,6 @@ final class ReceiverList<T> {
             self.receivers = []
         }
     }
-}
-
-/// Requests the receptor and returns the receptor itself
-internal func request(receipt: Receipt) -> Receipt {
-    receipt.request()
-    return receipt
 }
 
 
@@ -167,7 +148,6 @@ public class TrapReceipt<S, T>: Receipt {
 
     deinit { receipt?.cancel() }
     public func cancel() { receipt?.cancel() }
-    public func request() { receipt?.request() }
 
     public func receive(value: T) {
         while values.count >= capacity {
