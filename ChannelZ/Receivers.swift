@@ -67,7 +67,7 @@ final class ReceiverList<T> {
 
     var count: Int { return receivers.count }
 
-    private func synchronized<X>(lockObj: AnyObject!, closure: ()->X) -> X {
+    private func synchronized<X>(lockObj: AnyObject, closure: ()->X) -> X {
         if objc_sync_enter(lockObj) == Int32(OBJC_SYNC_SUCCESS) {
             var retVal: X = closure()
             objc_sync_exit(lockObj)
@@ -122,7 +122,7 @@ final class ReceiverList<T> {
 /// A TrapReceipt is a receptor to a observable that retains a number of values (default 1) when they are sent by the source
 public class TrapReceipt<S, T>: Receipt {
     public var cancelled: Bool = false
-    public let source: Channel<S, T>
+    public let channel: Channel<S, T>
 
     /// Returns the last value to be added to this trap
     public var value: T? { return values.last }
@@ -134,13 +134,13 @@ public class TrapReceipt<S, T>: Receipt {
 
     private var receipt: Receipt?
 
-    public init(source: Channel<S, T>, capacity: Int) {
-        self.source = source
+    public init(channel: Channel<S, T>, capacity: Int) {
+        self.channel = channel
         self.values = []
         self.capacity = capacity
         self.values.reserveCapacity(capacity)
 
-        let receipt = source.receive({ [weak self] (value) -> Void in
+        let receipt = channel.receive({ [weak self] (value) -> Void in
             let _ = self?.receive(value)
         })
         self.receipt = receipt
@@ -158,7 +158,7 @@ public class TrapReceipt<S, T>: Receipt {
     }
 }
 
-/// Creates a trap for the last `capacity` (default 1) events of the `source` observable
-public func trap<S, T>(source: Channel<S, T>, capacity: Int = 1) -> TrapReceipt<S, T> {
-    return TrapReceipt(source: source, capacity: capacity)
+/// Creates a trap for the last `capacity` (default 1) events of the `channel`
+public func trap<S, T>(channel: Channel<S, T>, capacity: Int = 1) -> TrapReceipt<S, T> {
+    return TrapReceipt(channel: channel, capacity: capacity)
 }

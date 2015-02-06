@@ -44,7 +44,7 @@ public struct Channel<S, T> {
     ///
     /// :param: receiver the block to be executed whenever this Channel emits an item
     ///
-    /// :returns: a `Receipt`, which can be used to later `cancel` from receiving items
+    /// :returns: A `Receipt`, which can be used to later `cancel` reception
     public func receive(receiver: T->Void)->Receipt {
         return reception(receiver)
     }
@@ -52,7 +52,7 @@ public struct Channel<S, T> {
     /// Erases the source type from this `Channel` to `Void`, which can be useful for simplyfying the signature
     /// for functions that don't care about the source's type or for channel phases that want to ensure the source
     /// cannot be accessed
-    public func void()->Channel<Void, T> {
+    public func dissolve()->Channel<Void, T> {
         return Channel<Void, T>(source: Void(), self.reception)
     }
 
@@ -60,9 +60,9 @@ public struct Channel<S, T> {
     ///
     /// :param: sink the sink that will accept all the items from the Channel
     ///
-    /// :returns: a `Receipt` for the pipe
+    /// :returns: A `Receipt` for the pipe
     public func pipe<S2: SinkType where S2.Element == T>(var sink: S2)->Receipt {
-        return receive({ sink.put($0) })
+        return receive { sink.put($0) }
     }
 
     /// Lifts a function to the current Channel and returns a new channel phase that when received to will pass
@@ -75,7 +75,7 @@ public struct Channel<S, T> {
     ///
     /// :param: predicate a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
     ///
-    /// :returns: a stateless Channel that emits only those items in the original Channel that the filter evaluates as `true`
+    /// :returns: A stateless Channel that emits only those items in the original Channel that the filter evaluates as `true`
     public func filter(predicate: T->Bool)->Channel<S, T> {
         return lift { receive in { item in if predicate(item) { receive(item) } } }
     }
@@ -84,7 +84,7 @@ public struct Channel<S, T> {
     ///
     /// :param: transform a function to apply to each item emitted by the Channel
     ///
-    /// :returns: a stateless Channel that emits the items from the source Channel, transformed by the given function
+    /// :returns: A stateless Channel that emits the items from the source Channel, transformed by the given function
     public func map<U>(transform: T->U)->Channel<S, U> {
         return lift { receive in { item in receive(transform(item)) } }
     }
@@ -97,7 +97,7 @@ public extension Channel {
     /// :param: terminator a predicate function that will result in cancellation of all receipts when it evaluates to `true`
     /// :param: terminus an optional final sentinal closure that will be sent once after the `terminator` evaluates to `true`
     ///
-    /// :returns: a stateful Channel that emits items until the `terminator` evaluates to true
+    /// :returns: A stateful Channel that emits items until the `terminator` evaluates to true
     public func terminate(terminator: T->Bool, terminus: (()->T)? = nil)->Channel<S, T> {
         var receipts: [Receipt] = []
         var terminated = false
@@ -131,7 +131,7 @@ public extension Channel {
     /// :param: lastPassed  when `false` (the default), the `previous` will always be the most recent item in the sequence
     ///                     when `true`, the `previous` wil be the last item that passed the predicate
     ///
-    /// :returns: a stateful Channel that emits the the items that pass the predicate
+    /// :returns: A stateful Channel that emits the the items that pass the predicate
     public func sieve(predicate: (current: T, previous: T)->Bool, lastPassed: Bool = false)->Channel<S, T> {
         var previous: T?
         return lift { receive in { item in
@@ -152,12 +152,25 @@ public extension Channel {
         }
     }
 
+    /// Adds a channel phase that drops any items that are immediately emitted upon a receiver being added but
+    /// passes any items that are emitted after the receiver is added.
+    /// In ReactiveX parlance, this convert this `observable` Channel from `cold` to `hot`
+    ///
+    /// :returns: A Channel that drops any elements that are emitted upon a receiver being added
+    public func subsequent()->Channel<S, T> {
+        return Channel(source: self.source) { receiver in
+            var immediate = true
+            let receipt = self.receive { item in if !immediate { receiver(item) } }
+            immediate = false
+            return receipt
+        }
+    }
 
     /// Adds a channel phase that drops the first `count` elements.
     ///
     /// :param: count the number of elements to skip before emitting items
     ///
-    /// :returns: a stateful Channel that drops the first `count` elements.
+    /// :returns: A stateful Channel that drops the first `count` elements.
     public func drop(count: Int)->Channel<S, T> {
         return enumerate().filter({ $0.0 >= count }).map({ $0.1 })
     }
@@ -166,7 +179,7 @@ public extension Channel {
     /// where *n*\ s are consecutive `Int`\ s starting at zero,
     /// and *x*\ s are the elements
     ///
-    /// :returns: a stateful Channel that emits a tuple with the element's index
+    /// :returns: A stateful Channel that emits a tuple with the element's index
     public func enumerate()->Channel<S, (Int, T)> {
         var index = 0
         return map({ (index++, $0) })
@@ -181,7 +194,7 @@ public extension Channel {
     /// :param: includeTerminators if true (the default), then terminator items will be included in the accumulation
     /// :param: clearAfterEmission if true (the default), the accumulated value will be cleared after each emission
     ///
-    /// :returns: a stateful Channel that buffers its accumulated items until the terminator predicate passes
+    /// :returns: A stateful Channel that buffers its accumulated items until the terminator predicate passes
     public func reduce<U>(initial: U, combine: (U, T)->U, isTerminator: (U, T)->Bool, includeTerminators: Bool = true, clearAfterEmission: Bool = true)->Channel<S, U> {
         var accumulation = initial
         return lift { receive in { item in
@@ -201,7 +214,7 @@ public extension Channel {
     ///
     /// :param: count the size of the buffer
     ///
-    /// :returns: a stateful Channel that buffers its items until it the buffer reaches `count`
+    /// :returns: A stateful Channel that buffers its items until it the buffer reaches `count`
     public func buffer(count: Int)->Channel<S, [T]> {
         // note: a more optimized version of this could append to a single buffer with capacity set the count
         // similar to how Java 8 streams implement their "mutable reduction operation" collect() method
@@ -220,7 +233,7 @@ public extension Channel {
     ///
     /// :param: predicate a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
     ///
-    /// :returns: a stateless Channel pair that passes elements depending on whether they pass or fail the predicate, respectively
+    /// :returns: A stateless Channel pair that passes elements depending on whether they pass or fail the predicate, respectively
     public func split(predicate: T->Bool)->(Channel<S, T>, Channel<S, T>) {
         return (filter({ !predicate($0) }), filter({ predicate($0) }))
     }
@@ -231,7 +244,7 @@ public extension Channel {
     ///
     /// :param: transform a function that, when applied to an item emitted by the source Channel, returns a Channel
     ///
-    /// :returns: a stateless Channel that emits the result of applying the transformation function to each
+    /// :returns: A stateless Channel that emits the result of applying the transformation function to each
     ///         item emitted by the source Channel and merging the results of the Channels
     ///         obtained from this transformation.
     public func flatMap<S2, U>(transform: T->Channel<S2, U>)->Channel<(S, [S2]), U> {
@@ -239,11 +252,14 @@ public extension Channel {
     }
 
     /// Adds a channel phase that flattens two Channels with heterogeneous `Source` and homogeneous `Element`s
-    /// into one Channel, without any transformation, so they act like a single Channel.
+    /// into one Channel, without any transformation, so they act like a single Channel. 
+    /// 
+    /// Note: The resulting Channel's receivers will not be able to distinguish which channel emitted an event;
+    /// to access that information, use `either` instead.
     ///
     /// :param: with a Channel to be merged
     ///
-    /// :returns: an stateless Channel that emits items from `self` and `with`
+    /// :returns: An stateless Channel that emits items from `self` and `with`
     public func merge<S2>(with: Channel<S2, T>)->Channel<(S, S2), T> {
         return Channel<(S, S2), T>(source: (self.source, with.source)) { f in
             return ReceiptOf(receipts: [self.receive(f), with.receive(f)])
@@ -259,7 +275,7 @@ public extension Channel {
     /// :param: capacity (optional) the maximum buffer size for the channels; if either buffer
     ///     exceeds capacity, earlier elements will be dropped silently
     ///
-    /// :returns: a stateful Channel that pairs up values from `self` and `with` Channels.
+    /// :returns: A stateful Channel that pairs up values from `self` and `with` Channels.
     public func zip<S2, T2>(with: Channel<S2, T2>, capacity: Int? = nil)->Channel<(S, S2), (T, T2)> {
         return Channel<(S, S2), (T, T2)>(source: (self.source, with.source)) { (rcvr: (T, T2)->Void) in
 
@@ -309,7 +325,7 @@ public extension Channel {
     ///
     /// :param: other the Channel to combine with
     ///
-    /// :returns: a stateful Channel that emits the item of both `self` or `other`.
+    /// :returns: A stateful Channel that emits the item of both `self` or `other`.
     public func combine<S2, T2>(other: Channel<S2, T2>)->Channel<(S, S2), (T, T2)> {
         typealias Both = (T, T2)
         var lasta: T?
@@ -336,8 +352,9 @@ public extension Channel {
     ///
     /// :param: other the Channel to either with
     ///
-    /// :returns: a stateless Channel that emits the item of either `self` or `other`.
+    /// :returns: A stateless Channel that emits the item of either `self` or `other`.
     public func either<S2, T2>(other: Channel<S2, T2>)->Channel<(S, S2), (T?, T2?)> {
+        // Note: this should really be a Haskell-style Either enum, but the Swift compiler doesn't yet support them
         typealias Either = (T?, T2?)
         return Channel<(S, S2), Either>(source: (self.source, other.source)) { (rcvr: (Either->Void)) in
             let rcpt1 = self.receive { v1 in rcvr(Either(v1, nil)) }
@@ -368,29 +385,8 @@ public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>)->Channel<(S
 
 /// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
 /// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
-public func conduit<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt {
-    let (rcv1, rcv2) = (r1.channel(), r2.channel())
-    return ReceiptOf(receipts: [rcv1∞=>rcv2.source, rcv2∞=>rcv1.source])
-}
-
-
-// MARK: Receivables
-
-/// A `Receivable` is a type that is able to generate a `Channel`. It is a push-based version
-/// of Swift's pull-based `Sequence` type.
-protocol Receivable {
-    typealias Source
-    typealias Element
-
-    /// Creates a Channel from this Receivable
-    func channel()->Channel<Source, Element>
-}
-
-/// A Channel's Receivable implementation merely returns itself
-extension Channel : Receivable {
-    public typealias Source = S
-    public typealias Element = T
-    public func channel()->Channel<S, T> { return self }
+public func conduit<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(c1: Channel<S1, T1>, c2: Channel<S2, T2>)->Receipt {
+    return ReceiptOf(receipts: [c1∞=>c2.source, c2∞=>c1.source])
 }
 
 
@@ -430,18 +426,47 @@ public func channelZClosure<T>(from: ()->T?)->Channel<()->T?, T> {
     }
 }
 
-/// A PropertyChannel can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
-public final class PropertyChannel<T>: Receivable, SinkType {
-    public typealias Element = T
-    public var value: T { didSet { receivers.receive(value) } }
-    private let receivers = ReceiverList<T>()
+/// Creates a Channel sourced by a Swift or Objective-C property
+public func channelZProperty<T>(initialValue: T)->Channel<PropertySource<T>, T> {
+    return ∞initialValue∞
+}
+
+/// Creates a Channel sourced by a Swift or Objective-C Equatable property
+public func channelZProperty<T: Equatable>(initialValue: T)->Channel<PropertySource<T>, T> {
+    return ∞=initialValue=∞
+}
+
+/// Abstraction of a source that can create a channel that emits a tuple of old & new state values
+public protocol StateSource {
+    typealias Element
+
+    /// Creates a Channel from this source that will emit tuples of the old & and state values whenever a state operation occurs
+    func channelZState()->Channel<Self, (Element?, Element)>
+}
+
+/// A PropertySource can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
+/// The output type is a tuple of (old: T, new: T), where old is the previous value and new is the new value
+public final class PropertySource<T>: SinkType, StateSource {
+    public typealias State = (T?, T)
+    private let receivers = ReceiverList<State>()
+    public var value: T { didSet(old) { receivers.receive(State(old, value)) } }
+
     public init(_ value: T) { self.value = value }
     public func put(x: T) { value = x }
 
-    public func channel()->Channel<PropertyChannel<Element>, Element> {
+    public func channelZState()->Channel<PropertySource<T>, State> {
         return Channel(source: self) { rcvr in
-            rcvr(self.value) // immediately issue the original value
-            return self.receivers.addReceipt(rcvr, { self.value })
+            rcvr(State(Optional<T>.None, self.value)) // immediately issue the original value with no previous value
+            return self.receivers.addReceipt(rcvr, { (nil, self.value) })
         }
     }
+}
+
+/// Simple protocol that permits accessing the underlying source type
+public protocol AccessibleSource {
+    typealias T
+    var value: T { get }
+}
+
+extension PropertySource: AccessibleSource {
 }

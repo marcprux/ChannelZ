@@ -20,38 +20,78 @@ import WebKit
     import UIKit
 #endif
 
+
+func assertChanges<T where T: Equatable>(check: @autoclosure ()->T, code: @autoclosure ()->(Any), file: String = __FILE__, line: UInt = __LINE__) {
+    let start = check()
+    code()
+    let end = check()
+    XCTAssertNotEqual(start, end, "assertChanges failure", file: file, line: line)
+}
+
+func assertRemains<T where T: Equatable>(check: @autoclosure ()->T, code: @autoclosure ()->(Any), file: String = __FILE__, line: UInt = __LINE__) {
+    let start = check()
+    code()
+    let end = check()
+    XCTAssertEqual(start, end, "assertRemains failure", file: file, line: line)
+}
+
+
 public class FoundationTests: XCTestCase {
-        func memblock<T where T: Equatable>(check: @autoclosure ()->T, code: ()->(), file: String = __FILE__, line: UInt = __LINE__) {
+
+    func assertMemoryBlock<T where T: Equatable>(file: String = __FILE__, line: UInt = __LINE__, check: @autoclosure ()->T, code: ()->()) {
         let start = check()
         autoreleasepool(code)
         let end = check()
-        XCTAssertEqual(start, end, "memblock failure", file: file, line: line)
+        XCTAssertEqual(start, end, "assertMemoryBlock failure", file: file, line: line)
     }
 
     func testMemory() {
         var strs: [String] = []
         var receipt: Receipt!
-        memblock(ChannelThingsInstances, code: {
+        assertMemoryBlock(check: ChannelThingsInstances) {
             let thing = ChannelThing()
-            receipt = thing.stringish.channel().drop(1).sieve(!=).filter({ $0 != nil }).map({ $0! }).receive({ strs += [$0] })
+            receipt = thing.stringish.drop(1).sieve(!=).filter({ $0 != nil }).map({ $0! }).receive({ strs += [$0] })
             var strings: [String?] = ["a", "b", nil, "b", "b", "c"]
-            strings.map { thing.stringish.put($0) }
+            strings.map { thing.stringish ∞= ($0) }
             XCTAssertFalse(receipt.cancelled)
-        })
+        }
+
 //        XCTAssertTrue(receipt.cancelled) // TODO: should receipts clear when sources are cancelled?
         XCTAssertEqual(["a", "b", "b", "c"], strs, "early sieve misses filter")
         receipt.cancel()
 
     }
 
-    func testSimpleFoundation() {
-        memblock(StatefulObjectCount, code: {
+    /// Ensure that objects are cleaned up when receipts are explicitly canceled
+    func testKVOMemoryCleanupCanceled() {
+        assertMemoryBlock(check: StatefulObjectCount) {
             let nsob = StatefulObject()
-            let stringz = nsob.channelZKey(nsob.requiredNSStringField).sieve(!=)
+            let intz = nsob.channelZKey(nsob.intField)
+            let rcpt = intz.receive({ _ in })
+            rcpt.cancel()
+        }
+    }
+
+    /// Ensure that objects are cleaned up even when receipts are not explicitly canceled
+    func testKVOMemoryCleanupUncanceled() {
+        assertMemoryBlock(check: StatefulObjectCount) {
+            let nsob = StatefulObject()
+            let intz = nsob.channelZKey(nsob.intField)
+            var count = 0
+            let rcpt = intz.receive({ _ in count += 1 })
+            XCTAssertEqual(1, count, "should have received an initial element")
+        }
+    }
+
+    func testSimpleFoundation() {
+        assertMemoryBlock(check: StatefulObjectCount) {
+            let nsob = StatefulObject()
+            let stringz = nsob.channelZKey(nsob.reqnsstr).sieve(!=).subsequent()
             var strs: [NSString] = []
+
             stringz.receive({ strs += [$0] })
-            nsob.requiredNSStringField = "a"
-            nsob.requiredNSStringField = "c"
+            nsob.reqnsstr = "a"
+            nsob.reqnsstr = "c"
             XCTAssertEqual(2, strs.count)
 
             stringz.source.put("d")
@@ -59,372 +99,437 @@ public class FoundationTests: XCTestCase {
 
             stringz.source.put("d")
             XCTAssertEqual(3, strs.count) // change to self shouldn't up the count
-        })
+        }
     }
 
-//    func testChannels() {
-//        var observedBool = ∞(false)∞
-//        observedBool.value = false
-//
-//        var changeCount: Int = 0
-//
-//        let ob1 = observedBool.receive { v in
-//            changeCount = changeCount + 1
-//        }
-//
-//        XCTAssertEqual(0, changeCount)
-//
-//        observedBool <- true
-//        XCTAssertEqual(1, changeCount)
-//
-//        observedBool <- true
-//        XCTAssertEqual(1, changeCount)
-//
-//        observedBool <- false
-//        observedBool <- false
-//
-//
-//        XCTAssertEqual(2, changeCount)
-//
-//        // XCTAssertEqual(test, false)
-//
-//        var stringFieldChanges: Int = 0
-//        var intFieldChanges: Int = 0
-//        var doubleFieldChanges: Int = 0
-//
-//
-//        #if DEBUG_CHANNELZ
-//        let startObserverCount = ChannelZKeyValueObserverCount
-//        #endif
-//
-//        autoreleasepool {
-//            let state = StatefulObject()
-//            state.optionalStringField = "sval1"
-//
-//            state∞state.intField ∞> { _ in intFieldChanges += 1 }
-//
-//            #if DEBUG_CHANNELZ
-//            XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1)
-//            #endif
-//
-//            var stringFieldObserver = state∞(state.optionalStringField)
-//            stringFieldObserver.receive { _ in stringFieldChanges += 1 }
-//
-//            state∞state.doubleField ∞> { _ in doubleFieldChanges += 1 }
-//
-//            XCTAssertEqual("sval1", state.optionalStringField!)
-//
-//            state.intField++; XCTAssertEqual(0, --intFieldChanges)
-//            state.intField = state.intField + 0; XCTAssertEqual(0, intFieldChanges)
-//            state.intField = state.intField + 1 - 1; XCTAssertEqual(0, intFieldChanges)
-//            state.intField++; XCTAssertEqual(0, --intFieldChanges)
-//            state.optionalStringField = state.optionalStringField ?? "" + ""; XCTAssertEqual(0, stringFieldChanges)
-//            state.optionalStringField! += "x"; XCTAssertEqual(0, --stringFieldChanges)
-//            stringFieldObserver.value = "y"; XCTAssertEqual(0, --stringFieldChanges)
-//            state.optionalStringField = nil; XCTAssertEqual(0, --stringFieldChanges)
-//            state.optionalStringField = ""; XCTAssertEqual(0, --stringFieldChanges)
-//            state.optionalStringField = ""; XCTAssertEqual(0, stringFieldChanges)
-//            state.optionalStringField = "foo"; XCTAssertEqual(0, --stringFieldChanges)
-//
-//            #if DEBUG_CHANNELZ
-//            XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1, "observers should still be around before cleanup")
-//            #endif
-//        }
-//
-//        #if DEBUG_CHANNELZ
-//        XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount, "observers should have been cleared after cleanup")
-//        #endif
-//    }
-//
-//    func testFilteredChannels() {
-//
-//        var strlen = 0
-//
-//        let sv = sieveField("X")
-//        sv.filter({ _ in true }).map(countElements)
-//        sv.channel().filter({ _ in true }).channel().map(countElements)
-//        sv.map(countElements)
-//
-//        var a = sv.filter({ _ in true }).map(countElements).filter({ $0 % 2 == 1 })
-//        var aa = a.receive { strlen = $0 }
-//
-//        a.value = ("AAA")
-//
-//        XCTAssertEqual(3, strlen)
-//
-//        // TODO: need to re-implement .value for FieldChannels, etc.
-////        a.value = (a.value + "ZZ")
-////        XCTAssertEqual(5, strlen)
-////        XCTAssertEqual("AAAZZ", a.value)
-////
-////        a.value = (a.value + "A")
-////        XCTAssertEqual("AAAZZA", a.value)
-////        XCTAssertEqual(5, strlen, "even-numbered increment should have been filtered")
-////
-////        a.value = (a.value + "A")
-////        XCTAssertEqual("AAAZZAA", a.value)
-////        XCTAssertEqual(7, strlen)
-//
-//
-//        let x = sieveField(1).filter { $0 <= 10 }
-//
-//        var changeCount: Double = 0
-//        var changeLog: String = ""
-//
-//        // track the number of changes using two separate subscriptions
-//        x.receive { _ in changeCount += 0.5 }
-//        x.receive { _ in changeCount += 0.5 }
-//
-//        let xfm = x.map( { String($0) })
-//        let xfma = xfm.receive { s in changeLog += (countElements(changeLog) > 0 ? ", " : "") + s } // create a string log of all the changes
-//
-//
-//        XCTAssertEqual(0, changeCount)
-//        XCTAssertNotEqual(5, x.value)
-//
-//        x <- 5
-//        XCTAssertEqual(5, x.value)
-//        XCTAssertEqual(1, changeCount)
-//
-//
-//        x <- 5
-//        XCTAssertEqual(5, x.value)
-//        XCTAssertEqual(1, changeCount)
-//
-//        x <- 6
-//        XCTAssertEqual(2, changeCount)
-//
-//        // now test the filter: only changes to numbers less than or equal to 10 should flow to the receivers
-//        x <- 20
-//        XCTAssertEqual(2, changeCount, "out of bounds change should not have fired listener")
-//
-//        x <- 6
-//        XCTAssertEqual(3, changeCount, "in-bounds change should have fired listener")
-//
-//        for i in 1...100 {
-//            x <- i
-//        }
-//        XCTAssertEqual(13, changeCount, "in-bounds change should have fired listener")
-//
-//        XCTAssertEqual("5, 6, 6, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10", changeLog)
-//
-//
-//        var tc = 0.0
-//        let t = ∞(1.0)∞
-//
-//        t.filter({ $0 % 2 == 0 }).filter({ $0 % 9 == 0 }).receive({ n in tc += n })
-////        t.receive({ n in tc += n })
-//
-//        for i in 1...100 { t <- Double(i) }
-//        // FIXME: seems to be getting released somehow
-////        XCTAssertEqual(270.0, tc, "sum of all numbers between 1 and 100 divisible by 2 and 9")
-//
-//        var lastt = ""
-//
-//        let tv = t.map({ v in v }).filter({ $0 % 2 == 0 }).map(-).map({ "Even: \($0)" })
-//        tv.receive({ lastt = $0 })
-//
-//
-//        for i in 1...99 { tv <- Double(i) }
-//        XCTAssertEqual("Even: -98.0", lastt)
-//    }
-//
-//    func testStructChannel() {
-//        let ob = ∞(SwiftStruct(intField: 1, stringField: "x", enumField: .Yes))∞
-//
-//        var changes = 0
-//
-//        // receive is the equivalent of ReactiveX's Subscribe
-//        ob.receive({ _ in changes += 1 })
-//
-//        XCTAssertEqual(changes, 0)
-//        ob.value = SwiftStruct(intField: 2, stringField: nil, enumField: .Yes)
-//        XCTAssertEqual(changes, 1)
-//
-//        ob.value = SwiftStruct(intField: 2, stringField: nil, enumField: .Yes)
-//        XCTAssertEqual(changes, 2)
-//    }
-//
-//    func testEquatableStructChannel() {
-//        let ob = ∞(SwiftEquatableStruct(intField: 1, stringField: "x", enumField: .Yes))∞
-//
-//        var changes = 0
-//        ob.receive({ _ in changes += 1 })
-//
-//        XCTAssertEqual(changes, 0)
-//        ob.value = SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .Yes)
-//        XCTAssertEqual(changes, 1)
-//
-//        ob.value = SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .Yes)
-//        XCTAssertEqual(changes, 1)
-//
-//        ob.value = SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .No)
-//        XCTAssertEqual(changes, 2)
-//
-//        ob.value = SwiftEquatableStruct(intField: 3, stringField: "str", enumField: .Yes)
-//        XCTAssertEqual(changes, 3)
-//    }
-//
-//    func testStuctChannels() {
-//        let ob = SwiftChannels()
-//
-//        var stringChanges = 0
-//        ob.stringField ∞> { _ in stringChanges += 1 }
-//        XCTAssertEqual(0, stringChanges)
-//
-//        ob.stringField.value = "x"
-//        XCTAssertEqual(0, --stringChanges)
-//
-//        var enumChanges = 0
-//        ob.enumField ∞> { _ in enumChanges += 1 }
-//        XCTAssertEqual(0, enumChanges)
-//
-//        ob.enumField.value = .MaybeSo
-//        XCTAssertEqual(0, --enumChanges)
-//
-//        ob.enumField.value = .MaybeSo
-//        XCTAssertEqual(0, enumChanges)
-//    }
-//
-//    func testFieldSieve() {
-//        var xs: Int = 1
-//        var c = sieveField(xs)
-//
-//        var changes = 0
-//        c.receive { _ in changes += 1 }
-//
-//        XCTAssertEqual(0, changes)
-//        c.value = (c.value + 1); XCTAssertEqual(0, --changes)
-//        c.value = (2); XCTAssertEqual(0, changes)
-//        c.value = (2); c.value = (2); XCTAssertEqual(0, changes)
-//        c.value = (9); c.value = (9); XCTAssertEqual(0, --changes)
-//    }
-//
-//    func testOptionalFieldSieve() {
-//        var xs: Int? = nil
-//        var c = sieveField(xs)
-//
-//        var changes = 0
-//        c ∞> { _ in changes += 1 }
-//
-//        XCTAssertEqual(0, changes)
-//        c.value = (2); XCTAssertEqual(0, --changes)
-//        c.value = (2); c.value = (2); XCTAssertEqual(0, changes)
-//        c.value = (nil); XCTAssertEqual(0, --changes)
-////        c.value = (nil); XCTAssertEqual(0, --changes) // FIXME: nil to nil is a change?
-//        c.value = (1); XCTAssertEqual(0, --changes)
-//        c.value = (1); XCTAssertEqual(0, changes)
-//        c.value = (2); XCTAssertEqual(0, --changes)
-//    }
-//
-//    func testKeyValueSieve() {
-//        var state = StatefulObject()
-//        var c = state∞(state.requiredStringField)
-//
-//        var changes = 0
-//        c ∞> { _ in changes += 1 }
-//
-//        XCTAssertEqual(0, changes)
-//        c.value = (""); XCTAssertEqual(0, changes, "default to default should not change")
-//        c.value = ("A"); XCTAssertEqual(0, --changes, "default to A should change")
-//        c.value = ("A"); XCTAssertEqual(0, changes, "A to A should not change")
-//        c.value = ("B"); c.value = ("B"); XCTAssertEqual(0, --changes, "A to B should change once")
-//    }
-//
-//    func testKeyValueSieveUnretainedReceiver() {
-//        var state = StatefulObject()
-//        var c = state∞(state.requiredStringField)
-//
-//        var changes = 0
-//        c ∞> { _ in changes += 1 } // note we do not assign it locally, so it should immediately get cleaned up
-//
-//        XCTAssertEqual(0, changes)
-//        c.value = ("A"); XCTAssertEqual(1, changes, "unretained subscription should still listen")
-//        c.value = (""); XCTAssertEqual(2, changes, "unretained subscription should still listen")
-//    }
-//
-//    func testOptionalNSKeyValueSieve() {
-//        var state = StatefulObject()
-//        var c = state∞(state.optionalNSStringField)
-//
-//        var changes = 0
-//        c ∞> { _ in changes += 1 }
-//
-//        for _ in 0...5 {
-//            XCTAssertEqual(0, changes)
-//            c.value = ("A"); XCTAssertEqual(0, --changes, "unset to A should change")
-//            c.value = ("A"); c.value = ("A"); XCTAssertEqual(0, changes, "A to A should not change")
-//            c.value = (nil); XCTAssertEqual(0, --changes, "A to nil should change")
-//            c.value = ("B"); c.value = ("B"); XCTAssertEqual(0, --changes, "nil to B should change once")
-//            c.value = (nil); XCTAssertEqual(0, --changes, "B to nil should change")
-//
-//            // this one is tricky, since with KVC, previous values are often cached as NSNull(), which != nil
-//            c.value = (nil); c.value = (nil); XCTAssertEqual(0, changes, "nil to nil should not change")
-//        }
-//    }
-//
-//    func testOptionalSwiftSieve() {
-//        var state = StatefulObject()
-//        var c = state∞(state.optionalStringField)
-//
-//        var changes = 0
-//        c ∞> { _ in changes += 1 }
-//
-//        for _ in 0...5 {
-//            XCTAssertEqual(0, changes)
-//            c.value = ("A"); XCTAssertEqual(0, --changes, "unset to A should change")
-//            c.value = ("A"); c.value = ("A"); XCTAssertEqual(0, changes, "A to A should not change")
-//            c.value = (nil); XCTAssertEqual(0, --changes, "A to nil should change")
-//            c.value = ("B"); c.value = ("B"); XCTAssertEqual(0, --changes, "nil to B should change once")
-//            c.value = (nil); XCTAssertEqual(0, --changes, "B to nil should change")
-//
-//            // this one is tricky, since with KVC, previous values are often cached as NSNull(), which != nil
-//            c.value = (nil); c.value = (nil); XCTAssertEqual(0, changes, "nil to nil should not change")
-//        }
-//    }
-//
-//    func testDictionaryChannels() {
-//        let dict = NSMutableDictionary()
-//        var fooChanges = 0
-//
-//        XCTAssertEqual(0, fooChanges)
-//
-//        dict["foo"] = "bar"
-//
-//        dict.sievez(dict["foo"] as? NSString, keyPath: "foo") ∞> { _ in fooChanges += 1 }
-//        XCTAssertEqual(0, fooChanges)
-//
-//        dict["foo"] = "bar"
-//        XCTAssertEqual(0, fooChanges)
-//
-//        dict["foo"] = NSNumber(float: 1.234)
-//        XCTAssertEqual(0, --fooChanges)
-//
-//        dict["foo"] = NSNull()
-//        XCTAssertEqual(0, fooChanges) // note that setting to null does not pass the sieve
-//
-//        dict["foo"] = "bar"
-//        XCTAssertEqual(0, --fooChanges)
-//    }
-//
-//    func testFieldChannelChannel() {
-//        var xs: Int = 1
-//        var x = channelField(xs)
-//        var f: Channel<Int> = x.observable() // read-only observable of channel x
-//
-//        var changes = 0
-//        var subscription = f ∞> { _ in changes += 1 }
-//
-//        XCTAssertEqual(0, changes)
-//        x.value = (x.value + 1); XCTAssertEqual(0, --changes)
-//        x.value = (2); XCTAssertEqual(0, --changes)
-//        x.value = (2); XCTAssertEqual(0, --changes)
-//        x.value = (9);XCTAssertEqual(0, --changes)
-//
-//        subscription.cancel()
-//        x.value = (-1); XCTAssertEqual(0, changes)
-//    }
-//
+    func testChannels() {
+        var observedBool = ∞=false=∞
+
+        var changeCount: Int = 0
+
+        let ob1 = observedBool.receive { v in
+            changeCount = changeCount + 1
+        }
+
+        XCTAssertEqual(0, changeCount)
+
+        observedBool ∞= true
+        XCTAssertEqual(1, changeCount)
+
+        observedBool ∞= true
+        XCTAssertEqual(1, changeCount)
+
+        observedBool ∞= false
+        observedBool ∞= false
+
+
+        XCTAssertEqual(2, changeCount)
+
+        // XCTAssertEqual(test, false)
+
+        var sz: Int = 0
+        var iz: Int = 0
+        var dz: Int = 0
+
+
+        #if DEBUG_CHANNELZ
+        let startObserverCount = ChannelZKeyValueObserverCount
+        #endif
+
+        autoreleasepool {
+            let state = StatefulObject()
+
+            state.channelZKey(state.intField).sieve(!=).receive { _ in iz += 1 }
+
+            #if DEBUG_CHANNELZ
+            XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1)
+            #endif
+
+            var sfo = state.channelZKey(state.optstr).sieve(!=)
+            let strpath = "optstr"
+            XCTAssertEqual(strpath, sfo.source.keyPath)
+
+            state.channelZKey(state.doubleField).sieve(!=).receive { _ in dz += 1 }
+
+            assertChanges(iz, state.intField += 1)
+            assertRemains(iz, state.intField = state.intField + 0)
+            assertChanges(iz, state.intField = state.intField + 1)
+            assertRemains(iz, state.intField = state.intField + 1 - 1)
+
+            sfo.receive { (value: String?) in sz += 1 }
+
+            assertChanges(sz, state.optstr = "x")
+            assertChanges(sz, state.optstr! += "yz")
+
+            assertChanges(sz, state.setValue("", forKeyPath: strpath))
+            assertRemains(sz, state.setValue("", forKeyPath: strpath))
+            XCTAssertEqual("", state.optstr!)
+            assertChanges(sz, state.setValue(nil, forKeyPath: strpath))
+            assertRemains(sz, state.setValue(nil, forKeyPath: strpath))
+            XCTAssertNil(state.optstr)
+            assertChanges(sz, state.setValue("abc", forKeyPath: strpath))
+            assertRemains(sz, state.setValue("abc", forKeyPath: strpath))
+            XCTAssertEqual("abc", state.optstr!)
+
+            assertChanges(sz, sfo ∞= "")
+            assertRemains(sz, sfo ∞= "")
+            XCTAssertEqual("", state.optstr!)
+
+            assertChanges(sz, sfo ∞= nil)
+            XCTAssertNil(state.optnsstr)
+            assertRemains(sz, sfo ∞= nil)
+            XCTAssertNil(state.optnsstr)
+
+            assertChanges(sz, sfo ∞= "abc")
+            assertRemains(sz, sfo ∞= "abc")
+
+            assertChanges(sz, sfo ∞= "y")
+            assertChanges(sz, state.setValue(nil, forKeyPath: strpath))
+            assertRemains(sz, state.setValue(nil, forKeyPath: strpath))
+
+            assertChanges(sz, sfo ∞= "y")
+
+            assertChanges(sz, sfo ∞= nil)
+            assertRemains(sz, sfo ∞= nil)
+
+            assertRemains(sz, state.optstr = nil)
+
+            assertChanges(sz, state.optstr = "")
+            assertRemains(sz, state.optstr = "")
+
+            assertChanges(sz, state.optstr = "foo")
+
+            #if DEBUG_CHANNELZ
+            XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1, "observers should still be around before cleanup")
+            #endif
+        }
+
+        #if DEBUG_CHANNELZ
+        XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount, "observers should have been cleared after cleanup")
+        #endif
+    }
+
+    func testFilteredChannels() {
+
+        var strlen = 0
+
+        let sv = channelZProperty("X")
+        sv.filter({ _ in true }).map(countElements)
+        sv.filter({ _ in true }).map(countElements)
+        sv.map(countElements)
+
+        var observedBool = ∞=false=∞
+
+        var a = sv.filter({ _ in true }).map(countElements).filter({ $0 % 2 == 1 })
+        var aa = a.receive { strlen = $0 }
+
+        a ∞= "AAA"
+
+        XCTAssertEqual(3, strlen)
+
+        // TODO: need to re-implement .value for FieldChannels, etc.
+//        a ∞= (a.value + "ZZ")
+//        XCTAssertEqual(5, strlen)
+//        XCTAssertEqual("AAAZZ", a.value)
+//
+//        a ∞= (a.value + "A")
+//        XCTAssertEqual("AAAZZA", a.value)
+//        XCTAssertEqual(5, strlen, "even-numbered increment should have been filtered")
+//
+//        a ∞= (a.value + "A")
+//        XCTAssertEqual("AAAZZAA", a.value)
+//        XCTAssertEqual(7, strlen)
+
+
+        let x = channelZProperty(1).filter { $0 <= 10 }
+
+        var changeCount: Double = 0
+        var changeLog: String = ""
+
+        // track the number of changes using two separate subscriptions
+        x.receive { _ in changeCount += 0.5 }
+        x.receive { _ in changeCount += 0.5 }
+
+        let xfm = x.map( { String($0) })
+        let xfma = xfm.receive { s in changeLog += (countElements(changeLog) > 0 ? ", " : "") + s } // create a string log of all the changes
+
+
+        XCTAssertEqual(0, changeCount)
+        XCTAssertNotEqual(5, x.source.value)
+
+        x ∞= 5
+        XCTAssertEqual(5, x.source.value)
+        XCTAssertEqual(1, changeCount)
+
+
+        x ∞= 5
+        XCTAssertEqual(5, x.source.value)
+        XCTAssertEqual(1, changeCount)
+
+        x ∞= 6
+        XCTAssertEqual(2, changeCount)
+
+        // now test the filter: only changes to numbers less than or equal to 10 should flow to the receivers
+        x ∞= 20
+        XCTAssertEqual(2, changeCount, "out of bounds change should not have fired listener")
+
+        x ∞= 6
+        XCTAssertEqual(3, changeCount, "in-bounds change should have fired listener")
+
+        for i in 1...100 {
+            x ∞= i
+        }
+        XCTAssertEqual(13, changeCount, "in-bounds change should have fired listener")
+
+        XCTAssertEqual("5, 6, 6, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10", changeLog)
+
+
+        var tc = 0.0
+        let t = ∞(1.0)∞
+
+        t.filter({ $0 % 2 == 0 }).filter({ $0 % 9 == 0 }).receive({ n in tc += n })
+//        t.receive({ n in tc += n })
+
+        for i in 1...100 { t ∞= Double(i) }
+        // FIXME: seems to be getting released somehow
+//        XCTAssertEqual(270.0, tc, "sum of all numbers between 1 and 100 divisible by 2 and 9")
+
+        var lastt = ""
+
+        let tv = t.map({ v in v }).filter({ $0 % 2 == 0 }).map(-).map({ "Even: \($0)" })
+        tv.receive({ lastt = $0 })
+
+
+        for i in 1...99 { tv ∞= Double(i) }
+        XCTAssertEqual("Even: -98.0", lastt)
+    }
+
+    func testStructChannel() {
+        let ob = ∞(SwiftStruct(intField: 1, stringField: "x", enumField: .Yes))∞
+
+        var changes = 0
+
+        // receive is the equivalent of ReactiveX's Subscribe
+        ob.subsequent().receive({ _ in changes += 1 })
+
+        XCTAssertEqual(changes, 0)
+        ob ∞= SwiftStruct(intField: 2, stringField: nil, enumField: .Yes)
+        XCTAssertEqual(changes, 1)
+
+        ob ∞= SwiftStruct(intField: 2, stringField: nil, enumField: .Yes)
+        XCTAssertEqual(changes, 2)
+    }
+
+    func testEquatableStructChannel() {
+        let ob = ∞=(SwiftEquatableStruct(intField: 1, stringField: "x", enumField: .Yes))=∞
+
+        var changes = 0
+        ob.subsequent().receive({ _ in changes += 1 })
+
+        XCTAssertEqual(changes, 0)
+        ob ∞= SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .Yes)
+        XCTAssertEqual(changes, 1)
+
+        ob ∞= SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .Yes)
+        XCTAssertEqual(changes, 1)
+
+        ob ∞= SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .No)
+        XCTAssertEqual(changes, 2)
+
+        ob ∞= SwiftEquatableStruct(intField: 3, stringField: "str", enumField: .Yes)
+        XCTAssertEqual(changes, 3)
+    }
+
+    func testStuctChannels() {
+        let ob = SwiftObservables()
+
+        var stringChanges = 0
+        ob.stringField.subsequent().receive { _ in stringChanges += 1 }
+        XCTAssertEqual(0, stringChanges)
+        assertChanges(stringChanges, ob.stringField ∞= "x")
+
+        var enumChanges = 0
+        ob.enumField.subsequent().receive { _ in enumChanges += 1 }
+        XCTAssertEqual(0, enumChanges)
+        assertChanges(enumChanges, ob.enumField ∞= .MaybeSo)
+        assertRemains(enumChanges, ob.enumField ∞= .MaybeSo)
+    }
+
+    func testFieldChannel() {
+        var xs: Int = 1
+
+        // operator examples
+        var csource: PropertySource<Int> = xs∞
+        var channel: Channel<PropertySource<Int>, Int> = ∞csource
+
+        var c = ∞xs∞
+
+        var changes = 0
+        c.receive { _ in changes += 1 }
+
+        XCTAssertEqual(1, changes)
+        assertChanges(changes, c ∞= c.source.value + 1)
+        assertChanges(changes, c ∞= 2)
+        assertChanges(changes, c ∞= 2)
+        assertChanges(changes, c ∞= 9)
+    }
+
+    func testFieldSieve() {
+        var xs: Int = 1
+
+        // operator examples
+        var csource: PropertySource<Int> = xs=∞
+        var channel: Channel<PropertySource<Int>, Int> = ∞=csource
+
+        var c = ∞=xs=∞
+
+        var changes = 0
+        c.receive { _ in changes += 1 }
+
+        XCTAssertEqual(0, changes)
+        assertChanges(changes, c ∞= c.source.value + 1)
+        assertRemains(changes, c ∞= 2)
+        assertRemains(changes, c ∞= 2)
+        assertChanges(changes, c ∞= 9)
+    }
+
+    func testOptionalFieldSieve() {
+        var xs: Int? = nil
+
+        // operator examples
+        var csource: PropertySource<Optional<Int>> = xs=∞
+        var channel: Channel<PropertySource<Optional<Int>>, Optional<Int>> = ∞=csource
+
+        var c = ∞=xs=∞
+
+        var changes = 0
+        c ∞> { _ in changes += 1 }
+
+        XCTAssertEqual(0, changes)
+        assertChanges(changes, c ∞= (2))
+        assertRemains(changes, c ∞= (2))
+        assertChanges(changes, c ∞= (nil))
+//        assertChanges(changes, c ∞= (nil)) // FIXME: nil to nil is a change?
+        assertChanges(changes, c ∞= (1))
+        assertRemains(changes, c ∞= (1))
+        assertChanges(changes, c ∞= (2))
+    }
+
+    func testKeyValueSieve() {
+        var state = StatefulObject()
+        var ckey: KeyValueTarget<String> = state§state.reqstr
+        var csource: KeyValueSource<String> = ckey=∞
+        var channel: Channel<KeyValueSource<String>, String> = ∞=csource
+
+        var c1: Channel<KeyValueSource<String>, String> = ∞(state§state.reqstr)∞
+        var c2: Channel<KeyValueSource<String>, String> = ∞=(state§state.reqstr)=∞
+
+
+        var c = c2
+
+        var changes = 0
+        channel ∞> { _ in changes += 1 }
+
+        XCTAssertEqual(0, changes)
+
+        assertRemains(changes, c ∞= ("")) // default to default should not change
+        assertChanges(changes, c ∞= ("A"))
+        assertRemains(changes, c ∞= ("A"))
+        assertChanges(changes, c ∞= ("B"))
+    }
+
+    func testKeyValueSieveUnretainedReceiver() {
+        var state = StatefulObject()
+        var c = state∞(state.reqstr)
+
+        var changes = 0
+        autoreleasepool {
+            let _ = c ∞> { _ in changes += 1 } // note we do not assign it locally, so it should immediately get cleaned up
+            XCTAssertEqual(0, changes)
+        }
+
+        assertChanges(changes, c ∞= ("A")) // unretained subscription should still listen
+        assertChanges(changes, c ∞= ("")) // unretained subscription should still listen
+    }
+
+    func testOptionalNSKeyValueSieve() {
+        var state = StatefulObject()
+//        var c: Channel<KeyValueOptionalSource<NSString>, NSString?> = ∞=(state§state.optnsstr)=∞
+//        var c: Channel<KeyValueOptionalSource<NSString>, NSString?> = state∞state.optnsstr
+        var c = state∞state.optnsstr
+
+        var seq: [NSString?] = []
+        var changes = 0
+        c ∞> { seq += [$0]; changes += 1 }
+
+        for _ in 0...0 {
+            assertChanges(changes, c ∞= ("A"))
+            assertRemains(changes, c ∞= ("A"))
+            assertChanges(changes, c ∞= (nil))
+            assertChanges(changes, c ∞= ("B"))
+            assertChanges(changes, c ∞= (nil))
+
+            // this one is tricky, since with KVC, previous values are often cached as NSNull(), which != nil
+            assertRemains(changes, c ∞= (nil))
+
+            assertChanges(changes, c ∞= ("C"))
+
+            XCTAssertEqual(5, seq.count, "unexpected sequence: \(seq)")
+        }
+    }
+
+    func testOptionalSwiftSieve() {
+        var state = StatefulObject()
+        var c = state∞(state.optstr)
+
+        var changes = 0
+        c ∞> { _ in changes += 1 }
+
+        for _ in 0...5 {
+            assertChanges(changes, c ∞= ("A"))
+            assertRemains(changes, c ∞= ("A"))
+            assertChanges(changes, c ∞= (nil))
+            assertChanges(changes, c ∞= ("B"))
+            assertRemains(changes, c ∞= ("B"))
+            assertChanges(changes, c ∞= (nil))
+
+            // this one is tricky, since with KVC, previous values are often cached as NSNull(), which != nil
+            assertRemains(changes, c ∞= (nil))
+        }
+    }
+
+    func testDictionaryChannels() {
+        let dict = NSMutableDictionary()
+        var changes = 0
+
+        // dict["foo"] = "bar"
+
+        dict.channelZKey(dict["foo"] as? NSString, keyPath: "foo") ∞> { _ in changes += 1 }
+
+        assertChanges(changes, dict["foo"] = "bar")
+        assertChanges(changes, dict["foo"] = NSNumber(float: 1.234))
+        assertChanges(changes, dict["foo"] = NSNull())
+        assertChanges(changes, dict["foo"] = "bar")
+    }
+
+    func testPropertyChannel() {
+        var xs: Int = 1
+        var x = channelZProperty(xs)
+        var f: Channel<Void, Int> = x.dissolve() // read-only observable of channel x
+
+        var changes = 0
+        var subscription = f ∞> { _ in changes += 1 }
+
+        XCTAssertEqual(0, changes)
+        assertChanges(changes, x ∞= (x.source.value + 1))
+        assertChanges(changes, x ∞= (3))
+        assertRemains(changes, x ∞= (3))
+        assertChanges(changes, x ∞= (9))
+
+        subscription.cancel()
+        assertRemains(changes, x ∞= (-1))
+    }
+
 //    func testFieldChannelMapObservable() {
 //        var xs: Bool = true
 //        var x = channelField(xs)
@@ -440,19 +545,19 @@ public class FoundationTests: XCTestCase {
 //        var fya: Receiver = yf ∞> { (x: String) in changes += 1 }
 //
 //        XCTAssertEqual(0, changes)
-//        x.value = (!x.value); XCTAssertEqual(0, --changes)
-//        x.value = (true); XCTAssertEqual(0, --changes)
-//        x.value = (true); XCTAssertEqual(0, --changes)
-//        x.value = (false); XCTAssertEqual(0, --changes)
+//        x ∞= (!x.value); XCTAssertEqual(0, --changes)
+//        x ∞= (true); XCTAssertEqual(0, --changes)
+//        x ∞= (true); XCTAssertEqual(0, --changes)
+//        x ∞= (false); XCTAssertEqual(0, --changes)
 //
 //        fya.cancel()
-//        x.value = (true); XCTAssertEqual(0, changes)
+//        x ∞= (true); XCTAssertEqual(0, changes)
 //    }
 //
 //    func testFieldSieveChannelMapObservable() {
 //        var xs: Double = 1
 //
-//        var x = sieveField(xs)
+//        var x = channelZProperty(xs)
 //        var xf: Observable<Double> = x.observable() // read-only observable of channel x
 //
 //        var fxa = xf ∞> { (x: Double) in return }
@@ -464,14 +569,14 @@ public class FoundationTests: XCTestCase {
 //        var fya: Receiver = yf ∞> { (x: String) in changes += 1 }
 //
 //        XCTAssertEqual(0, changes)
-//        x.value = (x.value + 1); XCTAssertEqual(0, --changes)
-//        x.value = (2); XCTAssertEqual(0, changes)
-//        x.value = (2); x.value = (2); XCTAssertEqual(0, changes)
-//        x.value = (9); x.value = (9); XCTAssertEqual(0, --changes)
+//        x ∞= (x.value + 1); XCTAssertEqual(0, --changes)
+//        x ∞= (2); XCTAssertEqual(0, changes)
+//        x ∞= (2); x ∞= (2); XCTAssertEqual(0, changes)
+//        x ∞= (9); x ∞= (9); XCTAssertEqual(0, --changes)
 //
 //        fxa.cancel()
 //        fya.cancel()
-//        x.value = (-1); XCTAssertEqual(0, changes)
+//        x ∞= (-1); XCTAssertEqual(0, changes)
 //    }
 //
 //    func testHeterogeneousConduit() {
@@ -480,11 +585,11 @@ public class FoundationTests: XCTestCase {
 //
 //        let pipeline = a <=∞=> b
 //
-//        a.value = 2.0
+//        a ∞= 2.0
 //        XCTAssertEqual(2.0, a.value)
 //        XCTAssertEqual(2.0, b.value)
 //
-//        b.value = 3.0
+//        b ∞= 3.0
 //        XCTAssertEqual(3.0, a.value)
 //        XCTAssertEqual(3.0, b.value)
 //    }
@@ -497,23 +602,23 @@ public class FoundationTests: XCTestCase {
 //        var bf = b.map({ Double($0) })
 //        let pipeline = conduit(af, bf)
 //
-//        a <- 2.0
+//        a ∞= 2.0
 //        XCTAssertEqual(2.0, a.value)
 //        XCTAssertEqual(UInt(2), b.value)
 //
-//        b <- 3
+//        b ∞= 3
 //        XCTAssertEqual(3.0, a.value)
 //        XCTAssertEqual(UInt(3), b.value)
 //
-//        a <- 9.9
+//        a ∞= 9.9
 //        XCTAssertEqual(9.9, a.value)
 //        XCTAssertEqual(UInt(9), b.value)
 //
-//        a <- -5.0
+//        a ∞= -5.0
 //        XCTAssertEqual(-5.0, a.value)
 //        XCTAssertEqual(UInt(9), b.value)
 //
-//        a <- 8.1
+//        a ∞= 8.1
 //        XCTAssertEqual(8.1, a.value)
 //        XCTAssertEqual(UInt(8), b.value)
 //    }
@@ -526,15 +631,15 @@ public class FoundationTests: XCTestCase {
 //        var af = a.map({ $0 + 1 })
 //        let pipeline = conduit(af, b)
 //
-//        a.value = 2
+//        a ∞= 2
 //        XCTAssertEqual(2, a.value)
 //        XCTAssertEqual(3, b.value)
 //
-//        b.value = (10)
+//        b ∞= (10)
 //        XCTAssertEqual(10, a.value)
 //        XCTAssertEqual(10, b.value)
 //
-//        a <- 99
+//        a ∞= 99
 //        XCTAssertEqual(99, a.value)
 //        XCTAssertEqual(100, b.value)
 //    }
@@ -573,12 +678,12 @@ public class FoundationTests: XCTestCase {
 //        XCTAssertEqual("", lastString)
 //        XCTAssertEqual(Float(4.0), lastFloat)
 //
-//        c.value = true
+//        c ∞= true
 //        XCTAssertEqual(0, --changes)
 //        XCTAssertEqual("true", lastString)
 //        XCTAssertEqual(Float(4.0), lastFloat)
 //
-//        c.value = false
+//        c ∞= false
 //        XCTAssertEqual(0, --changes)
 //        XCTAssertEqual("false", lastString)
 //        XCTAssertEqual(Float(4.0), lastFloat)
@@ -637,15 +742,15 @@ public class FoundationTests: XCTestCase {
 //        b.value++
 //        b.value++
 //        b.value++
-//        c.value = true
+//        c ∞= true
 //        XCTAssertEqual(0, --changes)
 //        XCTAssertEqual("true", lastString)
 //        XCTAssertEqual(Float(4.0), lastFloat)
 //
-//        c.value = !c.value
-//        c.value = !c.value
-//        c.value = !c.value
-//        c.value = !c.value
+//        c ∞= !c.value
+//        c ∞= !c.value
+//        c ∞= !c.value
+//        c ∞= !c.value
 //
 //        a.value++
 //        XCTAssertEqual(0, --changes)
@@ -765,7 +870,7 @@ public class FoundationTests: XCTestCase {
 //        var changes = 0
 //        let deepReceiver = deepNest.receive({ _ in changes += 1 })
 //
-//        deepNest.value = 12
+//        deepNest ∞= 12
 //        XCTAssertEqual(12, t.value)
 //        XCTAssertEqual(0, --changes)
 //
@@ -810,17 +915,17 @@ public class FoundationTests: XCTestCase {
 //        let n1_n2 = n1.map({ NSNumber(int: $0 + 1) }) <=∞=> n2.map({ $0.integerValue - 1 })
 //        let n2_n3 = (n2, { .Some($0.integerValue - 1) }) <~∞~> (n3, { .Some($0 + 1) })
 //
-//        n1 <- 2
+//        n1 ∞= 2
 //        XCTAssertEqual(2, n1.value)
 //        XCTAssertEqual(3, n2.value ?? -1)
 //        XCTAssertEqual(2, n3.value)
 //
-//        n2 <- 5
+//        n2 ∞= 5
 //        XCTAssertEqual(4, n1.value)
 //        XCTAssertEqual(5, n2.value ?? -1)
 //        XCTAssertEqual(4, n3.value)
 //
-//        n3 <- -1
+//        n3 ∞= -1
 //        XCTAssertEqual(-1, n1.value)
 //        XCTAssertEqual(0, n2.value ?? -1)
 //        XCTAssertEqual(-1, n3.value)
@@ -828,7 +933,7 @@ public class FoundationTests: XCTestCase {
 //        // TODO: fix bindings
 ////        // make sure disconnecting the binding actually disconnects is
 ////        n1_n2.disconnect()
-////        n1 <- 20
+////        n1 ∞= 20
 ////        XCTAssertEqual(20, n1.value)
 ////        XCTAssertEqual(0, n2.value ?? -1)
 ////        XCTAssertEqual(-1, n3.value)
@@ -862,15 +967,15 @@ public class FoundationTests: XCTestCase {
 ////
 ////        var num = ∞(0)∞
 ////        let state = StatefulObject()
-////        let strProxy = state∞(state.optionalStringField as String?)
+////        let strProxy = state∞(state.optstr as String?)
 ////        let dict = NSMutableDictionary()
 ////
 ////        dict["stringKey"] = "foo"
 ////        let dictProxy = dict.channelz(dict["stringKey"], keyPath: "stringKey")
 ////
 ////        // bind the number value to a string equivalent
-//////        num ∞> { num in strProxy.value = "\(num)" }
-//////        strProxy ∞> { str in num.value = Int((str as NSString).intValue) }
+//////        num ∞> { num in strProxy ∞= "\(num)" }
+//////        strProxy ∞> { str in num ∞= Int((str as NSString).intValue) }
 ////
 ////        let num_strProxy = (num, { "\($0)" }) <~∞~> (strProxy, { $0?.toInt() })
 ////
@@ -879,17 +984,17 @@ public class FoundationTests: XCTestCase {
 //////        let binding = bindz((strProxy, identity), (dictProxy, identity))
 //////        let binding = (strProxy, identity) <~∞~> (dictProxy, identity)
 ////
-//////        let sval = reflect(str.optionalStringField).value
-//////        str.optionalStringField = nil
-//////        dump(reflect(str.optionalStringField).value)
+//////        let sval = reflect(str.optstr).value
+//////        str.optstr = nil
+//////        dump(reflect(str.optstr).value)
 ////
-////        num <- 10
-////        XCTAssertEqual("10", state.optionalStringField ?? "<nil>")
+////        num ∞= 10
+////        XCTAssertEqual("10", state.optstr ?? "<nil>")
 ////
-////        state.optionalStringField = "123"
+////        state.optstr = "123"
 ////        XCTAssertEqual(123, num.value)
 ////        
-////        num <- 456
+////        num ∞= 456
 ////        XCTAssertEqual("456", dict["stringKey"] as NSString? ?? "<nil>")
 ////
 ////        dict["stringKey"] = "-98"
@@ -908,13 +1013,13 @@ public class FoundationTests: XCTestCase {
 ////        XCTAssertEqual(0, num.value)
 ////
 ////        // no change from num's value, so don't change
-////        num <- 0
+////        num ∞= 0
 ////        XCTAssertEqual("", dict["stringKey"] as NSString? ?? "<nil>")
 ////
-////        num <- 1
+////        num ∞= 1
 ////        XCTAssertEqual("1", dict["stringKey"] as NSString? ?? "<nil>")
 ////
-////        num <- 0
+////        num ∞= 0
 ////        XCTAssertEqual("0", dict["stringKey"] as NSString? ?? "<nil>")
 ////        */
 ////    }
@@ -931,41 +1036,41 @@ public class FoundationTests: XCTestCase {
 //
 //        let qn1_qn2 = qn1 <~∞~> qn2
 //
-//        qn1.value = (qn1.value + 1)
+//        qn1 ∞= (qn1.value + 1)
 //        XCTAssertEqual(1, state.intField)
 //
-//        qn1.value = (qn1.value - 1)
+//        qn1 ∞= (qn1.value - 1)
 //        XCTAssertEqual(0, state.intField)
 //
-//        qn1.value = (qn1.value + 1)
+//        qn1 ∞= (qn1.value + 1)
 //        XCTAssertEqual(1, state.intField)
 //
 //        state.intField += 10
 //        XCTAssertEqual(11, qn1.value)
 //
-//        qn1.value = (qn1.value + 1)
+//        qn1 ∞= (qn1.value + 1)
 //        XCTAssertEqual(12, state.intField)
 //
 //        var qs1 = ∞("")∞
 //
 //        XCTAssertEqual("", qs1.value)
 //
-//        let qs2 = state∞(state.optionalStringField)
+//        let qs2 = state∞(state.optstr)
 //
 //        // TODO: fix optonal bindings
 //        
 ////        let qsb = qs1 <?∞?> qs2
 ////
 ////        qs1.value += "X"
-////        XCTAssertEqual("X", state.optionalStringField ?? "<nil>")
+////        XCTAssertEqual("X", state.optstr ?? "<nil>")
 ////
 ////        qs1.value += "X"
-////        XCTAssertEqual("XX", state.optionalStringField ?? "<nil>")
+////        XCTAssertEqual("XX", state.optstr ?? "<nil>")
 ////
 ////        /// Test that disconnecting the binding actually removes the observers
 ////        qsb.cancel()
 ////        qs1.value += "XYZ"
-////        XCTAssertEqual("XX", state.optionalStringField ?? "<nil>")
+////        XCTAssertEqual("XX", state.optstr ?? "<nil>")
 //    }
 //
 //    func testOptionalToPrimitiveConduits() {
@@ -1089,34 +1194,34 @@ public class FoundationTests: XCTestCase {
 ////
 ////        let b1 = x <=∞~> (y, { $0 == round($0) ? Optional<T1>.Some(T1($0)) : Optional<T1>.None })
 ////
-////        x <- 2
+////        x ∞= 2
 ////        XCTAssertEqual(T1(2), x.value)
 ////        XCTAssertEqual(T2(2.0), y.value)
 ////
-////        y <- 3
+////        y ∞= 3
 ////        XCTAssertEqual(T1(3), x.value)
 ////        XCTAssertEqual(T2(3.0), y.value)
 ////
-////        y <- 9.9
+////        y ∞= 9.9
 ////        XCTAssertEqual(T1(3), x.value)
 ////        XCTAssertEqual(T2(9.9), y.value)
 ////
-////        y <- 17
+////        y ∞= 17
 ////        XCTAssertEqual(T1(17), x.value)
 ////        XCTAssertEqual(T2(17.0), y.value)
 ////
-////        x.value = (x.value + 1)
+////        x ∞= (x.value + 1)
 ////        XCTAssertEqual(T1(18), x.value)
 ////        XCTAssertEqual(T2(18.0), y.value)
 ////
-////        y.value = (y.value + 0.5)
+////        y ∞= (y.value + 0.5)
 ////        XCTAssertEqual(T1(18), x.value)
 ////        XCTAssertEqual(T2(18.5), y.value)
 ////    }
 //
 //    func testConversionConduits() {
 //        var num = ∞((Double(0.0)))∞
-//        num <- 0
+//        num ∞= 0
 //
 //        let decimalFormatter = NSNumberFormatter()
 //        decimalFormatter.numberStyle = .DecimalStyle
@@ -1125,7 +1230,7 @@ public class FoundationTests: XCTestCase {
 //        let fromDecimal: (String?)->(Double?) = { $0 == nil ? nil : decimalFormatter.numberFromString($0!)?.doubleValue }
 //
 //        let state1 = StatefulObject()
-//        let state1s = state1∞(state1.optionalStringField)
+//        let state1s = state1∞(state1.optstr)
 //        let b1 = (num, toDecimal) <~∞~> (state1s, fromDecimal)
 //
 //
@@ -1136,7 +1241,7 @@ public class FoundationTests: XCTestCase {
 //        let fromPercent: (NSString?)->(Double?) = { percentFormatter.numberFromString($0 ?? "AAA")?.doubleValue }
 //
 //        let state2 = StatefulObject()
-//        let state2s = state2∞(state2.optionalNSStringField)
+//        let state2s = state2∞(state2.optnsstr)
 //        let b2 = (num, toPercent) <~∞~> (state2s, fromPercent)
 //
 //
@@ -1144,65 +1249,65 @@ public class FoundationTests: XCTestCase {
 //        spellingFormatter.numberStyle = .SpellOutStyle
 //
 //        let state3 = StatefulObject()
-//        let state3s = state3∞(state3.requiredStringField)
+//        let state3s = state3∞(state3.reqstr)
 //
 //        let toSpelled: (Double)->(String?) = { spellingFormatter.stringFromNumber($0) as String? }
 //        let fromSpelled: (String)->(Double?) = { spellingFormatter.numberFromString($0)?.doubleValue }
 //        let b3 = (num, toSpelled) <~∞~> (state3s, fromSpelled)
 //
-//        num.value = (num.value + 1)
+//        num ∞= (num.value + 1)
 //        XCTAssertEqual(1, num.value)
-//        XCTAssertEqual("1", state1.optionalStringField ?? "<nil>")
-//        XCTAssertEqual("100%", state2.optionalNSStringField ?? "<nil>")
-//        XCTAssertEqual("one", state3.requiredStringField)
+//        XCTAssertEqual("1", state1.optstr ?? "<nil>")
+//        XCTAssertEqual("100%", state2.optnsstr ?? "<nil>")
+//        XCTAssertEqual("one", state3.reqstr)
 //
-//        num.value = (num.value + 1)
+//        num ∞= (num.value + 1)
 //        XCTAssertEqual(2, num.value)
-//        XCTAssertEqual("2", state1.optionalStringField ?? "<nil>")
-//        XCTAssertEqual("200%", state2.optionalNSStringField ?? "<nil>")
-//        XCTAssertEqual("two", state3.requiredStringField)
+//        XCTAssertEqual("2", state1.optstr ?? "<nil>")
+//        XCTAssertEqual("200%", state2.optnsstr ?? "<nil>")
+//        XCTAssertEqual("two", state3.reqstr)
 //
-//        state1.optionalStringField = "3"
+//        state1.optstr = "3"
 //        XCTAssertEqual(3, num.value)
-//        XCTAssertEqual("3", state1.optionalStringField ?? "<nil>")
-//        XCTAssertEqual("300%", state2.optionalNSStringField ?? "<nil>")
-//        XCTAssertEqual("three", state3.requiredStringField)
+//        XCTAssertEqual("3", state1.optstr ?? "<nil>")
+//        XCTAssertEqual("300%", state2.optnsstr ?? "<nil>")
+//        XCTAssertEqual("three", state3.reqstr)
 //
-//        state2.optionalNSStringField = "400%"
+//        state2.optnsstr = "400%"
 //        XCTAssertEqual(4, num.value)
-//        XCTAssertEqual("4", state1.optionalStringField ?? "<nil>")
-//        XCTAssertEqual("400%", state2.optionalNSStringField ?? "<nil>")
-//        XCTAssertEqual("four", state3.requiredStringField)
+//        XCTAssertEqual("4", state1.optstr ?? "<nil>")
+//        XCTAssertEqual("400%", state2.optnsstr ?? "<nil>")
+//        XCTAssertEqual("four", state3.reqstr)
 //
-//        state3.requiredStringField = "five"
+//        state3.reqstr = "five"
 //        XCTAssertEqual(5, num.value)
-//        XCTAssertEqual("5", state1.optionalStringField ?? "<nil>")
-//        XCTAssertEqual("500%", state2.optionalNSStringField ?? "<nil>")
-//        XCTAssertEqual("five", state3.requiredStringField)
+//        XCTAssertEqual("5", state1.optstr ?? "<nil>")
+//        XCTAssertEqual("500%", state2.optnsstr ?? "<nil>")
+//        XCTAssertEqual("five", state3.reqstr)
 //
-//        state3.requiredStringField = "gibberish" // won't parse, so numbers should remain unchanged
+//        state3.reqstr = "gibberish" // won't parse, so numbers should remain unchanged
 //        XCTAssertEqual(5, num.value)
-//        XCTAssertEqual("5", state1.optionalStringField ?? "<nil>")
-//        XCTAssertEqual("500%", state2.optionalNSStringField ?? "<nil>")
-//        XCTAssertEqual("gibberish", state3.requiredStringField)
+//        XCTAssertEqual("5", state1.optstr ?? "<nil>")
+//        XCTAssertEqual("500%", state2.optnsstr ?? "<nil>")
+//        XCTAssertEqual("gibberish", state3.reqstr)
 //
-//        state2.optionalNSStringField = nil
+//        state2.optnsstr = nil
 //        XCTAssertEqual(5, num.value)
-//        XCTAssertEqual("5", state1.optionalStringField ?? "<nil>")
-//        XCTAssertNil(state2.optionalNSStringField)
-//        XCTAssertEqual("gibberish", state3.requiredStringField)
+//        XCTAssertEqual("5", state1.optstr ?? "<nil>")
+//        XCTAssertNil(state2.optnsstr)
+//        XCTAssertEqual("gibberish", state3.reqstr)
 //
-//        num <- 5.4321
+//        num ∞= 5.4321
 //        XCTAssertEqual(5.4321, num.value)
-//        XCTAssertEqual("5.432", state1.optionalStringField ?? "<nil>")
-//        XCTAssertEqual("543%", state2.optionalNSStringField ?? "<nil>")
-//        XCTAssertEqual("five point four three two one", state3.requiredStringField)
+//        XCTAssertEqual("5.432", state1.optstr ?? "<nil>")
+//        XCTAssertEqual("543%", state2.optnsstr ?? "<nil>")
+//        XCTAssertEqual("five point four three two one", state3.reqstr)
 //
-//        state2.optionalNSStringField = "18.3%"
+//        state2.optnsstr = "18.3%"
 //        XCTAssertEqual(0.183, num.value)
-//        XCTAssertEqual("0.183", state1.optionalStringField ?? "<nil>")
-//        XCTAssertEqual("18%", state2.optionalNSStringField ?? "<nil>")
-//        XCTAssertEqual("zero point one eight three", state3.requiredStringField)
+//        XCTAssertEqual("0.183", state1.optstr ?? "<nil>")
+//        XCTAssertEqual("18%", state2.optnsstr ?? "<nil>")
+//        XCTAssertEqual("zero point one eight three", state3.reqstr)
 //
 //    }
 //
@@ -1213,45 +1318,45 @@ public class FoundationTests: XCTestCase {
 //        let startObserverCount = ChannelZKeyValueObserverCount
 //        #endif
 //
-//        var requiredNSStringField: NSString = ""
+//        var reqnsstr: NSString = ""
 //        // TODO: observable immediately gets deallocated unless we hold on to it
-////        let a1a = state.observable(state.requiredNSStringField, keyPath: "requiredNSStringField").receive({ requiredNSStringField = $0 })
+////        let a1a = state.observable(state.reqnsstr, keyPath: "reqnsstr").receive({ reqnsstr = $0 })
 //
 //        // FIXME: this seems to hold on to an extra allocation
-//        // let a1 = sieve(state.observable(state.requiredNSStringField, keyPath: "requiredNSStringField"))
+//        // let a1 = sieve(state.observable(state.reqnsstr, keyPath: "reqnsstr"))
 //
-//        let a1 = state.channelz(state.requiredNSStringField)
-//        var a1a = a1.receive({ requiredNSStringField = $0 })
+//        let a1 = state.channelz(state.reqnsstr)
+//        var a1a = a1.receive({ reqnsstr = $0 })
 //
 //        #if DEBUG_CHANNELZ
 //        XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1, "observer should not have been cleaned up")
 //        #endif
 //
-//        state.requiredNSStringField = "foo"
-//        XCTAssert(requiredNSStringField == "foo", "failed: \(requiredNSStringField)")
+//        state.reqnsstr = "foo"
+//        XCTAssert(reqnsstr == "foo", "failed: \(reqnsstr)")
 //
 ////        let preDetachCount = countElements(a1.subscriptions)
 //        a1a.cancel()
 ////        let postDetachCount = countElements(a1.subscriptions)
 ////        XCTAssertEqual(postDetachCount, preDetachCount - 1, "canceling the subscription should have removed it from the subscription list")
 //
-//        state.requiredNSStringField = "foo1"
-//        XCTAssertNotEqual(requiredNSStringField, "foo1", "canceled observable should not have fired")
+//        state.reqnsstr = "foo1"
+//        XCTAssertNotEqual(reqnsstr, "foo1", "canceled observable should not have fired")
 //
-//        var optionalNSStringField: NSString?
-//        let a2 = state∞(state.optionalNSStringField)
-//        a2.receive({ optionalNSStringField = $0 })
+//        var optnsstr: NSString?
+//        let a2 = state∞(state.optnsstr)
+//        a2.receive({ optnsstr = $0 })
 //        
-//        XCTAssert(optionalNSStringField == nil)
+//        XCTAssert(optnsstr == nil)
 //
-//        state.optionalNSStringField = nil
-//        XCTAssertNil(optionalNSStringField)
+//        state.optnsstr = nil
+//        XCTAssertNil(optnsstr)
 //
-//        state.optionalNSStringField = "foo"
-//        XCTAssert(optionalNSStringField?.description == "foo", "failed: \(optionalNSStringField)")
+//        state.optnsstr = "foo"
+//        XCTAssert(optnsstr?.description == "foo", "failed: \(optnsstr)")
 //
-//        state.optionalNSStringField = nil
-//        XCTAssertNil(optionalNSStringField)
+//        state.optnsstr = nil
+//        XCTAssertNil(optnsstr)
 //    }
 //
 //    func testNumericConversion() {
@@ -1321,7 +1426,7 @@ public class FoundationTests: XCTestCase {
 //            s.numberField <~∞~> c∞c.intField
 //            c.intField++
 //            XCTAssertEqual(s.intField.value, c.numberField.integerValue)
-//            s.numberField.value = s.numberField.value.integerValue + 1
+//            s.numberField ∞= s.numberField.value.integerValue + 1
 //            XCTAssertEqual(s.intField.value, c.numberField.integerValue)
 //        }
 //
@@ -1331,7 +1436,7 @@ public class FoundationTests: XCTestCase {
 //            s.numberField <~∞~> c∞c.doubleField
 //            c.doubleField++
 //            XCTAssertEqual(s.doubleField.value, c.numberField.doubleValue)
-//            s.numberField.value = s.numberField.value.doubleValue + 1
+//            s.numberField ∞= s.numberField.value.doubleValue + 1
 //            XCTAssertEqual(s.doubleField.value, c.numberField.doubleValue)
 //        }
 //
@@ -1342,7 +1447,7 @@ public class FoundationTests: XCTestCase {
 //            // FIXME: crash!
 ////            c.int8Field++
 //            XCTAssertEqual(s.int8Field.value, c.numberField.charValue)
-////            s.numberField.value = NSNumber(char: s.numberField.value.charValue + 1)
+////            s.numberField ∞= NSNumber(char: s.numberField.value.charValue + 1)
 //            XCTAssertEqual(s.int8Field.value, c.numberField.charValue)
 //        }
 //
@@ -1352,7 +1457,7 @@ public class FoundationTests: XCTestCase {
 //            s.numberField <~∞~> c∞c.intField
 //            c.intField++
 //            XCTAssertEqual(s.intField.value, c.numberField.integerValue)
-//            s.numberField.value = s.numberField.value.integerValue + 1
+//            s.numberField ∞= s.numberField.value.integerValue + 1
 //            XCTAssertEqual(s.intField.value, c.numberField.integerValue)
 //        }
 //
@@ -1384,7 +1489,7 @@ public class FoundationTests: XCTestCase {
 //            s.decimalNumberField <~∞~> c∞c.numberField
 //            c.numberField = c.numberField.integerValue + 1
 //            XCTAssertEqual(s.decimalNumberField.value, c.numberField)
-//            s.decimalNumberField.value = NSDecimalNumber(string: "9e12")
+//            s.decimalNumberField ∞= NSDecimalNumber(string: "9e12")
 //            XCTAssertEqual(s.decimalNumberField.value, c.numberField)
 //        }
 //
@@ -1392,11 +1497,11 @@ public class FoundationTests: XCTestCase {
 //            let o = NumericHolderOptionalStruct()
 //            let c = NumericHolderClass()
 //            c∞c.doubleField <=∞=> o.doubleField
-//            o.doubleField.value = 12.34
+//            o.doubleField ∞= 12.34
 //            XCTAssertEqual(12.34, c.doubleField)
 //
 //            // FIXME: crash (“could not set nil as the value for the key doubleField”), since NumericHolderClass.doubleField cannot accept optionals; the conduit works because non-optionals are allowed to be cast to optionals
-////            o.doubleField.value = nil
+////            o.doubleField ∞= nil
 //        }
 //    }
 //
@@ -1582,7 +1687,7 @@ public class FoundationTests: XCTestCase {
 //        var subscription: Receiver?
 //        autoreleasepool {
 //            let state = StatefulObject()
-//            subscription = state.channelz(state.requiredNSStringField).receive({ _ in })
+//            subscription = state.channelz(state.reqnsstr).receive({ _ in })
 //            XCTAssertEqual(1, StatefulObjectCount)
 //        }
 //
@@ -1784,11 +1889,11 @@ public class FoundationTests: XCTestCase {
 //        var lastUInt = UInt(0)
 //        intToUIntChannel.receive({ lastUInt = $0 })
 //
-//        intField.value = 10
+//        intField ∞= 10
 //        XCTAssertEqual(UInt(10), lastUInt)
 //        XCTAssertEqual(Int(10), intToUIntChannel.value)
 //
-//        intField.value = -1
+//        intField ∞= -1
 //        XCTAssertEqual(UInt(10), lastUInt, "changing a filtered value shouldn't pass down")
 //
 //        XCTAssertEqual(-1, intToUIntChannel.value, "pulling a filtered field should yield nil")
@@ -1808,13 +1913,13 @@ public class FoundationTests: XCTestCase {
 //
 //        let link = conduit(largerz, smallerz)
 //
-//        large.value = 1
+//        large ∞= 1
 //        XCTAssertEqual(large.value, Int64(small.value), "stable conduit")
 //
-//        large.value = Int64(Int8.max)
+//        large ∞= Int64(Int8.max)
 //        XCTAssertEqual(large.value, Int64(small.value), "stable conduit")
 //
-//        large.value = Int64(Int8.max) + 1
+//        large ∞= Int64(Int8.max) + 1
 //        XCTAssertNotEqual(large.value, Int64(small.value), "unstable conduit")
 //
 //    }
@@ -2078,10 +2183,10 @@ public class FoundationTests: XCTestCase {
 //        let state = StatefulObjectSubSubclass()
 //        var count = 0
 //
-//        let subscription : Receiver = state.channelz(state.optionalStringField) ∞> { _ in count += 1 }
-//        state∞state.requiredStringField ∞> { _ in count += 1 }
-//        state∞state.optionalNSStringField ∞> { _ in count += 1 }
-//        state∞state.requiredNSStringField ∞> { _ in count += 1 }
+//        let subscription : Receiver = state.channelz(state.optstr) ∞> { _ in count += 1 }
+//        state∞state.reqstr ∞> { _ in count += 1 }
+//        state∞state.optnsstr ∞> { _ in count += 1 }
+//        state∞state.reqnsstr ∞> { _ in count += 1 }
 //        state∞state.intField ∞> { _ in count += 1 }
 //        state∞state.doubleField ∞> { _ in count += 1 }
 //        state∞state.numberField1 ∞> { _ in count += 1 }
@@ -2199,7 +2304,7 @@ public class FoundationTests: XCTestCase {
 //        XCTAssertEqual("ABC", textField.stringValue)
 //        XCTAssertEqual("ABC", text)
 //
-//        textChannel.value = "XYZ"
+//        textChannel ∞= "XYZ"
 //        XCTAssertEqual("XYZ", textField.stringValue)
 //        XCTAssertEqual("XYZ", text)
 //
@@ -2448,64 +2553,64 @@ public class FoundationTests: XCTestCase {
 //        pout.cancel() // FIXME: crash
 //    }
 //    #endif
-//
-//
-//    override public func tearDown() {
-//        super.tearDown()
-//
-//        // ensure that all the bindings and observers are properly cleaned up
-//        #if DEBUG_CHANNELZ
-//            XCTAssertEqual(0, StatefulObjectCount, "all StatefulObject instances should have been deallocated")
-//            StatefulObjectCount = 0
-//            XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
-//            ChannelZKeyValueObserverCount = 0
+
+
+    override public func tearDown() {
+        super.tearDown()
+
+        // ensure that all the bindings and observers are properly cleaned up
+        #if DEBUG_CHANNELZ
+            XCTAssertEqual(0, StatefulObjectCount, "all StatefulObject instances should have been deallocated")
+            StatefulObjectCount = 0
+            XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
+            ChannelZKeyValueObserverCount = 0
 //            XCTAssertEqual(0, ChannelZNotificationObserverCount, "Notification observers were not cleaned up")
 //            ChannelZNotificationObserverCount = 0
-//            #else
-//            XCTFail("Why are you running tests with debugging off?")
-//        #endif
-//    }
+            #else
+            XCTFail("Why are you running tests with debugging off?")
+        #endif
+    }
 
 }
 
-//
-//public struct StatefulObjectHolder {
-//    let ob: StatefulObject
-//}
-//
-//public enum SomeEnum { case Yes, No, MaybeSo }
-//
-//public struct SwiftStruct {
-//    public var intField: Int
-//    public var stringField: String?
-//    public var enumField: SomeEnum = .No
-//}
-//
-//public struct SwiftEquatableStruct : Equatable {
-//    public var intField: Int
-//    public var stringField: String?
-//    public var enumField: SomeEnum = .No
-//}
-//
-//public func == (lhs: SwiftEquatableStruct, rhs: SwiftEquatableStruct) -> Bool {
-//    return lhs.intField == rhs.intField && lhs.stringField == rhs.stringField && lhs.enumField == rhs.enumField
-//}
-//
-//public struct SwiftObservables {
-//    public let stringField: ChannelZ<String> = ∞("")∞
-//    public let enumField = ∞(SomeEnum.No)∞
-//    public let swiftStruct = ∞(SwiftStruct(intField: 1, stringField: "", enumField: .Yes))∞
-//}
+
+public struct StatefulObjectHolder {
+    let ob: StatefulObject
+}
+
+public enum SomeEnum { case Yes, No, MaybeSo }
+
+public struct SwiftStruct {
+    public var intField: Int
+    public var stringField: String?
+    public var enumField: SomeEnum = .No
+}
+
+public struct SwiftEquatableStruct : Equatable {
+    public var intField: Int
+    public var stringField: String?
+    public var enumField: SomeEnum = .No
+}
+
+public func == (lhs: SwiftEquatableStruct, rhs: SwiftEquatableStruct) -> Bool {
+    return lhs.intField == rhs.intField && lhs.stringField == rhs.stringField && lhs.enumField == rhs.enumField
+}
+
+public struct SwiftObservables {
+    public let stringField = ∞=("")=∞
+    public let enumField = ∞=(SomeEnum.No)=∞
+    public let swiftStruct = ∞(SwiftStruct(intField: 1, stringField: "", enumField: .Yes))∞
+}
 
 
 var StatefulObjectCount = 0
 
 public class StatefulObject : NSObject {
-    dynamic var optionalStringField: String?
-    dynamic var requiredStringField: String = ""
+    dynamic var optstr: String?
+    dynamic var reqstr: String = ""
 
-    dynamic var optionalNSStringField: NSString?
-    dynamic var requiredNSStringField: NSString = ""
+    dynamic var optnsstr: NSString?
+    dynamic var reqnsstr: NSString = ""
 
     // “property cannot be marked as dynamic because its type cannot be represented in Objective-C”
     // dynamic var optionalIntField: Int?
@@ -2529,96 +2634,112 @@ public class StatefulObject : NSObject {
     }
 }
 
-//public class StatefulObjectSubclass : StatefulObject {
-//    dynamic var state = StatefulObject()
-//}
-//
-//public final class StatefulObjectSubSubclass : StatefulObjectSubclass { }
-//
-//var InstanceTrackingUndoManagerInstanceCount = 0
-//class InstanceTrackingUndoManager : NSUndoManager {
-//    override init() {
-//        super.init()
-//        InstanceTrackingUndoManagerInstanceCount++
-//    }
-//
-//    deinit {
-//        InstanceTrackingUndoManagerInstanceCount--
-//    }
-//}
-//
-//public class CoreDataPerson : NSManagedObject {
-//    dynamic var fullName: String?
-//    @NSManaged var age: Int16
-//}
-//
-//var MemoryDemoCount = 0
-//class MemoryDemo : NSObject {
-//    dynamic var stringField : String = ""
-//
-//    // track creates and releases
-//    override init() { MemoryDemoCount++ }
-//    deinit { MemoryDemoCount-- }
-//}
-//
-//class NumericHolderClass : NSObject {
-//    dynamic var numberField: NSNumber = 0
-//    dynamic var decimalNumberField: NSDecimalNumber = 0
-//    dynamic var doubleField: Double = 0
-//    dynamic var floatField: Float = 0
-//    dynamic var intField: Int = 0
-//    dynamic var uInt64Field: UInt64 = 0
-//    dynamic var int64Field: Int64 = 0
-//    dynamic var uInt32Field: UInt32 = 0
-//    dynamic var int32Field: Int32 = 0
-//    dynamic var uInt16Field: UInt16 = 0
-//    dynamic var int16Field: Int16 = 0
-//    dynamic var uInt8Field: UInt8 = 0
-//    dynamic var int8Field: Int8 = 0
-//    dynamic var boolField: Bool = false
-//}
-//
-//struct NumericHolderStruct {
-//    let numberField = ∞(NSNumber(floatLiteral: 0.0))∞
-//    let decimalNumberField = ∞(NSDecimalNumber(floatLiteral: 0.0))∞
-//    let doubleField = ∞(Double(0))∞
-//    let floatField = ∞(Float(0))∞
-//    let intField = ∞(Int(0))∞
-//    let uInt64Field = ∞(UInt64(0))∞
-//    let int64Field = ∞(Int64(0))∞
-//    let uInt32Field = ∞(UInt32(0))∞
-//    let int32Field = ∞(Int32(0))∞
-//    let uInt16Field = ∞(UInt16(0))∞
-//    let int16Field = ∞(Int16(0))∞
-//    let uInt8Field = ∞(UInt8(0))∞
-//    let int8Field = ∞(Int8(0))∞
-//    let boolField = ∞(Bool(false))∞
-//}
-//
-//struct NumericHolderOptionalStruct {
-//    let numberField = ∞(nil as NSNumber?)∞
-//    let decimalNumberField = ∞(nil as NSDecimalNumber?)∞
-//    let doubleField = ∞(nil as Double?)∞
-//    let floatField = ∞(nil as Float?)∞
-//    let intField = ∞(nil as Int?)∞
-//    let uInt64Field = ∞(nil as UInt64?)∞
-//    let int64Field = ∞(nil as Int64?)∞
-//    let uInt32Field = ∞(nil as UInt32?)∞
-//    let int32Field = ∞(nil as Int32?)∞
-//    let uInt16Field = ∞(nil as UInt16?)∞
-//    let int16Field = ∞(nil as Int16?)∞
-//    let uInt8Field = ∞(nil as UInt8?)∞
-//    let int8Field = ∞(nil as Int8?)∞
-//    let boolField = ∞(nil as Bool?)∞
-//}
+public class StatefulObjectSubclass : StatefulObject {
+    dynamic var state = StatefulObject()
+}
+
+public final class StatefulObjectSubSubclass : StatefulObjectSubclass { }
+
+var InstanceTrackingUndoManagerInstanceCount = 0
+class InstanceTrackingUndoManager : NSUndoManager {
+    override init() {
+        super.init()
+        InstanceTrackingUndoManagerInstanceCount++
+    }
+
+    deinit {
+        InstanceTrackingUndoManagerInstanceCount--
+    }
+}
+
+public class CoreDataPerson : NSManagedObject {
+    dynamic var fullName: String?
+    @NSManaged var age: Int16
+}
+
+var MemoryDemoCount = 0
+class MemoryDemo : NSObject {
+    dynamic var stringField : String = ""
+
+    // track creates and releases
+    override init() { MemoryDemoCount++ }
+    deinit { MemoryDemoCount-- }
+}
+
+class NumericHolderClass : NSObject {
+    dynamic var numberField: NSNumber = 0
+    dynamic var decimalNumberField: NSDecimalNumber = 0
+    dynamic var doubleField: Double = 0
+    dynamic var floatField: Float = 0
+    dynamic var intField: Int = 0
+    dynamic var uInt64Field: UInt64 = 0
+    dynamic var int64Field: Int64 = 0
+    dynamic var uInt32Field: UInt32 = 0
+    dynamic var int32Field: Int32 = 0
+    dynamic var uInt16Field: UInt16 = 0
+    dynamic var int16Field: Int16 = 0
+    dynamic var uInt8Field: UInt8 = 0
+    dynamic var int8Field: Int8 = 0
+    dynamic var boolField: Bool = false
+
+//    var numberFieldZ: Channel<KeyValueSource<NSNumber>, NSNumber> { return channelZKey(numberField) }
+//    lazy var decimalNumberFieldZ: NSDecimalNumber = 0
+//    lazy var doubleFieldZ: Double = 0
+//    lazy var floatFieldZ: Float = 0
+//    lazy var intFieldZ: Int = 0
+//    lazy var uInt64FieldZ: UInt64 = 0
+//    lazy var int64FieldZ: Int64 = 0
+//    lazy var uInt32FieldZ: UInt32 = 0
+//    lazy var int32FieldZ: Int32 = 0
+//    lazy var uInt16FieldZ: UInt16 = 0
+//    lazy var int16FieldZ: Int16 = 0
+//    lazy var uInt8FieldZ: UInt8 = 0
+//    lazy var int8FieldZ: Int8 = 0
+//    lazy var boolFieldZ: Bool = false
+
+}
+
+struct NumericHolderStruct {
+    let numberField = ∞(NSNumber(floatLiteral: 0.0))∞
+    let decimalNumberField = ∞=(NSDecimalNumber(floatLiteral: 0.0))=∞
+    let doubleField = ∞=(Double(0))=∞
+    let floatField = ∞=(Float(0))=∞
+    let intField = ∞=(Int(0))=∞
+    let uInt64Field = ∞=(UInt64(0))=∞
+    let int64Field = ∞=(Int64(0))=∞
+    let uInt32Field = ∞=(UInt32(0))=∞
+    let int32Field = ∞=(Int32(0))=∞
+    let uInt16Field = ∞=(UInt16(0))=∞
+    let int16Field = ∞=(Int16(0))=∞
+    let uInt8Field = ∞=(UInt8(0))=∞
+    let int8Field = ∞=(Int8(0))=∞
+    let boolField = ∞=(Bool(false))=∞
+}
+
+struct NumericHolderOptionalStruct {
+    let numberField = ∞=(nil as NSNumber?)=∞
+    let decimalNumberField = ∞=(nil as NSDecimalNumber?)=∞
+    let doubleField = ∞=(nil as Double?)=∞
+    let floatField = ∞=(nil as Float?)=∞
+    let intField = ∞=(nil as Int?)=∞
+    let uInt64Field = ∞=(nil as UInt64?)=∞
+    let int64Field = ∞=(nil as Int64?)=∞
+    let uInt32Field = ∞=(nil as UInt32?)=∞
+    let int32Field = ∞=(nil as Int32?)=∞
+    let uInt16Field = ∞=(nil as UInt16?)=∞
+    let int16Field = ∞=(nil as Int16?)=∞
+    let uInt8Field = ∞=(nil as UInt8?)=∞
+    let int8Field = ∞=(nil as Int8?)=∞
+    let boolField = ∞=(nil as Bool?)=∞
+}
 
 
 var ChannelThingsInstances = 0
 class ChannelThing: NSObject {
-    let int = PropertyChannel(0)
-    let double = PropertyChannel(0.0)
-    let string = PropertyChannel("")
-    let stringish = PropertyChannel(nil as String?)
+    let int = ∞=(0)=∞
+    let double = ∞=(0.0)=∞
+    let string = ∞=("")=∞
+    let stringish = ∞(nil as String?)∞
 
     override init() { ChannelThingsInstances++ }
     deinit { ChannelThingsInstances-- }

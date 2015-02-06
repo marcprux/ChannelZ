@@ -10,29 +10,86 @@
 // MARK: Operators
 
 /// Channel merge operation for two channels of the same type (operator form of `merge`)
-public func +<S1, S2, T>(lhs: Channel<S1, T>, rhs: Channel<S2, T>)->Channel<(S1, S2), T> {
+public func + <S1, S2, T>(lhs: Channel<S1, T>, rhs: Channel<S2, T>)->Channel<(S1, S2), T> {
     return lhs.merge(rhs)
 }
 
+/// Operator for adding a receiver to the given channel
+public func ∞> <S, T>(lhs: Channel<S, T>, rhs: T->Void)->Receipt { return lhs.receive(rhs) }
+infix operator ∞> { }
+
+/// Sets the value of a channel's source that is sourced by a `SinkType`
+public func ∞= <T, S: SinkType>(lhs: Channel<S, T>, rhs: S.Element)->Void { var src = lhs.source; src.put(rhs) }
+infix operator ∞= { }
+
+
+/// Reads the value from the given channel's source that is sourced by an AccessibleSource implementation
+public postfix func ∞? <T, S: AccessibleSource>(c: Channel<S, T>)->S.T { return c.source.value }
+postfix operator ∞? { }
+
+// MARK: Operators that create state channels
+
+prefix operator ∞ { }
+prefix operator ∞= { }
+
+postfix operator =∞ { }
+postfix operator ∞ { }
+
+// MARK: Prefix operators 
+
+/// Creates a channel from the given state source such that emits items for every state operation
+public prefix func ∞ <S: StateSource, T where S.Element == T>(source: S)->Channel<S, T> {
+    return source.channelZState().map({ $0.1 })
+}
+
+/// Creates a distinct sieved channel from the given Equatable state source such that only subsequent state changes are emitted
+public prefix func ∞= <S: StateSource, T: Equatable where S.Element == T>(source: S)->Channel<S, T> {
+    return source.channelZState().filter({ $0.0 != $0.1 }).map({ $0.1 }).subsequent()
+}
+
+
+// FIXME: crashes when we try to put an Optional in the generic clause
+//public prefix func ∞= <S: StateSource, T: Equatable where S.Element == T?>(source: S)->Channel<S, T?> {
+//    return source.channelZState().filter({ $0.0 == nil || $0.0! != $0.1 }).map({ $0.1 }).subsequent()
+//}
+
+/// Creates a distinct sieved channel from the given Equatable Optional PropertySource
+public prefix func ∞= <T: Equatable>(source: PropertySource<T?>)->Channel<PropertySource<T?>, T?> {
+    return source.channelZState().filter({ $0.0 == nil || $0.0! != $0.1 }).map({ $0.1 }).subsequent()
+}
+
+
+// MARK: Postfix operators
+
+/// Creates a source for the given property that will emit state operations
+public postfix func ∞ <T>(value: T)->PropertySource<T> { return PropertySource(value) }
+
+/// Creates a source for the given property that will emit state operations
+public postfix func =∞ <T: Equatable>(value: T)->PropertySource<T> { return value∞ }
+
+/// Creates a source for the given property that will emit state operations
+public postfix func =∞ <T: Equatable>(value: T?)->PropertySource<T?> { return value∞ }
+
+
+// MARK: Infix operators
+
 /// Creates a one-way pipe betweek a `Channel` and a `SinkType`, such that all receiver emissions are sent to the sink.
 /// This is the operator form of `pipe`
-public func ∞-><S1, T, S2: SinkType where T == S2.Element>(r: Channel<S1, T>, s: S2)->Receipt { return r.pipe(s) }
+public func ∞-> <S1, T, S2: SinkType where T == S2.Element>(r: Channel<S1, T>, s: S2)->Receipt { return r.pipe(s) }
 infix operator ∞-> { }
 
 
 /// Creates a one-way pipe betweek a `Channel` and an `Equatable` `SinkType`, such that all receiver emissions are sent to the sink.
 /// This is the operator form of `pipe`
-public func ∞=><S1, T, S2: SinkType where T == S2.Element, T: Equatable>(r: Channel<S1, T>, s: S2)->Receipt { return r.sieve(!=).pipe(s) }
+public func ∞=> <S1, T, S2: SinkType where T == S2.Element, T: Equatable>(r: Channel<S1, T>, s: S2)->Receipt { return r.sieve(!=).pipe(s) }
 infix operator ∞=> { }
 
 
 /// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
 /// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
 /// This is the operator form of `channel`
-public func <=∞=><S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
+public func <=∞=> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
 infix operator <=∞=> { }
-
-
 
 
 // MARK: Channel Tuple flatten/combine support

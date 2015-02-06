@@ -9,6 +9,8 @@
 import XCTest
 import ChannelZ
 
+private func moreT<T>()->T { fatalError("you can't take less") }
+
 extension Channel {
     /// Test method that receives to the observable and returns any elements that are immediately sent to fresh receivers
     var immediateItems: [T] {
@@ -27,43 +29,44 @@ extension Range { func channel()->Channel<Range, T> { return channelZSequence(se
 
 public class ChannelTests: XCTestCase {
 
-//    func testTraps() {
-//        let bools = trap(∞false∞, capacity: 10)
-//
-//        // test that sending capacity distinct values will store those values
-//        var send = [true, false, true, false, true, false, true, false, true, false]
-//        send.map { bools.source.value = $0 }
-//        XCTAssertEqual(send, bools.values)
-//
-//        // test that sending some mixed values will sieve and consense to the capacity
-//        var mixed = [false, true, true, true, false, true, false, true, false, true, true, false, true, true, false, false, false]
-//        mixed.map { bools.source.value = $0 }
-//        XCTAssertEqual(send, bools.values)
-//    }
+    func testTraps() {
+        let bools = trap(∞=false=∞, capacity: 10)
 
-//    func testGenerators() {
-//        let seq = [true, false, true, false, true]
-//
-////        let gfun1 = Channel(from: GeneratorOf(seq.generate())) // GeneratorChannel with generator
-////        let trap1 = trap(gfun1, capacity: 3)
-////        XCTAssertEqual(seq[2...4], trap1.values[0...2], "trap should contain the last 3 elements of the sequence generator")
-//
-//        let gfun2 = Channel(from: seq) // GeneratorChannel with sequence
-//        let trap2 = trap(gfun2, capacity: 3)
-//        XCTAssertEqual(seq[2...4], trap2.values[0...2], "trap should contain the last 3 elements of the sequence generator")
-//
-//        let trapped = trap(Observable(from: 1...5) & Observable(from: 6...10), capacity: 1000)
-//        
-//        XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]]) // tupes aren't equatable
-//
-//        // observable concatenation
-//        // the equivalent of ReactiveX's Range
-//        let merged = trap(Observable(from: 1...3) + Observable(from: 3...5) + Observable(from: 2...6), capacity: 1000)
-//        XCTAssertEqual(merged.values, [1, 2, 3, 3, 4, 5, 2, 3, 4, 5, 6])
-//
-//        // the equivalent of ReactiveX's Repeat
-//        XCTAssertEqual(trap(Observable(from: Repeat(count: 10, repeatedValue: "A")), capacity: 4).values, ["A", "A", "A", "A"])
-//    }
+        // test that sending capacity distinct values will store those values
+        var send = [true, false, true, false, true, false, true, false, true, false]
+        send.map { bools.channel.source.value = $0 }
+        XCTAssertEqual(send, bools.values)
+
+        // test that sending some mixed values will sieve and constrain to the capacity
+        var mixed = [false, true, true, true, false, true, false, true, false, true, true, false, true, true, false, false, false]
+        mixed.map { bools.channel.source.value = $0 }
+        XCTAssertEqual(send, bools.values)
+    }
+
+    func testGenerators() {
+        let seq = [true, false, true, false, true]
+
+//        let gfun1 = Channel(from: GeneratorOf(seq.generate())) // GeneratorChannel with generator
+//        let trap1 = trap(gfun1, capacity: 3)
+//        XCTAssertEqual(seq[2...4], trap1.values[0...2], "trap should contain the last 3 elements of the sequence generator")
+
+        let gfun2 = channelZSequence(seq) // GeneratorChannel with sequence
+        let trap2 = trap(gfun2, capacity: 3)
+        XCTAssertEqual(seq[2...4], trap2.values[0...2], "trap should contain the last 3 elements of the sequence generator")
+
+        let trapped = trap(channelZSequence(1...5) & channelZSequence(6...10), capacity: 1000)
+        
+        XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]]) // tupes aren't equatable
+
+        // observable concatenation
+        // the equivalent of ReactiveX's Range
+        let merged = trap(channelZSequence(1...3) + channelZSequence(3...5) + channelZSequence(2...6), capacity: 1000)
+        XCTAssertEqual(merged.values, [1, 2, 3, 3, 4, 5, 2, 3, 4, 5, 6])
+
+        // the equivalent of ReactiveX's Repeat
+        XCTAssertEqual(trap(channelZSequence(Repeat(count: 10, repeatedValue: "A")), capacity: 4).values, ["A", "A", "A", "A"])
+        XCTAssertEqual(trap(channelZSequence(Repeat(count: 10, repeatedValue: "A")).subsequent(), capacity: 4).values, [])
+    }
 
     func testMergedUnreceive() {
         func coinFlip() -> Void? {
@@ -86,7 +89,7 @@ public class ChannelTests: XCTestCase {
 
         // examples of type signatures
         let ccSub: Channel<((S1, S2), (S2, S2)), Int> = (o1 + o2) + (o2 + o2)
-        let ccVoid: Channel<Void, Int> = cc.void()
+        let ccVoid: Channel<Void, Int> = cc.dissolve()
         let ccAny: Channel<(S1, S2, S1), (Int?, Int?, Int?)> = o1 | o2 | o1
         let ccZip: Channel<(S1, S2, S3), (Int, Int, Void)> = o1 & o2 & o3
         let ccMany: Channel<(S1, S2, S3, S2, S1), (Int, Int, Void, Int, Int)> = o1 & o2 & o3 & o2 & o1
@@ -317,23 +320,6 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(["this", "is", "a", "pretty", "good"], reductor.immediateItems)
     }
 
-//    func testFilterAs() {
-//        let source: [Int?] = [1, nil, 2, nil, 4, nil]
-////        let source: [Int] = [1, 2, 4]
-//        let numbers = Channel(from: source)
-//
-//        var nums: [Int] = []
-////        let sub1 = numbers.filterType(Int).receive({ nums += [$0] })
-//        let sub1 = numbers.filter({ $0 != nil }).map({ $0! }).receive({ nums += [$0] })
-////        let sub1 = numbers.map({ $0 as Any as Int? }).filter({ $0 != nil }).map({ $0! }).receive({ nums += [$0] })
-//        XCTAssertEqual([1, 2, 4], nums)
-//
-////        var nsnums: [NSNumber] = []
-////        numbers.to(NSNumber).receive({ nsnums += [$0] })
-////        XCTAssertEqual([1, 2, 1, 2, 3, 4], nums)
-//
-//    }
-
     func testFlatMapChannel() {
         let numbers = (1...3).channel()
         let multiples = { (n: Int) in [n*2, n*3].channel() }
@@ -352,47 +338,47 @@ public class ChannelTests: XCTestCase {
 
     func testPropertyReceivers() {
         class Person {
-            let fname = PropertyChannel("")
-            let lname = PropertyChannel("")
-            var level = PropertyChannel(0)
+            let fname = ∞=("")=∞
+            let lname = ∞=("")=∞
+            var level = ∞(0)∞
         }
 
         let person = Person()
 
-        let fnamez = person.fname.channel().sieve(!=).drop(1) + person.lname.channel().sieve(!=).drop(1)
+        let fnamez = person.fname.sieve(!=).subsequent() + person.lname.sieve(!=).subsequent()
         var names: [String] = []
         let rcpt = fnamez.receive { names += [$0] }
 
-        person.fname.put("Marc")
-        person.lname.value = "Prud'hommeaux"
-        person.fname.value = "Marc"
-        person.fname.value = "Marc"
-        person.lname.value = "Prud'hommeaux"
+        person.fname.source.put("Marc")
+        person.lname ∞= "Prud'hommeaux"
+        person.fname ∞= "Marc"
+        person.fname ∞= "Marc"
+        person.lname ∞= "Prud'hommeaux"
 
         XCTAssertFalse(rcpt.cancelled)
         rcpt.cancel()
         XCTAssertTrue(rcpt.cancelled)
 
-        person.fname.value = "John"
-        person.lname.value = "Doe"
+        person.fname ∞= "John"
+        person.lname ∞= "Doe"
 
         XCTAssertEqual(["Marc", "Prud'hommeaux"], names)
 
         var levels: [Int] = []
-        let rcpt1 = person.level.channel().sieve(>).receive({ levels += [$0] })
-        person.level.value = 1
-        person.level.value = 2
-        person.level.value = 2
-        person.level.value = 1
-        person.level.value = 3
+        let rcpt1 = person.level.sieve(>).receive({ levels += [$0] })
+        person.level ∞= 1
+        person.level ∞= 2
+        person.level ∞= 2
+        person.level ∞= 1
+        person.level ∞= 3
         XCTAssertEqual([0, 1, 2, 3], levels)
     }
 
-    func testPropertyChannels() {
-        let propa = PropertyChannel("A")
-        let propb = PropertyChannel("B")
+    func testPropertySources() {
+        let propa = PropertySource("A")
+        let propb = PropertySource("B")
 
-        let rcpt = propa.channel() <=∞=> propb.channel()
+        let rcpt = ∞propa <=∞=> ∞propb
 
         XCTAssertEqual("A", propa.value)
         XCTAssertEqual("A", propb.value)
@@ -413,51 +399,52 @@ public class ChannelTests: XCTestCase {
     }
 
     func testConversionChannels() {
-        let propa = PropertyChannel(0)
-        let propb = PropertyChannel(0.0)
+        let propa = channelZProperty(0)
+        let propb = channelZProperty(0.0)
 
-        let rcpt = propa.channel().map({ Double($0) }) <=∞=> propb.channel().map({ Int($0) })
+        let rcpt = propa.map({ Double($0) }) <=∞=> propb.map({ Int($0) })
 
-        XCTAssertEqual(0, propa.value)
-        XCTAssertEqual(0.0, propb.value)
+        XCTAssertEqual(0, propa.source.value)
+        XCTAssertEqual(0.0, propb.source.value)
 
-        propa.value++
-        XCTAssertEqual(1, propa.value)
-        XCTAssertEqual(1.0, propb.value)
+        propa.source.value++
+        XCTAssertEqual(1, propa.source.value)
+        XCTAssertEqual(1.0, propb.source.value)
 
-        propb.value += 1.2
-        XCTAssertEqual(2, propa.value)
-        XCTAssertEqual(2.0, propb.value, "rounded value should have been mapped back")
+        propb.source.value += 1.2
+        XCTAssertEqual(2, propa.source.value)
+        XCTAssertEqual(2.0, propb.source.value, "rounded value should have been mapped back")
 
         rcpt.cancel()
 
-        propa.value--
-        XCTAssertEqual(1, propa.value)
-        XCTAssertEqual(2.0, propb.value, "cancelled receiver should not have channeled the value")
+        propa.source.value--
+        XCTAssertEqual(1, propa.source.value)
+        XCTAssertEqual(2.0, propb.source.value, "cancelled receiver should not have channeled the value")
     }
 
     func testUnstableChannels() {
-        let propa = PropertyChannel(0)
-        let propb = PropertyChannel(0)
+        let propsrc: PropertySource<Int> = 0∞ // just to show the postfix signature
+        let propa: Channel<PropertySource<Int>, Int> = ∞0∞
+        let propb: Channel<PropertySource<Int>, Int> = ∞0∞
 
-        let rcpt = propa.channel() <=∞=> propb.channel().map({ $0 + 1 })
+        let rcpt = propa <=∞=> propb.map({ $0 + 1 })
 
-        XCTAssertEqual(1, propa.value)
-        XCTAssertEqual(1, propb.value)
+        XCTAssertEqual(1, propa.source.value)
+        XCTAssertEqual(1, propb.source.value)
 
-        propa.value++
-        XCTAssertEqual(4, propa.value)
-        XCTAssertEqual(3, propb.value)
+        propa.source.value++
+        XCTAssertEqual(4, propa.source.value)
+        XCTAssertEqual(3, propb.source.value)
 
-        propb.value++
-        XCTAssertEqual(6, propa.value)
-        XCTAssertEqual(6, propb.value)
+        propb.source.value++
+        XCTAssertEqual(6, propa.source.value)
+        XCTAssertEqual(6, propb.source.value)
 
         rcpt.cancel()
 
-        propa.value--
-        XCTAssertEqual(5, propa.value)
-        XCTAssertEqual(6, propb.value, "cancelled receiver should not have channeled the value")
+        propa.source.value--
+        XCTAssertEqual(5, propa.source.value)
+        XCTAssertEqual(6, propb.source.value, "cancelled receiver should not have channeled the value")
     }
 
     /// We use this test to generate the hairy tuple unwrapping code for the Reveicer's flatSink, &, and | functions
