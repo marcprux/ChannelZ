@@ -21,6 +21,8 @@
 		7E806D521A7F4C6F00CB3992 /* Dispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E806D511A7F4C6F00CB3992 /* Dispatch.swift */; };
 		7E8C00031A80099F00180DB1 /* Network.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8C00021A80099F00180DB1 /* Network.swift */; };
 		7ECE513B1A60A29600924B8E /* Coercible.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ECE513A1A60A29600924B8E /* Coercible.swift */; };
+		7EDBA1081A87D18300AED2CE /* AppKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EDBA1071A87D18300AED2CE /* AppKitTests.swift */; };
+		7EDBA10A1A87D18C00AED2CE /* UIKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EDBA1091A87D18C00AED2CE /* UIKitTests.swift */; };
 		7EE45E221A210FFE00E9AB52 /* PlayMarkerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -56,6 +58,8 @@
 		7E806D511A7F4C6F00CB3992 /* Dispatch.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Dispatch.swift; sourceTree = "<group>"; };
 		7E8C00021A80099F00180DB1 /* Network.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = Network.swift; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
 		7ECE513A1A60A29600924B8E /* Coercible.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Coercible.swift; sourceTree = "<group>"; };
+		7EDBA1071A87D18300AED2CE /* AppKitTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppKitTests.swift; sourceTree = "<group>"; };
+		7EDBA1091A87D18C00AED2CE /* UIKitTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIKitTests.swift; sourceTree = "<group>"; };
 		7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayMarkerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -105,8 +109,8 @@
 				7E43C2CA1A1072A4003747B6 /* Channel.swift */,
 				7E43C2CE1A1073CA003747B6 /* Receivers.swift */,
 				7E2AB9BC1A82B90100AFBD4F /* Operators.swift */,
-				7E8C00021A80099F00180DB1 /* Network.swift */,
 				7E806D511A7F4C6F00CB3992 /* Dispatch.swift */,
+				7E8C00021A80099F00180DB1 /* Network.swift */,
 				7E30DC591A0D6B1B0050EC52 /* Foundation.swift */,
 				7E7E35451A152CCD00777D72 /* CoreData.swift */,
 				7E43C2D21A1075D0003747B6 /* AppKit.swift */,
@@ -122,6 +126,8 @@
 				7E30DC411A0D6A510050EC52 /* Info.plist */,
 				7E30DC421A0D6A510050EC52 /* ChannelTests.swift */,
 				7E2AB9BE1A83C21A00AFBD4F /* FoundationTests.swift */,
+				7EDBA1071A87D18300AED2CE /* AppKitTests.swift */,
+				7EDBA1091A87D18C00AED2CE /* UIKitTests.swift */,
 				7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */,
 				7E4E53C91A21578700B1016C /* PlayMarker.swift */,
 			);
@@ -264,7 +270,9 @@
 			files = (
 				7E30DC431A0D6A510050EC52 /* ChannelTests.swift in Sources */,
 				7EE45E221A210FFE00E9AB52 /* PlayMarkerTests.swift in Sources */,
+				7EDBA10A1A87D18C00AED2CE /* UIKitTests.swift in Sources */,
 				7E2AB9BF1A83C21A00AFBD4F /* FoundationTests.swift in Sources */,
+				7EDBA1081A87D18300AED2CE /* AppKitTests.swift in Sources */,
 				7E4E53CA1A21578700B1016C /* PlayMarker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

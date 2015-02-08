@@ -440,7 +440,9 @@ public func channelZProperty<T: Equatable>(initialValue: T)->Channel<PropertySou
     return ∞=initialValue=∞
 }
 
-/// Abstraction of a source that can create a channel that emits a tuple of old & new state values
+/// Abstraction of a source that can create a channel that emits a tuple of old & new state values.
+/// This is an optimization of `Channel.precedent()`, since it means that the Channel doesn't need
+/// to retain a reference to the previous state element
 public protocol StateSource {
     typealias Element
 
@@ -450,7 +452,7 @@ public protocol StateSource {
 
 /// A PropertySource can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
 /// The output type is a tuple of (old: T, new: T), where old is the previous value and new is the new value
-public final class PropertySource<T>: SinkType, StateSource {
+public final class PropertySource<T>: StateSink, StateSource {
     public typealias State = (T?, T)
     private let receivers = ReceiverList<State>()
     public var value: T { didSet(old) { receivers.receive(State(old, value)) } }

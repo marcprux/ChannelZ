@@ -103,7 +103,7 @@ public class ChannelTests: XCTestCase {
         var tricklets: [Int] = []
         let count = 10
         let channel = trickleZ((1...10).generate(), 0.001)
-        weak var xpc = expectationWithDescription("trickle")
+        weak var xpc = expectationWithDescription("testTrickle")
         channel.receive {
             tricklets += [$0]
             if tricklets.count >= count { xpc?.fulfill() }
@@ -113,6 +113,21 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(count, tricklets.count)
     }
 
+    func testTrickleZip() {
+        var tricklets: [(Int, Int)] = []
+        let count = 10
+        let channel1 = trickleZ((1...50).generate(), 0.001)
+        let channel2 = trickleZ((11...20).generate(), 0.005) // slower; channel1 will be buffered by zip()
+        weak var xpc = expectationWithDescription("testTrickleZip")
+        channel1.zip(channel2).receive {
+            tricklets += [$0]
+            if tricklets.count >= count { xpc?.fulfill() }
+        }
+
+        waitForExpectationsWithTimeout(5, handler: { err in })
+        XCTAssertEqual(count, tricklets.count)
+
+    }
 
     func testMergedUnreceive() {
         func coinFlip() -> Void? {
@@ -161,7 +176,7 @@ public class ChannelTests: XCTestCase {
         if let stream = NSInputStream(fileAtPath: __FILE__) {
             weak var xpc: XCTestExpectation? = expectationWithDescription("input stream")
 
-            let obv = stream.channel()
+            let obv = stream.channelZStream()
             var openCount = 0
             var closeCount = 0
             var count = 0

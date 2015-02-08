@@ -10,16 +10,6 @@ import XCTest
 import ChannelZ
 import CoreData
 import ObjectiveC
-import WebKit
-
-#if os(OSX)
-    import AppKit
-#endif
-
-#if os(iOS)
-    import UIKit
-#endif
-
 
 func assertChanges<T where T: Equatable>(check: @autoclosure ()->T, code: @autoclosure ()->(Any), file: String = __FILE__, line: UInt = __LINE__) {
     let start = check()
@@ -66,7 +56,7 @@ public class FoundationTests: XCTestCase {
     func testKVOMemoryCleanupCanceled() {
         assertMemoryBlock(check: StatefulObjectCount) {
             let nsob = StatefulObject()
-            let intz = nsob.channelZKey(nsob.intField)
+            let intz = nsob.channelZKey(nsob.int)
             let rcpt = intz.receive({ _ in })
             rcpt.cancel()
         }
@@ -76,7 +66,7 @@ public class FoundationTests: XCTestCase {
     func testKVOMemoryCleanupUncanceled() {
         assertMemoryBlock(check: StatefulObjectCount) {
             let nsob = StatefulObject()
-            let intz = nsob.channelZKey(nsob.intField)
+            let intz = nsob.channelZKey(nsob.int)
             var count = 0
             let rcpt = intz.receive({ _ in count += 1 })
             XCTAssertEqual(1, count, "should have received an initial element")
@@ -139,7 +129,7 @@ public class FoundationTests: XCTestCase {
         autoreleasepool {
             let state = StatefulObject()
 
-            state.channelZKey(state.intField).sieve(!=).receive { _ in iz += 1 }
+            state.channelZKey(state.int).sieve(!=).receive { _ in iz += 1 }
 
             #if DEBUG_CHANNELZ
             XCTAssertEqual(ChannelZKeyValueObserverCount, startObserverCount + 1)
@@ -149,12 +139,12 @@ public class FoundationTests: XCTestCase {
             let strpath = "optstr"
             XCTAssertEqual(strpath, sfo.source.keyPath)
 
-            state.channelZKey(state.doubleField).sieve(!=).receive { _ in dz += 1 }
+            state.channelZKey(state.dbl).sieve(!=).receive { _ in dz += 1 }
 
-            assertChanges(iz, state.intField += 1)
-            assertRemains(iz, state.intField = state.intField + 0)
-            assertChanges(iz, state.intField = state.intField + 1)
-            assertRemains(iz, state.intField = state.intField + 1 - 1)
+            assertChanges(iz, state.int += 1)
+            assertRemains(iz, state.int = state.int + 0)
+            assertChanges(iz, state.int = state.int + 1)
+            assertRemains(iz, state.int = state.int + 1 - 1)
 
             sfo.receive { (value: String?) in sz += 1 }
 
@@ -516,7 +506,7 @@ public class FoundationTests: XCTestCase {
         let n1 = ∞(Int(0))∞
 
         let state = StatefulObject()
-        let n2 = state∞(state.intField as NSNumber)
+        let n2 = state∞(state.int as NSNumber)
 
         let n3 = ∞(Int(0))∞
 
@@ -638,25 +628,25 @@ public class FoundationTests: XCTestCase {
 
 
         var qn1 = ∞(0)∞
-//        let qn2 = (observee: state, keyPath: "intField", value: state.intField as NSNumber)===>
-        let qn2 = state∞(state.intField)
+//        let qn2 = (observee: state, keyPath: "intField", value: state.int as NSNumber)===>
+        let qn2 = state∞(state.int)
 
         let qn1_qn2 = qn1 <~∞~> qn2
 
         qn1 ∞= (qn1∞? + 1)
-        XCTAssertEqual(1, state.intField)
+        XCTAssertEqual(1, state.int)
 
         qn1 ∞= (qn1∞? - 1)
-        XCTAssertEqual(0, state.intField)
+        XCTAssertEqual(0, state.int)
 
         qn1 ∞= (qn1∞? + 1)
-        XCTAssertEqual(1, state.intField)
+        XCTAssertEqual(1, state.int)
 
-        state.intField += 10
+        state.int += 10
         XCTAssertEqual(11, qn1∞?)
 
         qn1 ∞= (qn1∞? + 1)
-        XCTAssertEqual(12, state.intField)
+        XCTAssertEqual(12, state.int)
 
         var qs1 = ∞("")∞
 
@@ -684,112 +674,112 @@ public class FoundationTests: XCTestCase {
         /// Test equivalence bindings
         let state = StatefulObject()
 
-        let obzn1 = state∞(state.numberField1)
-        let obzn2 = state∞(state.numberField2)
+        let obzn1 = state∞(state.num1)
+        let obzn2 = state∞(state.num2)
 
         let obzn1_obzn2 = conduit(obzn1, obzn2)
 
-        state.numberField2 = 44.56
-        XCTAssert(state.numberField1 === state.numberField2, "change the other side")
-        XCTAssertNotNil(state.numberField1)
-        XCTAssertNotNil(state.numberField2)
+        state.num2 = 44.56
+        XCTAssert(state.num1 === state.num2, "change the other side")
+        XCTAssertNotNil(state.num1)
+        XCTAssertNotNil(state.num2)
 
-        state.numberField1 = 1
-        XCTAssert(state.numberField1 === state.numberField2, "change one side")
-        XCTAssertNotNil(state.numberField1)
-        XCTAssertNotNil(state.numberField2)
+        state.num1 = 1
+        XCTAssert(state.num1 === state.num2, "change one side")
+        XCTAssertNotNil(state.num1)
+        XCTAssertNotNil(state.num2)
 
-        state.numberField2 = 12.34567
-        XCTAssert(state.numberField1 === state.numberField2, "change the other side")
-        XCTAssertNotNil(state.numberField1)
-        XCTAssertNotNil(state.numberField2)
+        state.num2 = 12.34567
+        XCTAssert(state.num1 === state.num2, "change the other side")
+        XCTAssertNotNil(state.num1)
+        XCTAssertNotNil(state.num2)
 
-        state.numberField1 = 2
-        XCTAssert(state.numberField1 === state.numberField2, "change back the first side")
-        XCTAssertNotNil(state.numberField1)
-        XCTAssertNotNil(state.numberField2)
-
-
-
-        state.numberField1 = nil
-        XCTAssert(state.numberField1 === state.numberField2, "binding to nil")
-        XCTAssertNil(state.numberField2)
-
-        state.numberField1 = NSNumber(unsignedInt: arc4random())
-        XCTAssert(state.numberField1 === state.numberField2, "binding to random")
-        XCTAssertNotNil(state.numberField2)
+        state.num1 = 2
+        XCTAssert(state.num1 === state.num2, "change back the first side")
+        XCTAssertNotNil(state.num1)
+        XCTAssertNotNil(state.num2)
 
 
-        // binding optional numberField1 to non-optional numberField3
-        let obzn3 = state∞(state.numberField3)
+
+        state.num1 = nil
+        XCTAssert(state.num1 === state.num2, "binding to nil")
+        XCTAssertNil(state.num2)
+
+        state.num1 = NSNumber(unsignedInt: arc4random())
+        XCTAssert(state.num1 === state.num2, "binding to random")
+        XCTAssertNotNil(state.num2)
+
+
+        // binding optional num1 to non-optional num3
+        let obzn3 = state∞(state.num3)
 
         let bind2 = (obzn3, { $0 as NSNumber? }) <~∞~> (obzn1, { $0 })
 
-        state.numberField1 = 67823
-        XCTAssert(state.numberField1 === state.numberField3)
-        XCTAssertNotNil(state.numberField3)
+        state.num1 = 67823
+        XCTAssert(state.num1 === state.num3)
+        XCTAssertNotNil(state.num3)
 
-        state.numberField1 = nil
-        XCTAssertEqual(67823, state.numberField3)
-        XCTAssertNotNil(state.numberField3, "non-optional field should not be nil")
-        XCTAssertNil(state.numberField1)
+        state.num1 = nil
+        XCTAssertEqual(67823, state.num3)
+        XCTAssertNotNil(state.num3, "non-optional field should not be nil")
+        XCTAssertNil(state.num1)
 
-        let obzd = state∞(state.doubleField)
+        let obzd = state∞(state.dbl)
 
         // FIXME: crash with the cast
 
 //        let bind3 = obzn1 <?∞?> obzd
 //
-//        state.doubleField = 5
-//        XCTAssertEqual(state.doubleField, state.numberField1?.doubleValue ?? -999)
+//        state.dbl = 5
+//        XCTAssertEqual(state.dbl, state.num1?.doubleValue ?? -999)
 //
-//        state.numberField1 = nil
-//        XCTAssertEqual(5, state.doubleField, "niling optional field should not alter bound non-optional field")
+//        state.num1 = nil
+//        XCTAssertEqual(5, state.dbl, "niling optional field should not alter bound non-optional field")
 //
-//        state.doubleField++
-//        XCTAssertEqual(state.doubleField, state.numberField1?.doubleValue ?? -999)
+//        state.dbl++
+//        XCTAssertEqual(state.dbl, state.num1?.doubleValue ?? -999)
 //
-//        state.numberField1 = 9.9
-//        XCTAssertEqual(9.9, state.doubleField)
+//        state.num1 = 9.9
+//        XCTAssertEqual(9.9, state.dbl)
 //
-//        // ensure that assigning nil to the numberField1 doesn't clobber the doubleField
-//        state.numberField1 = nil
-//        XCTAssertEqual(9.9, state.doubleField)
+//        // ensure that assigning nil to the num1 doesn't clobber the doubleField
+//        state.num1 = nil
+//        XCTAssertEqual(9.9, state.dbl)
 //
-//        state.doubleField = 9876
-//        XCTAssertEqual(9876, state.numberField1?.doubleValue ?? -999)
+//        state.dbl = 9876
+//        XCTAssertEqual(9876, state.num1?.doubleValue ?? -999)
 //
-//        state.numberField1 = 123
-//        XCTAssertEqual(123, state.doubleField)
+//        state.num1 = 123
+//        XCTAssertEqual(123, state.dbl)
 //
-//        state.numberField2 = 456 // numberField2 <~=~> numberField1 <?=?> doubleField
-//        XCTAssertEqual(456, state.doubleField)
+//        state.num2 = 456 // num2 <~=~> num1 <?=?> doubleField
+//        XCTAssertEqual(456, state.dbl)
     }
 
     func testLossyConduits() {
         let state = StatefulObject()
 
         // transfet between an int and a double field
-        let obzi = state∞(state.intField)
-        let obzd = state∞(state.doubleField)
+        let obzi = state∞(state.int)
+        let obzd = state∞(state.dbl)
 
         let obzi_obzd = obzi <~∞~> obzd
 
-        state.intField = 1
-        XCTAssertEqual(1, state.intField)
-        XCTAssertEqual(1.0, state.doubleField)
+        state.int = 1
+        XCTAssertEqual(1, state.int)
+        XCTAssertEqual(1.0, state.dbl)
 
-        state.doubleField++
-        XCTAssertEqual(2, state.intField)
-        XCTAssertEqual(2.0, state.doubleField)
+        state.dbl++
+        XCTAssertEqual(2, state.int)
+        XCTAssertEqual(2.0, state.dbl)
 
-        state.doubleField += 0.8
-        XCTAssertEqual(2, state.intField)
-        XCTAssertEqual(2.8, state.doubleField)
+        state.dbl += 0.8
+        XCTAssertEqual(2, state.int)
+        XCTAssertEqual(2.8, state.dbl)
 
-        state.intField--
-        XCTAssertEqual(1, state.intField)
-        XCTAssertEqual(1.0, state.doubleField)
+        state.int--
+        XCTAssertEqual(1, state.int)
+        XCTAssertEqual(1.0, state.dbl)
     }
 
     func testHaltingConduits() {
@@ -1103,12 +1093,12 @@ public class FoundationTests: XCTestCase {
 //        autoreleasepool {
 //            let o = NumericHolderOptionalStruct()
 //            let c = NumericHolderClass()
-//            c∞c.doubleField <~∞~> o.doubleField
-//            o.doubleField ∞= 12.34
-//            XCTAssertEqual(12.34, c.doubleField)
+//            c∞c.dbl <~∞~> o.dbl
+//            o.dbl ∞= 12.34
+//            XCTAssertEqual(12.34, c.dbl)
 //
-//            // FIXME: crash (“could not set nil as the value for the key doubleField”), since NumericHolderClass.doubleField cannot accept optionals; the conduit works because non-optionals are allowed to be cast to optionals
-////            o.doubleField ∞= nil
+//            // FIXME: crash (“could not set nil as the value for the key doubleField”), since NumericHolderClass.dbl cannot accept optionals; the conduit works because non-optionals are allowed to be cast to optionals
+////            o.dbl ∞= nil
 //        }
     }
 
@@ -1248,46 +1238,6 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
     }
 
-    #if os(OSX) // bindings are only available on OSX
-    public func testCocoaBindings() {
-        let objc = NSObjectController(content: NSNumber(integer: 1))
-        XCTAssertEqual(1, objc.content as? NSNumber ?? -999)
-
-        let state1 = StatefulObject()
-        state1.numberField3 = 0
-
-        XCTAssertEqual(0, state1.numberField3)
-        objc.bind("content", toObject: state1, withKeyPath: "numberField3", options: nil)
-        XCTAssertEqual(0, state1.numberField3)
-
-        objc.content = 2
-        XCTAssertEqual(2, objc.content as? NSNumber ?? -999)
-
-        state1.numberField3 = 3
-        XCTAssertEqual(3, objc.content as? NSNumber ?? -999)
-        XCTAssertEqual(3, state1.numberField3)
-
-
-        let state2 = StatefulObject()
-        state2.numberField3 = 0
-        state2.bind("numberField3", toObject: state1, withKeyPath: "numberField3", options: nil)
-
-        let state2sieve = state2∞(state2.numberField3, "numberField3") ∞> { num in
-            // println("changing number to: \(num)")
-        }
-        state1.numberField3 = 4
-
-        XCTAssertEqual(4, objc.content as? NSNumber ?? -999)
-        XCTAssertEqual(4, state1.numberField3)
-        XCTAssertEqual(4, state2.numberField3)
-
-        // need to manually unbind in order to release memory
-        objc.unbind("content")
-        state2.unbind("numberField3")
-    }
-    #endif
-
-
     public func testDetachedReceiver() {
         var subscription: Receipt?
         autoreleasepool {
@@ -1306,14 +1256,14 @@ public class FoundationTests: XCTestCase {
         autoreleasepool {
             var changes = 0
             let ob = StatefulObject()
-            XCTAssertEqual(0, ob.intField)
-            (ob ∞ ob.intField).receive { _ in changes += 1 }
+            XCTAssertEqual(0, ob.int)
+            (ob ∞ ob.int).receive { _ in changes += 1 }
             XCTAssertEqual(1, ChannelZKeyValueObserverCount - startCount)
 
             XCTAssertEqual(0, changes)
-            ob.intField++
+            ob.int++
             XCTAssertEqual(1, changes)
-            ob.intField++
+            ob.int++
             XCTAssertEqual(2, changes)
         }
 
@@ -1333,15 +1283,15 @@ public class FoundationTests: XCTestCase {
 
                 for i in 1...count {
                     // using the keypath name because it is faster than auto-identification
-//                    (ob ∞ (ob.intField)).receive { _ in changes += 1 }
-                    ob.channelZKey(ob.intField, keyPath: "intField").subsequent().receive { _ in changes += 1 }
+//                    (ob ∞ (ob.int)).receive { _ in changes += 1 }
+                    ob.channelZKey(ob.int, keyPath: "int").subsequent().receive { _ in changes += 1 }
                 }
                 XCTAssertEqual(1, ChannelZKeyValueObserverCount - startCount)
 
                 XCTAssertEqual(0 * count, changes)
-                ob.intField++
+                ob.int++
                 XCTAssertEqual(1 * count, changes)
-                ob.intField++
+                ob.int++
                 XCTAssertEqual(2 * count, changes)
             }
         }
@@ -1355,7 +1305,7 @@ public class FoundationTests: XCTestCase {
 
         let state = StatefulObject()
         XCTAssertEqual("ChannelZTests.StatefulObject", NSStringFromClass(state.dynamicType))
-        state∞state.intField ∞> { _ in }
+        state∞state.int ∞> { _ in }
         XCTAssertEqual("NSKVONotifying_ChannelZTests.StatefulObject", NSStringFromClass(state.dynamicType))
 
         let operation = NSOperation()
@@ -1428,48 +1378,6 @@ public class FoundationTests: XCTestCase {
         }
     }
 
-    public func testFoundationExtensions() {
-        var counter = 0
-
-        let constraint = NSLayoutConstraint()
-        constraint∞constraint.constant ∞> { _ in counter += 1 }
-        constraint∞constraint.active ∞> { _ in counter += 1 }
-
-        let undo = NSUndoManager()
-        undo.channelZNotification(NSUndoManagerDidUndoChangeNotification) ∞> { _ in counter += 1 }
-        undo∞undo.canUndo ∞> { _ in counter += 1 }
-        undo∞undo.canRedo ∞> { _ in counter += 1 }
-        undo∞undo.levelsOfUndo ∞> { _ in counter += 1 }
-        undo∞undo.undoActionName ∞> { _ in counter += 1 }
-        undo∞undo.redoActionName ∞> { _ in counter += 1 }
-
-
-        let df = NSDateFormatter()
-        df∞df.dateFormat ∞> { _ in counter += 1 }
-        df∞df.locale ∞> { _ in counter += 1 }
-        df∞df.timeZone ∞> { _ in counter += 1 }
-        df∞df.eraSymbols ∞> { _ in counter += 1 }
-
-        let comps = NSDateComponents()
-        comps∞comps.date ∞> { _ in counter += 1 }
-        comps∞comps.era ∞> { _ in counter += 1 }
-        comps∞comps.year ∞> { _ in counter += 1 }
-        comps∞comps.month ∞> { _ in counter += 1 }
-        counter -= 4
-        comps.year = 2016
-        XCTAssertEqual(0, --counter)
-
-        let prog = NSProgress(totalUnitCount: 100)
-        prog∞prog.totalUnitCount ∞> { _ in counter += 1 }
-        prog.totalUnitCount = 200
-        XCTAssertEqual(0, --counter)
-
-        prog∞prog.fractionCompleted ∞> { _ in counter += 1 }
-        prog.completedUnitCount++
-        XCTAssertEqual(0, --counter)
-    }
-
-
     public func testPullFiltered() {
         let intField = ∞(Int(0))∞
 
@@ -1516,636 +1424,273 @@ public class FoundationTests: XCTestCase {
 //
 //    }
 
-//    public func testObservableCleanup() {
-//
-//        autoreleasepool {
-//            var counter = 0, opened = 0, closed = 0
-//
-//            let undo = InstanceTrackingUndoManager()
-//            undo.beginUndoGrouping()
-//
-//            XCTAssertEqual(1, InstanceTrackingUndoManagerInstanceCount)
-//            undo∞undo.canUndo ∞> { _ in counter += 1 }
-//            undo∞undo.canRedo ∞> { _ in counter += 1 }
-//            undo∞undo.levelsOfUndo ∞> { _ in counter += 1 }
-//            undo∞undo.undoActionName ∞> { _ in counter += 1 }
-//            undo∞undo.redoActionName ∞> { _ in counter += 1 }
-//            undo.channelZNotification(NSUndoManagerDidOpenUndoGroupNotification).receive({ _ in opened += 1 })
-//            undo.channelZNotification(NSUndoManagerDidCloseUndoGroupNotification).receive({ _ in closed += 1 })
-//
-//
-//            XCTAssertEqual(0, counter)
-//
-//            XCTAssertEqual(0, opened)
-//
-//            undo.beginUndoGrouping()
-//            XCTAssertEqual(0, --opened)
-//            XCTAssertEqual(0, closed)
-//
-//            undo.endUndoGrouping()
-//            XCTAssertEqual(0, opened)
-//            XCTAssertEqual(0, --closed)
-//
-//            undo.endUndoGrouping()
-//            undo.undo() // final undo needed or else the NSUndoManager won't be release (by the run loop?)
-//
-//            XCTAssertEqual(1, InstanceTrackingUndoManagerInstanceCount)
-//        }
-//
-//        XCTAssertEqual(0, InstanceTrackingUndoManagerInstanceCount)
-//    }
-//
-//    public func testOperationChannels() {
-//        // wrap test in an XCTAssert because it will perform a try/catch
-//
-//        // file:///opt/src/impathic/glimpse/ChannelZ/ChannelTests/ChannelTests.swift: test failure: -[ChannelTests testOperationChannels()] failed: XCTAssertTrue failed: throwing "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x10038d5b0> for the key path "isFinished" from <NSBlockOperation 0x1003854d0> because it is not registered as an observer." -
-//        XCTAssert(operationChannelTest())
-//    }
-//
-//    public func operationChannelTest() -> Bool {
-//
-//        for (doCancel, doStart) in [(true, false), (false, true)] {
-//            let op = NSBlockOperation { () -> Void in }
-//
-//            let cancelChannel = op.channelZKey(op.cancelled)
-//
-//            var cancelled: Bool = false
-//            op.channelZKey(op.cancelled).receive { cancelled = $0 }
-//            var asynchronous: Bool = false
-//            op.channelZKey(op.asynchronous).receive { asynchronous = $0 }
-//            var executing: Bool = false
-//
-//            op.channelZKey(op.executing).receive { [unowned op] in
-//                executing = $0
-//                let str = ("executing=\(executing) op: \(op)")
-//            }
-//
-//            op.channelZKey(op.executing).map({ !$0 }).filter({ $0 }).receive { [unowned op] in
-//                let str = ("executing=\($0) op: \(op)")
-//            }
-//
-//            var finished: Bool = false
-//            op.channelZKey(op.finished).receive { finished = $0 }
-//            var ready: Bool = false
-//            op.channelZKey(op.ready).receive { ready = $0 }
-//
-//
-//            XCTAssertEqual(false, cancelled)
-//            XCTAssertEqual(false, asynchronous)
-//            XCTAssertEqual(false, executing)
-//            XCTAssertEqual(false, finished)
-//            XCTAssertEqual(false, ready)
-//
-//            if doCancel {
-//                op.cancel()
-//            } else if doStart {
-//                op.start()
-//            }
-//
-//            XCTAssertEqual(doCancel, cancelled)
-//            XCTAssertEqual(false, asynchronous)
-//            XCTAssertEqual(false, executing)
-//            XCTAssertEqual(doStart, finished)
-////            XCTAssertEqual(false, ready) // seems rather indeterminate
-//        }
-//
-//        return true
-//    }
-//
-////    public func testBindingCombinations() {
-////        autoreleasepool {
-////            XCTAssertEqual(0, StatefulObjectCount)
-////
-////            let state1 = StatefulObjectSubclass()
-////            let state2 = StatefulObject()
-////            let state3 = StatefulObjectSubSubclass()
-////            let state4 = StatefulObject()
-////
-//////            let flat2 : ChannelOf<(Int, Int), (Int, Int)> = state1∞state1.intField + state2∞state2.intField
-//////
-//////            let flat3 : ChannelOf<((Int, Int), Int), ((Int, Int), Int)> = flat2 + state3∞state3.intField
-//////
-////////            let flat3 : ChannelOf<((Int, Int), Int), ((Int, Int), Int)> = state1∞state1.intField + state2∞state2.intField + state3∞state3.intField
-//////
-////////            let flat3 : ChannelOf<(Int, Int, Int), (Int, Int, Int)> = state1∞state1.intField + state2∞state2.intField + state3∞state3.intField
-//////
-//////            let flat4 = state1∞state1.intField + state2∞state2.intField + state3∞state3.intField + state4∞state4.intField
-//////
-//////            flat4 ∞> { (((i1: Int, i2: Int), i3: Int), i4: Int) in
-////////                println("channel change: \(i1) \(i2) \(i3) \(i4)")
-//////            }
-//////
-////            state1∞state1.intField + state2∞state2.intField <=∞=> state4∞state4.intField + state3∞state3.intField
-////
-////            state1.intField++
-////            XCTAssertEqual(state1.intField, 1)
-////            XCTAssertEqual(state2.intField, 0)
-////            XCTAssertEqual(state3.intField, 0)
-////            XCTAssertEqual(state4.intField, 1)
-////
-////            state2.intField++
-////            XCTAssertEqual(state1.intField, 1)
-////            XCTAssertEqual(state2.intField, 1)
-////            XCTAssertEqual(state3.intField, 1)
-////            XCTAssertEqual(state4.intField, 1)
-////
-////            state3.intField++
-////            XCTAssertEqual(state1.intField, 1)
-////            XCTAssertEqual(state2.intField, 2)
-////            XCTAssertEqual(state3.intField, 2)
-////            XCTAssertEqual(state4.intField, 1)
-////
-////            state4.intField++
-////            XCTAssertEqual(state1.intField, 2)
-////            XCTAssertEqual(state2.intField, 2)
-////            XCTAssertEqual(state3.intField, 2)
-////            XCTAssertEqual(state4.intField, 2)
-////
-////            XCTAssertEqual(4, StatefulObjectCount)
-////        }
-////        
-////        XCTAssertEqual(0, StatefulObjectCount)
-////    }
-//
-//    public func testStraightConduit() {
-//        let state1 = StatefulObject()
-//        let state2 = StatefulObject()
-//
-//        // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
-//        let off = 10
-//        state1∞state1.intField <=∞=> state2∞state2.intField
-//
-//        state1.intField++
-//        XCTAssertEqual(state1.intField, 1)
-//        XCTAssertEqual(state2.intField, 1)
-//
-//        state2.intField++
-//        XCTAssertEqual(state1.intField, 2)
-//        XCTAssertEqual(state2.intField, 2)
-//    }
-//
-//    /// Test reentrancy guards for conduits that would never achieve equilibrium
-//    public func testKVOReentrancy() {
-//        let state1 = StatefulObject()
-//        let state2 = StatefulObject()
-//
-//        // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
-//        let off = 10
-//        (state1∞state1.intField).map({ $0 + 10 }) <=∞=> state2∞state2.intField
-//
-//        state1.intField++
-//        XCTAssertEqual(state1.intField, 1 + (off * 2))
-//        XCTAssertEqual(state2.intField, 1 + (off * 2))
-//
-//        state2.intField++
-//        XCTAssertEqual(state1.intField, 2 + (off * 3))
-//        XCTAssertEqual(state2.intField, 2 + (off * 3))
-//    }
-//
-//    /// Test reentrancy guards for conduits that would never achieve equilibrium
-//    public func testSwiftReentrancy() {
-//        let state1 = ∞Int(0)∞
-//        let state2 = ∞Int(0)∞
-//        let state3 = ∞Int(0)∞
-//
-////        ChannelZReentrancyLimit = 0
-//
-//        // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
-//        state1.map({ $0 + 1 }) <=∞=> state2
-//        state2.map({ $0 + 2 }) <=∞=> state3
-//        state3.map({ $0 + 3 }) <=∞=> state1
-//        state3.map({ $0 + 4 }) <=∞=> state2
-//        state3.map({ $0 + 5 }) <=∞=> state3
-//
-////        let base = 12 //needed when conduit pumping is enabled
-//        let base = 0
-//
-//        state1.value++
-//        XCTAssertEqual(state1∞?, base + 1)
-//        XCTAssertEqual(state2∞?, base + 5)
-//        XCTAssertEqual(state3∞?, base + 1)
-//
-//        state2.value++
-//        XCTAssertEqual(state1∞?, base + 9)
-//        XCTAssertEqual(state2∞?, base + 6)
-//        XCTAssertEqual(state3∞?, base + 6)
-//
-//        state3.value++
-//        XCTAssertEqual(state1∞?, base + 10)
-//        XCTAssertEqual(state2∞?, base + 11)
-//        XCTAssertEqual(state3∞?, base + 7)
-//
-////        ChannelZReentrancyLimit = 1
-//    }
-//
+    public func testObservableCleanup() {
+
+        autoreleasepool {
+            var counter = 0, opened = 0, closed = 0
+
+            let undo = InstanceTrackingUndoManager()
+            undo.beginUndoGrouping()
+
+            XCTAssertEqual(1, InstanceTrackingUndoManagerInstanceCount)
+            undo∞undo.canUndo ∞> { _ in counter += 1 }
+            undo∞undo.canRedo ∞> { _ in counter += 1 }
+            undo∞undo.levelsOfUndo ∞> { _ in counter += 1 }
+            undo∞undo.undoActionName ∞> { _ in counter += 1 }
+            undo∞undo.redoActionName ∞> { _ in counter += 1 }
+            undo.channelZNotification(NSUndoManagerDidOpenUndoGroupNotification).receive({ _ in opened += 1 })
+            undo.channelZNotification(NSUndoManagerDidCloseUndoGroupNotification).receive({ _ in closed += 1 })
+
+
+            XCTAssertEqual(0, counter)
+
+            XCTAssertEqual(0, opened)
+
+            undo.beginUndoGrouping()
+            XCTAssertEqual(0, --opened)
+            XCTAssertEqual(0, closed)
+
+            undo.endUndoGrouping()
+            XCTAssertEqual(0, opened)
+            XCTAssertEqual(0, --closed)
+
+            undo.endUndoGrouping()
+            undo.undo() // final undo needed or else the NSUndoManager won't be release (by the run loop?)
+
+            XCTAssertEqual(1, InstanceTrackingUndoManagerInstanceCount)
+        }
+
+        XCTAssertEqual(0, InstanceTrackingUndoManagerInstanceCount)
+    }
+
+    public func testOperationChannels() {
+        // wrap test in an XCTAssert because it will perform a try/catch
+
+        // file:///opt/src/impathic/glimpse/ChannelZ/ChannelTests/ChannelTests.swift: test failure: -[ChannelTests testOperationChannels()] failed: XCTAssertTrue failed: throwing "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x10038d5b0> for the key path "isFinished" from <NSBlockOperation 0x1003854d0> because it is not registered as an observer." -
+        XCTAssert(operationChannelTest())
+    }
+
+    public func operationChannelTest() -> Bool {
+
+        for (doCancel, doStart) in [(true, false), (false, true)] {
+            let op = NSBlockOperation { () -> Void in }
+
+            let cancelChannel = op.channelZKey(op.cancelled)
+
+            var cancelled: Bool = false
+            op.channelZKey(op.cancelled).receive { cancelled = $0 }
+            var asynchronous: Bool = false
+            op.channelZKey(op.asynchronous).receive { asynchronous = $0 }
+            var executing: Bool = false
+
+            op.channelZKey(op.executing).receive { [unowned op] in
+                executing = $0
+                let str = ("executing=\(executing) op: \(op)")
+            }
+
+            op.channelZKey(op.executing).map({ !$0 }).filter({ $0 }).receive { [unowned op] in
+                let str = ("executing=\($0) op: \(op)")
+            }
+
+            var finished: Bool = false
+            op.channelZKey(op.finished).receive { finished = $0 }
+            var ready: Bool = false
+            op.channelZKey(op.ready).receive { ready = $0 }
+
+
+            XCTAssertEqual(false, cancelled)
+            XCTAssertEqual(false, asynchronous)
+            XCTAssertEqual(false, executing)
+            XCTAssertEqual(false, finished)
+            XCTAssertEqual(true, ready)
+
+            if doCancel {
+                op.cancel()
+            } else if doStart {
+                op.start()
+            }
+
+            XCTAssertEqual(doCancel, cancelled)
+            XCTAssertEqual(false, asynchronous)
+            XCTAssertEqual(false, executing)
+            XCTAssertEqual(doStart, finished)
+//            XCTAssertEqual(false, ready) // seems rather indeterminate
+        }
+
+        return true
+    }
+
+    public func testStraightConduit() {
+        let state1 = StatefulObject()
+        let state2 = StatefulObject()
+
+        // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
+        let off = 10
+        state1∞state1.int <=∞=> state2∞state2.int
+
+        state1.int++
+        XCTAssertEqual(state1.int, 1)
+        XCTAssertEqual(state2.int, 1)
+
+        state2.int++
+        XCTAssertEqual(state1.int, 2)
+        XCTAssertEqual(state2.int, 2)
+    }
+
+    /// Test reentrancy guards for conduits that would never achieve equilibrium
+    public func testKVOReentrancy() {
+        let state1 = StatefulObject()
+        let state2 = StatefulObject()
+
+        // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
+        let off = 10
+        (state1∞state1.int).map({ $0 + 10 }) <=∞=> state2∞state2.int
+
+        state1.int++
+        XCTAssertEqual(state1.int, 1 + (off * 2))
+        XCTAssertEqual(state2.int, 1 + (off * 2))
+
+        state2.int++
+        XCTAssertEqual(state1.int, 2 + (off * 3))
+        XCTAssertEqual(state2.int, 2 + (off * 4))
+    }
+
+    /// Test reentrancy guards for conduits that would never achieve equilibrium
+    public func testSwiftReentrancy() {
+        let state1 = ∞Int(0)∞
+        let state2 = ∞Int(0)∞
+        let state3 = ∞Int(0)∞
+
+        state1.source
+        // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
+        state1.map({ $0 + 1 }) <=∞=> state2
+        state2.map({ $0 + 2 }) <=∞=> state3
+        state3.map({ $0 + 3 }) <=∞=> state1
+        state3.map({ $0 + 4 }) <=∞=> state2
+        state3.map({ $0 + 5 }) <=∞=> state3
+
+//        let base = 12 //needed when conduit pumping is enabled
+        let base = 0
+
+        state1 ∞= state1∞? + 1
+        XCTAssertEqual(state1∞?, 78)
+        XCTAssertEqual(state2∞?, 78)
+        XCTAssertEqual(state3∞?, 73)
+
+        state2 ∞= state2∞? + 1
+        XCTAssertEqual(state1∞?, 83)
+        XCTAssertEqual(state2∞?, 84)
+        XCTAssertEqual(state3∞?, 79)
+
+        state3 ∞= state3∞? + 1
+        XCTAssertEqual(state1∞?, 85)
+        XCTAssertEqual(state2∞?, 86)
+        XCTAssertEqual(state3∞?, 80)
+
+//        ChannelZReentrancyLimit = 1
+    }
+
 //    public func testRequiredToOptional() {
 //        let state1 = ∞Int(0)∞
 //        let state2 = ∞Optional<Int>()∞
 //
-//        state1 ∞=> state2
+//        state1.map({ Optional<Int>($0) }) ∞-> state2
 //
 //        XCTAssertEqual(0, state1∞?)
 //        XCTAssertEqual(999, state2∞? ?? 999)
 //
-//        state1.value++
+//        state1 ∞= state1∞? + 1
 //
 //        XCTAssertEqual(1, state1∞?)
 //        XCTAssertEqual(1, state2∞? ?? 999)
 //
 //    }
-//
-//    public func testMemory() {
-//        autoreleasepool {
-//            let md1 = MemoryDemo()
-//            let md2 = MemoryDemo()
-//            md1∞md1.stringField <=∞=> md2∞md2.stringField
-//            md1.stringField += "Hello "
-//            md2.stringField += "World"
-//            XCTAssertEqual(md1.stringField, "Hello World")
-//            XCTAssertEqual(md2.stringField, "Hello World")
-//            XCTAssertEqual(2, MemoryDemoCount)
-//        }
-//        
-//        // subscriptions are retained by the channel sources
-//        XCTAssertEqual(0, MemoryDemoCount)
-//    }
-//
-//
-//    public func testAutoKVOIdentification() {
-//        let state = StatefulObjectSubSubclass()
-//        var count = 0
-//
-//        let subscription : Receipt = state.channelZKey(state.optstr) ∞> { _ in count += 1 }
-//        state∞state.reqstr ∞> { _ in count += 1 }
-//        state∞state.optnsstr ∞> { _ in count += 1 }
-//        state∞state.reqnsstr ∞> { _ in count += 1 }
-//        state∞state.intField ∞> { _ in count += 1 }
-//        state∞state.doubleField ∞> { _ in count += 1 }
-//        state∞state.numberField1 ∞> { _ in count += 1 }
-//        state∞state.numberField2 ∞> { _ in count += 1 }
-//        state∞state.numberField3 ∞> { _ in count += 1 }
-//        state∞state.numberField3 ∞> { _ in count += 1 }
-//        state∞state.requiredObjectField ∞> { _ in count += 1 }
-//        state∞state.optionaldObjectField ∞> { _ in count += 1 }
-//    }
-//
-//
-//    public func testDeepKeyPath() {
-//        let state = StatefulObjectSubSubclass()
-//        var count = 0
-//
-//        state∞(state.state.intField, "state.intField") ∞> { _ in count += 1 }
-//
-//        XCTAssertEqual(0, count)
-//
-//        state.state.intField++
-//        XCTAssertEqual(0, --count)
-//
-//        let oldstate = state.state
-//
-//        state.state = StatefulObject()
-//        XCTAssertEqual(0, --count)
-//
-//        oldstate.intField++
-//        XCTAssertEqual(0, count, "should not be watching stale state")
-//
-//        state.state.intField++
-//        XCTAssertEqual(0, --count)
-//
-//        state.state.intField--
-//        XCTAssertEqual(0, --count)
-//
-//        state.state = StatefulObject()
-//        XCTAssertEqual(0, count, "new intermediate with same terminal value should not pass sieve") // or should it?
-//    }
-//
-//    public func testDeepOptionalKeyPath() {
-//        let state = StatefulObjectSubSubclass()
-//        var count = 0
-//
-//        state∞(state.optionaldObjectField?.optionaldObjectField?.intField, "optionaldObjectField.optionaldObjectField.intField") ∞> { _ in count += 1 }
-//
-//        XCTAssertEqual(0, count)
-//
-//        state.optionaldObjectField = StatefulObjectSubSubclass()
-//
-//        //        XCTAssertEqual(0, --count)
-//
-//        state.optionaldObjectField!.optionaldObjectField = StatefulObjectSubSubclass()
-//        XCTAssertEqual(0, --count)
-//
-//        state.optionaldObjectField!.optionaldObjectField!.intField++
-//        XCTAssertEqual(0, --count)
-//        
-//    }
-//
-//    #if os(OSX)
-//    func testButtonCommand() {
-//        let button = NSButton()
-//
-//        /// seems to be needed or else the button won't get clicked
-//        (NSWindow().contentView as NSView).addSubview(button)
-//
-//        var stateChanges = 0
-//
-//        button∞button.state ∞> { x in
-//            stateChanges += 1
-////            println("state change: \(x)")
-//        }
-//
-//        button.state = NSOnState
-//        button.state = NSOffState
-//        button.state = NSOnState
-//        button.state = NSOffState
-//        XCTAssertEqual(stateChanges, 4)
-//
-//        var clicks = 0 // track the number of clicks on the button
-//
-//        XCTAssertEqual(clicks, 0)
-//
-//        let cmd = button.controlz()
-//        var subscription = cmd.receive({ _ in clicks += 1 })
-//
-//        assertRemains(--clicks, button.performClick(self))
-//        assertRemains(--clicks, button.performClick(self))
-//
-//        subscription.cancel()
-//
-//        assertRemains(clicks, button.performClick(self))
-//        assertRemains(clicks, button.performClick(self))
-//
-//
-//    }
-//
-//    func testTextFieldProperties() {
-//        let textField = NSTextField()
-//
-//        /// seems to be needed or else the button won't get clicked
-//        (NSWindow().contentView as NSView).addSubview(textField)
-//
-//        var text = ""
-//
-//        let textChannel = textField∞(textField.stringValue)
-//        var textReceiver = textChannel.receive({ text = $0 })
-//
-//        var enabled = true
-//        let enabledChannel = textField∞(textField.enabled)
-//        var enabledReceiver = enabledChannel.receive({ enabled = $0 })
-//
-//        textField.stringValue = "ABC"
-//        XCTAssertEqual("ABC", textField.stringValue)
-//        XCTAssertEqual("ABC", text)
-//
-//        textChannel ∞= "XYZ"
-//        XCTAssertEqual("XYZ", textField.stringValue)
-//        XCTAssertEqual("XYZ", text)
-//
-//        textField.enabled = false
-//        XCTAssertEqual(false, textField.enabled)
-//        XCTAssertEqual(false, enabled)
-//
-//        textField.enabled = true
-//        XCTAssertEqual(true, enabled)
-//
-//        textReceiver.cancel()
-//
-//        textField.stringValue = "QRS"
-//        XCTAssertEqual("XYZ", text)
-//
-//        enabledReceiver.cancel()
-//
-//        textField.enabled = false
-//        XCTAssertEqual(true, enabled)
-//
-//    }
-//
-//    func testControls() {
-//        struct ViewModel {
-//            let amount = ∞(Double(0))∞
-//            let amountMax = Double(100.0)
-//        }
-//
-//        let vm = ViewModel()
-//
-//        let stepper = NSStepper()
-//        stepper.maxValue = vm.amountMax
-//        stepper∞stepper.doubleValue <=∞=> vm.amount
-//
-//        let slider = NSSlider()
-//        slider.maxValue = vm.amountMax
-//        slider∞slider.doubleValue <=∞=> vm.amount
-//
-//        stepper.doubleValue += 25.0
-//        XCTAssertEqual(slider.doubleValue, Double(25.0))
-//        XCTAssertEqual(vm.amount∞?, Double(25.0))
-//
-//        slider.doubleValue += 30.0
-//        XCTAssertEqual(stepper.doubleValue, Double(55.0))
-//        XCTAssertEqual(vm.amount∞?, Double(55.0))
-//
-//
-//        let progbar = NSProgressIndicator()
-//        progbar.maxValue = 1.0
-//
-//        // NSProgressView goes from 0.0-1.0, so map the slider's percentage complete to the progress value
-//        vm.amount.map({ Double($0 / vm.amountMax) }) ∞=> progbar∞progbar.doubleValue
-//
-//        vm.amount.value += 20
-//
-//        XCTAssertEqual(slider.doubleValue, Double(75.0))
-//        XCTAssertEqual(stepper.doubleValue, Double(75.0))
-//        XCTAssertEqual(progbar.doubleValue, Double(0.75))
-//
-//        let progress = NSProgress(totalUnitCount: Int64(vm.amountMax))
-//        vm.amount.map({ Int64($0) }) ∞=> progress∞progress.completedUnitCount
-//
-//        // FIXME: memory leak
-//        // progress∞progress.completedUnitCount ∞> { _ in println("progress: \(progress.localizedDescription)") }
-//
-//        let textField = NSTextField()
-//
-//        // FIXME: crash
-//        // progress∞progress.localizedDescription ∞=> textField∞textField.stringValue
-//
-//        vm.amount.value += 15.0
-//    }
-//
-//    #endif
-//
-//    #if os(iOS)
-//    func testButtonCommand() {
-//        let button = UIButton()
-//
-////        var stateChanges = 0
-////
-//        // TODO: implement proper enum tracking
-////        button∞button.state ∞> { x in
-////            stateChanges += 1
-////        }
-////
-////        XCTAssertEqual(stateChanges, 1)
-////        button.highlighted = true
-////        button.selected = true
-////        button.enabled = false
-////        XCTAssertEqual(stateChanges, 3)
-//
-//        var selectedChanges = 0
-//        button∞button.selected ∞> { x in
-//            selectedChanges += 1
-//        }
-//
-//        XCTAssertEqual(selectedChanges, 0)
-//        button.selected = true
-//        XCTAssertEqual(selectedChanges, 1)
-//        button.selected = false
-//        XCTAssertEqual(selectedChanges, 2)
-//
-//        var taps = 0 // track the number of taps on the button
-//
-//        XCTAssertEqual(taps, 0)
-//
-//        let eventType: UIControlEvents = .TouchUpInside
-//        let cmd = button.controlz(eventType)
-//        XCTAssertEqual(0, button.allTargets().count)
-//
-//        // sadly, this only seems to work when the button is in a running UIApplication
-//        // let tap: ()->() = { button.sendActionsForControlEvents(.TouchUpInside) }
-//
-//        // so we need to fake it by directly invoking the target's action
-//        let tap: ()->() = {
-//            let event = UIEvent()
-//
-//            for target in button.allTargets().allObjects as [UIEventReceiver] {
-//                // button.sendAction also doesn't work from a test case
-//                for action in button.actionsForTarget(target, forControlEvent: eventType) as [String] {
-////                    button.sendAction(Selector(action), to: target, forEvent: event)
-//                    XCTAssertEqual("handleControlEvent:", action)
-//                    target.handleControlEvent(event)
-//                }
-//            }
-//        }
-//
-//        let buttonTapsHappen = true // false && false // or else compiler warning about blocks never executing
-//
-//        var subscription1 = cmd.receive({ _ in taps += 1 })
-//        XCTAssertEqual(1, button.allTargets().count)
-//
-//        if buttonTapsHappen {
-//            tap(); taps -= 1; XCTAssertEqual(0, taps)
-//            tap(); taps -= 1; XCTAssertEqual(0, taps)
-//        }
-//
-//        var subscription2 = cmd.receive({ _ in taps += 1 })
-//        XCTAssertEqual(2, button.allTargets().count)
-//        if buttonTapsHappen {
-//            tap(); taps -= 2; XCTAssertEqual(0, taps)
-//            tap(); taps -= 2; XCTAssertEqual(0, taps)
-//        }
-//
-//        subscription1.cancel()
-//        XCTAssertEqual(1, button.allTargets().count)
-//        if buttonTapsHappen {
-//            tap(); taps -= 1; XCTAssertEqual(0, taps)
-//            tap(); taps -= 1; XCTAssertEqual(0, taps)
-//        }
-//
-//        subscription2.cancel()
-//        XCTAssertEqual(0, button.allTargets().count)
-//        if buttonTapsHappen {
-//            tap(); taps -= 0; XCTAssertEqual(0, taps)
-//            tap(); taps -= 0; XCTAssertEqual(0, taps)
-//        }
-//    }
-//
-//    func testTextFieldProperties() {
-//        let textField = UITextField()
-//
-//
-//        var text = ""
-//        let textReceiver = (textField∞textField.text).map( { $0 } ).receive({ text = $0 })
-//
-//        var enabled = true
-//        let enabledReceiver = textField.channelZKey(textField.enabled).receive({ enabled = $0 })
-//
-//
-//        textField.text = "ABC"
-//        XCTAssertEqual("ABC", textField.text)
-//        XCTAssertEqual("ABC", text)
-//
-//        textField.enabled = false
-//        XCTAssertEqual(false, textField.enabled)
-//        XCTAssertEqual(false, enabled)
-//
-//        textField.enabled = true
-//        XCTAssertEqual(true, enabled)
-//
-//        textReceiver.cancel()
-//
-//        textField.text = "XYZ"
-//        XCTAssertEqual("ABC", text)
-//        
-//        enabledReceiver.cancel()
-//        
-//        textField.enabled = false
-//        XCTAssertEqual(true, enabled)
-//        
-//    }
-//
-//    func testControls() {
-//        struct ViewModel {
-//            let amount = ∞(Double(0))∞
-//            let amountMax = Double(100.0)
-//        }
-//
-//        let vm = ViewModel()
-//
-//        let stepper = UIStepper()
-//        stepper.maximumValue = vm.amountMax
-//        stepper∞stepper.value <=∞=> vm.amount
-//
-//        let slider = UISlider()
-//        slider.maximumValue = Float(vm.amountMax)
-//        let subscription = slider∞slider.value <~∞~> vm.amount // FIXME: memory leak
-//
-//        stepper.value += 25.0
-//        XCTAssertEqual(slider.value, Float(25.0))
-//        XCTAssertEqual(vm.amount.value, Double(25.0))
-//
-//        slider.value += 30.0
-//        XCTAssertEqual(stepper.value, Double(55.0))
-//        XCTAssertEqual(vm.amount.value, Double(55.0))
-//
-//
-//        let progbar = UIProgressView()
-//
-//        // UIProgressView goes from 0.0-1.0, so map the slider's percentage complete to the progress value
-//        vm.amount.map({ Float($0 / vm.amountMax) }) ∞=> progbar∞progbar.progress
-//
-//        vm.amount.value += 20
-//
-//        XCTAssertEqual(slider.value, Float(75.0))
-//        XCTAssertEqual(stepper.value, Double(75.0))
-//        XCTAssertEqual(progbar.progress, Float(0.75))
-//
-//        let progress = NSProgress(totalUnitCount: Int64(vm.amountMax))
-//        let pout = vm.amount.map({ Int64($0) }) ∞=> progress∞progress.completedUnitCount
-//
-////        progress∞progress.localizedDescription ∞> { println("progress: \($0)") }
-//
-////        let textField = UITextField()
-////        progress∞progress.localizedDescription ∞=> textField∞textField.text
-//
-////        vm.amount.value += 15.0
-////
-////        //progress.completedUnitCount = 15
-////        
-////        println("progress: \(textField.text)") // “progress: 15% completed”
-//
-//        subscription.cancel() // FIXME: memory leak
-//        pout.cancel() // FIXME: crash
-//    }
-//    #endif
 
+    public func testMemory2() {
+        autoreleasepool {
+            let md1 = MemoryDemo()
+            let md2 = MemoryDemo()
+            md1∞md1.stringField <=∞=> md2∞md2.stringField
+            md1.stringField += "Hello "
+            md2.stringField += "World"
+            XCTAssertEqual(md1.stringField, "Hello World")
+            XCTAssertEqual(md2.stringField, "Hello World")
+            XCTAssertEqual(2, MemoryDemoCount)
+        }
+        
+        // subscriptions are retained by the channel sources
+        XCTAssertEqual(0, MemoryDemoCount)
+    }
+
+
+    public func testAutoKVOIdentification() {
+        let state = StatefulObjectSubSubclass()
+        var count = 0
+
+        let subscription : Receipt = state.channelZKey(state.optstr) ∞> { _ in count += 1 }
+        state∞state.reqstr ∞> { _ in count += 1 }
+        state∞state.optnsstr ∞> { _ in count += 1 }
+        state∞state.reqnsstr ∞> { _ in count += 1 }
+        state∞state.int ∞> { _ in count += 1 }
+        state∞state.dbl ∞> { _ in count += 1 }
+        state∞state.num1 ∞> { _ in count += 1 }
+        state∞state.num2 ∞> { _ in count += 1 }
+        state∞state.num3 ∞> { _ in count += 1 }
+        state∞state.num3 ∞> { _ in count += 1 }
+        state∞state.reqobj ∞> { _ in count += 1 }
+        state∞state.optobj ∞> { _ in count += 1 }
+    }
+
+
+    public func testDeepKeyPath() {
+        let state = StatefulObjectSubSubclass()
+        var count = 0
+
+        // in order to watch a keyPath more than 1 level deep, we need to manually specify it
+        state∞(state.state.int, "state.int") ∞> { _ in count += 1 }
+
+        XCTAssertEqual(0, count)
+
+        state.state.int++
+        XCTAssertEqual(0, --count)
+
+        let oldstate = state.state
+
+        state.state = StatefulObject()
+        XCTAssertEqual(0, --count)
+
+        oldstate.int++
+        XCTAssertEqual(0, count, "should not be watching stale state")
+
+        state.state.int++
+        XCTAssertEqual(0, --count)
+
+        state.state.int--
+        XCTAssertEqual(0, --count)
+
+        state.state = StatefulObject()
+        XCTAssertEqual(0, count, "new intermediate with same terminal value should not pass sieve") // or should it?
+    }
+
+    public func testDeepOptionalKeyPath() {
+        let state = StatefulObjectSubSubclass()
+        var count = 0
+
+        state∞(state.optobj?.optobj?.int, "optobj.optobj.int") ∞> { _ in count += 1 }
+
+        XCTAssertEqual(0, count)
+
+        state.optobj = StatefulObjectSubSubclass()
+
+        //        XCTAssertEqual(0, --count)
+
+        state.optobj!.optobj = StatefulObjectSubSubclass()
+        XCTAssertEqual(0, --count)
+
+        state.optobj!.optobj!.int++
+        XCTAssertEqual(0, --count)
+        
+    }
 
     override public func tearDown() {
         super.tearDown()
@@ -2204,17 +1749,14 @@ public class StatefulObject : NSObject {
     dynamic var optnsstr: NSString?
     dynamic var reqnsstr: NSString = ""
 
-    // “property cannot be marked as dynamic because its type cannot be represented in Objective-C”
-    // dynamic var optionalIntField: Int?
+    dynamic var int: Int = 0
+    dynamic var dbl: Double = 0
+    dynamic var num1: NSNumber?
+    dynamic var num2: NSNumber?
+    dynamic var num3: NSNumber = 9
 
-    dynamic var intField: Int = 0
-    dynamic var doubleField: Double = 0
-    dynamic var numberField1: NSNumber?
-    dynamic var numberField2: NSNumber?
-    dynamic var numberField3: NSNumber = 9
-
-    dynamic var requiredObjectField: NSObject = NSObject()
-    dynamic var optionaldObjectField: StatefulObject? = nil
+    dynamic var reqobj: NSObject = NSObject()
+    dynamic var optobj: StatefulObject? = nil
 
     public override init() {
         super.init()

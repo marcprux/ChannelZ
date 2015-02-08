@@ -12,7 +12,7 @@ public extension NSInputStream {
 
     /// Creates a Channel for the stream and assigns it to handle `NSStreamDelegate` delegate callbacks
     /// for stream events
-    public func channel(bufferLength: Int = 1024) -> Channel<NSInputStream, InputStreamEvent> {
+    public func channelZStream(bufferLength: Int = 1024) -> Channel<NSInputStream, InputStreamEvent> {
         var receivers = ReceiverList<InputStreamEvent>()
 
         let delegate = ChannelStreamDelegate { event in

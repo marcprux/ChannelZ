@@ -61,13 +61,15 @@ public class ReceiptOf: Receipt {
 public var ChannelZReentrancyLimit: Int = 1
 
 public final class ReceiverList<T> {
+    public let maxdepth: Int
     private var receivers: [(index: Int, receptor: (T)->())] = []
     internal var entrancy: Int = 0
     private var receptorIndex: Int = 0
 
     public var count: Int { return receivers.count }
 
-    public init() {
+    public init(maxdepth: Int = ChannelZReentrancyLimit) {
+        self.maxdepth = maxdepth
     }
 
     private func synchronized<X>(lockObj: AnyObject, closure: ()->X) -> X {
@@ -82,9 +84,9 @@ public final class ReceiverList<T> {
 
     public func receive(element: T) {
         synchronized(self) { ()->(Void) in
-            if self.entrancy++ > ChannelZReentrancyLimit {
+            if self.entrancy++ > self.maxdepth {
                 #if DEBUG_CHANNELZ
-                    println("re-entrant value change limit of \(ChannelZReentrancyLimit) reached for receivers")
+//                    println("re-entrant value change limit of \(maxdepth) reached for receivers")
                 #endif
             } else {
                 for (index, receptor) in self.receivers { receptor(element) }
