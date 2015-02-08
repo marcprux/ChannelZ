@@ -1,102 +1,89 @@
-////
-////  Observables+AppKit.swift
-////  ChannelZ
-////
-////  Created by Marc Prud'hommeaux <marc@glimpse.io>
-////  License: MIT (or whatever)
-////
 //
-///// Support for AppKit UI channels
-//#if os(OSX)
-//    import AppKit
+//  Observables+AppKit.swift
+//  ChannelZ
 //
-//    extension NSControl : KeyValueChannelSupplementing {
+//  Created by Marc Prud'hommeaux <marc@glimpse.io>
+//  License: MIT (or whatever)
 //
-//        public func controlz() -> EventObservable<NSEvent> {
-//
-//            if self.target != nil && !(self.target is DispatchTarget) {
-//                fatalError("controlz event handling overrides existing target/action for control; if this is really what you want to do, explicitly nil the target & action of the control")
-//            }
-//
-//            let observer = self.target as? DispatchTarget ?? DispatchTarget() // use the existing dispatch target if it exists
-//            self.target = observer
-//            self.action = Selector("execute")
-//
-//            var observable = EventObservable<NSEvent>(nil)
-//            observable.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
-//            observer.actions += [{ observable.subscriptions.receive($0) }]
-//
-//            return observable
-//        }
-//
-//        public func supplementKeyValueChannel(forKeyPath: String, subscription: (AnyObject?)->()) -> (()->())? {
-//            // NSControl action events do not trigger KVO notifications, so we manually supplement any subscriptions with control events
-//
-//            if forKeyPath == "doubleValue" {
-//                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.doubleValue) })
-//                return { subscription.unsubscribe() }
-//            }
-//
-//            if forKeyPath == "floatValue" {
-//                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.floatValue) })
-//                return { subscription.unsubscribe() }
-//            }
-//
-//            if forKeyPath == "integerValue" {
-//                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.integerValue) })
-//                return { subscription.unsubscribe() }
-//            }
-//
-//            if forKeyPath == "stringValue" {
-//                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.stringValue) })
-//                return { subscription.unsubscribe() }
-//            }
-//
-//            if forKeyPath == "attributedStringValue" {
-//                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.attributedStringValue) })
-//                return { subscription.unsubscribe() }
-//            }
-//
-//            if forKeyPath == "objectValue" {
-//                let subscription = self.controlz().subscribe({ [weak self] _ in subscription(self?.objectValue) })
-//                return { subscription.unsubscribe() }
-//            }
-//
-//            return nil
-//        }
-//
-//    }
-//
-//    extension NSMenuItem {
-//
-//        public func controlz() -> EventObservable<NSEvent> {
-//
-//            if self.target != nil && !(self.target is DispatchTarget) {
-//                fatalError("controlz event handling overrides existing target/action for menu item; if this is really what you want to do, explicitly nil the target & action of the control")
-//            }
-//
-//            let observer = self.target as? DispatchTarget ?? DispatchTarget() // use the existing dispatch target if it exists
-//            self.target = observer
-//            self.action = Selector("execute")
-//
-//            var observable = EventObservable<NSEvent>(nil)
-//            observable.dispatchTarget = observer // someone needs to retain the dispatch target; NSControl only holds a weak ref
-//            observer.actions += [{ observable.subscriptions.receive($0) }]
-//            
-//            return observable
-//        }
-//    }
-//
-//    @objc public class DispatchTarget : NSObject {
-//        public var actions : [(NSEvent)->(Void)] = []
-//
-//        public func execute() {
-//            let event = NSApplication.sharedApplication().currentEvent ?? NSEvent()
-//            for action in actions {
-//                action(event)
-//            }
-//        }
-//    }
-//
-//
-//#endif
+
+/// Support for AppKit UI channels
+#if os(OSX)
+import AppKit
+
+extension NSControl { // : KeyValueChannelSupplementing {
+
+    public func channelZControl()->Channel<ActionTarget, Void> {
+        if self.target != nil && !(self.target is ActionTarget) {
+            fatalError("controlz event handling overrides existing target/action for control; if this is really what you want to do, explicitly nil the target & action of the control")
+        }
+
+        let target = self.target as? ActionTarget ?? ActionTarget(control: self) // use the existing dispatch target if it exists
+        self.target = target
+        self.action = Selector("channelEvent")
+
+
+        return Channel<ActionTarget, Void>(source: target, reception: target.receivers.addReceipt)
+    }
+
+    public func supplementKeyValueChannel(forKeyPath: String, receiver: (AnyObject?)->()) -> (()->())? {
+        // NSControl action events do not trigger KVO notifications, so we manually supplement any subscriptions with control events
+
+        if forKeyPath == "doubleValue" {
+            let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.doubleValue) })
+            return { receipt.cancel() }
+        }
+
+        if forKeyPath == "floatValue" {
+            let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.floatValue) })
+            return { receipt.cancel() }
+        }
+
+        if forKeyPath == "integerValue" {
+            let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.integerValue) })
+            return { receipt.cancel() }
+        }
+
+        if forKeyPath == "stringValue" {
+            let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.stringValue) })
+            return { receipt.cancel() }
+        }
+
+        if forKeyPath == "attributedStringValue" {
+            let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.attributedStringValue) })
+            return { receipt.cancel() }
+        }
+
+        if forKeyPath == "objectValue" {
+            let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.objectValue) })
+            return { receipt.cancel() }
+        }
+
+        return nil
+    }
+}
+
+extension NSMenuItem {
+
+    public func channelZMenu()->Channel<ActionTarget, Void> {
+
+        if self.target != nil && !(self.target is ActionTarget) {
+            fatalError("controlz event handling overrides existing target/action for menu item; if this is really what you want to do, explicitly nil the target & action of the control")
+        }
+
+        let target = self.target as? ActionTarget ?? ActionTarget(control: self) // use the existing dispatch target if it exists
+        self.target = target
+        self.action = Selector("channelEvent")
+        return Channel<ActionTarget, Void>(source: target, reception: target.receivers.addReceipt)
+    }
+}
+
+/// An ActionTarget is an Objective-C compatible class that can be set as the target
+/// object for a target/action pattern, such as with an NSControl or UIControl
+@objc public class ActionTarget: NSObject {
+    public let control: NSObject
+    public let receivers = ReceiverList<Void>()
+    public init(control: NSObject) { self.control = control }
+    public func channelEvent() { receivers.receive(Void()) }
+}
+
+#endif

@@ -1301,8 +1301,6 @@ public class FoundationTests: XCTestCase {
     }
 
     public func testManyObserversOnBlockOperation() {
-        return // FIXME: block memory addition
-
         let state = StatefulObject()
         XCTAssertEqual("ChannelZTests.StatefulObject", NSStringFromClass(state.dynamicType))
         state∞state.int ∞> { _ in }

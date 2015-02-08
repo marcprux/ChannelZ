@@ -176,6 +176,7 @@ public class ChannelTests: XCTestCase {
         if let stream = NSInputStream(fileAtPath: __FILE__) {
             weak var xpc: XCTestExpectation? = expectationWithDescription("input stream")
 
+            let allData = NSMutableData()
             let obv = stream.channelZStream()
             var openCount = 0
             var closeCount = 0
@@ -185,6 +186,7 @@ public class ChannelTests: XCTestCase {
                     openCount++
                 case .Data(let d):
                     count += d.length
+                    allData.appendData(d)
                 case .Error(let e):
                     XCTFail(e.description)
                     xpc?.fulfill()
@@ -203,6 +205,13 @@ public class ChannelTests: XCTestCase {
             XCTAssertEqual(1, closeCount)
             XCTAssertGreaterThan(count, 1000)
             sub.cancel()
+
+            if let str = NSString(data: allData, encoding: NSUTF8StringEncoding) {
+                let advice = "Begin at the beginning, and go on till you come to the end: then stop"
+                XCTAssertTrue(str.containsString(advice))
+            } else {
+                XCTFail("could not create string from data in \(__FILE__)")
+            }
         }
     }
     

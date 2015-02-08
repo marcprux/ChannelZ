@@ -40,7 +40,8 @@ public struct Channel<S, T> {
         self.reception = reception
     }
 
-    /// Adds the given receiver block to this Channel's list to receive all items it emits
+    /// Adds the given receiver block to this Channel's source's list to receive the items emitted by the
+    /// source through the Channel's phases.
     ///
     /// :param: receiver the block to be executed whenever this Channel emits an item
     ///
@@ -50,7 +51,7 @@ public struct Channel<S, T> {
     }
 
     /// Creates a new channel with the given source
-    public func resource<X>(newsource: X)->Channel<X, T> {
+    internal func resource<X>(newsource: X)->Channel<X, T> {
         return Channel<X, T>(source: newsource, self.reception)
     }
 
@@ -63,7 +64,7 @@ public struct Channel<S, T> {
 
     /// Adds a receiver that will forward all values to the target `SinkType`
     ///
-    /// :param: sink the sink that will accept all the items from the Channel
+    /// :param: Sink the sink that will accept all the items from the Channel
     ///
     /// :returns: A `Receipt` for the pipe
     public func pipe<S2: SinkType where S2.Element == T>(var sink: S2)->Receipt {
@@ -72,8 +73,12 @@ public struct Channel<S, T> {
 
     /// Lifts a function to the current Channel and returns a new channel phase that when received to will pass
     /// the values of the current Channel through the Operator function.
-    public func lift<U>(f: (U->Void)->(T->Void))->Channel<S, U> {
-        return Channel<S, U>(source: self.source) { g in self.receive(f(g)) }
+    ///
+    /// :param: receptor The functon that transforms one receiver to another
+    ///
+    /// :returns: The new Channel
+    public func lift<U>(receptor: (U->Void)->(T->Void))->Channel<S, U> {
+        return Channel<S, U>(source: source) { receiver in self.receive(receptor(receiver)) }
     }
 
     /// Adds a channel phase which only emits those items for which a given predicate holds.
