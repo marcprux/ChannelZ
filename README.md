@@ -20,12 +20,12 @@ let a2 = ∞(Int(0))∞ // create another field channel
 
 a1 <=∞=> a2 // create a two-way conduit between the properties
 
-println(a1.value) // the underlying value of the field channel is accessed with the `value` property
-a2.value = 42 // then changing a2's value…
-println(a1.value) // …will automatically set a1 to that same value!
+println(a1.source.value) // the underlying value of the field channel is accessed with the `value` property
+a2.source.value = 42 // then changing a2's value…
+println(a1.source.value) // …will automatically set a1 to that same value!
 
-assert(a1.value == 42)
-assert(a2.value == 42)
+assert(a1.source.value == 42)
+assert(a2.source.value == 42)
 ```
 <!-- extra backtick to fix Xcode's faulty syntax highlighting `  -->
 
@@ -43,12 +43,12 @@ let b2: ChannelZ<Int> = channelField(Int(0))
 
 let b1b2: Receptor = conduit(b1, b2)
 
-b1.value
-b2.value = 99
-b1.value
+b1.source.value
+b2.source.value = 99
+b1.source.value
 
-assert(b1.value == 99)
-assert(b2.value == 99)
+assert(b1.source.value == 99)
+assert(b2.source.value == 99)
 
 b1b2.unsubscribe() // you can manually disconnect the conduit if you like
 ```
@@ -128,11 +128,11 @@ let sst1 = StringStruct()
 scl1∞scl1.stringField <=∞=> sst1.stringChannel
 
 
-sst1.stringChannel.value
+sst1.stringChannel.source.value
 scl1.stringField += "ABC"
-sst1.stringChannel.value
+sst1.stringChannel.source.value
 
-assert(sst1.stringChannel.value == scl1.stringField)
+assert(sst1.stringChannel.source.value == scl1.stringField)
 ```
 <!--`-->
 
@@ -147,10 +147,10 @@ let sst2 = StringStruct()
 scl2∞scl2.stringField ∞=> sst2.stringChannel
 
 scl2.stringField += "XYZ"
-assert(sst2.stringChannel.value == scl2.stringField, "stringField conduit to stringChannel")
+assert(sst2.stringChannel.source.value == scl2.stringField, "stringField conduit to stringChannel")
 
-sst2.stringChannel.value = "QRS"
-assert(sst2.stringChannel.value != scl2.stringField, "conduit is unidirectional")
+sst2.stringChannel.source.value = "QRS"
+assert(sst2.stringChannel.source.value != scl2.stringField, "conduit is unidirectional")
 ```
 <!--`-->
 
@@ -175,19 +175,15 @@ let swsc = SwiftStringClass()
 (ojic∞ojic.intField).map({ "\($0)" }) <=∞=> (swsc.stringChannel).map({ $0.toInt() ?? 0 })
 
 ojic.intField += 55
-swsc.stringChannel.value // will be "55"
+swsc.stringChannel.source.value // will be "55"
 
-swsc.stringChannel.value = "89"
+swsc.stringChannel.source.value = "89"
 ojic.intField // will be 89
 
 ```
 <!--`-->
 
-### Channels and Observables
-
-A `Channel` is bi-directional access to some underlying state. It is always backed by a reference type, either a class in Objective-C or a reference wrapper around a Swift value type. A `Channel` is a specialization of a `Observable`, which provides uni-directional flow of events. Events are not limited to state changes. For example, you Observable button tap events to a custom subscribed subscription using the `∞>` operator.
-
-#### Example: Observableing Button Taps
+#### Example: Observing Button Taps
 
 ```swift
 import UIKit
@@ -219,11 +215,11 @@ slider∞slider.value <~∞~> vm.amount
 
 stepper.value += 25.0
 assert(slider.value == 25.0)
-assert(vm.amount.value == 25.0)
+assert(vm.amount.source.value == 25.0)
 
 slider.value += 30.0
 assert(stepper.value == 55.0)
-assert(vm.amount.value == 55.0)
+assert(vm.amount.source.value == 55.0)
 
 println("slider: \(slider.value) stepper: \(stepper.value)")
 ```
@@ -241,7 +237,7 @@ let progbar = UIProgressView()
 // UIProgressView goes from 0.0-1.0, so map the slider's percentage complete to the progress value 
 vm.amount.map({ Float($0 / vm.amountMax) }) ∞=> progbar∞progbar.progress
 
-vm.amount.value += 20
+vm.amount.source.value += 20
 
 assert(slider.value == 75.0)
 assert(stepper.value == 75.0)

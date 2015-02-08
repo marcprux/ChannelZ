@@ -1,4 +1,3 @@
-al")
 class ObjcIntClass : NSObject {
     dynamic var intField: Int = 0
 }
@@ -16,4 +15,4 @@ ojic.intField += 55
 swsc.stringChannel.value // will be "55"
 
 swsc.stringChannel.value = "89"
-ojic.intField // will b
+ojic.intField // will be 89

@@ -1,4 +1,3 @@
-like
 import Foundation
 
 class SomeClass : NSObject {
@@ -15,4 +14,4 @@ sc2.intField
 sc1.intField += 123
 sc2.intField
 
-assert(sc1.intField == sc2.intFi
+assert(sc1.intField == sc2.intField)

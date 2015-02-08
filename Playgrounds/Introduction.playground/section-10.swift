@@ -1,4 +1,3 @@
-eld)
 class StringClass : NSObject {
     dynamic var stringField = ""
 }
@@ -17,4 +16,4 @@ sst1.stringChannel.value
 scl1.stringField += "ABC"
 sst1.stringChannel.value
 
-assert(sst1.stringChannel.value == scl1.stringFi
+assert(sst1.stringChannel.value == scl1.stringField)

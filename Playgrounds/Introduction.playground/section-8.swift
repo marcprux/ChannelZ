@@ -1,4 +1,3 @@
-eld)
 let sc3 = SomeClass()
 let sc4 = SomeClass()
 
@@ -11,4 +10,4 @@ sc3.intField
 sc4.intField += 789
 sc3.intField
 
-assert(sc3.intField == sc4.intFi
+assert(sc3.intField == sc4.intField)

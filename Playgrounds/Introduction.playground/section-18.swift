@@ -1,4 +1,3 @@
-") }
 struct ViewModel {
     let amount = ∞(Double(0))∞
     let amountMax = Double(100.0)
@@ -22,4 +21,4 @@ slider.value += 30.0
 assert(stepper.value == 55.0)
 assert(vm.amount.value == 55.0)
 
-println("slider: \(slider.value) stepper: \(stepper.valu
+println("slider: \(slider.value) stepper: \(stepper.value)")

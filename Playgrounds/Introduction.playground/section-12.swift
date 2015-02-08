@@ -1,4 +1,3 @@
-eld)
 let scl2 = StringClass()
 let sst2 = StringStruct()
 
@@ -8,4 +7,4 @@ scl2.stringField += "XYZ"
 assert(sst2.stringChannel.value == scl2.stringField, "stringField conduit to stringChannel")
 
 sst2.stringChannel.value = "QRS"
-assert(sst2.stringChannel.value != scl2.stringField, "conduit is unidirection
+assert(sst2.stringChannel.value != scl2.stringField, "conduit is unidirectional")
