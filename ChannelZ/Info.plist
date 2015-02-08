@@ -15,14 +15,14 @@
 	<key>CFBundlePackageType</key>
 	<string>FMWK</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>0.4</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Marc Prud'hommeaux &lt;marc@glimpse.io&gt;</string>
 	<key>NSPrincipalClass</key>
 	<string></string>
-	<key>NSHumanReadableCopyright</key>
-	<string>Marc Prud&apos;hommeaux &lt;marc@glimpse.io&gt;</string>
 </dict>
 </plist>

@@ -281,7 +281,7 @@ Following is a list of the variants of the ∞ operator that is used throughout 
 1. Open a Terminal window
 1. Change to your projects directory `cd /path/to/MyProject`
 1. If this is a new project, initialize Git: `git init`
-1. Add the submodule: `git submodule add https://github.com/mprudhom/ChannelZ.git ChannelZ`.
+1. Add the submodule: `git submodule add https://github.com/glimpseio/ChannelZ.git ChannelZ`.
 
 **Set up Xcode**
 
