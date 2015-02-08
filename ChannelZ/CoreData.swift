@@ -1,59 +1,59 @@
-////
-////  ChannelZ+Foundation.swift
-////  GlimpseCore
-////
-////  Created by Marc Prud'hommeaux <marc@glimpse.io>
-////  License: MIT (or whatever)
-////
 //
-//import CoreData
+//  ChannelZ+Foundation.swift
+//  GlimpseCore
 //
-///// Extension for observableing notications for various Core Data events
-//extension NSManagedObjectContext {
-//    private class func mobs4key(note: [NSObject : AnyObject], keys: [NSString]) -> [NSManagedObject] {
-//        var mobs = [NSManagedObject]()
-//        for key in keys {
-//            mobs += (note[key] as? NSSet)?.allObjects as? [NSManagedObject] ?? []
-//        }
-//        return mobs
-//    }
+//  Created by Marc Prud'hommeaux <marc@glimpse.io>
+//  License: MIT (or whatever)
 //
-//    private func typeChangeChannel(noteType: NSString, changeTypes: NSString...) -> Channel<[NSManagedObject]> {
-//        return self.notifyz(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }.observable()
-//    }
-//
-//    /// Channels notifications of inserted objects after the changes have been processed in the context
-//    public var changedInsertedZ: Channel<[NSManagedObject]> {
-//        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInsertedObjectsKey)
-//    }
-//
-//    /// Channels notifications of updated objects after the changes have been processed in the context
-//    public var changedUpdatedZ: Channel<[NSManagedObject]> {
-//        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSUpdatedObjectsKey)
-//    }
-//
-//    /// Channels notifications of deleted objects after the changes have been processed in the context
-//    public var changedDeletedZ: Channel<[NSManagedObject]> {
-//        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSDeletedObjectsKey)
-//    }
-//
-//    /// Channels notifications of changed (updated/inserted/deleted) objects after the changes have been processed in the context
-//    public var changedAlteredZ: Channel<[NSManagedObject]> {
-//        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey)
-//    }
-//
-//    /// Channels notifications of refreshed objects after the changes have been processed in the context
-//    public var changedRefreshedZ: Channel<[NSManagedObject]> {
-//        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSRefreshedObjectsKey)
-//    }
-//
-//    /// Channels notifications of invalidated objects after the changes have been processed in the context
-//    public var chagedInvalidatedZ: Channel<[NSManagedObject]> {
-//        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInvalidatedObjectsKey)
-//    }
-//
-//
-//
+
+import CoreData
+
+/// Extension for observableing notications for various Core Data events
+extension NSManagedObjectContext {
+    private class func mobs4key(note: [NSObject : AnyObject], keys: [NSString]) -> [NSManagedObject] {
+        var mobs = [NSManagedObject]()
+        for key in keys {
+            mobs += (note[key] as? NSSet)?.allObjects as? [NSManagedObject] ?? []
+        }
+        return mobs
+    }
+
+    private func typeChangeChannel(noteType: NSString, changeTypes: NSString...)->Channel<NSNotificationCenter, [NSManagedObject]> {
+        return self.channelZNotification(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }
+    }
+
+    /// Channels notifications of inserted objects after the changes have been processed in the context
+    public func channelZProcessedInserts()->Channel<NSNotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInsertedObjectsKey)
+    }
+
+    /// Channels notifications of updated objects after the changes have been processed in the context
+    public func channelZProcessedUpdates()->Channel<NSNotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSUpdatedObjectsKey)
+    }
+
+    /// Channels notifications of deleted objects after the changes have been processed in the context
+    public func channelZProcessedDeletes()->Channel<NSNotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSDeletedObjectsKey)
+    }
+
+    /// Channels notifications of changed (updated/inserted/deleted) objects after the changes have been processed in the context
+    public func channelZProcessedAlters()->Channel<NSNotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey)
+    }
+
+    /// Channels notifications of refreshed objects after the changes have been processed in the context
+    public func channelZProcessedRefreshes()->Channel<NSNotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSRefreshedObjectsKey)
+    }
+
+    /// Channels notifications of invalidated objects after the changes have been processed in the context
+    public func channelZProcessedInvalidates()->Channel<NSNotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInvalidatedObjectsKey)
+    }
+
+
+
 //    /// Channels notifications of inserted objects before they are being saved in the context
 //    public var savingInsertedZ: Channel<[NSManagedObject]> {
 //        return typeChangeChannel(NSManagedObjectContextWillSaveNotification, changeTypes: NSInsertedObjectsKey)
@@ -115,5 +115,5 @@
 //    public var savedInvalidatedZ: Channel<[NSManagedObject]> {
 //        return typeChangeChannel(NSManagedObjectContextDidSaveNotification, changeTypes: NSInvalidatedObjectsKey)
 //    }
-//    
-//}
+
+}

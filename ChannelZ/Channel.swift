@@ -49,11 +49,16 @@ public struct Channel<S, T> {
         return reception(receiver)
     }
 
+    /// Creates a new channel with the given source
+    public func resource<X>(newsource: X)->Channel<X, T> {
+        return Channel<X, T>(source: newsource, self.reception)
+    }
+
     /// Erases the source type from this `Channel` to `Void`, which can be useful for simplyfying the signature
     /// for functions that don't care about the source's type or for channel phases that want to ensure the source
-    /// cannot be accessed
+    /// cannot be accessed from future phases
     public func dissolve()->Channel<Void, T> {
-        return Channel<Void, T>(source: Void(), self.reception)
+        return resource(Void())
     }
 
     /// Adds a receiver that will forward all values to the target `SinkType`
@@ -92,65 +97,6 @@ public struct Channel<S, T> {
 
 /// MARK: Stateful Channel operations (accumulators, etc.)
 public extension Channel {
-    /// Adds a channel phase that will cease sending items once the terminator predicate is satisfied.
-    ///
-    /// :param: terminator a predicate function that will result in cancellation of all receipts when it evaluates to `true`
-    /// :param: terminus an optional final sentinal closure that will be sent once after the `terminator` evaluates to `true`
-    ///
-    /// :returns: A stateful Channel that emits items until the `terminator` evaluates to true
-    public func terminate(terminator: T->Bool, terminus: (()->T)? = nil)->Channel<S, T> {
-        var receipts: [Receipt] = []
-        var terminated = false
-
-        return Channel(source: self.source) { f in
-            var receipt = self.receive { x in
-                if terminated { return }
-                if terminator(x) {
-                    terminated = true
-                    if let terminus = terminus {
-                        f(terminus())
-                    }
-                    receipts.map { $0.cancel() }
-                } else {
-                    f(x)
-                }
-            }
-            receipts += [receipt]
-            return receipt
-        }
-    }
-
-    /// Adds a channel phase that emits items only when the items pass the filter predicate against the most
-    /// recent emitted or passed item.
-    ///
-    /// For example, to create a filter for distinct equatable items, you would do: `sieve(!=)`
-    ///
-    /// **Note:** the most recent value will be retained by the Channel for as long as there are receivers
-    ///
-    /// :param: predicate a function that evaluates the current item against the previous item
-    /// :param: lastPassed  when `false` (the default), the `previous` will always be the most recent item in the sequence
-    ///                     when `true`, the `previous` wil be the last item that passed the predicate
-    ///
-    /// :returns: A stateful Channel that emits the the items that pass the predicate
-    public func sieve(predicate: (current: T, previous: T)->Bool, lastPassed: Bool = false)->Channel<S, T> {
-        var previous: T?
-        return lift { receive in { item in
-            if let prev = previous {
-                if predicate(current: item, previous: prev) {
-                    receive(item)
-                    previous = item
-                }
-            } else { // the initial item is always passed
-                receive(item)
-                previous = item
-            }
-
-            if !lastPassed {
-                previous = item
-            }
-            }
-        }
-    }
 
     /// Adds a channel phase that drops any items that are immediately emitted upon a receiver being added but
     /// passes any items that are emitted after the receiver is added.
@@ -164,6 +110,36 @@ public extension Channel {
             immediate = false
             return receipt
         }
+    }
+
+    /// Adds a channel phase that retains a previous item and sends it along with the current value as an optional tuple element.
+    ///
+    /// :param: preserve A closure to execute to determine if a value should be trapped (defaults to retain every previous value)
+    ///
+    /// :returns: A stateful Channel that emits a tuple of an earlier and the current item
+    public func precedent(preserve: T->Bool = { _ in true })->Channel<S, (T?, T)> {
+        var antecedent: T?
+        return lift { receive in { item in
+            let pair: (T?, T) = (antecedent, item)
+            receive(pair)
+            if preserve(item) { antecedent = item }
+            }
+        }
+    }
+
+    /// Adds a channel phase that emits items only when the items pass the filter predicate against the most
+    /// recent emitted or passed item.
+    ///
+    /// For example, to create a filter for distinct equatable items, you would do: `sieve(!=)`
+    ///
+    /// **Note:** the most recent value will be retained by the Channel for as long as there are receivers
+    ///
+    /// :param: predicate a function that evaluates the current item against the previous item
+    ///
+    /// :returns: A stateful Channel that emits the the items that pass the predicate
+    public func sieve(predicate: (previous: T, current: T)->Bool)->Channel<S, T> {
+        let flt = { (t: (o: T?, n: T)) in t.o == nil || predicate(previous: t.o!, current: t.n) }
+        return precedent().filter(flt).map({ $0.1 })
     }
 
     /// Adds a channel phase that drops the first `count` elements.
@@ -220,6 +196,34 @@ public extension Channel {
         // similar to how Java 8 streams implement their "mutable reduction operation" collect() method
         // http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html#MutableReduction
         return reduce([], combine: { b,x in b + [x] }, isTerminator: { b,x in b.count >= count-1 })
+    }
+
+    /// Adds a channel phase that will cease sending items once the terminator predicate is satisfied.
+    ///
+    /// :param: terminator A predicate function that will result in cancellation of all receipts when it evaluates to `true`
+    /// :param: terminus An optional final sentinal closure that will be sent once after the `terminator` evaluates to `true`
+    ///
+    /// :returns: A stateful Channel that emits items until the `terminator` evaluates to true
+    public func terminate(terminator: T->Bool, terminus: (()->T)? = nil)->Channel<S, T> {
+        var receipts: [Receipt] = []
+        var terminated = false
+
+        return Channel(source: self.source) { receiver in
+            var receipt = self.receive { item in
+                if terminated { return }
+                if terminator(item) {
+                    terminated = true
+                    if let terminus = terminus {
+                        receiver(terminus())
+                    }
+                    receipts.map { $0.cancel() }
+                } else {
+                    receiver(item)
+                }
+            }
+            receipts += [receipt]
+            return receipt
+        }
     }
 }
 
@@ -385,8 +389,8 @@ public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>)->Channel<(S
 
 /// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
 /// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
-public func conduit<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(c1: Channel<S1, T1>, c2: Channel<S2, T2>)->Receipt {
-    return ReceiptOf(receipts: [c1∞=>c2.source, c2∞=>c1.source])
+public func conduit<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(c1: Channel<S1, T1>, c2: Channel<S2, T2>)->Receipt {
+    return ReceiptOf(receipts: [c1∞->c2.source, c2∞->c1.source])
 }
 
 
@@ -396,7 +400,7 @@ public func conduit<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element 
 public func channelZSink<T>(type: T.Type)->Channel<SinkOf<T>, T> {
     var rcvrs = ReceiverList<T>()
     let sink = SinkOf { rcvrs.receive($0) }
-    return Channel<SinkOf<T>, T>(source: sink) { rcvrs.addReceipt($0, { nil }) }
+    return Channel<SinkOf<T>, T>(source: sink) { rcvrs.addReceipt($0) }
 }
 
 /// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receivers
@@ -457,16 +461,22 @@ public final class PropertySource<T>: SinkType, StateSource {
     public func channelZState()->Channel<PropertySource<T>, State> {
         return Channel(source: self) { rcvr in
             rcvr(State(Optional<T>.None, self.value)) // immediately issue the original value with no previous value
-            return self.receivers.addReceipt(rcvr, { (nil, self.value) })
+            return self.receivers.addReceipt(rcvr)
         }
     }
 }
 
-/// Simple protocol that permits accessing the underlying source type
-public protocol AccessibleSource {
-    typealias T
-    var value: T { get }
+extension Channel: StateSource {
+    /// A Channel becomes a StateSource by trapping its previous value and sending along the tuple of previous and current values
+    public func channelZState()->Channel<Channel, (T?, T)> {
+        return precedent().resource(self)
+    }
 }
 
-extension PropertySource: AccessibleSource {
+/// Simple protocol that permits accessing the underlying source type
+public protocol StateSink: SinkType {
+    var value: Element { get }
+}
+
+extension PropertySource: StateSink {
 }

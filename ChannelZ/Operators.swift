@@ -23,14 +23,23 @@ public func ∞= <T, S: SinkType>(lhs: Channel<S, T>, rhs: S.Element)->Void { va
 infix operator ∞= { }
 
 
-/// Reads the value from the given channel's source that is sourced by an AccessibleSource implementation
-public postfix func ∞? <T, S: AccessibleSource>(c: Channel<S, T>)->S.T { return c.source.value }
+/// Reads the value from the given channel's source that is sourced by an StateSink implementation
+public postfix func ∞? <T, S: StateSink>(c: Channel<S, T>)->S.Element { return c.source.value }
 postfix operator ∞? { }
+
+
+/// Increments the value of the source of the channel; works, but only when we define one of them
+//public postfix func ++ <T, S: StateSink where S.Element == Int>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: StateSink where S.Element == Int8>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: StateSink where S.Element == Int16>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: StateSink where S.Element == Float>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + Float(1.0) }
+
 
 // MARK: Operators that create state channels
 
 prefix operator ∞ { }
 prefix operator ∞= { }
+prefix operator ∞?= { }
 
 postfix operator =∞ { }
 postfix operator ∞ { }
@@ -48,15 +57,51 @@ public prefix func ∞= <S: StateSource, T: Equatable where S.Element == T>(sour
 }
 
 
-// FIXME: crashes when we try to put an Optional in the generic clause
-//public prefix func ∞= <S: StateSource, T: Equatable where S.Element == T?>(source: S)->Channel<S, T?> {
-//    return source.channelZState().filter({ $0.0 == nil || $0.0! != $0.1 }).map({ $0.1 }).subsequent()
-//}
+
+// FIXME: the prefix ∞= works fine for a generic StateSource except when we want to constrain the type to both Optional & Equatable.
+//
+// The following crashes the compiler <https://devforums.apple.com/thread/261484>:
+// public prefix func ∞= <S: StateSource, T: Equatable where S.Element == Optional<T>>(source: S)->Channel<S, T?> { fatalError("TODO") }
+//
+// And the following yields the error: “Reference to generic type 'Optional' requires arguments in <...>”
+// public prefix func ∞= <S: StateSource, T: Equatable where S.Element == Optional>(source: S)->Channel<S, T?> { fatalError("TODO") }
+//
+// So we can make a OptionalStateElement which provides access to the Optional's typealiased T fr use in the generic clause
+// However, we can't make it public because:
+// “'public' modifier cannot be used with extensions that declare protocol conformances”
+// And so our function that uses it can't be public because:
+// “Operator function cannot be declared public because its generic requirement uses an internal type”
+// And so we need to make cover functions for each specific StateSource implementation (KeyValueOptionalSource and PropertySource)
+// which just refers to this internal ∞?= implementation. Bummer.
+
+protocol OptionalStateElement {
+    typealias WrappedType
+    var unwrap: WrappedType? { get }
+    func map<U>(f: (WrappedType) -> U) -> U?
+}
+
+extension Optional: OptionalStateElement {
+    typealias WrappedType = T
+    var unwrap: T? { return map { $0 } }
+}
+
+prefix func ∞?=<S: StateSource, T: Equatable where S.Element: OptionalStateElement, S.Element.WrappedType: Equatable, T == S.Element.WrappedType>(source: S)->Channel<S, T?> {
+
+    let wrappedState: Channel<S, (S.Element?, S.Element)> = source.channelZState()
+
+    // each of the three following statements should be equivalent, but they return subtly different results! Only the first is correct.
+    let unwrappedState: Channel<S, (T??, T?)> = wrappedState.map({ pair in (pair.0?.unwrap, pair.1.unwrap) })
+//    let unwrappedState: Channel<S, (T??, T?)> = wrappedState.map({ pair in (pair.0?.map({$0}), pair.1.map({$0})) })
+//    func unwrap(pair: (S.Element?, S.Element))->(T??, T?) { return (pair.0?.unwrap, pair.1.unwrap) }
+//    let unwrappedState: Channel<S, (T??, T?)> = wrappedState.map({ pair in unwrap(pair) })
+
+    let notEqual: Channel<S, (T??, T?)> = unwrappedState.filter({ pair in pair.0 == nil || pair.0! != pair.1 })
+    let changedState: Channel<S, T?> = notEqual.map({ pair in pair.1 })
+    return changedState
+}
 
 /// Creates a distinct sieved channel from the given Equatable Optional PropertySource
-public prefix func ∞= <T: Equatable>(source: PropertySource<T?>)->Channel<PropertySource<T?>, T?> {
-    return source.channelZState().filter({ $0.0 == nil || $0.0! != $0.1 }).map({ $0.1 }).subsequent()
-}
+public prefix func ∞= <T: Equatable>(source: PropertySource<T?>)->Channel<PropertySource<T?>, T?> { return ∞?=source }
 
 
 // MARK: Postfix operators
@@ -90,6 +135,32 @@ infix operator ∞=> { }
 /// This is the operator form of `channel`
 public func <=∞=> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
 infix operator <=∞=> { }
+
+
+/// Lossy conduit conversion operators
+infix operator <~∞~> { }
+
+/// Conduit operator that filters out nil values with a custom transformer
+public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType>(lhs: (o: Channel<S1, T1>, f: T1->Optional<S2.Element>), rhs: (o: Channel<S2, T2>, f: T2->Optional<S1.Element>))->Receipt {
+    let lhsm: Channel<S1, S2.Element> = lhs.o.map({ lhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
+    let rhsm: Channel<S2, S1.Element> = rhs.o.map({ rhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
+    return conduit(lhsm, rhsm)
+}
+
+
+/// Convert (possibly lossily) between two numeric types
+public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element: ConduitNumericCoercible, S2.Element: ConduitNumericCoercible, T1: ConduitNumericCoercible, T2: ConduitNumericCoercible>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>)->Receipt {
+    return conduit(lhs.map({ convertNumericType($0) }), rhs.map({ convertNumericType($0) }))
+}
+
+/// Convert (possibly lossily) between optional and non-optional types
+public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, Optional<T1>>, rhs: Channel<S2, T2>)->Receipt {
+    return conduit(lhs.filter({ $0 != nil }).map({ $0! }), rhs)
+}
+
+public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, T1>, rhs: Channel<S2, Optional<T2>>)->Receipt {
+    return conduit(lhs, rhs.filter({ $0 != nil }).map({ $0! }))
+}
 
 
 // MARK: Channel Tuple flatten/combine support

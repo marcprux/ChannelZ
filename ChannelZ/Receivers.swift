@@ -23,7 +23,7 @@ public class ReceiptOf: Receipt {
     public private(set) var cancelled: Bool = false
     let canceler: ()->()
 
-    internal init(canceler: ()->()) {
+    public init(canceler: ()->()) {
         self.canceler = canceler
     }
 
@@ -60,12 +60,15 @@ public class ReceiptOf: Receipt {
 /// How many levels of re-entrancy are permitted when flowing state observations
 public var ChannelZReentrancyLimit: Int = 1
 
-final class ReceiverList<T> {
+public final class ReceiverList<T> {
     private var receivers: [(index: Int, receptor: (T)->())] = []
     internal var entrancy: Int = 0
     private var receptorIndex: Int = 0
 
-    var count: Int { return receivers.count }
+    public var count: Int { return receivers.count }
+
+    public init() {
+    }
 
     private func synchronized<X>(lockObj: AnyObject, closure: ()->X) -> X {
         if objc_sync_enter(lockObj) == Int32(OBJC_SYNC_SUCCESS) {
@@ -77,7 +80,7 @@ final class ReceiverList<T> {
         }
     }
 
-    func receive(element: T) {
+    public func receive(element: T) {
         synchronized(self) { ()->(Void) in
             if self.entrancy++ > ChannelZReentrancyLimit {
                 #if DEBUG_CHANNELZ
@@ -90,12 +93,14 @@ final class ReceiverList<T> {
         }
     }
 
-    func addReceipt(receptor: (T)->(), requestor: ()->(T?))->Receipt {
+    /// Adds a receiver that will return a receipt that simply removes itself from the list
+    public func addReceipt(receptor: (T)->())->Receipt {
         let token = addReceiver(receptor)
         return ReceiptOf(canceler: { self.removeReceptor(token) })
     }
 
-    func addReceiver(receptor: (T)->())->Int {
+    /// Adds a custom receiver block and returns a token that can later be used to remove the receiver
+    public func addReceiver(receptor: (T)->())->Int {
         return synchronized(self) {
             let index = self.receptorIndex++
             precondition(self.entrancy == 0, "cannot add to receivers while they are flowing")
@@ -104,14 +109,14 @@ final class ReceiverList<T> {
         }
     }
 
-    func removeReceptor(index: Int) {
+    public func removeReceptor(index: Int) {
         synchronized(self) {
             self.receivers = self.receivers.filter { $0.index != index }
         }
     }
 
     /// Clear all the receivers
-    func clear() {
+    public func clear() {
         synchronized(self) {
             self.receivers = []
         }
@@ -119,7 +124,7 @@ final class ReceiverList<T> {
 }
 
 
-/// A TrapReceipt is a receptor to a observable that retains a number of values (default 1) when they are sent by the source
+/// A TrapReceipt is a receptor to a channel that retains a number of values (default 1) when they are sent by the source
 public class TrapReceipt<S, T>: Receipt {
     public var cancelled: Bool = false
     public let channel: Channel<S, T>

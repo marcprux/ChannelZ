@@ -13,6 +13,28 @@ import Foundation
 /// Extension on NSObject that permits creating a channel from a key-value compliant property
 extension NSObject {
 
+    /// Creates a channel for all state operations for the given key-value-coding property that will emit
+    /// a tuple of the previous value (or nil if unavailable) and current state.
+    ///
+    /// :param: accessor an accessor for the value of the property (autoclosure)
+    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    ///
+    /// :returns: a channel backed by the KVO property that will receive state transition operations
+    public func channelZKeyState<T>(accessor: @autoclosure ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, (T?, T)> {
+        return KeyValueSource(target: self, keyPath: keyPath, accessor: accessor).channelZState()
+    }
+
+    /// Creates a channel for all state operations for the given key-value-coding property that will emit
+    /// a tuple of the previous value (or nil if unavailable) and current state.
+    ///
+    /// :param: accessor an accessor for the value of the property (autoclosure)
+    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    ///
+    /// :returns: a channel backed by the KVO property that will receive state transition operations
+    public func channelZKeyState<T>(accessor: @autoclosure ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, (T??, T?)> {
+        return KeyValueOptionalSource(target: self, keyPath: keyPath, accessor: accessor).channelZState()
+    }
+
     /// Creates a channel for all state operations for the given key-value-coding compliant non-optional property
     ///
     /// :param: accessor an accessor for the value of the property (autoclosure)
@@ -20,8 +42,7 @@ extension NSObject {
     ///
     /// :returns: a channel backed by the KVO property that will receive items for every time the state changes
     public func channelZKey<T>(accessor: @autoclosure ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, T> {
-        let src = KeyValueSource(target: self, keyPath: keyPath, accessor: accessor)
-        return src.channelZState().map({ $0.1 })
+        return channelZKeyState(accessor, keyPath: keyPath).map({ $0.1 })
     }
 
     /// Creates a channel for all state operations for the given key-value-coding compliant optional property
@@ -31,16 +52,15 @@ extension NSObject {
     ///
     /// :returns: a channel backed by the KVO property that will receive items for every time the state changes
     public func channelZKey<T>(accessor: @autoclosure ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, T?> {
-        let src = KeyValueOptionalSource(target: self, keyPath: keyPath, accessor: accessor)
-        return src.channelZState().map({ $0.1 })
+        return channelZKeyState(accessor, keyPath: keyPath).map({ $0.1 })
     }
 }
 
 
 /// A struct that combines the given target NSObject and the accessor closure to determine the keyPath for the accessor
 public struct KeyValueTarget<T> {
-    public let accessor: ()->T
     public let target: NSObject
+    public let accessor: ()->T
     public let keyPath: NSString
 }
 
@@ -53,7 +73,10 @@ public extension KeyValueTarget {
 }
 
 
-// MARK: Postfix operators
+// MARK: Operators
+
+/// Creates a distinct sieved channel from the given Optional Equatable PropertySource (cover for ∞?=)
+public prefix func ∞= <T: Equatable>(source: KeyValueOptionalSource<T>)->Channel<KeyValueOptionalSource<T>, T?> { return ∞?=source }
 
 /// Creates a source for the given property that will emit state operations
 public postfix func ∞ <T>(kvt: KeyValueTarget<T>)->KeyValueSource<T> {
@@ -75,14 +98,6 @@ public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T?>)->KeyValueOption
     return KeyValueOptionalSource(target: kvt.target, keyPath: kvt.keyPath, accessor: kvt.accessor)
 }
 
-// FIXME: the prefix ∞= works fine on generic StateSource except when we want to constraint the type to an Optional, which crashes
-//public prefix func ∞= <S: StateSource, T: Equatable where S.Element == Optional<T>>(source: S)->Channel<S, T?> { }
-
-/// Creates a distinct sieved channel from the given Equatable Optional PropertySource
-public prefix func ∞= <T: Equatable>(source: KeyValueOptionalSource<T>)->Channel<KeyValueOptionalSource<T>, T?> {
-    return source.channelZState().filter({ $0.0 == nil || $0.0! != $0.1 }).map({ $0.1 }).subsequent()
-}
-
 
 // MARK: Infix operators
 
@@ -90,6 +105,11 @@ public prefix func ∞= <T: Equatable>(source: KeyValueOptionalSource<T>)->Chann
 /// For example, slider§slider.doubleValue will return: (slider, { slider.doubleValue }, "doubleValue")
 public func § <T>(object: NSObject, getter: @autoclosure ()->T)->KeyValueTarget<T> {
     return KeyValueTarget(target: object, accessor: getter)
+}
+
+/// Use the specified accessor to manually specify the keyPath for the given autoclosure
+public func § <T>(object: NSObject, getkey: (getter: @autoclosure ()->T, keyPath: String))->KeyValueTarget<T> {
+    return KeyValueTarget(target: object, accessor: getkey.getter, keyPath: getkey.keyPath)
 }
 
 infix operator § { precedence 255 }
@@ -116,11 +136,33 @@ public func ∞ <T: Equatable>(object: NSObject, getter: @autoclosure ()->T?)->C
 }
 
 
+
+/// Operation to create a channel from an object's keyPath; shorthand for  ∞(object§getter)∞
+public func ∞ <T>(object: NSObject, getpath: (getter: @autoclosure ()->T, keyPath: String))->Channel<KeyValueSource<T>, T> {
+    return ∞(object§getpath)∞
+}
+
+/// Operation to create a channel from an object's equatable keyPath; shorthand for ∞=(object§getter)=∞
+public func ∞ <T: Equatable>(object: NSObject, getpath: (getter: @autoclosure ()->T, keyPath: String))->Channel<KeyValueSource<T>, T> {
+    return ∞=(object§getpath)=∞
+}
+
+/// Operation to create a channel from an object's optional keyPath; shorthand for  ∞(object§getter)∞
+public func ∞ <T>(object: NSObject, getpath: (getter: @autoclosure ()->T?, keyPath: String))->Channel<KeyValueOptionalSource<T>, T?> {
+    return ∞(object§getpath)∞
+}
+
+/// Operation to create a channel from an object's optional equatable keyPath; shorthand for ∞=(object§getter)=∞
+public func ∞ <T: Equatable>(object: NSObject, getpath: (getter: @autoclosure ()->T?, keyPath: String))->Channel<KeyValueOptionalSource<T>, T?> {
+    return ∞=(object§getpath)=∞
+}
+
+
 infix operator ∞ { precedence 255 }
 
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueSource<T>: SinkType, AccessibleSource, StateSource {
+public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
     typealias Element = T
     typealias State = (T?, T)
     private let receivers = ReceiverList<State>()
@@ -206,7 +248,7 @@ public final class KeyValueSource<T>: SinkType, AccessibleSource, StateSource {
 
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueOptionalSource<O>: SinkType, AccessibleSource, StateSource {
+public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
     typealias T = O?
     typealias Element = T
     typealias State = (T?, T)
@@ -779,71 +821,91 @@ private func coerceCocoaType<SourceType>(ob: AnyObject?) -> SourceType? {
 //public func observable(target: NSObject, name: String)->NotificationObservable {
 //    return observableNotification(target, name)
 //}
-//
-///// Extension for listening to notifications of a given type
-//extension NSObject {
-//    /// Registers with the NSNotificationCenter to observable event notications of the given name for this object
-//    ///
-//    /// :param: notificationName    the name of the notification to register
-//    /// :param: center              the NSNotificationCenter to register with (defaults to defaultCenter())
-//    public func notifyz(notificationName: String)->NotificationObservable {
-//        return observableNotification(self, notificationName)
-//    }
-//}
-//
-//extension NSNumber : ConduitNumericCoercible {
-//    public class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self? {
-//        if let value = value as? NSNumber {
-//            let type = value.objCType
-//            if type == "c" { return self.init(char: value.charValue) }
-//            else if type == "C" { return self.init(unsignedChar: value.unsignedCharValue) }
-//            else if type == "s" { return self.init(short: value.shortValue) }
-//            else if type == "S" { return self.init(unsignedShort: value.unsignedShortValue) }
-//            else if type == "i" { return self.init(int: value.intValue) }
-//            else if type == "I" { return self.init(unsignedInt: value.unsignedIntValue) }
-//            else if type == "l" { return self.init(long: value.longValue) }
-//            else if type == "L" { return self.init(unsignedLong: value.unsignedLongValue) }
-//            else if type == "q" { return self.init(longLong: value.longLongValue) }
-//            else if type == "Q" { return self.init(unsignedLongLong: value.unsignedLongLongValue) }
-//            else if type == "f" { return self.init(float: value.floatValue) }
-//            else if type == "d" { return self.init(double: value.doubleValue) }
-//            else { return nil }
-//        }
-//        else if let value = value as? Bool { return self.init(bool: value) }
-//        else if let value = value as? Int8 { return self.init(char: value) }
-//        else if let value = value as? UInt8 { return self.init(unsignedChar: value) }
-//        else if let value = value as? Int16 { return self.init(short: value) }
-//        else if let value = value as? UInt16 { return self.init(unsignedShort: value) }
-//        else if let value = value as? Int32 { return self.init(int: value) }
-//        else if let value = value as? UInt32 { return self.init(unsignedInt: value) }
-//        else if let value = value as? Int { return self.init(long: value) }
-//        else if let value = value as? UInt { return self.init(unsignedLong: value) }
-//        else if let value = value as? Int64 { return self.init(longLong: value) }
-//        else if let value = value as? UInt64 { return self.init(unsignedLongLong: value) }
-//        else if let value = value as? Float { return self.init(float: value) }
-////        else if let value = value as? Float80 { return self.init(double: value) } ?
-//        else if let value = value as? Double { return self.init(double: value) }
-//        else { return nil }
-//    }
-//
-//    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
-//        if T.self is NSDecimalNumber.Type { return NSDecimalNumber(double: self.doubleValue) as? T }
-//        else if T.self is NSNumber.Type { return self as? T }
-//        else if T.self is Bool.Type { return Bool(self.boolValue) as? T }
-//        else if T.self is Int8.Type { return Int8(self.charValue) as? T }
-//        else if T.self is UInt8.Type { return UInt8(self.unsignedCharValue) as? T }
-//        else if T.self is Int16.Type { return Int16(self.shortValue) as? T }
-//        else if T.self is UInt16.Type { return UInt16(self.unsignedShortValue) as? T }
-//        else if T.self is Int32.Type { return Int32(self.intValue) as? T }
-//        else if T.self is UInt32.Type { return UInt32(self.unsignedIntValue) as? T }
-//        else if T.self is Int.Type { return Int(self.longValue) as? T }
-//        else if T.self is UInt.Type { return UInt(self.unsignedLongValue) as? T }
-//        else if T.self is Int64.Type { return Int64(self.longLongValue) as? T }
-//        else if T.self is UInt64.Type { return UInt64(self.unsignedLongLongValue) as? T }
-//        else if T.self is Float.Type { return Float(self.floatValue) as? T }
-////        else if T.self is Float80.Type { return Float80(self) as? T } ??
-//        else if T.self is Double.Type { return Double(self.doubleValue) as? T }
-//        else { return self as? T }
-//    }
-//
-//}
+
+/// Extension for listening to notifications of a given type
+extension NSObject {
+    public typealias UserInfo = [NSObject : AnyObject]
+
+    /// Registers with the NSNotificationCenter to observable event notications of the given name for this object
+    ///
+    /// :param: notificationName the name of the notification to register
+    /// :param: center the NSNotificationCenter to register with (defaults to defaultCenter())
+    public func channelZNotification(name: String, center: NSNotificationCenter = NSNotificationCenter.defaultCenter())->Channel<NSNotificationCenter, UserInfo> {
+        let receivers = ReceiverList<UserInfo>()
+        return Channel(source: center) { [weak self] (receiver: UserInfo->Void) -> Receipt in
+            var rindex: Int
+            var oindex: Int
+
+            if let target = self {
+                rindex = receivers.addReceiver(receiver) // first add the observer so we get the initial notification
+                oindex = TargetObserverRegister.get(target).addNotification(name) { receivers.receive($0) }
+            } else {
+                preconditionFailure("cannot add receiver for deallocated instance (channels do not retain their targets)")
+            }
+
+            return ReceiptOf(canceler: { [weak self] in
+                if let target = self {
+                    TargetObserverRegister.get(target) // .removeObserver(kp, identifier: oindex)
+                }
+                receivers.removeReceptor(rindex)
+            })
+        }
+    }
+}
+
+extension NSNumber : ConduitNumericCoercible {
+    public class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self? {
+        if let value = value as? NSNumber {
+            let type = value.objCType
+            if type == "c" { return self.init(char: value.charValue) }
+            else if type == "C" { return self.init(unsignedChar: value.unsignedCharValue) }
+            else if type == "s" { return self.init(short: value.shortValue) }
+            else if type == "S" { return self.init(unsignedShort: value.unsignedShortValue) }
+            else if type == "i" { return self.init(int: value.intValue) }
+            else if type == "I" { return self.init(unsignedInt: value.unsignedIntValue) }
+            else if type == "l" { return self.init(long: value.longValue) }
+            else if type == "L" { return self.init(unsignedLong: value.unsignedLongValue) }
+            else if type == "q" { return self.init(longLong: value.longLongValue) }
+            else if type == "Q" { return self.init(unsignedLongLong: value.unsignedLongLongValue) }
+            else if type == "f" { return self.init(float: value.floatValue) }
+            else if type == "d" { return self.init(double: value.doubleValue) }
+            else { return nil }
+        }
+        else if let value = value as? Bool { return self.init(bool: value) }
+        else if let value = value as? Int8 { return self.init(char: value) }
+        else if let value = value as? UInt8 { return self.init(unsignedChar: value) }
+        else if let value = value as? Int16 { return self.init(short: value) }
+        else if let value = value as? UInt16 { return self.init(unsignedShort: value) }
+        else if let value = value as? Int32 { return self.init(int: value) }
+        else if let value = value as? UInt32 { return self.init(unsignedInt: value) }
+        else if let value = value as? Int { return self.init(long: value) }
+        else if let value = value as? UInt { return self.init(unsignedLong: value) }
+        else if let value = value as? Int64 { return self.init(longLong: value) }
+        else if let value = value as? UInt64 { return self.init(unsignedLongLong: value) }
+        else if let value = value as? Float { return self.init(float: value) }
+//        else if let value = value as? Float80 { return self.init(double: value) } ?
+        else if let value = value as? Double { return self.init(double: value) }
+        else { return nil }
+    }
+
+    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+        if T.self is NSDecimalNumber.Type { return NSDecimalNumber(double: self.doubleValue) as? T }
+        else if T.self is NSNumber.Type { return self as? T }
+        else if T.self is Bool.Type { return Bool(self.boolValue) as? T }
+        else if T.self is Int8.Type { return Int8(self.charValue) as? T }
+        else if T.self is UInt8.Type { return UInt8(self.unsignedCharValue) as? T }
+        else if T.self is Int16.Type { return Int16(self.shortValue) as? T }
+        else if T.self is UInt16.Type { return UInt16(self.unsignedShortValue) as? T }
+        else if T.self is Int32.Type { return Int32(self.intValue) as? T }
+        else if T.self is UInt32.Type { return UInt32(self.unsignedIntValue) as? T }
+        else if T.self is Int.Type { return Int(self.longValue) as? T }
+        else if T.self is UInt.Type { return UInt(self.unsignedLongValue) as? T }
+        else if T.self is Int64.Type { return Int64(self.longLongValue) as? T }
+        else if T.self is UInt64.Type { return UInt64(self.unsignedLongLongValue) as? T }
+        else if T.self is Float.Type { return Float(self.floatValue) as? T }
+//        else if T.self is Float80.Type { return Float80(self) as? T } ??
+        else if T.self is Double.Type { return Double(self.doubleValue) as? T }
+        else { return self as? T }
+    }
+
+}
