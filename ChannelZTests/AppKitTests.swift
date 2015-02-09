@@ -18,7 +18,7 @@ public class AppKitTests: XCTestCase {
 
     public func testCocoaBindings() {
         let objc = NSObjectController(content: NSNumber(integer: 1))
-        XCTAssertEqual(1, objc.content as? NSNumber ?? -999)
+        XCTAssertEqual(1, (objc.content as? NSNumber) ?? -999)
 
         let state1 = StatefulObject()
         state1.num3 = 0
@@ -28,10 +28,10 @@ public class AppKitTests: XCTestCase {
         XCTAssertEqual(0, state1.num3)
 
         objc.content = 2
-        XCTAssertEqual(2, objc.content as? NSNumber ?? -999)
+        XCTAssertEqual(2, (objc.content as? NSNumber) ?? -999)
 
         state1.num3 = 3
-        XCTAssertEqual(3, objc.content as? NSNumber ?? -999)
+        XCTAssertEqual(3, (objc.content as? NSNumber) ?? -999)
         XCTAssertEqual(3, state1.num3)
 
 
@@ -39,12 +39,13 @@ public class AppKitTests: XCTestCase {
         state2.num3 = 0
         state2.bind("num3", toObject: state1, withKeyPath: "num3", options: nil)
 
-        let state2sieve = state2∞(state2.num3, "num3") ∞> { num in
+        let channel2: Channel<KeyValueSource<NSNumber>, NSNumber> = state2∞(state2.num3, "num3")
+        let state2sieve = channel2 ∞> { num in
             // println("changing number to: \(num)")
         }
         state1.num3 = 4
 
-        XCTAssertEqual(4, objc.content as? NSNumber ?? -999)
+        XCTAssertEqual(4, (objc.content as? NSNumber) ?? -999)
         XCTAssertEqual(4, state1.num3)
         XCTAssertEqual(4, state2.num3)
 
@@ -100,7 +101,7 @@ public class AppKitTests: XCTestCase {
         let button = NSButton()
 
         /// seems to be needed or else the button won't get clicked
-        (NSWindow().contentView as NSView).addSubview(button)
+        (NSWindow().contentView as! NSView).addSubview(button)
 
         var stateChanges = 0
 
@@ -137,7 +138,7 @@ public class AppKitTests: XCTestCase {
         let textField = NSTextField()
 
         /// seems to be needed or else the button won't get clicked
-        (NSWindow().contentView as NSView).addSubview(textField)
+        (NSWindow().contentView as! NSView).addSubview(textField)
 
         var text = ""
 

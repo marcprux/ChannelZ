@@ -29,7 +29,7 @@ class PlayMarker {
 
         if let outputURL = playgroundFolder ?? commonMarkPath.URLByDeletingPathExtension?.URLByAppendingPathExtension("playground") {
 
-            if let string = NSString(contentsOfURL: commonMarkPath, usedEncoding: nil, error: &error) {
+            if let string = String(contentsOfURL: commonMarkPath, usedEncoding: nil, error: &error) {
                 let marker = PlayMarker(commonMark: string)
                 marker.convertBlocks()
 
@@ -66,7 +66,7 @@ class PlayMarker {
             scanner.scanString(token, intoString: nil) // consume the token
         }
 
-        return string ?? ""
+        return string?.description ?? ""
     }
 
     private func scanThrough(token: String) -> String {
@@ -77,7 +77,7 @@ class PlayMarker {
 
     private func append(string: String?) {
         if let str = string?.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet()) {
-            if countElements(str) > 0 {
+            if count(str) > 0 {
                 element(node, "p", ("class", "para")).stringValue = str
             }
         }
@@ -110,13 +110,13 @@ class PlayMarker {
     }
 
     func pushXHTMLContent() {
-        output += [("Documentation/fragment-\(countElements(output)).html", toXHTML(root))]
+        output += [("Documentation/fragment-\(count(output)).html", toXHTML(root))]
         root = NSXMLElement(name: "div") // fresh new root node
         toRoot()
     }
 
     func pushSwiftContent(code: String) {
-        output += [("section-\(countElements(output)).swift", code)]
+        output += [("section-\(count(output)).swift", code)]
     }
 
     func toRoot() -> NSXMLElement {
@@ -155,7 +155,7 @@ class PlayMarker {
 
         // maybe HTML: parse it and add it as a child node
         if reps > 0 {
-            return "<span>" + line + "</span>"
+            return "<span>" + line.description + "</span>"
         } else {
             return scanned
         }
@@ -163,7 +163,7 @@ class PlayMarker {
 
     func scanChild(child: NSXMLElement) {
         let line = scanLine().stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
-        if countElements(line) > 0 {
+        if count(line) > 0 {
             if contains(line, "<") {
                 // maybe HTML: parse it and add it as a child node
                 var error: NSError?
@@ -254,7 +254,7 @@ class PlayMarker {
     }
 
     func attr(name: String, _ value: String) -> NSXMLNode {
-        return NSXMLNode.attributeWithName(name, stringValue: value) as NSXMLNode
+        return NSXMLNode.attributeWithName(name, stringValue: value) as! NSXMLNode
     }
 
     func element(parent: NSXMLElement?, _ name: String, _ attributes: (name: String, value: String)...) -> NSXMLElement {

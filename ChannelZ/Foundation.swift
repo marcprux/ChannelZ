@@ -20,8 +20,8 @@ extension NSObject {
     /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// :returns: a channel backed by the KVO property that will receive state transition operations
-    public func channelZKeyState<T>(accessor: @autoclosure ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, (T?, T)> {
-        return KeyValueSource(target: self, keyPath: keyPath, accessor: accessor).channelZState()
+    public func channelZKeyState<T>(@autoclosure accessor: ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, (T?, T)> {
+        return KeyValueSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).channelZState()
     }
 
     /// Creates a channel for all state operations for the given key-value-coding property that will emit
@@ -31,17 +31,17 @@ extension NSObject {
     /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// :returns: a channel backed by the KVO property that will receive state transition operations
-    public func channelZKeyState<T>(accessor: @autoclosure ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, (T??, T?)> {
-        return KeyValueOptionalSource(target: self, keyPath: keyPath, accessor: accessor).channelZState()
+    public func channelZKeyState<T>(@autoclosure accessor: ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, (T??, T?)> {
+        return KeyValueOptionalSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).channelZState()
     }
 
     /// Creates a channel for all state operations for the given key-value-coding compliant non-optional property
     ///
     /// :param: accessor an accessor for the value of the property (autoclosure)
     /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
-    ///
+    /// 
     /// :returns: a channel backed by the KVO property that will receive items for every time the state changes
-    public func channelZKey<T>(accessor: @autoclosure ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, T> {
+    public func channelZKey<T>(@autoclosure accessor: ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, T> {
         return channelZKeyState(accessor, keyPath: keyPath).map({ $0.1 })
     }
 
@@ -51,7 +51,7 @@ extension NSObject {
     /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// :returns: a channel backed by the KVO property that will receive items for every time the state changes
-    public func channelZKey<T>(accessor: @autoclosure ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, T?> {
+    public func channelZKey<T>(@autoclosure accessor: ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, T?> {
         return channelZKeyState(accessor, keyPath: keyPath).map({ $0.1 })
     }
 }
@@ -60,15 +60,19 @@ extension NSObject {
 /// A struct that combines the given target NSObject and the accessor closure to determine the keyPath for the accessor
 public struct KeyValueTarget<T> {
     public let target: NSObject
-    public let accessor: ()->T
-    public let keyPath: NSString
+    public let initialValue: T
+    public let keyPath: String
 }
 
 public extension KeyValueTarget {
-    public init(target: NSObject, accessor: ()->T) {
+    public init(target: NSObject, @autoclosure accessor: ()->T, keyPath: String? = nil) {
         self.target = target
-        self.accessor = accessor
-        self.keyPath = conjectKeypath(target, accessor, true)!
+        self.initialValue = accessor()
+        if let kp = keyPath {
+            self.keyPath = kp
+        } else {
+            self.keyPath = conjectKeypath(target, accessor, true)!
+        }
     }
 }
 
@@ -80,22 +84,22 @@ public prefix func ∞= <T: Equatable>(source: KeyValueOptionalSource<T>)->Chann
 
 /// Creates a source for the given property that will emit state operations
 public postfix func ∞ <T>(kvt: KeyValueTarget<T>)->KeyValueSource<T> {
-    return KeyValueSource(target: kvt.target, keyPath: kvt.keyPath, accessor: kvt.accessor)
+    return KeyValueSource(target: kvt)
 }
 
 /// Creates a source for the given equatable property that will emit state operations
 public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T>)->KeyValueSource<T> {
-    return KeyValueSource(target: kvt.target, keyPath: kvt.keyPath, accessor: kvt.accessor)
+    return KeyValueSource(target: kvt)
 }
 
 /// Creates a source for the given optional property that will emit state operations
 public postfix func ∞ <T>(kvt: KeyValueTarget<T?>)->KeyValueOptionalSource<T> {
-    return KeyValueOptionalSource(target: kvt.target, keyPath: kvt.keyPath, accessor: kvt.accessor)
+    return KeyValueOptionalSource(target: kvt)
 }
 
 /// Creates a source for the given equatable & optional property that will emit state operations
 public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T?>)->KeyValueOptionalSource<T> {
-    return KeyValueOptionalSource(target: kvt.target, keyPath: kvt.keyPath, accessor: kvt.accessor)
+    return KeyValueOptionalSource(target: kvt)
 }
 
 
@@ -103,57 +107,57 @@ public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T?>)->KeyValueOption
 
 /// Use the specified accessor to determine the keyPath for the given autoclosure
 /// For example, slider§slider.doubleValue will return: (slider, { slider.doubleValue }, "doubleValue")
-public func § <T>(object: NSObject, getter: @autoclosure ()->T)->KeyValueTarget<T> {
-    return KeyValueTarget(target: object, accessor: getter)
+public func § <T>(object: NSObject, @autoclosure getter: ()->T)->KeyValueTarget<T> {
+    return KeyValueTarget(target: object, initialValue: getter(), keyPath: conjectKeypath(object, getter, true)!)
 }
 
 /// Use the specified accessor to manually specify the keyPath for the given autoclosure
-public func § <T>(object: NSObject, getkey: (getter: @autoclosure ()->T, keyPath: String))->KeyValueTarget<T> {
-    return KeyValueTarget(target: object, accessor: getkey.getter, keyPath: getkey.keyPath)
+public func § <T>(object: NSObject, getkey: (value: T, keyPath: String))->KeyValueTarget<T> {
+    return KeyValueTarget(target: object, initialValue: getkey.value, keyPath: getkey.keyPath)
 }
 
 infix operator § { precedence 255 }
 
 
 /// Operation to create a channel from an object's keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getter: @autoclosure ()->T)->Channel<KeyValueSource<T>, T> {
+public func ∞ <T>(object: NSObject, @autoclosure getter: ()->T)->Channel<KeyValueSource<T>, T> {
     return ∞(object§getter)∞
 }
 
 /// Operation to create a channel from an object's equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getter: @autoclosure ()->T)->Channel<KeyValueSource<T>, T> {
+public func ∞ <T: Equatable>(object: NSObject, @autoclosure getter: ()->T)->Channel<KeyValueSource<T>, T> {
     return ∞=(object§getter)=∞
 }
 
 /// Operation to create a channel from an object's optional keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getter: @autoclosure ()->T?)->Channel<KeyValueOptionalSource<T>, T?> {
+public func ∞ <T>(object: NSObject, @autoclosure getter: ()->T?)->Channel<KeyValueOptionalSource<T>, T?> {
     return ∞(object§getter)∞
 }
 
 /// Operation to create a channel from an object's optional equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getter: @autoclosure ()->T?)->Channel<KeyValueOptionalSource<T>, T?> {
+public func ∞ <T: Equatable>(object: NSObject, @autoclosure getter: ()->T?)->Channel<KeyValueOptionalSource<T>, T?> {
     return ∞=(object§getter)=∞
 }
 
 
 
 /// Operation to create a channel from an object's keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getpath: (getter: @autoclosure ()->T, keyPath: String))->Channel<KeyValueSource<T>, T> {
+public func ∞ <T>(object: NSObject, getpath: (value: T, keyPath: String))->Channel<KeyValueSource<T>, T> {
     return ∞(object§getpath)∞
 }
 
 /// Operation to create a channel from an object's equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getpath: (getter: @autoclosure ()->T, keyPath: String))->Channel<KeyValueSource<T>, T> {
+public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T, keyPath: String))->Channel<KeyValueSource<T>, T> {
     return ∞=(object§getpath)=∞
 }
 
 /// Operation to create a channel from an object's optional keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getpath: (getter: @autoclosure ()->T?, keyPath: String))->Channel<KeyValueOptionalSource<T>, T?> {
+public func ∞ <T>(object: NSObject, getpath: (value: T?, keyPath: String))->Channel<KeyValueOptionalSource<T>, T?> {
     return ∞(object§getpath)∞
 }
 
 /// Operation to create a channel from an object's optional equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getpath: (getter: @autoclosure ()->T?, keyPath: String))->Channel<KeyValueOptionalSource<T>, T?> {
+public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T?, keyPath: String))->Channel<KeyValueOptionalSource<T>, T?> {
     return ∞=(object§getpath)=∞
 }
 
@@ -167,29 +171,29 @@ public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
     typealias State = (T?, T)
     private let receivers = ReceiverList<State>()
 
-    public private(set) weak var target: NSObject?
+    public private(set) weak var object: NSObject?
     public let keyPath: String
     public let optional: Bool = false
 
     private func observedValueForKeyPath(change: [NSObject : AnyObject]) {
-        let newv: T = coerceCocoaType(change[NSKeyValueChangeNewKey])!
+        let newv: T? = coerceCocoaType(change[NSKeyValueChangeNewKey])
         let oldv: T? = coerceCocoaType(change[NSKeyValueChangeOldKey])
-        receivers.receive(State(oldv, newv))
+        receivers.receive(State(oldv, newv!))
     }
 
     public func channelZState()->Channel<KeyValueSource, State> {
         return Channel(source: self, reception: addReceiver)
     }
 
-    public init(target: NSObject, keyPath: String?, accessor: ()->T) {
+    public init(target: KeyValueTarget<T>) {
         // it would be faster and safer to retain the accessor for future keypath access rather than going through KVO and coercing the value back to our type, but retaining the accessor would also retain a strong ref to the target and so lead to a referenc cycles
-        self.target = target
-        self.keyPath = keyPath ?? conjectKeypath(target, accessor, true)!
+        self.object = target.target
+        self.keyPath = target.keyPath
 
         // validate the keyPath by checking that the initialized value matched the actual key path
-        let initialValue: AnyObject? = target.valueForKeyPath(self.keyPath)
+        let initialValue: AnyObject? = object?.valueForKeyPath(self.keyPath)
         if let initialValueActual: AnyObject = initialValue {
-            if let gotten = accessor() as? NSObject {
+            if let gotten = target.initialValue as? NSObject {
                 if let eq1 = initialValueActual as? NSObjectProtocol {
                     // make sure the key path is really returning the specified value
                     assert(eq1.isEqual(gotten), "valueForKeyPath(\(keyPath)): «\(initialValue)» did not equal initialized value: «\(gotten)»")
@@ -212,7 +216,7 @@ public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
     }
 
     public func set(value: T) -> Bool {
-        if let target = self.target {
+        if let target = self.object {
             setValueForKeyPath(target, keyPath, optional, value)
             return true
         } else {
@@ -221,7 +225,7 @@ public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
     }
 
     private func get() -> T! {
-        let keyValue: AnyObject? = target?.valueForKeyPath(self.keyPath)
+        let keyValue: AnyObject? = object?.valueForKeyPath(self.keyPath)
         return coerceCocoaType(keyValue)
     }
 
@@ -230,7 +234,7 @@ public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
         var rindex: Int
         var oindex: Int
 
-        if let target = target {
+        if let target = self.object {
             rindex = self.receivers.addReceiver(receiver) // first add the observer so we get the initial notification
             oindex = TargetObserverRegister.get(target).addObserver(kp, handler: observedValueForKeyPath)
         } else {
@@ -238,7 +242,7 @@ public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
         }
 
         return ReceiptOf(canceler: { [weak self] in
-            if let target = self?.target {
+            if let target = self?.object {
                 TargetObserverRegister.get(target).removeObserver(kp, identifier: oindex)
             }
             self?.receivers.removeReceptor(rindex)
@@ -254,7 +258,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
     typealias State = (T?, T)
     private let receivers = ReceiverList<State>()
 
-    public private(set) weak var target: NSObject?
+    public private(set) weak var object: NSObject?
     public let keyPath: String
     public let optional: Bool = true
 
@@ -269,15 +273,15 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
     }
 
 
-    public init(target: NSObject, keyPath: String?, accessor: ()->T) {
+    public init(target: KeyValueTarget<T>) {
         // it would be faster and safer to retain the accessor for future keypath access rather than going through KVO and coercing the value back to our type, but retaining the accessor would also retain a strong ref to the target and so lead to a referenc cycles
-        self.target = target
-        self.keyPath = keyPath ?? conjectKeypath(target, accessor, true)!
+        self.object = target.target
+        self.keyPath = target.keyPath
 
         // validate the keyPath by checking that the initialized value matched the actual key path
-        let initialValue: AnyObject? = target.valueForKeyPath(self.keyPath)
+        let initialValue: AnyObject? = self.object?.valueForKeyPath(self.keyPath)
         if let initialValueActual: AnyObject = initialValue {
-            if let gotten = accessor() as? NSObject {
+            if let gotten = target.initialValue as? NSObject {
                 if let eq1 = initialValueActual as? NSObjectProtocol {
                     // make sure the key path is really returning the specified value
                     assert(eq1.isEqual(gotten), "valueForKeyPath(\(keyPath)): «\(initialValue)» did not equal initialized value: «\(gotten)»")
@@ -300,7 +304,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
     }
 
     public func set(value: T) -> Bool {
-        if let target = self.target {
+        if let target = self.object {
             setValueForKeyPath(target, keyPath, optional, value)
             return true
         } else {
@@ -309,7 +313,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
     }
 
     private func get() -> T! {
-        let keyValue: AnyObject? = target?.valueForKeyPath(self.keyPath)
+        let keyValue: AnyObject? = self.object?.valueForKeyPath(self.keyPath)
         return coerceCocoaType(keyValue)
     }
 
@@ -318,7 +322,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
         var rindex: Int
         var oindex: Int
 
-        if let target = target {
+        if let target = self.object {
             rindex = self.receivers.addReceiver(receiver) // first add the observer so we get the initial notification
             oindex = TargetObserverRegister.get(target).addObserver(kp, handler: observedValueForKeyPath)
         } else {
@@ -326,7 +330,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
         }
 
         return ReceiptOf(canceler: { [weak self] in
-            if let target = self?.target {
+            if let target = self?.object {
                 TargetObserverRegister.get(target).removeObserver(kp, identifier: oindex)
             }
             self?.receivers.removeReceptor(rindex)
@@ -548,7 +552,7 @@ let ChannelZInstrumentorSwizzledISASuffix = "_ChannelZKeyInspection"
 let ChannelZKeyPathForAutoclosureLock = NSLock()
 
 /// Attempts to determine the properties that are accessed by the given autoclosure; does so by temporarily swizzling the object's isa pointer to a generated subclass that instruments access to all the properties; note that this is not thread-safe in the unlikely event that another method (e.g., KVO swizzling) is being used at the same time for the class on another thread
-private func conjectKeypath<T>(target: NSObject, accessor: ()->T, required: Bool) -> String? {
+private func conjectKeypath<T>(target: NSObject, @autoclosure accessor: ()->T, required: Bool) -> String? {
     var keyPath: String?
 
     let origclass : AnyClass = object_getClass(target)
@@ -646,7 +650,7 @@ private func conjectKeypath<T>(target: NSObject, accessor: ()->T, required: Bool
     return keyPath
 }
 
-private func setValueForKeyPath<T>(target: NSObject, keyPath: NSString, nullable: Bool, value: T?) {
+private func setValueForKeyPath<T>(target: NSObject, keyPath: String, nullable: Bool, value: T?) {
     if let value = value {
         if nullable && value is NSNull { target.setValue(nil, forKeyPath: keyPath) }
         else if let ob = value as? NSObject { target.setValue(ob, forKeyPath: keyPath) }
@@ -709,6 +713,7 @@ private func coerceCocoaType<SourceType>(ob: AnyObject?) -> SourceType? {
         }
     }
 
+//    println("failed to coerce value «\(ob)» of type \(ob?.dynamicType) into \(SourceType.self)")
     return nil
 }
 

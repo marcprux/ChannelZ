@@ -17,7 +17,7 @@ extension NSControl { // : KeyValueChannelSupplementing {
             fatalError("controlz event handling overrides existing target/action for control; if this is really what you want to do, explicitly nil the target & action of the control")
         }
 
-        let target = self.target as? ActionTarget ?? ActionTarget(control: self) // use the existing dispatch target if it exists
+        let target = (self.target as? ActionTarget) ?? ActionTarget(control: self) // use the existing dispatch target if it exists
         self.target = target
         self.action = Selector("channelEvent")
 
@@ -70,7 +70,7 @@ extension NSMenuItem {
             fatalError("controlz event handling overrides existing target/action for menu item; if this is really what you want to do, explicitly nil the target & action of the control")
         }
 
-        let target = self.target as? ActionTarget ?? ActionTarget(control: self) // use the existing dispatch target if it exists
+        let target = (self.target as? ActionTarget) ?? ActionTarget(control: self) // use the existing dispatch target if it exists
         self.target = target
         self.action = Selector("channelEvent")
         return Channel<ActionTarget, Void>(source: target, reception: target.receivers.addReceipt)

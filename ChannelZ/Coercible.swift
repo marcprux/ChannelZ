@@ -12,13 +12,13 @@ import Foundation
 /// Dynamically convert between the given numeric types, getting past Swift's inability to statically cast between numbers
 public func convertNumericType<From : ConduitNumericCoercible, To : ConduitNumericCoercible>(from: From) -> To {
     // try both sides of the convertables so this can be extended by other types (such as NSNumber)
-    return To.fromConduitNumericCoercible(from) ?? from.toConduitNumericCoercible() ?? from as To
+    return To.fromConduitNumericCoercible(from) ?? from.toConduitNumericCoercible() ?? from as! To
 }
 
 
 /// Implemented by numeric types that can be coerced into other numeric types
 public protocol ConduitNumericCoercible {
-    class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self?
+    static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self?
     func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
 }
 

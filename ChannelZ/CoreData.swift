@@ -10,15 +10,19 @@ import CoreData
 
 /// Extension for observableing notications for various Core Data events
 extension NSManagedObjectContext {
-    private class func mobs4key(note: [NSObject : AnyObject], keys: [NSString]) -> [NSManagedObject] {
+    private class func mobs4key(note: [NSObject : AnyObject], keys: [String]) -> [NSManagedObject] {
         var mobs = [NSManagedObject]()
         for key in keys {
-            mobs += (note[key] as? NSSet)?.allObjects as? [NSManagedObject] ?? []
+            if let set = note[key] as? NSSet {
+                if let setobs = set.allObjects as? [NSManagedObject] {
+                    mobs += setobs
+                }
+            }
         }
         return mobs
     }
 
-    private func typeChangeChannel(noteType: NSString, changeTypes: NSString...)->Channel<NSNotificationCenter, [NSManagedObject]> {
+    private func typeChangeChannel(noteType: String, changeTypes: String...)->Channel<NSNotificationCenter, [NSManagedObject]> {
         return self.channelZNotification(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }
     }
 

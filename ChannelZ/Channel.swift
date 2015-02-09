@@ -52,7 +52,7 @@ public struct Channel<S, T> {
 
     /// Creates a new channel with the given source
     internal func resource<X>(newsource: X)->Channel<X, T> {
-        return Channel<X, T>(source: newsource, self.reception)
+        return Channel<X, T>(source: newsource, reception: self.reception)
     }
 
     /// Erases the source type from this `Channel` to `Void`, which can be useful for simplyfying the signature
