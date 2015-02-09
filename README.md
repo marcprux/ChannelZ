@@ -1,6 +1,9 @@
-# ∞ChannelZ∞ [![Build Status](https://travis-ci.org/glimpseio/ChannelZ.svg?branch=master)](https://travis-ci.org/glimpseio/ChannelZ)
 
-*Declarative & Typesafe Dataflow Programming in Swift*
+![ChannelZ: Lightweight Reactive Swift](https://raw.githubusercontent.com/glimpseio/ChannelZ/assets/ChannelZ.svg)
+
+[![Build Status](https://travis-ci.org/glimpseio/ChannelZ.svg?branch=master)](https://travis-ci.org/glimpseio/ChannelZ)
+
+*ChannelZ: Lightweight Reactive Swift*
 
 ### Introduction
 
