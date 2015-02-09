@@ -53,7 +53,7 @@ public class ChannelTests: XCTestCase {
 
     func testTraps() {
         // TODO: re-name global trap, since it is confusing that it means something different than Channel.trap
-        let bools = trap(∞=false=∞, capacity: 10)
+        let bools = (∞=false=∞).trap(10)
 
         // test that sending capacity distinct values will store those values
         var send = [true, false, true, false, true, false, true, false, true, false]
@@ -69,7 +69,7 @@ public class ChannelTests: XCTestCase {
     func testChannelTraps() {
         let seq = [1, 2, 3, 4, 5]
         let seqz = channelZSequence(seq).precedent()
-        let trapz = trap(seqz, capacity: 10)
+        let trapz = seqz.trap(10)
         let values = trapz.values.map({ $0.0 != nil ? [$0.0!, $0.1] : [$0.1] })
         XCTAssertEqual(values, [[1], [1, 2], [2, 3], [3, 4], [4, 5]])
     }
@@ -78,25 +78,25 @@ public class ChannelTests: XCTestCase {
         let seq = [true, false, true, false, true]
 
 //        let gfun1 = Channel(from: GeneratorOf(seq.generate())) // GeneratorChannel with generator
-//        let trap1 = trap(gfun1, capacity: 3)
+//        let trap1 = gfun1.trap(3)
 //        XCTAssertEqual(seq[2...4], trap1.values[0...2], "trap should contain the last 3 elements of the sequence generator")
 
         let gfun2 = channelZSequence(seq) // GeneratorChannel with sequence
-        let trap2 = trap(gfun2, capacity: 3)
+        let trap2 = gfun2.trap(3)
         XCTAssertEqual(seq[2...4], trap2.values[0...2], "trap should contain the last 3 elements of the sequence generator")
 
-        let trapped = trap(channelZSequence(1...5) & channelZSequence(6...10), capacity: 1000)
+        let trapped = (channelZSequence(1...5) & channelZSequence(6...10)).trap(1000)
         
         XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]]) // tupes aren't equatable
 
         // observable concatenation
         // the equivalent of ReactiveX's Range
-        let merged = trap(channelZSequence(1...3) + channelZSequence(3...5) + channelZSequence(2...6), capacity: 1000)
+        let merged = (channelZSequence(1...3) + channelZSequence(3...5) + channelZSequence(2...6)).trap(1000)
         XCTAssertEqual(merged.values, [1, 2, 3, 3, 4, 5, 2, 3, 4, 5, 6])
 
         // the equivalent of ReactiveX's Repeat
-        XCTAssertEqual(trap(channelZSequence(Repeat(count: 10, repeatedValue: "A")), capacity: 4).values, ["A", "A", "A", "A"])
-        XCTAssertEqual(trap(channelZSequence(Repeat(count: 10, repeatedValue: "A")).subsequent(), capacity: 4).values, [])
+        XCTAssertEqual(channelZSequence(Repeat(count: 10, repeatedValue: "A")).trap(4).values, ["A", "A", "A", "A"])
+        XCTAssertEqual(channelZSequence(Repeat(count: 10, repeatedValue: "A")).subsequent().trap(4).values, [])
     }
 
     func testTrickle() {

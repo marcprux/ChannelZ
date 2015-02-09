@@ -164,8 +164,3 @@ public class TrapReceipt<S, T>: Receipt {
         values.append(value)
     }
 }
-
-/// Creates a trap for the last `capacity` (default 1) events of the `channel`
-public func trap<S, T>(channel: Channel<S, T>, capacity: Int = 1) -> TrapReceipt<S, T> {
-    return TrapReceipt(channel: channel, capacity: capacity)
-}

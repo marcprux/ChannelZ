@@ -373,6 +373,14 @@ public extension Channel {
     }
 }
 
+/// Utilites for creating the special trap receipt (useful for testing)
+public extension Channel {
+    /// Adds a receiver that will retain a certain number of values
+    public func trap(_ capacity: Int = 1) -> TrapReceipt<S, T> {
+        return TrapReceipt(channel: self, capacity: capacity)
+    }
+}
+
 /// Flattens a Channel that emits Channels into a single Channel that emits the items emitted by
 /// those Channels, without any transformation.
 /// Note: this operation does not retain the sub-sources, since it can merge a heterogeneously-sourced series of channels
