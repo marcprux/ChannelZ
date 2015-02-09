@@ -1,0 +1,135 @@
+NSStream.h
+	class NSInputStream : NSStream
+Network.swift
+	public enum InputStreamEvent
+NSObject.h
+	class NSObject : NSObjectProtocol
+	class NSObject : NSObjectProtocol
+Foundation.swift
+	public let target: NSObject
+	public let accessor: ()->T
+	public let keyPath: NSString
+	public init(target: NSObject, accessor: ()->T)
+	private func observedValueForKeyPath(change: [NSObject : AnyObject])
+	private func observedValueForKeyPath(change: [NSObject : AnyObject])
+	let newv: T = coerceCocoaType(change[NSKeyValueChangeNewKey])!
+	}
+
+    public init(target: NSObject, keyPath: Str
+	// it would be faster and safer to retain the accessor for future keypath access rather than going through
+	setValueForKeyPath(target, keyPath, optional, value)
+            ret
+	private func observedValueForKeyPath(change: [NSObject : AnyObject])
+	private func observedValueForKeyPath(change: [NSObject : AnyObject])
+	let newv: T = coerceCocoaType(change[NSKeyValueChangeNewKey])
+	}
+
+
+    public init(target: NSObject, keyPath: String
+	// it would be faster and safer to retain the accessor for future keypath access rather than going through KVO
+	setValueForKeyPath(target, keyPath, optional, value)
+            return
+	if let ob = objc_getAssociatedObject(target, &Context.ObserverListAssociatedKe
+	func addO
+	let observer = Observer(identifier: ++identifierCounter, handler: handler)
+
+        var observers = keyObservers[k
+	if observers.count == 0 { // this is the first observer: actuall
+	var filtered = observers.filter { $0.identifier != identifi
+	var filtered = observers.filter { $0.identifier != identifier
+	/// Callback for in NSNotificationCenter
+NSValue.h
+	class NSNumber : NSValue
+NSControl.h
+	class NSControl : NSView
+NSMenuItem.h
+	class NSMenuItem : NSObject, NSCopying, NSCoding, NSValidatedUserInterfaceItem
+NSManagedObjectContext.h
+	class NSManagedObjectContext : NSObject, NSCoding, NSLocking
+Operators.swift
+	var unwrap: WrappedType? { get
+	prefix func ∞?=<S: StateSource, T: Equatable where S.Element: OptionalStateElement, S.Element.WrappedType: Equatable, T == S.Element.WrappedType>(source: S)->Channel<S, T?> {
+
+    let wrappedState: Channel<S, (S.Element?, S.Element)> = s
+	/// Creates a one-way pipe betweek a `Channel` and an `Equatable` `SinkType`, such that all receiver emissions are sent to the sink.
+	/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
+	/// Lossy conduit conversion operators
+	public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, T1>, rhs: Channel<S2, Optional<T2>>)->Receipt {
+    return conduit(lhs, rhs.filter({ $0 != nil }).map({ $0! }))
+}
+
+
+// MARK: Channel Tuple flatten
+	/// Channel zipping & flattening operation
+	/// Channel combination & flattening operation (operator form of `flatAny`)
+	public func &<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1, T2)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1, T2, T3)> { return combineSources(combineElements(lhs.zip(rhs))) }
+public func &<S1, S2, S3, S4, T1, T2, T3, T
+	public func &<S1, S2, S3, S4, T1, T2, T3, T4>(lhs: Channel<(S1, S2, S3), (T1, T2, T3)>, rhs: Channel<S4, T4>)->Channel<(S1, S2, S3, S4), (T1, T2, T3, T4)> { return combineSources(combineElements(lhs.zip(rhs))) }
+public func &<S1, S2, S3, S4, S5, T1, T2, T
+	public func &<S1, S2, S3, S4, S5, T1, T2, T3, T4, T5>(lhs: Channel<(S1, S2, S3, S4), (T1, T2, T3, T4)>, rhs: Channel<S5, T5>)->Channel<(S1, S2, S3, S4, S5), (T1, T2, T3, T4, T5)> { return combineSources(combineElements(lhs.zip(rhs))) }
+public func &<S1, S2, S3, S4, S5, S6, T1, T
+	public func &<S1, S2, S3, S4, S5, S6, T1, T2, T3, T4, T5, T6>(lhs: Channel<(S1, S2, S3, S4, S5), (T1, T2, T3, T4, T5)>, rhs: Channel<S6, T6>)->Channel<(S1, S2, S3, S4, S5, S6), (T1, T2, T3, T4, T5, T6)> { return combineSources(combineElements(lhs.zip(rhs))) }
+public func &<S1, S2, S3, S4, S5, S6, S7, T
+	public func &<S1, S2, S3, S4, S5, S6, S7, T1, T2, T3, T4, T5, T6, T7>(lhs: Channel<(S1, S2, S3, S4, S5, S6), (T1, T2, T3, T4, T5, T6)>, rhs: Channel<S7, T7>)->Channel<(S1, S2, S3, S4, S5, S6, S7), (T1, T2, T3, T4, T5, T6, T7)> { return combineSources(combineElements(lhs.zip(rhs))) }
+public func &<S1, S2, S3, S4, S5, S6, S7, S
+	public func &<S1, S2, S3, S4, S5, S6, S7, S8, T1, T2, T3, T4, T5, T6, T7, T8>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7), (T1, T2, T3, T4, T5, T6, T7)>, rhs: Channel<S8, T8>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8), (T1, T2, T3, T4, T5, T6, T7, T8)> { return combineSources(combineElements(lhs.zip(rhs))) }
+public func &<S1, S2, S3, S4, S5, S6, S7, S
+	public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, T1, T2, T3, T4, T5, T6, T7, T8, T9>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8), (T1, T2, T3, T4, T5, T6, T7, T8)>, rhs: Channel<S9, T9>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), (T1, T2, T3, T4, T5, T6, T7, T8, T9)> { return combineSources(combineElements(lhs.zip(rhs))) }
+public func &<S1, S2, S3, S4, S5, S6, S7, S
+	public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), (T1, T2, T3, T4, T5, T6, T7, T8, T9)>, rhs: Channel<S10, T10>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)> { return combineSources(combineElements(lhs.zip(rhs))) }
+public func &<S1, S2, S3, S4, S5, S6, S7, S
+	public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)>, rhs: Channel<S11, T11>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)> { return combineSources(combineElements(lhs.zip(rhs))) }
+public func &<S1, S2, S3, S4, S5, S6, S7, S
+	public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)>, rhs: Channel<S12, T12>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12)> { return combineSources(combineElements(lhs.zip(rhs))) }
+
+private func flattenSources<S1, S2, S3, T>
+Swift
+	enum Optional&lt;T&gt; : Reflectable, NilLiteralConvertible
+	struct Float
+	struct Double
+Receivers.swift
+	public class ReceiptOf: Receipt
+	public final class ReceiverList<T>
+	public var cancelled: Bool = false
+	public let channel: Channel<S, T>
+	public let capacity: Int
+	public init(channel: Channel<S, T>, capacity: Int)
+	deinit
+	public func cancel()
+	public func receive(value: T)
+Coercible.swift
+	class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self?
+	func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Bool?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int8?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt8?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int16?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt16?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int32?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt32?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int64?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+	public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt64?
+	public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
+Channel.swift
+	public init(source: S, reception: Receiver->Receipt)
+	public var value: T { didSet(old
+	public init(_ value: T) { self.value
+	public func put(x: T) { value = x
+	public func channelZState()->Channel<PropertySource<T>, State> {
+        re
+	var value: Element { get }
+}
+
+e
