@@ -1,5 +1,5 @@
 
-![ChannelZ: Lightweight Reactive Swift](https://raw.githubusercontent.com/glimpseio/ChannelZ/assets/ChannelZ.svg)
+![ChannelZ: Lightweight Reactive Swift](https://raw.githubusercontent.com/glimpseio/ChannelZ/gh-pages/images/ChannelZ.svg)
 
 [![Build Status](https://travis-ci.org/glimpseio/ChannelZ.svg?branch=master)](https://travis-ci.org/glimpseio/ChannelZ)
 
