@@ -12,6 +12,8 @@ Following is an overview of the API. To get started using ChannelZ in your own p
 
 #### Example: Basic Usage
 
+Full API documentation for ChannelZ can be found at http://glimpseio.github.io/ChannelZ/.
+
 ```swift
 import ChannelZ
 
