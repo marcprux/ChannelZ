@@ -12,10 +12,10 @@ public extension NSInputStream {
 
     /// Creates a Channel for the stream and assigns it to handle `NSStreamDelegate` delegate callbacks
     /// for stream events
-    public func channelZStream(bufferLength: Int = 1024) -> Channel<NSInputStream, InputStreamEvent> {
+    public func channelZStream(bufferLength: Int = 1024) -> Channel<ChannelStreamDelegate, InputStreamEvent> {
         var receivers = ReceiverList<InputStreamEvent>()
 
-        let delegate = ChannelStreamDelegate { event in
+        let delegate = ChannelStreamDelegate(stream: self) { event in
             switch event.rawValue {
             case NSStreamEvent.None.rawValue:
                 break
@@ -47,7 +47,7 @@ public extension NSInputStream {
             }
         }
 
-        return Channel(source: self) { receiver in
+        return Channel(source: delegate) { receiver in
             self.delegate = delegate
             let index = receivers.addReceiver(receiver)
             return ReceiptOf(canceler: {
@@ -72,9 +72,17 @@ public enum InputStreamEvent {
     case Closed
 }
 
-@objc private class ChannelStreamDelegate: NSObject, NSStreamDelegate {
+@objc public class ChannelStreamDelegate: NSObject, NSStreamDelegate {
+    let stream: NSInputStream
     let handler: NSStreamEvent->Void
-    init(handler: NSStreamEvent->Void) { self.handler = handler }
-    func stream(aStream: NSStream, handleEvent eventCode: NSStreamEvent) { handler(eventCode) }
+
+    init(stream: NSInputStream, handler: NSStreamEvent->Void) {
+        self.stream = stream
+        self.handler = handler
+    }
+
+    public func stream(aStream: NSStream, handleEvent eventCode: NSStreamEvent) {
+        handler(eventCode)
+    }
 }
 

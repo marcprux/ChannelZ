@@ -51,7 +51,7 @@ public struct Channel<S, T> {
     }
 
     /// Creates a new channel with the given source
-    internal func resource<X>(newsource: X)->Channel<X, T> {
+    public func resource<X>(newsource: X)->Channel<X, T> {
         return Channel<X, T>(source: newsource, reception: self.reception)
     }
 

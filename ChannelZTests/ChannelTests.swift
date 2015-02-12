@@ -172,7 +172,7 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(9, count)
     }
 
-    func XXXtestStreamExtensions() { // FIXME: suddenly stopped working in Xcode 6.3 beta (6D520o)
+    func testStreamExtensions() {
         if let stream = NSInputStream(fileAtPath: __FILE__) {
             weak var xpc: XCTestExpectation? = expectationWithDescription("input stream")
 
