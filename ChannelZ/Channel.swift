@@ -51,15 +51,15 @@ public struct Channel<S, T> {
     }
 
     /// Creates a new channel with the given source
-    public func resource<X>(newsource: X)->Channel<X, T> {
-        return Channel<X, T>(source: newsource, reception: self.reception)
+    public func resource<X>(newsource: S->X)->Channel<X, T> {
+        return Channel<X, T>(source: newsource(source), reception: self.reception)
     }
 
     /// Erases the source type from this `Channel` to `Void`, which can be useful for simplyfying the signature
     /// for functions that don't care about the source's type or for channel phases that want to ensure the source
     /// cannot be accessed from future phases
     public func dissolve()->Channel<Void, T> {
-        return resource(Void())
+        return resource({ _ in Void() })
     }
 
     /// Adds a receiver that will forward all values to the target `SinkType`
@@ -406,6 +406,12 @@ public func conduit<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element 
     return ReceiptOf(receipts: [c1∞->c2.source, c2∞->c1.source])
 }
 
+/// Creates a one-way conduit betweek a `Channel`s whose source is an `Equatable` `SinkType`, such that when the left
+/// side is changed the right side is updated
+public func conduct<S1, S2, T1, T2 where S2: SinkType, S2.Element == T1>(c1: Channel<S1, T1>, c2: Channel<S2, T2>)->Receipt {
+    return c1∞->c2.source
+}
+
 
 // MARK: Utilities
 
@@ -459,6 +465,8 @@ public func channelZProperty<T: Equatable>(initialValue: T)->Channel<PropertySou
 public protocol StateSource {
     typealias Element
 
+    var value: Element { get nonmutating set }
+
     /// Creates a Channel from this source that will emit tuples of the old & and state values whenever a state operation occurs
     func channelZState()->Channel<Self, (Element?, Element)>
 }
@@ -481,13 +489,6 @@ public final class PropertySource<T>: StateSink, StateSource {
     }
 }
 
-extension Channel: StateSource {
-    /// A Channel becomes a StateSource by trapping its previous value and sending along the tuple of previous and current values
-    public func channelZState()->Channel<Channel, (T?, T)> {
-        return precedent().resource(self)
-    }
-}
-
 /// Simple protocol that permits accessing the underlying source type
 public protocol StateSink: SinkType {
     var value: Element { get }
@@ -495,3 +496,31 @@ public protocol StateSink: SinkType {
 
 extension PropertySource: StateSink {
 }
+
+/// A type-erased wrapper around some state source
+public struct StateOf<T>: StateSink, StateSource {
+    private let valueget: Void->T
+    private let valueset: T->Void
+    private let channler: Void->Channel<Void, (T?, T)>
+
+    public var value: T {
+        get { return valueget() }
+        nonmutating set { valueset(newValue) }
+    }
+
+    public init<S where S: StateSink, S: StateSource, S.Element == T>(_ source: S) {
+        valueget = { return source.value }
+        valueset = { source.value = $0 }
+        channler = { return source.channelZState().dissolve() }
+    }
+
+    public mutating func put(x: T) {
+        valueset(x)
+    }
+
+    public func channelZState() -> Channel<StateOf<T>, (T?, T)> {
+        return channler().resource({ _ in self })
+    }
+}
+
+

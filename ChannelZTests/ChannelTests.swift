@@ -552,9 +552,6 @@ public class ChannelTests: XCTestCase {
         let flatOptionalSink4 = "private func flatOptionalSink<S, T1, T2, T3, T4>(rcvr: Channel<S, (((T1?, T2?)?, T3?)?, T4?)>)->Channel<S, (T1?, T2?, T3?, T4?)> { return rcvr.map { ($0.0?.0?.0, $0.0?.0?.1, $0.0?.1, $0.1) } }"
 
 
-        /// Channel combination & flattening operation (operator form of `flatAny`)
-        let flatOr = "public func |<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1?, T2?)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1?, T2?, T3?)> { return flatOptionalSink(flattenSources(lhs.either(rhs))) }"
-
 
         let pname: String = "rcvr"
 
@@ -563,6 +560,8 @@ public class ChannelTests: XCTestCase {
 
         /// make a type list like T1, T2, T3, T4
         let types: (String, Int)->String = { s,i in join(", ", (1...i).map({ "\(s)\($0)" })) }
+
+        let otypes: (String, Int)->String = { s,i in join(", ", (1...i).map({ "\(s)\($0)?" })) }
 
 
         func flatTuple(count: Int, pre: String, opt: Bool)->String {
@@ -618,7 +617,11 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(genFlatSource(5), flattenSources5)
 
         func combineTuple(count: Int, pre: String, opt: Bool)->String {
-            return reduce(0..<count-1, "", { s,i in s + pre + ".0.\(i), " }) + "\(pre).1"
+            if opt {
+                return reduce(0..<count-1, "", { s,i in s + pre + ".0?.\(i), " }) + "\(pre).1"
+            } else {
+                return reduce(0..<count-1, "", { s,i in s + pre + ".0.\(i), " }) + "\(pre).1"
+            }
         }
 
         let genComboSource: (Int)->String = { (n: Int) in
@@ -642,9 +645,9 @@ public class ChannelTests: XCTestCase {
 
 
 
-        let genComboElement: (Int)->String = { (n: Int) in
+        let genCombineAll: (Int)->String = { (n: Int) in
             let parts: [String] = [
-                "private func combineElements<S, " + types("T", n) + ">(\(pname): Channel",
+                "private func combineAll<S, " + types("T", n) + ">(\(pname): Channel",
                 reduce(2...n, "<S, ", { s,i in s }),
                 reduce(2...n-1, "((T1", { s,i in s + ", T\(i)" }) + "), T\(n))",
                 ">)->Channel<S, (" + types("T", n) + ")>",
@@ -665,7 +668,7 @@ public class ChannelTests: XCTestCase {
                 "rhs: Channel<S\(n), T\(n)>",
                 ")->",
                 "Channel<(" + types("S", n) + "), (" + types("T", n) + ")>",
-                " { return combineSources(combineElements(lhs.zip(rhs))) }",
+                " { return combineSources(combineAll(lhs.zip(rhs))) }",
             ]
 
             return join("", parts)
@@ -673,15 +676,53 @@ public class ChannelTests: XCTestCase {
 
 
         /// Channel zipping & flattening operation (operator form of `flatZip`)
-        let flatAny = "public func &<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1, T2)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1, T2, T3)> { return combineSources(combineElements(lhs.zip(rhs))) }"
+        let flatAny = "public func &<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1, T2)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1, T2, T3)> { return combineSources(combineAll(lhs.zip(rhs))) }"
 
         XCTAssert(flatAny.hasPrefix(genZip(3)), "\nGEN: \(genZip(3))\nVS.: \(flatAny)")
         XCTAssertEqual(genZip(3), flatAny)
+
+
+
+        let genCombineAny: (Int)->String = { (n: Int) in
+            let parts: [String] = [
+                "private func combineAny<S, " + types("T", n) + ">(\(pname): Channel",
+                reduce(2...n, "<S, ", { s,i in s }),
+                reduce(2...n-1, "((T1?", { s,i in s + ", T\(i)?" }) + ")?, T\(n)?)",
+                ">)->Channel<S, (" + otypes("T", n) + ")>",
+                " { return \(pname).map { (" + combineTuple(n, "$0", true) + ") } }",
+            ]
+
+            return join("", parts)
+        }
+
+
+        let genOr: (Int)->String = { n in
+            let parts: [String] = [
+                "public func |<" + types("S", n) + ", " + types("T", n) + ">",
+                "(",
+                "lhs: Channel<(" + types("S", n-1) + "), (" + otypes("T", n-1) + ")>",
+                ", ",
+                "rhs: Channel<S\(n), T\(n)>",
+                ")->",
+                "Channel<(" + types("S", n) + "), (" + otypes("T", n) + ")>",
+                " { return combineSources(combineAny(lhs.either(rhs))) }",
+            ]
+
+            return join("", parts)
+        }
         
+
+
+        /// Channel combination & flattening operation (operator form of `flatAny`)
+        let flatOr = "public func |<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1?, T2?)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1?, T2?, T3?)> { return combineSources(combineAny(lhs.either(rhs))) }"
+        XCTAssert(flatOr.hasPrefix(genOr(3)), "\nGEN: \(genOr(3))\nVS.: \(flatOr)")
+        XCTAssertEqual(genOr(3), flatOr)
 
 
         let dumptups: (Int)->(Void) = { max in
             for i in 3...max { println(genZip(i)) }
+            println()
+            for i in 3...max { println(genOr(i)) }
             println()
             for i in 3...max { println(genFlatSource(i)) }
             println()
@@ -689,10 +730,12 @@ public class ChannelTests: XCTestCase {
             println()
             for i in 3...max { println(genFlatElement(i)) }
             println()
-            for i in 3...max { println(genComboElement(i)) }
+            for i in 3...max { println(genCombineAll(i)) }
+            println()
+            for i in 3...max { println(genCombineAny(i)) }
         }
 
-//        dumptups(12)
+//        dumptups(20)
     }
 
         func testPropertyChannel() {
@@ -972,39 +1015,39 @@ public class ChannelTests: XCTestCase {
 
     }
 
-//    func testMixedCombinations() {
-//        let a = ∞(Int(0.0))∞
-//
-//        var and: Channel<Void, (Int, Int, Int, Int)> = (a & a & a & a).dissolve()
-//        var andx = 0
-//        and.receive({ _ in andx += 1 })
-//
-//        var or: Channel<Void, (Int?, Int?, Int?, Int?)> = (a | a | a | a).dissolve()
-//        var orx = 0
-//        or.receive({ _ in orx += 1 })
-//
-//        var andor: Channel<Void, ((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = (a & a | a & a | a & a | a).dissolve()
-//        var andorx = 0
-//        andor.receive({ _ in andorx += 1 })
-//
-//        XCTAssertEqual(0, andx)
-//        XCTAssertEqual(0, orx)
-//        XCTAssertEqual(0, andorx)
-//
-//        a.value++
-//
-//        XCTAssertEqual(1, andx, "last and fires a single and change")
-//        XCTAssertEqual(4, orx, "each or four")
-//        XCTAssertEqual(4, andorx, "four groups in mixed")
-//
-//        a.value++
-//
-//        XCTAssertEqual(2, andx)
-//        XCTAssertEqual(8, orx)
-//        XCTAssertEqual(8, andorx)
-//
-//    }
-//
+    func testMixedCombinations() {
+        let a = (∞(Int(0.0))∞).subsequent()
+
+        var and: Channel<Void, (Int, Int, Int, Int)> = (a & a & a & a).dissolve()
+        var andx = 0
+        and.receive({ _ in andx += 1 })
+
+        var or: Channel<Void, (Int?, Int?, Int?, Int?)> = (a | a | a | a).dissolve()
+        var orx = 0
+        or.receive({ _ in orx += 1 })
+
+        var andor: Channel<Void, ((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = (a & a | a & a | a & a | a).dissolve()
+        var andorx = 0
+        andor.receive({ _ in andorx += 1 })
+
+        XCTAssertEqual(0, andx)
+        XCTAssertEqual(0, orx)
+        XCTAssertEqual(0, andorx)
+
+        a.source.value++
+
+        XCTAssertEqual(1, andx, "last and fires a single and change")
+        XCTAssertEqual(4, orx, "each or four")
+        XCTAssertEqual(4, andorx, "four groups in mixed")
+
+        a.source.value++
+
+        XCTAssertEqual(2, andx)
+        XCTAssertEqual(8, orx)
+        XCTAssertEqual(8, andorx)
+
+    }
+
 //    func testZippedGenerators() {
 //        let range = 1...6
 //        let nums = channelZSequence(1...3) + channelZSequence(4...5) + channelZSequence([6])

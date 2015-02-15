@@ -1,12 +1,10 @@
 <img src="http://glimpseio.github.io/ChannelZ/images/ChannelZ.svg" width="100%" />
 
-[![Build Status](https://travis-ci.org/glimpseio/ChannelZ.svg?branch=master)](https://travis-ci.org/glimpseio/ChannelZ)
-
 *ChannelZ: Lightweight Reactive Swift*
 
 ### Introduction
 
-ChannelZ is a pure Swift framework for simplifying state and event management in iOS and Mac apps. You can create `Channels` to both native Swift properties and Objective-C properties, and connect those `Channels` using `Conduits`, enabling the underlying values of the properties to be automatically synchronized.
+ChannelZ is a pure Swift 1.2 framework for simplifying state and event management in iOS and Mac apps. You can create `Channels` to both native Swift properties and Objective-C properties, and connect those `Channels` using `Conduits`, enabling the underlying values of the properties to be automatically synchronized.
 
 Following is an overview of the API. To get started using ChannelZ in your own project, jump straight to [Setting up ChannelZ](#setting-up-channelz).
 

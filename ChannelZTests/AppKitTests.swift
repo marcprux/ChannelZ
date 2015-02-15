@@ -205,7 +205,7 @@ public class AppKitTests: XCTestCase {
         progbar.maxValue = 1.0
 
         // NSProgressView goes from 0.0-1.0, so map the slider's percentage complete to the progress value
-        vm.amount.map({ Double($0 / vm.amountMax) }) ∞=> (progbar∞progbar.doubleValue).source
+        vm.amount.map({ Double($0 / vm.amountMax) }) ∞=> (progbar∞progbar.doubleValue)
 
         vm.amount ∞= vm.amount∞? + 20.0
 
@@ -214,7 +214,7 @@ public class AppKitTests: XCTestCase {
         XCTAssertEqual(progbar.doubleValue, Double(0.75))
 
         let progress = NSProgress(totalUnitCount: Int64(vm.amountMax))
-        vm.amount.map({ Int64($0) }) ∞=> (progress∞progress.completedUnitCount).source
+        vm.amount.map({ Int64($0) }) ∞=> (progress∞progress.completedUnitCount)
 
         // FIXME: memory leak
         // progress∞progress.completedUnitCount ∞> { _ in println("progress: \(progress.localizedDescription)") }
