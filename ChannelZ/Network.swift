@@ -12,7 +12,10 @@ public extension NSInputStream {
 
     /// Creates a Channel for the stream and assigns it to handle `NSStreamDelegate` delegate callbacks
     /// for stream events
+    ///
+    /// :param: bufferLength The maximum size of the buffer that will be filled
     public func channelZStream(bufferLength: Int = 1024) -> Channel<ChannelStreamDelegate, InputStreamEvent> {
+        precondition(bufferLength > 0, "buffer size must be greater than zero")
         var receivers = ReceiverList<InputStreamEvent>()
 
         let delegate = ChannelStreamDelegate(stream: self) { event in
@@ -23,14 +26,15 @@ public extension NSInputStream {
                 receivers.receive(.Opened)
                 break
             case NSStreamEvent.HasBytesAvailable.rawValue:
-                var buffer = UnsafeMutablePointer<UInt8>.alloc(bufferLength)
+
+                var buffer = Array<UInt8>(count: bufferLength, repeatedValue: 0)
                 while true {
-                    let readlen = self.read(buffer, maxLength: bufferLength)
+                    let readlen = self.read(&buffer, maxLength: bufferLength)
                     if readlen <= 0 {
-                        buffer.destroy()
                         break
                     } else {
-                        receivers.receive(.Data(NSData(bytes: buffer, length: readlen)))
+                        let slice: Slice<UInt8> = buffer[0..<readlen]
+                        receivers.receive(.Data(Array(slice)))
                     }
                 }
                 break
@@ -65,7 +69,7 @@ public enum InputStreamEvent {
     /// Event indicating that the stream opened the connection successfully
     case Opened
     /// Event indicating that some data was received on the stream
-    case Data(NSData)
+    case Data([UInt8])
     /// Event indicating that an errors occurred on the stream
     case Error(NSError)
     /// Event indicating that the stream was closed

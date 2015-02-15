@@ -185,8 +185,8 @@ public class ChannelTests: XCTestCase {
                 case .Opened:
                     openCount++
                 case .Data(let d):
-                    count += d.length
-                    allData.appendData(d)
+                    count += d.count
+                    allData.appendData(NSData(bytes: d, length: d.count))
                 case .Error(let e):
                     XCTFail(e.description)
                     xpc?.fulfill()
