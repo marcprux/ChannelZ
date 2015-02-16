@@ -1689,6 +1689,85 @@ public class FoundationTests: XCTestCase {
         
     }
 
+    public func testCollectionArrayKeyPaths() {
+        let state = StatefulObjectSubSubclass()
+        var changes = 0
+        let channel = state.channelZKeyArray(state.array).receive { change in
+            switch change {
+            case .Assigned(let array): break
+            case .Added(let indices, let new): changes += indices.count
+            case .Removed(let indices, let old): changes += indices.count
+            case .Replaced(let indices, let old, let new): changes += indices.count
+            }
+        }
+
+        let array = state.mutableArrayValueForKey("array")
+        array.addObject("One") // +1
+        array.addObject("Two") // +1
+        array.addObject("Three") // +1
+        array.removeObjectAtIndex(1) // -1
+        array.replaceObjectAtIndex(1, withObject: "None") // +-1
+        array.removeAllObjects() // -2
+        array.addObjectsFromArray(["A", "B", "C", "D"]) // +4
+
+        XCTAssertEqual(11, changes)
+
+    }
+
+    public func testCollectionOrderedSetKeyPaths() {
+        let state = StatefulObjectSubSubclass()
+        var changes = 0
+        let channel = state.channelZKeyOrderedSet(state.orderedSet).receive { change in
+            switch change {
+            case .Assigned(let orderedSet): break
+            case .Added(let indices, let new): changes += indices.count
+            case .Removed(let indices, let old): changes += indices.count
+            case .Replaced(let indices, let old, let new): changes += indices.count
+            }
+        }
+
+        let orderedSet = state.mutableOrderedSetValueForKey("orderedSet")
+        orderedSet.addObject("One") // +1
+        orderedSet.addObject("Two") // +1
+        orderedSet.addObject("Three") // +1
+        orderedSet.addObject("One") // +0
+        orderedSet.addObject("Two") // +0
+        orderedSet.addObject("Three") // +0
+        orderedSet.addObject("Four") // +1
+        orderedSet.removeObjectAtIndex(1) // -1
+        orderedSet.replaceObjectAtIndex(1, withObject: "None") // +-1
+        orderedSet.removeAllObjects() // -3
+        orderedSet.addObjectsFromArray(["A", "B", "C", "D"]) // +4
+
+        XCTAssertEqual(13, changes)
+        
+    }
+
+
+    public func testCollectionSetKeyPaths() {
+        let state = StatefulObjectSubSubclass()
+        var changes = 0
+        let channel = state.channelZKeySet(state.set).receive { change in
+            switch change {
+            case .Assigned(let set): break
+            case .Added(let new): changes += new.count
+            case .Removed(let old): changes += old.count
+            }
+        }
+
+        let set = state.mutableSetValueForKey("set")
+        set.addObject("One")
+        set.addObject("Two")
+        set.addObject("Three")
+        set.addObject("One")
+        set.addObject("Two")
+        set.addObject("Three")
+        set.removeObject("Two")
+        set.removeObject("nonexistant") // shouldn't fire
+
+        XCTAssertEqual(4, changes)
+    }
+
     override public func tearDown() {
         super.tearDown()
 
@@ -1754,6 +1833,10 @@ public class StatefulObject : NSObject {
 
     dynamic var reqobj: NSObject = NSObject()
     dynamic var optobj: StatefulObject? = nil
+
+    dynamic var array = NSMutableArray()
+    dynamic var set = NSMutableSet()
+    dynamic var orderedSet = NSMutableOrderedSet()
 
     public override init() {
         super.init()

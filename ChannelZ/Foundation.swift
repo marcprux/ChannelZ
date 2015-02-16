@@ -9,7 +9,6 @@
 /// Support for Foundation channels and observables, such as KVO-based channels and NSNotificationCenter observables
 import Foundation
 
-
 /// Extension on NSObject that permits creating a channel from a key-value compliant property
 extension NSObject {
 
@@ -54,6 +53,136 @@ extension NSObject {
     public func channelZKey<T>(@autoclosure accessor: ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, T?> {
         return channelZKeyState(accessor, keyPath: keyPath).map({ $0.1 })
     }
+
+    // FIXME: channelZKeyArray and channelZKeyOrderedSet are 95% identical and could be unified with a generic but for compiler crashes
+
+
+    /// Creates a channel for all KVO-compliant NSArray modifications
+    ///
+    /// :param: accessor an accessor for the NSArray of the property (autoclosure)
+    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    ///
+    /// :returns: a channel backed by the KVO property that will receive ArrayChange items for mutations
+    public func channelZKeyArray(@autoclosure accessor: ()->NSArray, keyPath: String? = nil)->Channel<NSObject, ArrayChange> {
+        let kp = keyPath ?? conjectKeypath(self, accessor, true)!
+        var receivers = ReceiverList<ArrayChange>()
+
+        return Channel(source: self) { [unowned self] receiver in
+
+            let observer = TargetObserverRegister.get(self).addObserver(kp) { change in
+                let new: AnyObject? = change[NSKeyValueChangeNewKey]
+                let old: AnyObject? = change[NSKeyValueChangeOldKey]
+                let indices = change[NSKeyValueChangeIndexesKey] as? NSIndexSet
+
+                let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
+
+                switch kind {
+                case .Setting: receivers.receive(.Assigned(new as! NSArray))
+                case .Insertion: receivers.receive(.Added(indices: indices!, new: new as! NSArray))
+                case .Removal: receivers.receive(.Removed(indices: indices!, old: old as! NSArray))
+                case .Replacement: receivers.receive(.Replaced(indices: indices!, old: old as! NSArray, new: new as! NSArray))
+                }
+            }
+
+            let index = receivers.addReceiver(receiver)
+            return ReceiptOf(canceler: {
+                receivers.removeReceptor(index)
+                TargetObserverRegister.get(self).removeObserver(kp, identifier: observer)
+            })
+        }
+    }
+
+    /// Creates a channel for all KVO-compliant NSOrderedSet modifications
+    ///
+    /// :param: accessor an accessor for the NSOrderedSet of the property (autoclosure)
+    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    ///
+    /// :returns: a channel backed by the KVO property that will receive OrderedSetChange items for mutations
+    public func channelZKeyOrderedSet(@autoclosure accessor: ()->NSOrderedSet, keyPath: String? = nil)->Channel<NSObject, OrderedSetChange> {
+        let kp = keyPath ?? conjectKeypath(self, accessor, true)!
+        var receivers = ReceiverList<OrderedSetChange>()
+
+        return Channel(source: self) { [unowned self] receiver in
+
+            let observer = TargetObserverRegister.get(self).addObserver(kp) { change in
+                let new: AnyObject? = change[NSKeyValueChangeNewKey]
+                let old: AnyObject? = change[NSKeyValueChangeOldKey]
+                let indices = change[NSKeyValueChangeIndexesKey] as? NSIndexSet
+
+                let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
+
+                switch kind {
+                case .Setting: receivers.receive(.Assigned(new as! NSOrderedSet))
+                case .Insertion: receivers.receive(.Added(indices: indices!, new: new as! NSArray))
+                case .Removal: receivers.receive(.Removed(indices: indices!, old: old as! NSArray))
+                case .Replacement: receivers.receive(.Replaced(indices: indices!, old: old as! NSArray, new: new as! NSArray))
+                }
+            }
+
+            let index = receivers.addReceiver(receiver)
+            return ReceiptOf(canceler: {
+                receivers.removeReceptor(index)
+                TargetObserverRegister.get(self).removeObserver(kp, identifier: observer)
+            })
+        }
+    }
+
+    /// Creates a channel for all KVO-compliant NSSet modifications
+    ///
+    /// :param: accessor an accessor for the NSSet of the property (autoclosure)
+    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    ///
+    /// :returns: a channel backed by the KVO property that will receive SetChange items for mutations
+    public func channelZKeySet(@autoclosure accessor: ()->NSSet, keyPath: String? = nil)->Channel<NSObject, SetChange> {
+        let kp = keyPath ?? conjectKeypath(self, accessor, true)!
+        var receivers = ReceiverList<SetChange>()
+
+        return Channel(source: self) { [unowned self] receiver in
+
+            let observer = TargetObserverRegister.get(self).addObserver(kp) { change in
+                let new: AnyObject? = change[NSKeyValueChangeNewKey]
+                let old: AnyObject? = change[NSKeyValueChangeOldKey]
+
+                let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
+
+                switch kind {
+                case .Setting: receivers.receive(.Assigned(new as! NSSet))
+                case .Insertion: receivers.receive(.Added(new as! NSSet))
+                case .Removal: receivers.receive(.Removed(old as! NSSet))
+                case .Replacement: fatalError("should never happen")
+                }
+            }
+
+            let index = receivers.addReceiver(receiver)
+            return ReceiptOf(canceler: {
+                receivers.removeReceptor(index)
+                TargetObserverRegister.get(self).removeObserver(kp, identifier: observer)
+            })
+        }
+    }
+}
+
+/// Change type for `channelZKeyArray`
+public enum ArrayChange {
+    case Assigned(NSArray)
+    case Added(indices: NSIndexSet, new: NSArray)
+    case Removed(indices: NSIndexSet, old: NSArray)
+    case Replaced(indices: NSIndexSet, old: NSArray, new: NSArray)
+}
+
+/// Change type for `channelZKeyOrderedSet`
+public enum OrderedSetChange {
+    case Assigned(NSOrderedSet)
+    case Added(indices: NSIndexSet, new: NSArray)
+    case Removed(indices: NSIndexSet, old: NSArray)
+    case Replaced(indices: NSIndexSet, old: NSArray, new: NSArray)
+}
+
+/// Change type for `channelZKeySet`
+public enum SetChange {
+    case Assigned(NSSet)
+    case Added(NSSet)
+    case Removed(NSSet)
 }
 
 
