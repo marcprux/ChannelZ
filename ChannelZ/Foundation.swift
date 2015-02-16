@@ -63,7 +63,7 @@ extension NSObject {
     /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// :returns: a channel backed by the KVO property that will receive ArrayChange items for mutations
-    public func channelZKeyArray(@autoclosure accessor: ()->NSArray, keyPath: String? = nil)->Channel<NSObject, ArrayChange> {
+    public func channelZKeyArray(@autoclosure accessor: ()->NSArray?, keyPath: String? = nil)->Channel<NSObject, ArrayChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
         var receivers = ReceiverList<ArrayChange>()
 
@@ -77,7 +77,7 @@ extension NSObject {
                 let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
 
                 switch kind {
-                case .Setting: receivers.receive(.Assigned(new as! NSArray))
+                case .Setting: receivers.receive(.Assigned(new as? NSArray))
                 case .Insertion: receivers.receive(.Added(indices: indices!, new: new as! NSArray))
                 case .Removal: receivers.receive(.Removed(indices: indices!, old: old as! NSArray))
                 case .Replacement: receivers.receive(.Replaced(indices: indices!, old: old as! NSArray, new: new as! NSArray))
@@ -98,7 +98,7 @@ extension NSObject {
     /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// :returns: a channel backed by the KVO property that will receive OrderedSetChange items for mutations
-    public func channelZKeyOrderedSet(@autoclosure accessor: ()->NSOrderedSet, keyPath: String? = nil)->Channel<NSObject, OrderedSetChange> {
+    public func channelZKeyOrderedSet(@autoclosure accessor: ()->NSOrderedSet?, keyPath: String? = nil)->Channel<NSObject, OrderedSetChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
         var receivers = ReceiverList<OrderedSetChange>()
 
@@ -112,7 +112,7 @@ extension NSObject {
                 let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
 
                 switch kind {
-                case .Setting: receivers.receive(.Assigned(new as! NSOrderedSet))
+                case .Setting: receivers.receive(.Assigned(new as? NSOrderedSet))
                 case .Insertion: receivers.receive(.Added(indices: indices!, new: new as! NSArray))
                 case .Removal: receivers.receive(.Removed(indices: indices!, old: old as! NSArray))
                 case .Replacement: receivers.receive(.Replaced(indices: indices!, old: old as! NSArray, new: new as! NSArray))
@@ -133,7 +133,7 @@ extension NSObject {
     /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// :returns: a channel backed by the KVO property that will receive SetChange items for mutations
-    public func channelZKeySet(@autoclosure accessor: ()->NSSet, keyPath: String? = nil)->Channel<NSObject, SetChange> {
+    public func channelZKeySet(@autoclosure accessor: ()->NSSet?, keyPath: String? = nil)->Channel<NSObject, SetChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
         var receivers = ReceiverList<SetChange>()
 
@@ -146,7 +146,7 @@ extension NSObject {
                 let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
 
                 switch kind {
-                case .Setting: receivers.receive(.Assigned(new as! NSSet))
+                case .Setting: receivers.receive(.Assigned(new as? NSSet))
                 case .Insertion: receivers.receive(.Added(new as! NSSet))
                 case .Removal: receivers.receive(.Removed(old as! NSSet))
                 case .Replacement: fatalError("should never happen")
@@ -164,7 +164,7 @@ extension NSObject {
 
 /// Change type for `channelZKeyArray`
 public enum ArrayChange {
-    case Assigned(NSArray)
+    case Assigned(NSArray?)
     case Added(indices: NSIndexSet, new: NSArray)
     case Removed(indices: NSIndexSet, old: NSArray)
     case Replaced(indices: NSIndexSet, old: NSArray, new: NSArray)
@@ -172,7 +172,7 @@ public enum ArrayChange {
 
 /// Change type for `channelZKeyOrderedSet`
 public enum OrderedSetChange {
-    case Assigned(NSOrderedSet)
+    case Assigned(NSOrderedSet?)
     case Added(indices: NSIndexSet, new: NSArray)
     case Removed(indices: NSIndexSet, old: NSArray)
     case Replaced(indices: NSIndexSet, old: NSArray, new: NSArray)
@@ -180,7 +180,7 @@ public enum OrderedSetChange {
 
 /// Change type for `channelZKeySet`
 public enum SetChange {
-    case Assigned(NSSet)
+    case Assigned(NSSet?)
     case Added(NSSet)
     case Removed(NSSet)
 }
@@ -480,40 +480,6 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
     public var ChannelZKeyValueObserverCount = 0
 #endif
 
-
-//final class TargetAssociatedObserver {
-//    let identifier: Int
-//    let keyPath: String?
-//    let notificationName: String?
-//    weak var target: NSObject?
-//
-//    init(target: NSObject, keyPath: String, callback: ([NSObject : AnyObject])->()) {
-//        self.target = target
-//        let map = TargetObserverRegister.get(target)
-//        self.identifier = map.addObserver(keyPath, handler: callback)
-//        self.keyPath = keyPath
-//    }
-//
-//    init(target: NSObject, notificationName: String, callback: ([NSObject : AnyObject])->()) {
-//        self.target = target
-//        let map = TargetObserverRegister.get(target)
-//        self.identifier = map.addNotification(notificationName, handler: callback)
-//        self.notificationName = notificationName
-//    }
-//
-//    func unsubscribe() {
-//        if let target = target {
-//            let map = TargetObserverRegister.get(target)
-//            if let keyPath = keyPath {
-//                map.removeObserver(keyPath, identifier: identifier)
-//            } else if let notificationName = notificationName {
-//                map.removeNotification(notificationName, identifier: identifier)
-//            }
-//
-//            self.target = nil // manually clear the target so we don't unsubscribe twice
-//        }
-//    }
-//}
 
 /// An observer register that is stored as an associated object in the target and is automatically removed when the target is deallocated; can be with either KVO or NSNotificationCenter depending on the constructor arguments
 @objc final class TargetObserverRegister : NSObject {
@@ -845,116 +811,6 @@ private func coerceCocoaType<SourceType>(ob: AnyObject?) -> SourceType? {
 //    println("failed to coerce value «\(ob)» of type \(ob?.dynamicType) into \(SourceType.self)")
     return nil
 }
-
-
-
-
-///// A Observable for events of a custom type
-//public struct EventObservable<T>: ObservableType {
-//    public typealias Element = T
-//    internal var dispatchTarget: NSObject? // object to be retained for as long as someone holds the EventObservable
-//    internal var subscriptions = ReceptorList<Element>()
-//
-//    public init(_ dispatchTarget: NSObject?) {
-//        self.dispatchTarget = dispatchTarget
-//    }
-//
-//    /// subscribes a subscription to receive change notifications from the state pipeline
-//    ///
-//    /// :param: subscription      the subscription closure to which state will be sent
-//    public func subscribe(subscription: (Element)->())->Receptor {
-//        let index = subscriptions.addReceptor(subscription)
-//        return ReceptorOf(requester: { }, unsubscriber: { self.subscriptions.removeReceptor(index) })
-//    }
-//
-//    // Boilerplate observable/filter/map
-//    private typealias SelfObservable = EventObservable
-//    public func observable() -> Observable<Element> { return Observable(self) }
-//    public func filter(predicate: (Element)->Bool)->Observable<Element> { return filterObservable(self)(predicate) }
-//    public func map<TransformedType>(transform: (Element)->TransformedType)->Observable<TransformedType> { return mapObservable(self)(transform).observable() }
-//}
-//
-//
-///// A Observable for NSNotificationCenter events
-//public struct NotificationObservable: ObservableType {
-//    private weak var target: NSObject?
-//    private let name: String
-//
-//    public typealias Element = [NSObject : AnyObject]
-//
-//    private init(target: NSObject, name: String) {
-//        self.target = target
-//        self.name = name
-//    }
-//
-//    /// subscribes a subscription to receive change notifications from the state pipeline
-//    ///
-//    /// :param: subscription      the subscription closure to which state will be sent
-//    public func subscribe(subscription: ([NSObject : AnyObject])->())->Receptor {
-//        if let target = target {
-//            let sub = NotificationObserver(observee: target, name: name, handler: { subscription($0) })
-//            return ReceptorOf(subscription: sub)
-//        } else {
-//            NSLog("ChannelZ warning: attempt to subscribe to a deallocated target notification «\(name)»; channels do not retain their targets")
-//            let sub = DeallocatedTargetReceptor()
-//            return ReceptorOf(subscription: sub)
-//        }
-//    }
-//
-//
-//    // Boilerplate observable/filter/map
-//    public typealias SelfObservable = NotificationObservable
-//    public func observable() -> Observable<Element> { return Observable(self) }
-//    public func filter(predicate: (Element)->Bool)->Observable<Element> { return filterObservable(self)(predicate) }
-//    public func map<TransformedType>(transform: (Element)->TransformedType)->Observable<TransformedType> { return mapObservable(self)(transform).observable() }
-//}
-//
-//#if DEBUG_CHANNELZ
-//    /// Track how many observers we have created and released; useful for ensuring that subscriptions correctly clean up
-//    public var ChannelZNotificationObserverCount = 0
-//#endif
-//
-///// Observer for NSNotification changes
-//public struct NotificationObserver: Receptor {
-//    private weak var observer : TargetAssociatedObserver?
-//
-//    init(observee: NSObject, name: String, handler: ([NSObject : AnyObject])->(Void)) {
-//        self.observer = TargetAssociatedObserver(target: observee, notificationName: name, callback: { (userInfo: [NSObject : AnyObject]) -> () in
-//            handler(userInfo)
-//        })
-//    }
-//
-//    public func unsubscribe() {
-//        self.observer?.unsubscribe()
-//    }
-//
-//    public func request() {
-//        // notification observables are read-only
-//    }
-//
-//}
-//
-///// Adapter for the ReactiveX pattern of completion handlers accepting a set of next/error/completed values
-//public enum NextErrorCompleted<T> {
-//    case Next(BoxOf<T>)
-//    case Error(NSError)
-//    case Completed
-//}
-//
-///// A boxed value used by `NextErrorCompleted`; it is an implementation detail to get around a swift compiler limitation
-//public class BoxOf<T> {
-//    public let value: T
-//    public init(_ value: T) { self.value = value }
-//}
-//
-///// Creates a Observable on NSNotificationCenter
-//private func observableNotification(target: NSObject, name: String)->NotificationObservable {
-//    return NotificationObservable(target: target, name: name)
-//}
-//
-//public func observable(target: NSObject, name: String)->NotificationObservable {
-//    return observableNotification(target, name)
-//}
 
 /// Extension for listening to notifications of a given type
 extension NSObject {
