@@ -681,38 +681,37 @@ private func conjectKeypath<T>(target: NSObject, @autoclosure accessor: ()->T, r
             free(ronly)
 
             if let propName = propName {
-                if let propSelName = getterName ?? propName {
-                    // println("instrumenting \(NSStringFromClass(propclass)).\(propSelName) (prop=\(propName) getter=\(getterName) readonly=\(readonly))")
-                    let propSel = Selector(propSelName)
+                let propSelName = getterName ?? propName
+                
+                // println("instrumenting \(NSStringFromClass(propclass)).\(propSelName) (prop=\(propName) getter=\(getterName) readonly=\(readonly))")
+                let propSel = Selector(propSelName)
 
-                    let method = class_getInstanceMethod(propclass, propSel)
-                    if method == nil { continue }
+                let method = class_getInstanceMethod(propclass, propSel)
+                if method == nil { continue }
 
-                    if class_getInstanceMethod(nsobjectclass, propSel) != nil { continue }
+                if class_getInstanceMethod(nsobjectclass, propSel) != nil { continue }
 
-                    let typeEncoding = method_getTypeEncoding(method)
-                    if typeEncoding == nil { continue }
+                let typeEncoding = method_getTypeEncoding(method)
+                if typeEncoding == nil { continue }
 
-                    let returnTypePtr = method_copyReturnType(method)
-                    let returnType = String.fromCString(returnTypePtr) ?? "@"
-                    free(returnTypePtr)
+                let returnTypePtr = method_copyReturnType(method)
+                let returnType = String.fromCString(returnTypePtr) ?? "@"
+                free(returnTypePtr)
 
-                    let propBlock : @objc_block (AnyObject) -> AnyObject? = { (sself : AnyObject) -> (AnyObject?) in
-                        // add the name of the property that was accessed; read-only properties tend to use their getterName as the key path (e.g., NSOperation.isFinished)
-                        let keyName = readonly && getterName != nil ? getterName! : propName
-                        keyPath = keyName // remember the keyPath for later
-                        object_setClass(target, origclass) // immediately swap the isa back to the original
-                        return target.valueForKey(keyName) // and defer the invocation to the discovered keyPath (throwing a helpful exception is we are wrong)
-                    }
-
-                    let propSelIMP = imp_implementationWithBlock(unsafeBitCast(propBlock, AnyObject.self))
-                    if !class_addMethod(subclass, propSel, propSelIMP, typeEncoding) {
-                        // ignore errors; sometimes happens with UITextField.inputView or NSView.tag
-                        // println("could not add method implementation")
-                    }
-                    propSelIMPs += [propSelIMP]
-
+                let propBlock : @objc_block (AnyObject) -> AnyObject? = { (sself : AnyObject) -> (AnyObject?) in
+                    // add the name of the property that was accessed; read-only properties tend to use their getterName as the key path (e.g., NSOperation.isFinished)
+                    let keyName = readonly && getterName != nil ? getterName! : propName
+                    keyPath = keyName // remember the keyPath for later
+                    object_setClass(target, origclass) // immediately swap the isa back to the original
+                    return target.valueForKey(keyName) // and defer the invocation to the discovered keyPath (throwing a helpful exception is we are wrong)
                 }
+
+                let propSelIMP = imp_implementationWithBlock(unsafeBitCast(propBlock, AnyObject.self))
+                if !class_addMethod(subclass, propSel, propSelIMP, typeEncoding) {
+                    // ignore errors; sometimes happens with UITextField.inputView or NSView.tag
+                    // println("could not add method implementation")
+                }
+                propSelIMPs += [propSelIMP]
             }
         }
 

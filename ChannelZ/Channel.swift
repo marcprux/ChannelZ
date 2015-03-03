@@ -176,7 +176,7 @@ public extension Channel {
     /// :param: clearAfterEmission if true (the default), the accumulated value will be cleared after each emission
     ///
     /// :returns: A stateful Channel that buffers its accumulated items until the terminator predicate passes
-    public func reduce<U>(initial: U, combine: (U, T)->U, isTerminator: (U, T)->Bool, includeTerminators: Bool = true, clearAfterEmission: Bool = true)->Channel<S, U> {
+    public func reduce<U>(initial: U, includeTerminators: Bool = true, clearAfterEmission: Bool = true, isTerminator: (U, T)->Bool, combine: (U, T)->U)->Channel<S, U> {
         var accumulation = initial
         return lift { receive in { item in
             if isTerminator(accumulation, item) {
@@ -200,7 +200,7 @@ public extension Channel {
         // note: a more optimized version of this could append to a single buffer with capacity set the count
         // similar to how Java 8 streams implement their "mutable reduction operation" collect() method
         // http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html#MutableReduction
-        return reduce([], combine: { b,x in b + [x] }, isTerminator: { b,x in b.count >= count-1 })
+        return reduce([], isTerminator: { b,x in b.count >= count-1 }, combine: { b,x in b + [x] })
     }
 
     /// Adds a channel phase that will cease sending items once the terminator predicate is satisfied.
@@ -230,6 +230,7 @@ public extension Channel {
             return receipt
         }
     }
+
 }
 
 /// MARK: Muti-Channel combination operations
@@ -523,4 +524,24 @@ public struct StateOf<T>: StateSink, StateSource {
     }
 }
 
+
+// FIXME: this should be in Dispatch.swift, but it doesn't get linked in if it is not in the Channel.swift source file
+import Dispatch
+
+public extension Channel {
+    /// Instructs the observable to aggregate all pulses within a certain interval and send them as a single pulse
+    public func throttle(interval: Double, queue: dispatch_queue_t)->Channel<S, [T]> {
+        let delay = Int64(interval * Double(NSEC_PER_SEC))
+        let now: ()->dispatch_time_t = { dispatch_time(DISPATCH_TIME_NOW, 0) }
+        var lastPulse: dispatch_time_t?
+        let dispatched = dispatch(queue, time: dispatch_time(now(), delay)).reduce([], isTerminator: { _ in
+            // terminate the reducation when we receive a pulse outside the window
+            if lastPulse == nil { lastPulse = now(); return false }
+            else if now() < dispatch_time(lastPulse!, delay) { return false }
+            else { lastPulse = nil; return true }
+        }, combine: { b,x in b + [x] })
+
+        return dispatched
+    }
+}
 

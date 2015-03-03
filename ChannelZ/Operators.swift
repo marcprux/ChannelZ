@@ -77,7 +77,7 @@ public prefix func ∞= <S: StateSource, T: Equatable where S.Element == T>(sour
 protocol OptionalStateElement {
     typealias WrappedType
     var unwrap: WrappedType? { get }
-    func map<U>(f: (WrappedType) -> U) -> U?
+//    func map<U>(f: (WrappedType) -> U) -> U?
 }
 
 extension Optional: OptionalStateElement {
@@ -136,7 +136,7 @@ infix operator ∞=> { }
 /// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
 /// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
 /// This is the operator form of `channel`
-public func <=∞=> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1, T1: Equatable, T2: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
+public func <=∞=> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
 infix operator <=∞=> { }
 
 

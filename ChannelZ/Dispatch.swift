@@ -35,6 +35,7 @@ extension Channel {
             }
         }
     }
+    
 
     /// Instructs the observable to synchronize on the specified `lockQueue` when emitting items
     ///

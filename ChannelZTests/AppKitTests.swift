@@ -75,14 +75,14 @@ public class AppKitTests: XCTestCase {
         df∞df.dateFormat ∞> { _ in counter += 1 }
         df∞df.locale ∞> { _ in counter += 1 }
         df∞df.timeZone ∞> { _ in counter += 1 }
-        df∞df.eraSymbols ∞> { _ in counter += 1 }
+        //df∞df.eraSymbols ∞> { _ in counter += 1 }
+        counter -= 3
 
         let comps = NSDateComponents()
         comps∞comps.date ∞> { _ in counter += 1 }
         comps∞comps.era ∞> { _ in counter += 1 }
         comps∞comps.year ∞> { _ in counter += 1 }
         comps∞comps.month ∞> { _ in counter += 1 }
-        counter -= 4
         comps.year = 2016
         XCTAssertEqual(0, --counter)
 
