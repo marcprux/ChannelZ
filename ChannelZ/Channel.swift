@@ -166,28 +166,25 @@ public extension Channel {
         return map({ (index++, $0) })
     }
 
-    /// Adds a channel phase that aggregates items with the given combine function and then
-    /// emits the items when the terminator predicate is satisified.
+    /// Adds a channel phase with the result of repeatedly calling `combine` with an accumulated value 
+    /// initialized to `initial` and each element of `self`, in turn
     ///
     /// :param: initial the initial accumulated value
-    /// :param: combine the combinator function to call with the accumulated value
-    /// :param: isTerminator the predicate that signifies whether an item should cause the accumulated value to be emitted and cleared
-    /// :param: includeTerminators if true (the default), then terminator items will be included in the accumulation
-    /// :param: clearAfterEmission if true (the default), the accumulated value will be cleared after each emission
-    ///
-    /// :returns: A stateful Channel that buffers its accumulated items until the terminator predicate passes
-    public func reduce<U>(initial: U, includeTerminators: Bool = true, clearAfterEmission: Bool = true, isTerminator: (U, T)->Bool, combine: (U, T)->U)->Channel<S, U> {
+    /// :param: combine the accumulator function that will return the accumulation; the final funcation tuple
+    ///         element should be called ad a side-effect to cause the accumulation to be pulsed
+    public func reduce<U>(initial: U, combine: (U, T, U->Void)->U)->Channel<S, U> {
         var accumulation = initial
-        return lift { receive in { item in
-            if isTerminator(accumulation, item) {
-                if includeTerminators { accumulation = combine(accumulation, item) }
-                receive(accumulation)
-                if clearAfterEmission { accumulation = initial }
-            } else {
-                accumulation = combine(accumulation, item)
-            }
-            }
-        }
+        return lift { receive in { item in accumulation = combine(accumulation, item, receive) } }
+    }
+
+    /// Accumulate the given items into an array until the given predicate is satisifed, and
+    /// then flush all the elements of the array.
+    ///
+    /// :param: predicate that will cause the accumulated elements to be pulsed
+    ///
+    /// :returns: A stateful Channel that maintains an accumulation of elements
+    public func accumulate(predicate: ([T], T)->Bool)->Channel<S, [T]> {
+        return reduce([]) { a, x, f in predicate(a, x) ? { f(a+[x]); return [] }() : a+[x] }
     }
 
     /// Adds a channel phase that buffers emitted items such that the receiver will
@@ -200,7 +197,31 @@ public extension Channel {
         // note: a more optimized version of this could append to a single buffer with capacity set the count
         // similar to how Java 8 streams implement their "mutable reduction operation" collect() method
         // http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html#MutableReduction
-        return reduce([], isTerminator: { b,x in b.count >= count-1 }, combine: { b,x in b + [x] })
+        return accumulate { a, x in a.count >= count-1 }
+    }
+
+    /// Adds a channel phase that aggregates items with the given combine function and then
+    /// emits the items when the partition predicate is satisified.
+    ///
+    /// :param: initial the initial accumulated value
+    /// :param: combine the combinator function to call with the accumulated value
+    /// :param: isPartition the predicate that signifies whether an item should cause the accumulated value to be emitted and cleared
+    /// :param: withPartitions if true (the default), then terminator items will be included in the accumulation
+    /// :param: clearAfterPulse if true (the default), the accumulated value will be cleared after each pulse
+    ///
+    /// :returns: A stateful Channel that buffers its accumulated items until the terminator predicate passes
+    public func partition<U>(initial: U, withPartitions: Bool = true, clearAfterPulse: Bool = true, isPartition: (U, T)->Bool, combine: (U, T)->U)->Channel<S, U> {
+        return reduce(initial) { (var accumulation, item, receive) in
+            if isPartition(accumulation, item) {
+                if withPartitions { accumulation = combine(accumulation, item) }
+                receive(accumulation)
+                if clearAfterPulse { accumulation = initial }
+            } else {
+                accumulation = combine(accumulation, item)
+            }
+
+            return accumulation
+        }
     }
 
     /// Adds a channel phase that will cease sending items once the terminator predicate is satisfied.
@@ -529,19 +550,42 @@ public struct StateOf<T>: StateSink, StateSource {
 import Dispatch
 
 public extension Channel {
-    /// Instructs the observable to aggregate all pulses within a certain interval and send them as a single pulse
-    public func throttle(interval: Double, queue: dispatch_queue_t)->Channel<S, [T]> {
-        let delay = Int64(interval * Double(NSEC_PER_SEC))
-        let now: ()->dispatch_time_t = { dispatch_time(DISPATCH_TIME_NOW, 0) }
-        var lastPulse: dispatch_time_t?
-        let dispatched = dispatch(queue, time: dispatch_time(now(), delay)).reduce([], isTerminator: { _ in
-            // terminate the reducation when we receive a pulse outside the window
-            if lastPulse == nil { lastPulse = now(); return false }
-            else if now() < dispatch_time(lastPulse!, delay) { return false }
-            else { lastPulse = nil; return true }
-        }, combine: { b,x in b + [x] })
 
-        return dispatched
+    /// Adds a phase that aggregates all items into an array and only pulse the aggregated array once the
+    /// specified timespan has passed without it receiving another item. In ReativeX parlance, this is known as `debounce`.
+    ///
+    /// :param: interval the number of seconds to wait the determine if the aggregation should be pulsed
+    /// :queue: the queue on which to dispatch the pulses
+    /// :bgq: the serial queue on which the perform event aggregation, defaulting to a shared global serial default queue
+    public func throttle(interval: Double, queue: dispatch_queue_t, bgq: dispatch_queue_t = channelZSharedSyncQueue)->Channel<S, [T]> {
+        var pending: Int64 = 0 // the number of outstanding dispatches
+        return map({ x in OSAtomicIncrement64(&pending); return x }).dispatch(bgq, delay: interval).accumulate { _ in OSAtomicDecrement64(&pending) <= 0 }.dispatch(queue)
     }
-}
 
+    /// Adds a phase that coalesces all items into an array and only pulses the aggregated array once the
+    /// specified timespan has passed
+    ///
+    /// :param: interval the number of seconds to wait the determine if the aggregation should be pulsed
+    /// :queue: the queue on which to dispatch the pulses
+    /// :bgq: the serial queue on which the perform event aggregation, defaulting to a shared global serial default queue
+    public func coalesce(interval: Double, queue: dispatch_queue_t, bgq: dispatch_queue_t = channelZSharedSyncQueue)->Channel<S, [T]> {
+        let future: (Int64)->dispatch_time_t = { dispatch_time(DISPATCH_TIME_NOW, $0) }
+        let delay = Int64(interval * Double(NSEC_PER_SEC))
+        var nextPulse = future(delay)
+
+        return dispatch(bgq, delay: interval)
+            .accumulate { _ in future(0) >= nextPulse ? { nextPulse = future(delay); return true }() : false }
+            .dispatch(queue)
+    }
+
+    /// Adds a phase that emits just the last element that was received within the given interval
+    ///
+    /// :param: interval the number of seconds to wait the determine if the aggregation should be pulsed
+    /// :queue: the queue on which to dispatch the pulses
+    /// :bgq: the serial queue on which the perform event aggregation, defaulting to a shared global serial default queue
+    public func sample(interval: Double, queue: dispatch_queue_t, bgq: dispatch_queue_t = channelZSharedSyncQueue)->Channel<S, T> {
+        // TODO: dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)()
+        return coalesce(interval, queue: queue, bgq: bgq).map({ $0.last }).filter({ $0 != nil }).map({ $0! })
+    }
+    
+}

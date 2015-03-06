@@ -383,7 +383,7 @@ public class ChannelTests: XCTestCase {
 
     func testReduceNumbers() {
         var numberz = (1...100).channelZ()
-        let bufferer = numberz.reduce(0, isTerminator: { b,x in x % 7 == 0 }, combine: +)
+        let bufferer = numberz.partition(0, isPartition: { b,x in x % 7 == 0 }, combine: +)
         let a1 = 1+2+3+4+5+6+7
         let a2 = 8+9+10+11+12+13+14
         XCTAssertEqual([a1, a2, 126, 175, 224, 273, 322, 371, 420, 469, 518, 567, 616, 665], bufferer.immediateItems)
@@ -400,10 +400,10 @@ public class ChannelTests: XCTestCase {
         func always<T>(_: T)->Bool { return true }
         
         var numberz = (1...10).channelZ()
-        let avg1 = numberz.map({ Double($0) }).enumerate().reduce(0, includeTerminators: true, clearAfterEmission: false, isTerminator: always, combine: runningAverage)
+        let avg1 = numberz.map({ Double($0) }).enumerate().partition(0, withPartitions: true, clearAfterPulse: false, isPartition: always, combine: runningAverage)
         XCTAssertEqual([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5], avg1.immediateItems)
 
-        let avg2 = numberz.map({ Double($0 * 10) }).map(index()).reduce(0, includeTerminators: true, clearAfterEmission: false, isTerminator: always, combine: runningAverage)
+        let avg2 = numberz.map({ Double($0 * 10) }).map(index()).partition(0, withPartitions: true, clearAfterPulse: false, isPartition: always, combine: runningAverage)
         XCTAssertEqual([10, 15, 20, 25, 30, 35, 40, 45, 50, 55], avg2.immediateItems)
 
     }
@@ -412,7 +412,7 @@ public class ChannelTests: XCTestCase {
         func isSpace(buf: String, str: String)->Bool { return str == " " }
         let characters = map("this is a pretty good string!", { String($0) })
         var characterz = characters.channelZ()
-        let reductor = characterz.reduce("", includeTerminators: false, isTerminator: isSpace, combine: +)
+        let reductor = characterz.partition("", withPartitions: false, isPartition: isSpace, combine: +)
         XCTAssertEqual(["this", "is", "a", "pretty", "good"], reductor.immediateItems)
     }
 
@@ -1070,7 +1070,7 @@ public class ChannelTests: XCTestCase {
         var pulses = 0
         let interval = 0.1
         let when = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
-        let receiver = channel.dispatch(dispatch_get_main_queue(), time: when).receive { void in
+        let receiver = channel.dispatch(dispatch_get_main_queue(), delay: interval).receive { void in
             pulses++
             if pulses >= vcount { xpc?.fulfill() }
         }
