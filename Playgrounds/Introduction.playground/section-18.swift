@@ -15,10 +15,10 @@ slider∞slider.value <~∞~> vm.amount
 
 stepper.value += 25.0
 assert(slider.value == 25.0)
-assert(vm.amount.value == 25.0)
+assert(vm.amount.source.value == 25.0)
 
 slider.value += 30.0
 assert(stepper.value == 55.0)
-assert(vm.amount.value == 55.0)
+assert(vm.amount.source.value == 55.0)
 
 println("slider: \(slider.value) stepper: \(stepper.value)")

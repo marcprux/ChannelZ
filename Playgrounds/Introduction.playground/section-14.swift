@@ -12,7 +12,7 @@ let swsc = SwiftStringClass()
 (ojic∞ojic.intField).map({ "\($0)" }) <=∞=> (swsc.stringChannel).map({ $0.toInt() ?? 0 })
 
 ojic.intField += 55
-swsc.stringChannel.value // will be "55"
+swsc.stringChannel.source.value // will be "55"
 
-swsc.stringChannel.value = "89"
+swsc.stringChannel.source.value = "89"
 ojic.intField // will be 89

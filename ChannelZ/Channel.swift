@@ -8,12 +8,12 @@
 
 // MARK: Channel Basics
 
-/// A Channel is a passive multi-phase receiver of items of a given type. It is a push-based version
+/// A Channel is a passive multi-phase receiver of items of a given type: `pulses`. It is a push-based version
 /// of Swift's pull-based `Generator` type. Channels can add phases that transform, filter, merge
-/// and aggregate items that are passed through the channel. They are well-suited to handling
+/// and aggregate pulses that are passed through the channel. They are well-suited to handling
 /// asynchronous stream of events such as networking and UI interactions.
 ///
-/// To listen for items, call the `receive` function with a closure that accepts the Channel's element type.
+/// To listen for pulses, call the `receive` function with a closure that accepts the Channel's element type.
 /// This will return a `Receipt`, which can later be used to cancel reception.  A `Channel` can have multiple 
 /// receivers active, and receivers can be added to different phases of the Channel without interfering with each other.
 ///
@@ -40,7 +40,7 @@ public struct Channel<S, T> {
         self.reception = reception
     }
 
-    /// Adds the given receiver block to this Channel's source's list to receive the items emitted by the
+    /// Adds the given receiver block to this Channel's source's list to receive the pulses emitted by the
     /// source through the Channel's phases.
     ///
     /// :param: receiver the block to be executed whenever this Channel emits an item
@@ -64,7 +64,7 @@ public struct Channel<S, T> {
 
     /// Adds a receiver that will forward all values to the target `SinkType`
     ///
-    /// :param: Sink the sink that will accept all the items from the Channel
+    /// :param: Sink the sink that will accept all the pulses from the Channel
     ///
     /// :returns: A `Receipt` for the pipe
     public func pipe<S2: SinkType where S2.Element == T>(var sink: S2)->Receipt {
@@ -81,11 +81,11 @@ public struct Channel<S, T> {
         return Channel<S, U>(source: source) { receiver in self.receive(receptor(receiver)) }
     }
 
-    /// Adds a channel phase which only emits those items for which a given predicate holds.
+    /// Adds a channel phase which only emits those pulses for which a given predicate holds.
     ///
-    /// :param: predicate a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
+    /// :param: predicate a function that evaluates the pulses emitted by the source Channel, returning `true` if they pass the filter
     ///
-    /// :returns: A stateless Channel that emits only those items in the original Channel that the filter evaluates as `true`
+    /// :returns: A stateless Channel that emits only those pulses in the original Channel that the filter evaluates as `true`
     public func filter(predicate: T->Bool)->Channel<S, T> {
         return lift { receive in { item in if predicate(item) { receive(item) } } }
     }
@@ -94,7 +94,7 @@ public struct Channel<S, T> {
     ///
     /// :param: transform a function to apply to each item emitted by the Channel
     ///
-    /// :returns: A stateless Channel that emits the items from the source Channel, transformed by the given function
+    /// :returns: A stateless Channel that emits the pulses from the source Channel, transformed by the given function
     public func map<U>(transform: T->U)->Channel<S, U> {
         return lift { receive in { item in receive(transform(item)) } }
     }
@@ -103,8 +103,8 @@ public struct Channel<S, T> {
 /// MARK: Stateful Channel operations (accumulators, etc.)
 public extension Channel {
 
-    /// Adds a channel phase that drops any items that are immediately emitted upon a receiver being added but
-    /// passes any items that are emitted after the receiver is added.
+    /// Adds a channel phase that drops any pulses that are immediately emitted upon a receiver being added but
+    /// passes any pulses that are emitted after the receiver is added.
     /// In ReactiveX parlance, this convert this `observable` Channel from `cold` to `hot`
     ///
     /// :returns: A Channel that drops any elements that are emitted upon a receiver being added
@@ -132,16 +132,16 @@ public extension Channel {
         }
     }
 
-    /// Adds a channel phase that emits items only when the items pass the filter predicate against the most
+    /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
     /// recent emitted or passed item.
     ///
-    /// For example, to create a filter for distinct equatable items, you would do: `sieve(!=)`
+    /// For example, to create a filter for distinct equatable pulses, you would do: `sieve(!=)`
     ///
     /// **Note:** the most recent value will be retained by the Channel for as long as there are receivers
     ///
     /// :param: predicate a function that evaluates the current item against the previous item
     ///
-    /// :returns: A stateful Channel that emits the the items that pass the predicate
+    /// :returns: A stateful Channel that emits the the pulses that pass the predicate
     public func sieve(predicate: (previous: T, current: T)->Bool)->Channel<S, T> {
         let flt = { (t: (o: T?, n: T)) in t.o == nil || predicate(previous: t.o!, current: t.n) }
         return precedent().filter(flt).map({ $0.1 })
@@ -149,7 +149,7 @@ public extension Channel {
 
     /// Adds a channel phase that drops the first `count` elements.
     ///
-    /// :param: count the number of elements to skip before emitting items
+    /// :param: count the number of elements to skip before emitting pulses
     ///
     /// :returns: A stateful Channel that drops the first `count` elements.
     public func drop(count: Int)->Channel<S, T> {
@@ -177,7 +177,7 @@ public extension Channel {
         return lift { receive in { item in accumulation = combine(accumulation, item, receive) } }
     }
 
-    /// Accumulate the given items into an array until the given predicate is satisifed, and
+    /// Accumulate the given pulses into an array until the given predicate is satisifed, and
     /// then flush all the elements of the array.
     ///
     /// :param: predicate that will cause the accumulated elements to be pulsed
@@ -187,12 +187,12 @@ public extension Channel {
         return reduce([]) { a, x, f in predicate(a, x) ? { f(a+[x]); return [] }() : a+[x] }
     }
 
-    /// Adds a channel phase that buffers emitted items such that the receiver will
-    /// receive a array of the buffered items
+    /// Adds a channel phase that buffers emitted pulses such that the receiver will
+    /// receive a array of the buffered pulses
     ///
     /// :param: count the size of the buffer
     ///
-    /// :returns: A stateful Channel that buffers its items until it the buffer reaches `count`
+    /// :returns: A stateful Channel that buffers its pulses until it the buffer reaches `count`
     public func buffer(count: Int)->Channel<S, [T]> {
         // note: a more optimized version of this could append to a single buffer with capacity set the count
         // similar to how Java 8 streams implement their "mutable reduction operation" collect() method
@@ -200,16 +200,16 @@ public extension Channel {
         return accumulate { a, x in a.count >= count-1 }
     }
 
-    /// Adds a channel phase that aggregates items with the given combine function and then
-    /// emits the items when the partition predicate is satisified.
+    /// Adds a channel phase that aggregates pulses with the given combine function and then
+    /// emits the pulses when the partition predicate is satisified.
     ///
     /// :param: initial the initial accumulated value
     /// :param: combine the combinator function to call with the accumulated value
     /// :param: isPartition the predicate that signifies whether an item should cause the accumulated value to be emitted and cleared
-    /// :param: withPartitions if true (the default), then terminator items will be included in the accumulation
+    /// :param: withPartitions if true (the default), then terminator pulses will be included in the accumulation
     /// :param: clearAfterPulse if true (the default), the accumulated value will be cleared after each pulse
     ///
-    /// :returns: A stateful Channel that buffers its accumulated items until the terminator predicate passes
+    /// :returns: A stateful Channel that buffers its accumulated pulses until the terminator predicate passes
     public func partition<U>(initial: U, withPartitions: Bool = true, clearAfterPulse: Bool = true, isPartition: (U, T)->Bool, combine: (U, T)->U)->Channel<S, U> {
         return reduce(initial) { (var accumulation, item, receive) in
             if isPartition(accumulation, item) {
@@ -224,13 +224,14 @@ public extension Channel {
         }
     }
 
-    /// Adds a channel phase that will cease sending items once the terminator predicate is satisfied.
+    /// Adds a channel phase that will cease sending pulses once the terminator predicate is satisfied.
     ///
     /// :param: terminator A predicate function that will result in cancellation of all receipts when it evaluates to `true`
+    /// :param: includeFinal Whether to send the final pulse to receivers before terminating (defaults to `false`)
     /// :param: terminus An optional final sentinal closure that will be sent once after the `terminator` evaluates to `true`
     ///
-    /// :returns: A stateful Channel that emits items until the `terminator` evaluates to true
-    public func terminate(terminator: T->Bool, terminus: (()->T)? = nil)->Channel<S, T> {
+    /// :returns: A stateful Channel that emits pulses until the `terminator` evaluates to true
+    public func terminate(terminator: T->Bool, includeFinal: Bool = false, terminus: (()->T)? = nil)->Channel<S, T> {
         var receipts: [Receipt] = []
         var terminated = false
 
@@ -238,6 +239,10 @@ public extension Channel {
             var receipt = self.receive { item in
                 if terminated { return }
                 if terminator(item) {
+                    if includeFinal {
+                        receiver(item)
+                    }
+
                     terminated = true
                     if let terminus = terminus {
                         receiver(terminus())
@@ -252,6 +257,10 @@ public extension Channel {
         }
     }
 
+    /// Adds a channel phase that will terminate receipt after the given number of pulses have been received
+    public func take(var _ count: Int = 1)->Channel<S, T> {
+        return terminate({ _ in --count < 0 })
+    }
 }
 
 /// MARK: Muti-Channel combination operations
@@ -262,7 +271,7 @@ public extension Channel {
     ///
     /// Note that the predicate will be evaluated exactly twice for each emitted item
     ///
-    /// :param: predicate a function that evaluates the items emitted by the source Channel, returning `true` if they pass the filter
+    /// :param: predicate a function that evaluates the pulses emitted by the source Channel, returning `true` if they pass the filter
     ///
     /// :returns: A stateless Channel pair that passes elements depending on whether they pass or fail the predicate, respectively
     public func split(predicate: T->Bool)->(Channel<S, T>, Channel<S, T>) {
@@ -290,7 +299,7 @@ public extension Channel {
     ///
     /// :param: with a Channel to be merged
     ///
-    /// :returns: An stateless Channel that emits items from `self` and `with`
+    /// :returns: An stateless Channel that emits pulses from `self` and `with`
     public func merge<S2>(with: Channel<S2, T>)->Channel<(S, S2), T> {
         return Channel<(S, S2), T>(source: (self.source, with.source)) { f in
             return ReceiptOf(receipts: [self.receive(f), with.receive(f)])
@@ -403,7 +412,7 @@ public extension Channel {
     }
 }
 
-/// Flattens a Channel that emits Channels into a single Channel that emits the items emitted by
+/// Flattens a Channel that emits Channels into a single Channel that emits the pulses emitted by
 /// those Channels, without any transformation.
 /// Note: this operation does not retain the sub-sources, since it can merge a heterogeneously-sourced series of channels
 public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>)->Channel<(S1, [S2]), T> {
@@ -449,7 +458,7 @@ public func channelZSequence<S, T where S: SequenceType, S.Generator.Element == 
     var receivers = ReceiverList<T>()
     return Channel(source: from) { rcvr in
         for item in from { rcvr(item) }
-        return ReceiptOf() // cancelled receipt since it will never receive more items
+        return ReceiptOf() // cancelled receipt since it will never receive more pulses
     }
 }
 
@@ -458,7 +467,7 @@ public func channelZGenerator<S, T where S: GeneratorType, S.Element == T>(from:
     var receivers = ReceiverList<T>()
     return Channel(source: from) { rcvr in
         for item in GeneratorOf(from) { rcvr(item) }
-        return ReceiptOf() // cancelled receipt since it will never receive more items
+        return ReceiptOf() // cancelled receipt since it will never receive more pulses
     }
 }
 
@@ -467,7 +476,7 @@ public func channelZClosure<T>(from: ()->T?)->Channel<()->T?, T> {
     var receivers = ReceiverList<T>()
     return Channel(source: from) { rcvr in
         while let item = from() { rcvr(item) }
-        return ReceiptOf() // cancelled receipt since it will never receive more items
+        return ReceiptOf() // cancelled receipt since it will never receive more pulses
     }
 }
 
@@ -551,7 +560,7 @@ import Dispatch
 
 public extension Channel {
 
-    /// Adds a phase that aggregates all items into an array and only pulse the aggregated array once the
+    /// Adds a phase that aggregates all pulses into an array and only pulse the aggregated array once the
     /// specified timespan has passed without it receiving another item. In ReativeX parlance, this is known as `debounce`.
     ///
     /// :param: interval the number of seconds to wait the determine if the aggregation should be pulsed
@@ -562,7 +571,7 @@ public extension Channel {
         return map({ x in OSAtomicIncrement64(&pending); return x }).dispatch(bgq, delay: interval).accumulate { _ in OSAtomicDecrement64(&pending) <= 0 }.dispatch(queue)
     }
 
-    /// Adds a phase that coalesces all items into an array and only pulses the aggregated array once the
+    /// Adds a phase that coalesces all pulses into an array and only pulses the aggregated array once the
     /// specified timespan has passed
     ///
     /// :param: interval the number of seconds to wait the determine if the aggregation should be pulsed
