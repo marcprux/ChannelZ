@@ -297,6 +297,10 @@ public extension Channel {
         }
     }
 
+    public func concat(with: Channel<S, T>)->Channel<[S], (S, T)> {
+        return concatChannels([self, with])
+    }
+
     /// Adds a channel phase formed from this Channel and another Channel by combining
     /// corresponding elements in pairs.
     /// The number of receiver invocations of the resulting `Channel<(T, U)>`
@@ -400,6 +404,14 @@ public extension Channel {
     /// Adds a receiver that will retain a certain number of values
     public func trap(_ capacity: Int = 1) -> TrapReceipt<S, T> {
         return TrapReceipt(channel: self, capacity: capacity)
+    }
+}
+
+/// Concatinates multiple channels with the same source and element types into a single channel;
+/// note that the source is incuded in a tuple with the element in order to identify which source emitted the pulse
+public func concatChannels<S, T>(channels: [Channel<S, T>])->Channel<[S], (S, T)> {
+    return Channel<[S], (S, T)>(source: channels.map({ c in c.source })) { f in
+        return ReceiptOf(receipts: channels.map({ c in c.map({ e in (c.source, e) }).receive(f) }))
     }
 }
 

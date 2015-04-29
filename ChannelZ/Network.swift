@@ -33,7 +33,7 @@ public extension NSInputStream {
                     if readlen <= 0 {
                         break
                     } else {
-                        let slice: Slice<UInt8> = buffer[0..<readlen]
+                        let slice: ArraySlice<UInt8> = buffer[0..<readlen]
                         receivers.receive(.Data(Array(slice)))
                     }
                 }

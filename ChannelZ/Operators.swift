@@ -14,6 +14,11 @@ public func + <S1, S2, T>(lhs: Channel<S1, T>, rhs: Channel<S2, T>)->Channel<(S1
     return lhs.merge(rhs)
 }
 
+/// Channel concat operation for two channels of the same source and element types (operator form of `concat`)
+public func + <S, T>(lhs: Channel<S, T>, rhs: Channel<S, T>)->Channel<[S], (S, T)> {
+    return lhs.concat(rhs)
+}
+
 /// Operator for adding a receiver to the given channel
 public func ∞> <S, T>(lhs: Channel<S, T>, rhs: T->Void)->Receipt { return lhs.receive(rhs) }
 infix operator ∞> { }
