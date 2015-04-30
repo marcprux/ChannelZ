@@ -117,9 +117,6 @@ public class FoundationTests: XCTestCase {
 
         // XCTAssertEqual(test, false)
 
-        var sz: Int = 0
-        var iz: Int = 0
-        var dz: Int = 0
 
 
         #if DEBUG_CHANNELZ
@@ -127,6 +124,11 @@ public class FoundationTests: XCTestCase {
         #endif
 
         autoreleasepool {
+            // FIXME: crazy; if these are outsize the autoreleasepool, the increments fail
+            var sz: Int = 0
+            var iz: Int = 0
+            var dz: Int = 0
+
             let state = StatefulObject()
 
             state.channelZKey(state.int).sieve(!=).receive { _ in iz += 1 }
@@ -141,7 +143,6 @@ public class FoundationTests: XCTestCase {
 
             state.channelZKey(state.dbl).sieve(!=).receive { _ in dz += 1 }
 
-            return; // FIXME: not working in Swift 1.2
 
             assertChanges(iz, state.int += 1)
             assertRemains(iz, state.int = state.int + 0)
@@ -441,11 +442,10 @@ public class FoundationTests: XCTestCase {
             XCTAssertEqual(0, changes)
         }
 
-        return; // FIXME: not working in Swift 1.2
-
-
-        assertChanges(changes, c ∞= ("A")) // unretained subscription should still listen
-        assertChanges(changes, c ∞= ("")) // unretained subscription should still listen
+        // FIXME: not working in Swift 1.2; receiver block is called, but changes outside of autorelease block isn't updated
+//        assertChanges(changes, c ∞= ("A")) // unretained subscription should still listen
+//        assertChanges(changes, c ∞= ("")) // unretained subscription should still listen
+        
         XCTAssertNotNil(state) // need to retain so it doesn't get cleaned up
     }
 

@@ -443,7 +443,7 @@ public class ChannelTests: XCTestCase {
 
         let fnamez = person.fname.sieve(!=).subsequent() + person.lname.sieve(!=).subsequent()
         var names: [String] = []
-        let rcpt = fnamez.receive { names += [$0] }
+        let rcpt = fnamez.receive { names += [$0.1] }
 
         person.fname.source.put("Marc")
         person.lname ∞= "Prud'hommeaux"
