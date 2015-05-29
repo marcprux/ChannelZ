@@ -1,6 +1,7 @@
+osx_image: beta-xcode6.3
 language: objective-c
 xcode_project: ChannelZ.xcodeproj
 xcode_scheme: ChannelZ
-xcode_sdk: iphonesimulator8.1
+xcode_sdk: iphonesimulator8.3
 # script: xctool -project ChannelZ.xcodeproj -scheme ChannelZ -sdk iphonesimulator -destination platform='iOS Simulator',name='iPad Retina',OS='8.1' clean test
 script: xcodebuild test -project ChannelZ.xcodeproj -scheme ChannelZ -sdk iphonesimulator ONLY_ACTIVE_ARCH=NO
