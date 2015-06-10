@@ -11,14 +11,14 @@ import ChannelZ
 import CoreData
 import ObjectiveC
 
-func assertChanges<T where T: Equatable>(@autoclosure check: ()->T, @autoclosure code: ()->(Any), file: String = __FILE__, line: UInt = __LINE__) {
+func assertChanges<T where T: Equatable>(@autoclosure check: ()->T, @autoclosure _ code: ()->(Any), file: String = __FILE__, line: UInt = __LINE__) {
     let start = check()
     code()
     let end = check()
     XCTAssertNotEqual(start, end, "assertChanges failure", file: file, line: line)
 }
 
-func assertRemains<T where T: Equatable>(@autoclosure check: ()->T, @autoclosure code:  ()->(Any), file: String = __FILE__, line: UInt = __LINE__) {
+func assertRemains<T where T: Equatable>(@autoclosure check: ()->T, @autoclosure _ code:  ()->(Any), file: String = __FILE__, line: UInt = __LINE__) {
     let start = check()
     code()
     let end = check()
@@ -209,13 +209,14 @@ public class FoundationTests: XCTestCase {
         var strlen = 0
 
         let sv = channelZProperty("X")
-        sv.filter({ _ in true }).map(count)
-        sv.filter({ _ in true }).map(count)
-        sv.map(count)
+
+        sv.filter({ _ in true }).map({ $0.utf8.count })
+        sv.filter({ _ in true }).map({ $0.utf8.count })
+        sv.map({ $0.utf8.count })
 
         var observedBool = ∞=false=∞
 
-        var a = sv.filter({ _ in true }).map(count).filter({ $0 % 2 == 1 })
+        var a = sv.filter({ _ in true }).map({ $0.utf8.count }).filter({ $0 % 2 == 1 })
         var aa = a.receive { strlen = $0 }
 
         a ∞= "AAA"
@@ -246,7 +247,7 @@ public class FoundationTests: XCTestCase {
         x.receive { _ in changeCount += 0.5 }
 
         let xfm = x.map( { String($0) })
-        let xfma = xfm.receive { s in changeLog += (count(changeLog) > 0 ? ", " : "") + s } // create a string log of all the changes
+        let xfma = xfm.receive { s in changeLog += (changeLog.isEmpty ? "" : ", ") + s } // create a string log of all the changes
 
 
         XCTAssertEqual(0, changeCount)
@@ -581,7 +582,7 @@ public class FoundationTests: XCTestCase {
 //        num ∞> { num in strProxy ∞= "\(num)" }
 //        strProxy ∞> { str in num ∞= Int((str as NSString).intValue) }
 
-        let num_strProxy = (num, { "\($0)" }) <~∞~> (strProxy, { $0?.toInt() })
+        let num_strProxy = (num, { "\($0)" }) <~∞~> (strProxy, { $0.flatMap { Int($0) } })
 
         let strProxy_dictProxy = (strProxy, { $0 }) <~∞~> (dictProxy, { $0 as? String? })
 
@@ -1134,112 +1135,114 @@ public class FoundationTests: XCTestCase {
     /// Demonstrates using bindings with Core Data
     func testManagedObjectContext() {
         autoreleasepool {
-            var error: NSError?
+            do {
+                let attrName = NSAttributeDescription()
+                attrName.name = "fullName"
+                attrName.attributeType = .StringAttributeType
+                attrName.defaultValue = "John Doe"
+                attrName.optional = true
 
-            let attrName = NSAttributeDescription()
-            attrName.name = "fullName"
-            attrName.attributeType = .StringAttributeType
-            attrName.defaultValue = "John Doe"
-            attrName.optional = true
+                let attrAge = NSAttributeDescription()
+                attrAge.name = "age"
+                attrAge.attributeType = .Integer16AttributeType
+                attrAge.optional = false
 
-            let attrAge = NSAttributeDescription()
-            attrAge.name = "age"
-            attrAge.attributeType = .Integer16AttributeType
-            attrAge.optional = false
+                let personEntity = NSEntityDescription()
+                personEntity.name = "Person"
+                personEntity.properties = [attrName, attrAge]
+                personEntity.managedObjectClassName = NSStringFromClass(CoreDataPerson.self)
 
-            let personEntity = NSEntityDescription()
-            personEntity.name = "Person"
-            personEntity.properties = [attrName, attrAge]
-            personEntity.managedObjectClassName = NSStringFromClass(CoreDataPerson.self)
+                let model = NSManagedObjectModel()
+                model.entities = [personEntity]
 
-            let model = NSManagedObjectModel()
-            model.entities = [personEntity]
+                let psc = NSPersistentStoreCoordinator(managedObjectModel: model)
+                let store = try psc.addPersistentStoreWithType(NSInMemoryStoreType, configuration: nil, URL: nil, options: nil)
 
-            let psc = NSPersistentStoreCoordinator(managedObjectModel: model)
-            let store = psc.addPersistentStoreWithType(NSInMemoryStoreType, configuration: nil, URL: nil, options: nil, error: &error)
+                let ctx = NSManagedObjectContext(concurrencyType: NSManagedObjectContextConcurrencyType.MainQueueConcurrencyType)
+                ctx.persistentStoreCoordinator = psc
 
-            let ctx = NSManagedObjectContext(concurrencyType: NSManagedObjectContextConcurrencyType.MainQueueConcurrencyType)
-            ctx.persistentStoreCoordinator = psc
+                var saveCount = 0
+                let saveCountReceiver = ctx.channelZNotification(NSManagedObjectContextDidSaveNotification).receive { _ in saveCount = saveCount + 1 }
 
-            var saveCount = 0
-            let saveCountReceiver = ctx.channelZNotification(NSManagedObjectContextDidSaveNotification).receive { _ in saveCount = saveCount + 1 }
+                var inserted = 0
+                ctx.channelZProcessedInserts().receive { inserted = $0.count }
 
-            var inserted = 0
-            ctx.channelZProcessedInserts().receive { inserted = $0.count }
+                var updated = 0
+                ctx.channelZProcessedUpdates().receive { updated = $0.count }
 
-            var updated = 0
-            ctx.channelZProcessedUpdates().receive { updated = $0.count }
+                var deleted = 0
+                ctx.channelZProcessedDeletes().receive { deleted = $0.count }
 
-            var deleted = 0
-            ctx.channelZProcessedDeletes().receive { deleted = $0.count }
+                var refreshed = 0
+                ctx.channelZProcessedRefreshes().receive { refreshed = $0.count }
 
-            var refreshed = 0
-            ctx.channelZProcessedRefreshes().receive { refreshed = $0.count }
-
-            var invalidated = 0
-            ctx.channelZProcessedInvalidates().receive { invalidated = $0.count }
+                var invalidated = 0
+                ctx.channelZProcessedInvalidates().receive { invalidated = $0.count }
 
 
-            XCTAssertNil(error)
 
-            let ob = NSManagedObject(entity: personEntity, insertIntoManagedObjectContext: ctx)
 
-            // make sure we really created our managed object subclass
-            XCTAssertEqual("ChannelZTests.CoreDataPerson_Person_", NSStringFromClass(ob.dynamicType))
-            let person = ob as! CoreDataPerson
+                let ob = NSManagedObject(entity: personEntity, insertIntoManagedObjectContext: ctx)
 
-            var ageChanges = 0, nameChanges = 0
-            // sadly, automatic keypath identification doesn't yet work for NSManagedObject subclasses
-//            person∞person.age ∞> { _ in ageChanges += 1 }
-//            person∞person.fullName ∞> { _ in nameChanges += 1 }
+                // make sure we really created our managed object subclass
+                XCTAssertEqual("ChannelZTests.CoreDataPerson_Person_", NSStringFromClass(ob.dynamicType))
+                let person = ob as! CoreDataPerson
 
-            // @NSManaged fields can secretly be nil
-            person.channelZKey(person.age as Int16?, keyPath: "age") ∞> { _ in ageChanges += 1 }
-            person.channelZKey(person.fullName, keyPath: "fullName") ∞> { _ in nameChanges += 1 }
+                var ageChanges = 0, nameChanges = 0
+                // sadly, automatic keypath identification doesn't yet work for NSManagedObject subclasses
+    //            person∞person.age ∞> { _ in ageChanges += 1 }
+    //            person∞person.fullName ∞> { _ in nameChanges += 1 }
 
-            person.fullName = "Edward Norton"
+                // @NSManaged fields can secretly be nil
+                person.channelZKey(person.age as Int16?, keyPath: "age") ∞> { _ in ageChanges += 1 }
+                person.channelZKey(person.fullName, keyPath: "fullName") ∞> { _ in nameChanges += 1 }
 
-            // “CoreData: error: Property 'setAge:' is a scalar type on class 'ChannelTests.CoreDataPerson' that does not match its Entity's property's scalar type.  Dynamically generated accessors do not support implicit type coercion.  Cannot generate a setter method for it.”
-            person.age = 65
+                person.fullName = "Edward Norton"
 
-            // field tracking doesn't work either...
-//            XCTAssertEqual(1, nameChanges)
-//            XCTAssertEqual(1, ageChanges)
+                // “CoreData: error: Property 'setAge:' is a scalar type on class 'ChannelTests.CoreDataPerson' that does not match its Entity's property's scalar type.  Dynamically generated accessors do not support implicit type coercion.  Cannot generate a setter method for it.”
+                person.age = 65
 
-//            ob.setValue("Bob Jones", forKey: "fullName")
-//            ob.setValue(65 as NSNumber, forKey: "age")
+                // field tracking doesn't work either...
+    //            XCTAssertEqual(1, nameChanges)
+    //            XCTAssertEqual(1, ageChanges)
 
-            XCTAssertEqual(0, saveCount)
+    //            ob.setValue("Bob Jones", forKey: "fullName")
+    //            ob.setValue(65 as NSNumber, forKey: "age")
 
-            ctx.save(&error)
-            XCTAssertNil(error)
-            XCTAssertEqual(1, saveCount)
-            XCTAssertEqual(1, inserted)
-            XCTAssertEqual(0, updated)
-            XCTAssertEqual(0, deleted)
+                XCTAssertEqual(0, saveCount)
 
-//            ob.setValue("Frank Underwood", forKey: "fullName")
-            person.fullName = "Tyler Durden"
+                try ctx.save()
 
-//            XCTAssertEqual(2, nameChanges)
+                XCTAssertEqual(1, saveCount)
+                XCTAssertEqual(1, inserted)
+                XCTAssertEqual(0, updated)
+                XCTAssertEqual(0, deleted)
 
-            ctx.save(&error)
-            XCTAssertNil(error)
-            XCTAssertEqual(2, saveCount)
-            XCTAssertEqual(1, inserted)
-            XCTAssertEqual(0, updated)
-            XCTAssertEqual(0, deleted)
+    //            ob.setValue("Frank Underwood", forKey: "fullName")
+                person.fullName = "Tyler Durden"
 
-            ctx.deleteObject(ob)
+    //            XCTAssertEqual(2, nameChanges)
 
-            ctx.save(&error)
-            XCTAssertNil(error)
-            XCTAssertEqual(3, saveCount)
-            XCTAssertEqual(0, inserted)
-            XCTAssertEqual(0, updated)
-            XCTAssertEqual(1, deleted)
+                try ctx.save()
 
-            ctx.reset()
+                XCTAssertEqual(2, saveCount)
+                XCTAssertEqual(1, inserted)
+                XCTAssertEqual(0, updated)
+                XCTAssertEqual(0, deleted)
+
+                ctx.deleteObject(ob)
+
+                try ctx.save()
+
+                XCTAssertEqual(3, saveCount)
+                XCTAssertEqual(0, inserted)
+                XCTAssertEqual(0, updated)
+                XCTAssertEqual(1, deleted)
+
+                ctx.reset()
+            } catch let error {
+                XCTFail("error: \(error)")
+            }
         }
 
         XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")

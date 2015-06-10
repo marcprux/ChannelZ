@@ -183,8 +183,381 @@ public func &<S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>)->Chann
     return lhs.zip(rhs)
 }
 
-// MARK: Auto-generated boilerplate tuple operations
 
+public protocol OneOfN {
+    var count: Int { get }
+}
+
+/// One of a set number of options
+public enum OneOf2<T1, T2>: OneOfN {
+    public var count: Int { return 2 }
+
+    case V1(T1)
+    case V2(T2)
+}
+
+/// One of a set number of options
+public enum OneOf3<T1, T2, T3>: OneOfN {
+    public var count: Int { return 3 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+
+    public init(nested: OneOf2<OneOf2<T1, T2>, T3>) {
+        switch nested {
+        case .V1(.V1(let v)): self = .V1(v)
+        case .V1(.V2(let v)): self = .V2(v)
+        case .V2(let v): self = .V3(v)
+        }
+    }
+
+    public func fold()->OneOf2<OneOf2<T1, T2>, T3> {
+        switch self {
+        case .V1(let v): return .V1(.V1(v))
+        case .V2(let v): return .V1(.V2(v))
+        case .V3(let v): return .V2(v)
+        }
+    }
+}
+
+/// One of a set number of options
+public enum OneOf4<T1, T2, T3, T4>: OneOfN {
+    public var count: Int { return 4 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+}
+
+/// One of a set number of options
+public enum OneOf5<T1, T2, T3, T4, T5>: OneOfN {
+    public var count: Int { return 5 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+}
+
+/// One of a set number of options
+public enum OneOf6<T1, T2, T3, T4, T5, T6>: OneOfN {
+    public var count: Int { return 6 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+}
+
+/// One of a set number of options
+public enum OneOf7<T1, T2, T3, T4, T5, T6, T7>: OneOfN {
+    public var count: Int { return 7 }
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+}
+
+/// One of a set number of options
+public enum OneOf8<T1, T2, T3, T4, T5, T6, T7, T8>: OneOfN {
+    public var count: Int { return 8 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+}
+
+/// One of a set number of options
+public enum OneOf9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: OneOfN {
+    public var count: Int { return 9 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+}
+
+/// One of a set number of options
+public enum OneOf10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: OneOfN {
+    public var count: Int { return 10 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+}
+
+/// One of a set number of options
+public enum OneOf11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: OneOfN {
+    public var count: Int { return 11 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+}
+
+
+/// One of a set number of options
+public enum OneOf12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: OneOfN {
+    public var count: Int { return 12 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+}
+
+/// One of a set number of options
+public enum OneOf13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: OneOfN {
+    public var count: Int { return 13 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+}
+
+/// One of a set number of options
+public enum OneOf14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>: OneOfN {
+    public var count: Int { return 14 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+}
+
+/// One of a set number of options
+public enum OneOf15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>: OneOfN {
+    public var count: Int { return 15 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+}
+
+/// One of a set number of options
+public enum OneOf16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>: OneOfN {
+    public var count: Int { return 16 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+    case V16(T16)
+}
+
+/// One of a set number of options
+public enum OneOf17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>: OneOfN {
+    public var count: Int { return 17 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+    case V16(T16)
+    case V17(T17)
+}
+
+
+/// One of a set number of options
+public enum OneOf18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>: OneOfN {
+    public var count: Int { return 18 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+    case V16(T16)
+    case V17(T17)
+    case V18(T18)
+}
+
+
+/// One of a set number of options
+public enum OneOf19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>: OneOfN {
+    public var count: Int { return 19 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+    case V16(T16)
+    case V17(T17)
+    case V18(T18)
+    case V19(T19)
+}
+
+
+/// One of a set number of options
+public enum OneOf20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>: OneOfN {
+    public var count: Int { return 20 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+    case V16(T16)
+    case V17(T17)
+    case V18(T18)
+    case V19(T19)
+    case V20(T20)
+
+    public func fold()->OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18>, T19>, T20> {
+        switch self {
+        case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v)))))))))))))))))))
+        case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))))))))
+        case .V3(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))))))))
+        case .V4(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))))))
+        case .V5(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))))))
+        case .V6(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))))
+        case .V7(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))))
+        case .V8(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))
+        case .V9(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))
+        case .V10(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))
+        case .V11(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))
+        case .V12(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))
+        case .V13(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))
+        case .V14(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))
+        case .V15(let v): return .V1(.V1(.V1(.V1(.V1(.V2(v))))))
+        case .V16(let v): return .V1(.V1(.V1(.V1(.V2(v)))))
+        case .V17(let v): return .V1(.V1(.V1(.V2(v))))
+        case .V18(let v): return .V1(.V1(.V2(v)))
+        case .V19(let v): return .V1(.V2(v))
+        case .V20(let v): return .V2(v)
+        }
+    }
+
+}
+
+
+// MARK: Auto-generated boilerplate tuple operations
 
 public func &<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1, T2)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1, T2, T3)> { return combineSources(combineAll(lhs.zip(rhs))) }
 public func &<S1, S2, S3, S4, T1, T2, T3, T4>(lhs: Channel<(S1, S2, S3), (T1, T2, T3)>, rhs: Channel<S4, T4>)->Channel<(S1, S2, S3, S4), (T1, T2, T3, T4)> { return combineSources(combineAll(lhs.zip(rhs))) }
@@ -318,4 +691,3 @@ private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T1
 private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?)?, T18?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.1) } }
 private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)?, T19?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.0?.17, $0.1) } }
 private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)?, T20?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?, T20?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.0?.17, $0.0?.18, $0.1) } }
-
