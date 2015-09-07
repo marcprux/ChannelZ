@@ -21,16 +21,15 @@ extension ChannelType {
 }
 
 /// Handy extensions to create a sequence from an arrays and ranges
-extension Array { func channelZ()->Channel<Array, T> { return channelZSequence(self) } }
-extension Range { func channelZ()->Channel<Range, T> { return channelZSequence(self) } }
+extension Array { func channelZ()->Channel<Array, Element> { return channelZSequence(self) } }
+extension Range { func channelZ()->Channel<Range, Element> { return channelZSequence(self) } }
 
 /// Creates an asynchronous trickle of events for the given generator
 func trickleZ<G: GeneratorType>(var from: G, _ interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue())->Channel<G, G.Element> {
     let receivers = ReceiverList<G.Element>()
 
     let delay = Int64(interval * NSTimeInterval(NSEC_PER_SEC))
-    var tick: ()->() = { } // need to first capture before we can invoke from within itself
-    tick = {
+    func tick() {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay), queue) {
             if receivers.count > 0 { // i.e., they haven't all been cancelled
                 if let next = from.next() {
@@ -62,12 +61,12 @@ public class ChannelTests: XCTestCase {
 
         // test that sending capacity distinct values will store those values
         let send = [true, false, true, false, true, false, true, false, true, false]
-        send.map { bools.channel.source.value = $0 }
+        for x in send { bools.channel.source.value = x }
         XCTAssertEqual(send, bools.values)
 
         // test that sending some mixed values will sieve and constrain to the capacity
         let mixed = [false, true, true, true, false, true, false, true, false, true, true, false, true, true, false, false, false]
-        mixed.map { bools.channel.source.value = $0 }
+        for x in mixed { bools.channel.source.value = x }
         XCTAssertEqual(send, bools.values)
     }
 
@@ -144,7 +143,7 @@ public class ChannelTests: XCTestCase {
         }
 
         typealias S1 = Range<Int>
-        typealias S2 = SinkOf<(Float)>
+        typealias S2 = SinkTo<(Float)>
         typealias S3 = ()->Void?
 
         let o1: Channel<S1, Int> = (1...3).channelZ()
@@ -224,10 +223,10 @@ public class ChannelTests: XCTestCase {
         let obv = channelZSink(Int)
 
         var count = 0
-        let sub = obv.filter({ $0 > 0 }).receive({ _ in count += 1 })
+        _ = obv.filter({ $0 > 0 }).receive({ _ in count += 1 })
 
         let numz = -10...3
-        numz.map { obv.source.put($0) }
+        for x in numz { obv.source.put(x) }
 
         XCTAssertEqual(3, count)
     }
@@ -242,19 +241,19 @@ public class ChannelTests: XCTestCase {
         let rcpt2 = channel2.receive({ _ in count2 += 1 })
 
         let numz = -10...3
-        numz.map { obv.source.put($0) }
+        for x in numz { obv.source.put(x) }
 
         XCTAssertEqual(3, count1)
         XCTAssertEqual(11, count2)
 
         rcpt2.cancel()
-        numz.map { obv.source.put($0) }
+        for x in numz { obv.source.put(x) }
 
         XCTAssertEqual(6, count1)
         XCTAssertEqual(11, count2)
 
         rcpt1.cancel()
-        numz.map { obv.source.put($0) }
+        for x in numz { obv.source.put(x) }
 
         XCTAssertEqual(6, count1)
         XCTAssertEqual(11, count2)
@@ -273,7 +272,7 @@ public class ChannelTests: XCTestCase {
 
         for _ in 1...10 {
             let numz = -2...11
-            numz.map { obv.source.put($0) }
+            for x in numz { obv.source.put(x) }
             XCTAssertEqual(4, count)
             sub.cancel() // make sure the count is still 4...
         }
@@ -285,7 +284,7 @@ public class ChannelTests: XCTestCase {
         let xpc: XCTestExpectation = expectationWithDescription("queue delay")
 
         var count = 0
-        let sub = obv.filter({ $0 > 0 }).dispatch(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)).receive({ _ in
+        _ = obv.filter({ $0 > 0 }).dispatch(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)).receive({ _ in
             XCTAssertFalse(NSThread.isMainThread())
             count += 1
             if count >= 3 {
@@ -294,7 +293,7 @@ public class ChannelTests: XCTestCase {
         })
 
         let numz = -10...3
-        numz.map { obv.source.put($0) }
+        for x in numz { obv.source.put(x) }
 
 //        XCTAssertNotEqual(3, count, "should have been a delay")
         waitForExpectationsWithTimeout(1, handler: { _ in })
@@ -468,7 +467,7 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(["Marc", "Prud'hommeaux"], names)
 
         var levels: [Int] = []
-        let rcpt1 = person.level.sieve(<).receive({ levels += [$0] })
+        _ = person.level.sieve(<).receive({ levels += [$0] })
         person.level ∞= 1
         person.level ∞= 2
         person.level ∞= 2
@@ -796,7 +795,7 @@ public class ChannelTests: XCTestCase {
 
         let xf: Channel<Void, Bool> = x.dissolve() // read-only observable of channel x
 
-        let fxa = xf ∞> { (x: Bool) in return }
+        _ = xf ∞> { (x: Bool) in return }
 
         let y = x.map({ "\($0)" })
         let yf: Channel<Void, String> = y.dissolve() // read-only observable of mapped channel y
@@ -911,7 +910,7 @@ public class ChannelTests: XCTestCase {
 
         // this unstable pipe would never achieve equilibrium, and so relies on re-entrancy checks to halt the flow
         let af = a.map({ $0 + 1 })
-        let pipeline = conduit(af, b)
+        _ = conduit(af, b)
 
         a ∞= 2
         XCTAssertEqual(4, a∞?)
@@ -939,10 +938,10 @@ public class ChannelTests: XCTestCase {
         var lastFloat : Float = 0.0
         var lastString : String = ""
 
-        var combo1 = (a | b)
+        _ = (a | b)
 //        combo1.receive({ (floatChange: Float?, uintChange: UInt?) in })
 
-        var combo2 = (a | b | d)
+        let combo2 = (a | b | d)
 
         var changes = 0
 
@@ -982,8 +981,8 @@ public class ChannelTests: XCTestCase {
         }
 
         let strings: Channel<[String], String> = channelZSequence(["abc"])
-        let chars1 = strings.lift(stringsToChars)
-        let chars2 = strings.lift { (f: Character->Void) in { (str: String) in let _ = str.characters.map(f) } }
+        let chars1 = strings.lift2(stringsToChars)
+        _ = strings.lift2 { (f: Character->Void) in { (str: String) in let _ = str.characters.map(f) } }
 
         var buf: [Character] = []
         chars1.receive({ buf += [$0] })
@@ -1000,14 +999,14 @@ public class ChannelTests: XCTestCase {
         var lastFloat : Float = 0.0
         var lastString : String = ""
 
-        var zip1 = (a & b)
+        let zip1 = (a & b)
         zip1 ∞> { (floatChange: Float, uintChange: UInt) in }
 
-        var zip2 = (a & b & d)
+        let zip2 = (a & b & d)
 
         var changes = 0
 
-        let subscription = zip2 ∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
+        _ = zip2 ∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
             changes++
             lastFloat = floatChange
             lastString = stringChange
@@ -1050,7 +1049,7 @@ public class ChannelTests: XCTestCase {
     }
 
     func testMixedCombinations() {
-        let a = (∞(Int(0.0))∞).subsequent()
+        _ = (∞(Int(0.0))∞).subsequent()
 
         // FIXME: works, but slow to compile
 
@@ -1099,8 +1098,8 @@ public class ChannelTests: XCTestCase {
 
         var pulses = 0
         let interval = 0.1
-        let when = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
-        let receiver = channel.dispatch(dispatch_get_main_queue(), delay: interval).receive { void in
+        _ = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
+        _ = channel.dispatch(dispatch_get_main_queue(), delay: interval).receive { void in
             pulses++
             if pulses >= vcount { xpc?.fulfill() }
         }
@@ -1117,9 +1116,9 @@ public class ChannelTests: XCTestCase {
         weak var xpc = expectationWithDescription("testDebounce")
 
         var pulses = 0, items = 0
-        let interval = 0.1
+        _ = 0.1
 //        let when = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
-//        let receiver2: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.buffer(1)
+//        let receiver2: Channel<SinkTo<(Bool)>, [(Bool)]> = channel.buffer(1)
 //        let receiver3: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.throttle(1)
 //        let receiver: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.debounce(1.0, queue: dispatch_get_main_queue())
 
@@ -1130,6 +1129,7 @@ public class ChannelTests: XCTestCase {
             items += voids.count
             if items >= vcount { xpc?.fulfill() }
         }
+        XCTAssertTrue(receiver.dynamicType == receiver.dynamicType, "avoid compiler warnings")
 
         for _ in 1...vcount { channel.source.put() }
 
@@ -1139,17 +1139,17 @@ public class ChannelTests: XCTestCase {
 
     }
 
-//    func testZippedGenerators() {
-//        let range = 1...6
-//        let nums = channelZSequence(1...3) + channelZSequence(4...5) + channelZSequence([6])
-//        let strs = channelZSequence(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
-//        var numstrs: [(Int, String)] = []
-//        let zipped = (nums & strs)
-//        zipped.receive({ numstrs += [$0] })
-//        XCTAssertEqual(numstrs.map({ $0.0 }), [1, 2, 3, 4, 5, 6])
-//        XCTAssertEqual(numstrs.map({ $0.1 }), ["one", "two", "three", "four", "five", "six"])
-//    }
-//
+    func testZippedGenerators() {
+        let range = 1...6
+        let nums = channelZSequence(1...3) + channelZSequence(4...5) + channelZSequence([6])
+        let strs = channelZSequence(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
+        var numstrs: [(Int, String)] = []
+        let zipped = (nums & strs)
+        zipped.receive({ numstrs += [$0] })
+        XCTAssertEqual(numstrs.map({ $0.0 }), [1, 2, 3, 4, 5, 6])
+        XCTAssertEqual(numstrs.map({ $0.1 }), ["one", "two", "three", "four", "five", "six"])
+    }
+
 //    func testDeepNestedFilter() {
 //        let t = ∞(1.0)∞
 //

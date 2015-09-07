@@ -295,9 +295,9 @@ infix operator ∞ { precedence 255 }
 
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
-    typealias Element = T
-    typealias State = (T?, T)
+public final class KeyValueSource<T>: StateSink, StateSource {
+    public typealias Element = T
+    public typealias State = (T?, T)
     private let receivers = ReceiverList<State>()
 
     public private(set) weak var object: NSObject?
@@ -381,10 +381,10 @@ public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
 
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
-    typealias T = O?
-    typealias Element = T
-    typealias State = (T?, T)
+public final class KeyValueOptionalSource<O>: StateSink, StateSource {
+    public typealias T = O?
+    public typealias Element = T
+    public typealias State = (T?, T)
     private let receivers = ReceiverList<State>()
 
     public private(set) weak var object: NSObject?
@@ -617,7 +617,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
     }
 
     /// Callback for KVO
-    override func observeValueForKeyPath(keyPath: String?, ofObject object: AnyObject?, change: [NSObject : AnyObject]?, context: UnsafeMutablePointer<Void>) {
+    override func observeValueForKeyPath(keyPath: String?, ofObject object: AnyObject?, change: [String : AnyObject]?, context: UnsafeMutablePointer<Void>) {
         if let keyPath = keyPath, observers = keyObservers[keyPath] {
             for observer in observers {
                 observer.handler(change ?? [:])
@@ -844,7 +844,8 @@ extension NSObject {
 extension NSNumber : ConduitNumericCoercible {
     public class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self? {
         if let value = value as? NSNumber {
-            let type = value.objCType
+            let type = Character(UnicodeScalar(UInt32(value.objCType.memory)))
+            
             if type == "c" { return self.init(char: value.charValue) }
             else if type == "C" { return self.init(unsignedChar: value.unsignedCharValue) }
             else if type == "s" { return self.init(short: value.shortValue) }

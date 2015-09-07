@@ -8,36 +8,49 @@
 
 // MARK: Channel Basics
 
-public protocol ChannelType {
-    typealias Source
+public protocol StreamType {
     typealias Element
 
-    var source: Source { get }
+    /// Adds the given receiver block to this Channel's source's list to receive the pulses emitted by the
+    /// source through the Channel's phases.
+    ///
+    /// :param: receiver the block to be executed whenever this Channel emits an item
+    ///
+    /// :returns: A `Receipt`, which can be used to later `cancel` reception
     func receive(receiver: Element->Void)->Receipt
+
+    /// Creates a new form of this stream type with the given reception
+    func phase(reception: (Self.Element->Void)->Receipt)->Self
 }
 
-/// A Channel is a passive multi-phase receiver of items of a given type: `pulses`. It is a push-based version
+/// A ChannelType is a passive multi-phase receiver of items of a given type: `pulses`. It is a push-based version
 /// of Swift's pull-based `Generator` type. Channels can add phases that transform, filter, merge
 /// and aggregate pulses that are passed through the channel. They are well-suited to handling
 /// asynchronous stream of events such as networking and UI interactions.
 ///
 /// To listen for pulses, call the `receive` function with a closure that accepts the Channel's element type.
-/// This will return a `Receipt`, which can later be used to cancel reception.  A `Channel` can have multiple 
+/// This will return a `Receipt`, which can later be used to cancel reception.  A `Channel` can have multiple
 /// receivers active, and receivers can be added to different phases of the Channel without interfering with each other.
 ///
-/// A `Channel` is roughly analogous to the `Observable` in the ReactiveX pattern, as described at: 
+/// A `Channel` is roughly analogous to the `Observable` in the ReactiveX pattern, as described at:
 /// http://reactivex.io/documentation/observable.html
 /// The primary differences are that a `Channel` keeps a reference to its source which allows `conduit`s
 /// to be created, and that a `Channel` doesn't have any `onError` or `onCompletion`
 /// signale handlers, which means that a `Channel` is effectively infinite.
-/// Error and completion handling should be implemented at a higher level, where, for example, they 
-/// might be supported by having the Channel's Element type be a Swift enum with cases for 
+/// Error and completion handling should be implemented at a higher level, where, for example, they
+/// might be supported by having the Channel's Element type be a Swift enum with cases for
 /// `.Value(T)`, `.Error(X)`, and `.Completion`, and by adding a `terminate` phase to the `Channel`
-public struct Channel<S, T> : ChannelType {
-    typealias Source = S
-    typealias Element = T
+public protocol ChannelType : StreamType {
+    typealias Source
 
     /// The underlying unconstrained source of this `Channel`
+    var source: Source { get }
+}
+
+public struct Channel<S, T> : ChannelType {
+    public typealias Source = S
+    public typealias Element = T
+
     public let source: S
 
     /// The closure that will be performed whenever an item is emitted; analogous to ReactiveX's `onNext`
@@ -51,12 +64,10 @@ public struct Channel<S, T> : ChannelType {
         self.reception = reception
     }
 
-    /// Adds the given receiver block to this Channel's source's list to receive the pulses emitted by the
-    /// source through the Channel's phases.
-    ///
-    /// :param: receiver the block to be executed whenever this Channel emits an item
-    ///
-    /// :returns: A `Receipt`, which can be used to later `cancel` reception
+    public func phase(reception: (Element -> Void) -> Receipt) -> Channel {
+        return Channel(source: self.source, reception: reception)
+    }
+
     public func receive(receiver: T->Void)->Receipt {
         return reception(receiver)
     }
@@ -72,27 +83,28 @@ public struct Channel<S, T> : ChannelType {
     public func dissolve()->Channel<Void, T> {
         return resource({ _ in Void() })
     }
+
 }
 
-public extension ChannelType {
+public extension StreamType {
 
-    /// Adds a receiver that will forward all values to the target `SinkType`
+    /// Adds a receiver that will forward all values to the target `Sink`
     ///
     /// :param: Sink the sink that will accept all the pulses from the Channel
     ///
     /// :returns: A `Receipt` for the pipe
-    public func pipe<S2: SinkType where S2.Element == Element>(var sink: S2)->Receipt {
+    public func pipe<S2: Sink where S2.Element == Element>(var sink: S2)->Receipt {
         return receive { sink.put($0) }
     }
 
-    /// Lifts a function to the current Channel and returns a new channel phase that when received to will pass
+    /// Lifts a function to the current Stream and returns a new channel phase that when received to will pass
     /// the values of the current Channel through the Operator function.
     ///
     /// :param: receptor The functon that transforms one receiver to another
     ///
     /// :returns: The new Channel
-    public func lift<Element2>(receptor: (Element2->Void)->(Element->Void))->Channel<Source, Element2> {
-        return Channel<Source, Element2>(source: source) { receiver in self.receive(receptor(receiver)) }
+    public func lift(receptor: (Element->Void)->(Element->Void))->Self {
+        return phase { receiver in self.receive(receptor(receiver)) }
     }
 
     /// Adds a channel phase which only emits those pulses for which a given predicate holds.
@@ -100,8 +112,22 @@ public extension ChannelType {
     /// :param: predicate a function that evaluates the pulses emitted by the source Channel, returning `true` if they pass the filter
     ///
     /// :returns: A stateless Channel that emits only those pulses in the original Channel that the filter evaluates as `true`
-    public func filter(predicate: Element->Bool)->Channel<Source, Element> {
+    public func filter(predicate: Element->Bool)->Self {
         return lift { receive in { item in if predicate(item) { receive(item) } } }
+    }
+
+}
+
+public extension ChannelType {
+
+    /// Lifts a function to the current Channel and returns a new channel phase that when received to will pass
+    /// the values of the current Channel through the Operator function.
+    ///
+    /// :param: receptor The functon that transforms one receiver to another
+    ///
+    /// :returns: The new Channel
+    public func lift2<Element2>(receptor: (Element2->Void)->(Element->Void))->Channel<Source, Element2> {
+        return Channel<Source, Element2>(source: source) { receiver in self.receive(receptor(receiver)) }
     }
 
     /// Adds a channel phase that applies the given function to each item emitted by a Channel and emits the result.
@@ -110,26 +136,29 @@ public extension ChannelType {
     ///
     /// :returns: A stateless Channel that emits the pulses from the source Channel, transformed by the given function
     public func map<U>(transform: Element->U)->Channel<Source, U> {
-        return lift { receive in { item in receive(transform(item)) } }
+        return lift2 { receive in { item in receive(transform(item)) } }
     }
 }
 
 /// MARK: Stateful Channel operations (accumulators, etc.)
-public extension ChannelType {
+public extension StreamType {
 
     /// Adds a channel phase that drops any pulses that are immediately emitted upon a receiver being added but
     /// passes any pulses that are emitted after the receiver is added.
     /// In ReactiveX parlance, this convert this `observable` Channel from `cold` to `hot`
     ///
     /// :returns: A Channel that drops any elements that are emitted upon a receiver being added
-    public func subsequent()->Channel<Source, Element> {
-        return Channel(source: self.source) { receiver in
+    public func subsequent()->Self {
+        return phase { receiver in
             var immediate = true
             let receipt = self.receive { item in if !immediate { receiver(item) } }
             immediate = false
             return receipt
         }
     }
+}
+
+public extension ChannelType {
 
     /// Adds a channel phase that retains a previous item and sends it along with the current value as an optional tuple element.
     ///
@@ -138,7 +167,7 @@ public extension ChannelType {
     /// :returns: A stateful Channel that emits a tuple of an earlier and the current item
     public func precedent(preserve: Element->Bool = { _ in true })->Channel<Source, (Element?, Element)> {
         var antecedent: Element?
-        return lift { receive in { item in
+        return lift2 { receive in { item in
             let pair: (Element?, Element) = (antecedent, item)
             receive(pair)
             if preserve(item) { antecedent = item }
@@ -188,7 +217,7 @@ public extension ChannelType {
     ///         element should be called ad a side-effect to cause the accumulation to be pulsed
     public func reduce<U>(initial: U, combine: (U, Element, U->Void)->U)->Channel<Source, U> {
         var accumulation = initial
-        return lift { receive in { item in accumulation = combine(accumulation, item, receive) } }
+        return lift2 { receive in { item in accumulation = combine(accumulation, item, receive) } }
     }
 
     /// Accumulate the given pulses into an array until the given predicate is satisifed, and
@@ -237,6 +266,9 @@ public extension ChannelType {
             return accumulation
         }
     }
+}
+
+public extension StreamType {
 
     /// Adds a channel phase that will cease sending pulses once the terminator predicate is satisfied.
     ///
@@ -245,11 +277,11 @@ public extension ChannelType {
     /// :param: terminus An optional final sentinal closure that will be sent once after the `terminator` evaluates to `true`
     ///
     /// :returns: A stateful Channel that emits pulses until the `terminator` evaluates to true
-    public func terminate(terminator: Element->Bool, includeFinal: Bool = false, terminus: (()->Element)? = nil)->Channel<Source, Element> {
+    public func terminate(terminator: Element->Bool, includeFinal: Bool = false, terminus: (()->Element)? = nil)->Self {
         var receipts: [Receipt] = []
         var terminated = false
 
-        return Channel(source: self.source) { receiver in
+        return phase { receiver in
             let receipt = self.receive { item in
                 if terminated { return }
                 if terminator(item) {
@@ -261,7 +293,7 @@ public extension ChannelType {
                     if let terminus = terminus {
                         receiver(terminus())
                     }
-                    receipts.map { $0.cancel() }
+                    for r in receipts { r.cancel() }
                 } else {
                     receiver(item)
                 }
@@ -272,7 +304,7 @@ public extension ChannelType {
     }
 
     /// Adds a channel phase that will terminate receipt after the given number of pulses have been received
-    public func take(var count: Int = 1)->Channel<Source, Element> {
+    public func take(var count: Int = 1)->Self {
         return terminate({ _ in --count < 0 })
     }
 }
@@ -289,7 +321,7 @@ public extension ChannelType {
     /// :param: predicate a function that evaluates the pulses emitted by the source Channel, returning `true` if they pass the filter
     ///
     /// :returns: A stateless Channel pair that passes elements depending on whether they pass or fail the predicate, respectively
-    public func split(predicate: Element->Bool)->(Channel<Source, Element>, Channel<Source, Element>) {
+    public func split(predicate: Element->Bool)->(Self, Self) {
         return (filter({ !predicate($0) }), filter({ predicate($0) }))
     }
 
@@ -423,9 +455,7 @@ public extension ChannelType {
     }
 }
 
-// TODO: make this a ChannelType extension
-
-public extension Channel {
+public extension ChannelType {
 
     /// Creates a new channel phase by applying a function that you supply to each item emitted by
     /// the source Channel, where that function returns a Channel, and then merging those
@@ -436,9 +466,12 @@ public extension Channel {
     /// :returns: A stateless Channel that emits the result of applying the transformation function to each
     ///         item emitted by the source Channel and merging the results of the Channels
     ///         obtained from this transformation.
-    public func flatMap<S2, U>(transform: T->Channel<S2, U>)->Channel<(Source, [S2]), U> {
+    public func flatMap<S2, U>(transform: Element->Channel<S2, U>)->Channel<(Source, [S2]), U> {
         return flatten(map(transform))
     }
+}
+
+public extension Channel {
 
     public func concat(with: Channel<Source, Element>)->Channel<[Source], (Source, Element)> {
         return concatChannels([self, with])
@@ -492,26 +525,26 @@ public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>)->Channel<(S
     })
 }
 
-/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
+/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is
 /// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
-public func conduit<S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(c1: Channel<S1, T1>, _ c2: Channel<S2, T2>)->Receipt {
+public func conduit<S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(c1: Channel<S1, T1>, _ c2: Channel<S2, T2>)->Receipt {
     return ReceiptOf(receipts: [c1∞->c2.source, c2∞->c1.source])
 }
 
-/// Creates a one-way conduit betweek a `Channel`s whose source is an `Equatable` `SinkType`, such that when the left
+/// Creates a one-way conduit betweek a `Channel`s whose source is an `Equatable` `Sink`, such that when the left
 /// side is changed the right side is updated
-public func conduct<S1, S2, T1, T2 where S2: SinkType, S2.Element == T1>(c1: Channel<S1, T1>, _ c2: Channel<S2, T2>)->Receipt {
+public func conduct<S1, S2, T1, T2 where S2: Sink, S2.Element == T1>(c1: Channel<S1, T1>, _ c2: Channel<S2, T2>)->Receipt {
     return c1∞->c2.source
 }
 
 
 // MARK: Utilities
 
-/// Creates a Channel sourced by a `SinkOf` that will be used to send elements to the receivers
-public func channelZSink<T>(type: T.Type)->Channel<SinkOf<T>, T> {
+/// Creates a Channel sourced by a `SinkTo` that will be used to send elements to the receivers
+public func channelZSink<T>(type: T.Type)->Channel<SinkTo<T>, T> {
     let rcvrs = ReceiverList<T>()
-    let sink = SinkOf { rcvrs.receive($0) }
-    return Channel<SinkOf<T>, T>(source: sink) { rcvrs.addReceipt($0) }
+    let sink = SinkTo<T>({ rcvrs.receive($0) })
+    return Channel<SinkTo<T>, T>(source: sink) { rcvrs.addReceipt($0) }
 }
 
 /// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receivers
@@ -586,13 +619,32 @@ public final class PropertySource<T>: StateSink, StateSource {
     }
 }
 
+public protocol Sink {
+    typealias Element
+    mutating func put(value: Element)
+}
+
+/// Equivalent to SinkOf
+public struct SinkTo<Element> : Sink {
+    public let op: Element->Void
+
+    public init(_ op: Element->Void) {
+        self.op = op
+    }
+
+    public func put(value: Element) {
+        self.op(value)
+    }
+}
+
 /// Simple protocol that permits accessing the underlying source type
-public protocol StateSink: SinkType {
+public protocol StateSink : Sink {
     var value: Element { get }
+    func put(value: Element)
 }
 
 /// A type-erased wrapper around some state source
-public struct StateOf<T>: StateSink, StateSource {
+public struct StateOf<T>: Sink, StateSource {
     private let valueget: Void->T
     private let valueset: T->Void
     private let channler: Void->Channel<Void, (T?, T)>

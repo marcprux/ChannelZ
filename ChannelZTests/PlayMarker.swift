@@ -91,10 +91,11 @@ class PlayMarker {
 
         let sections = element(playground, "sections")
         for section in output {
-            if section.name.pathExtension == "html" {
-                element(sections, "documentation", ("relative-path", section.name.lastPathComponent))
-            } else if section.name.pathExtension == "swift" {
-                element(sections, "code", ("source-file-name", section.name.lastPathComponent))
+            let sname: NSString = (section.name as NSString)
+            if sname.pathExtension == "html" {
+                element(sections, "documentation", ("relative-path", sname.lastPathComponent))
+            } else if sname.pathExtension == "swift" {
+                element(sections, "code", ("source-file-name", sname.lastPathComponent))
             }
         }
 
@@ -188,7 +189,7 @@ class PlayMarker {
 
     /// High-level conversion of blocks to code
     func convertBlocks() {
-        var string: NSString?
+        let _: NSString?
 
         while !scanner.atEnd {
             if scan("\n```swift") {
@@ -198,7 +199,7 @@ class PlayMarker {
                 pushXHTMLContent()
                 pushSwiftContent(swiftCode.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet()))
             } else if scan("<!--") {
-                let comment = scanThrough("-->")
+                _ = scanThrough("-->")
             } else if scan("\n###### ") {
                 appendHeader(6)
             } else if scan("\n##### ") {
@@ -277,11 +278,11 @@ class PlayMarker {
         let title = element(head, "title")
         title.stringValue = "Playground"
         
-        let style = element(head, "link", ("rel", "stylesheet"), ("type", "text/css"), ("href", "playdown.css"))
-        let charset = element(head, "meta", ("charset", "utf-8"))
-        let xcode = element(head, "meta", ("id", "xcode-display"), ("name", "xcode-display"), ("content", "render"))
-        let mobile = element(head, "meta", ("name", "apple-mobile-web-app-capable"), ("content", "yes"))
-        let viewport = element(head, "meta", ("name", "viewport"), ("content", "width = device-width, maximum-scale=1.0"))
+        _ = element(head, "link", ("rel", "stylesheet"), ("type", "text/css"), ("href", "playdown.css"))
+        _ = element(head, "meta", ("charset", "utf-8"))
+        _ = element(head, "meta", ("id", "xcode-display"), ("name", "xcode-display"), ("content", "render"))
+        _ = element(head, "meta", ("name", "apple-mobile-web-app-capable"), ("content", "yes"))
+        _ = element(head, "meta", ("name", "viewport"), ("content", "width = device-width, maximum-scale=1.0"))
 
 
         let body = element(rootElement, "body", ("id", "conceptual_flow_with_tasks"), ("class", "jazz"))

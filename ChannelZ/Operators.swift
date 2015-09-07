@@ -23,21 +23,21 @@ public func + <S, T>(lhs: Channel<S, T>, rhs: Channel<S, T>)->Channel<[S], (S, T
 public func ∞> <S, T>(lhs: Channel<S, T>, rhs: T->Void)->Receipt { return lhs.receive(rhs) }
 infix operator ∞> { }
 
-/// Sets the value of a channel's source that is sourced by a `SinkType`
-public func ∞= <T, S: SinkType>(lhs: Channel<S, T>, rhs: S.Element)->Void { var src = lhs.source; src.put(rhs) }
+/// Sets the value of a channel's source that is sourced by a `Sink`
+public func ∞= <T, S: Sink>(lhs: Channel<S, T>, rhs: S.Element)->Void { var src = lhs.source; src.put(rhs) }
 infix operator ∞= { }
 
 
-/// Reads the value from the given channel's source that is sourced by an StateSink implementation
+/// Reads the value from the given channel's source that is sourced by an Sink implementation
 public postfix func ∞? <T, S: StateSink>(c: Channel<S, T>)->S.Element { return c.source.value }
 postfix operator ∞? { }
 
 
 /// Increments the value of the source of the channel; works, but only when we define one of them
-//public postfix func ++ <T, S: StateSink where S.Element == Int>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
-//public postfix func ++ <T, S: StateSink where S.Element == Int8>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
-//public postfix func ++ <T, S: StateSink where S.Element == Int16>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
-//public postfix func ++ <T, S: StateSink where S.Element == Float>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + Float(1.0) }
+//public postfix func ++ <T, S: Sink where S.Element == Int>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: Sink where S.Element == Int8>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: Sink where S.Element == Int16>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: Sink where S.Element == Float>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + Float(1.0) }
 
 
 // MARK: Operators that create state channels
@@ -86,8 +86,8 @@ protocol OptionalStateElement {
 }
 
 extension Optional: OptionalStateElement {
-    typealias WrappedType = T
-    var unwrap: T? { return map { $0 } }
+    typealias WrappedType = Wrapped
+    var unwrap: Wrapped? { return map { $0 } }
 }
 
 prefix func ∞?=<S: StateSource, T: Equatable where S.Element: OptionalStateElement, S.Element.WrappedType: Equatable, T == S.Element.WrappedType>(source: S)->Channel<S, T?> {
@@ -123,50 +123,52 @@ public postfix func =∞ <T: Equatable>(value: T?)->PropertySource<T?> { return 
 
 // MARK: Infix operators
 
-/// Creates a one-way pipe betweek a `Channel` and a `SinkType`, such that all receiver emissions are sent to the sink.
+/// Creates a one-way pipe betweek a `Channel` and a `Sink`, such that all receiver emissions are sent to the sink.
 /// This is the operator form of `pipe`
-public func ∞-> <S1, T, S2: SinkType where T == S2.Element>(r: Channel<S1, T>, s: S2)->Receipt { return r.pipe(s) }
+public func ∞-> <S1, T, S2: Sink where T == S2.Element>(r: Channel<S1, T>, s: S2)->Receipt { return r.pipe(s) }
 infix operator ∞-> { }
 
 
-/// Creates a one-way pipe betweek a `Channel` and an `Equatable` `SinkType`, such that all receiver emissions are sent to the sink.
+/// Creates a one-way pipe betweek a `Channel` and an `Equatable` `Sink`, such that all receiver emissions are sent to the sink.
 /// This is the operator form of `pipe`
-public func ∞=> <S1, S2, T1, T2 where S2: SinkType, S2.Element == T1>(c1: Channel<S1, T1>, c2: Channel<S2, T2>)->Receipt {
+public func ∞=> <S1, S2, T1, T2 where S2: Sink, S2.Element == T1>(c1: Channel<S1, T1>, c2: Channel<S2, T2>)->Receipt {
     return conduct(c1, c2)
 }
 
 infix operator ∞=> { }
 
 
-/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
+/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is
 /// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
 /// This is the operator form of `channel`
-public func <=∞=> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
+public func <=∞=> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
 infix operator <=∞=> { }
 
 
 /// Lossy conduit conversion operators
 infix operator <~∞~> { }
 
-/// Conduit operator that filters out nil values with a custom transformer
-public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType>(lhs: (o: Channel<S1, T1>, f: T1->Optional<S2.Element>), rhs: (o: Channel<S2, T2>, f: T2->Optional<S1.Element>))->Receipt {
-    let lhsm: Channel<S1, S2.Element> = lhs.o.map({ lhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
-    let rhsm: Channel<S2, S1.Element> = rhs.o.map({ rhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
+///// Conduit operator that filters out nil values with a custom transformer
+public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink>(lhs: (o: Channel<S1, T1>, f: T1->Optional<S2.Element>), rhs: (o: Channel<S2, T2>, f: T2->Optional<S1.Element>))->Receipt {
+    let lhsf = lhs.f
+    let lhsm: Channel<S1, S2.Element> = lhs.o.map({ lhsf($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
+    let rhsf = rhs.f
+    let rhsm: Channel<S2, S1.Element> = rhs.o.map({ rhsf($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
     return conduit(lhsm, rhsm)
 }
 
 
 /// Convert (possibly lossily) between two numeric types
-public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element: ConduitNumericCoercible, S2.Element: ConduitNumericCoercible, T1: ConduitNumericCoercible, T2: ConduitNumericCoercible>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>)->Receipt {
+public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element: ConduitNumericCoercible, S2.Element: ConduitNumericCoercible, T1: ConduitNumericCoercible, T2: ConduitNumericCoercible>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>)->Receipt {
     return conduit(lhs.map({ convertNumericType($0) }), rhs.map({ convertNumericType($0) }))
 }
 
 /// Convert (possibly lossily) between optional and non-optional types
-public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, Optional<T1>>, rhs: Channel<S2, T2>)->Receipt {
+public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, Optional<T1>>, rhs: Channel<S2, T2>)->Receipt {
     return conduit(lhs.filter({ $0 != nil }).map({ $0! }), rhs)
 }
 
-public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, T1>, rhs: Channel<S2, Optional<T2>>)->Receipt {
+public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, T1>, rhs: Channel<S2, Optional<T2>>)->Receipt {
     return conduit(lhs, rhs.filter({ $0 != nil }).map({ $0! }))
 }
 

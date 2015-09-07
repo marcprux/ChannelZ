@@ -54,7 +54,7 @@ public extension ChannelType {
 
     /// Instructs the observable to emit its items on the specified `queue` with an optional `time` delay and write `barrier`
     public func dispatch(queue: dispatch_queue_t, delay: Double? = 0.0, barrier: Bool = false)->Channel<Source, Element> {
-        return lift { receive in { event in
+        return lift2 { receive in { event in
             let rcvr = { receive(event) }
              if let delay = delay {
                 let time = dispatch_time(DISPATCH_TIME_NOW, Int64(delay * Double(NSEC_PER_SEC)))
@@ -83,7 +83,7 @@ public extension ChannelType {
     ///
     /// :param: lockQueue The GDC queue to synchronize on; if nil, a queue named "io.glimpse.Channel.sync" will be created and used
     public func sync(lockQueue: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, Element> {
-        return lift { receive in { event in dispatch_sync(lockQueue) { receive(event) } } }
+        return lift2 { receive in { event in dispatch_sync(lockQueue) { receive(event) } } }
     }
 }
 

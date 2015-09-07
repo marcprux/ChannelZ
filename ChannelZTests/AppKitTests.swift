@@ -40,7 +40,7 @@ public class AppKitTests: XCTestCase {
         state2.bind("num3", toObject: state1, withKeyPath: "num3", options: nil)
 
         let channel2: Channel<KeyValueSource<NSNumber>, NSNumber> = state2∞(state2.num3, "num3")
-        let state2sieve = channel2 ∞> { num in
+        let _ = channel2 ∞> { num in
             // println("changing number to: \(num)")
         }
         state1.num3 = 4
@@ -101,7 +101,7 @@ public class AppKitTests: XCTestCase {
         let button = NSButton()
 
         /// seems to be needed or else the button won't get clicked
-        (NSWindow().contentView as! NSView).addSubview(button)
+        (NSWindow().contentView)?.addSubview(button)
 
         var stateChanges = 0
 
@@ -121,7 +121,7 @@ public class AppKitTests: XCTestCase {
         XCTAssertEqual(clicks, 0)
 
         let cmd = button.channelZControl()
-        var subscription = cmd.receive({ _ in clicks += 1 })
+        let subscription = cmd.receive({ _ in clicks += 1 })
 
         assertRemains(--clicks, button.performClick(self))
         assertRemains(--clicks, button.performClick(self))
@@ -138,16 +138,16 @@ public class AppKitTests: XCTestCase {
         let textField = NSTextField()
 
         /// seems to be needed or else the button won't get clicked
-        (NSWindow().contentView as! NSView).addSubview(textField)
+        (NSWindow().contentView)?.addSubview(textField)
 
         var text = ""
 
         let textChannel = textField∞(textField.stringValue)
-        var textReceiver = textChannel.receive({ text = $0 })
+        let textReceiver = textChannel.receive({ text = $0 })
 
         var enabled = true
         let enabledChannel = textField∞(textField.enabled)
-        var enabledReceiver = enabledChannel.receive({ enabled = $0 })
+        let enabledReceiver = enabledChannel.receive({ enabled = $0 })
 
         textField.stringValue = "ABC"
         XCTAssertEqual("ABC", textField.stringValue)
@@ -219,7 +219,7 @@ public class AppKitTests: XCTestCase {
         // FIXME: memory leak
         // progress∞progress.completedUnitCount ∞> { _ in println("progress: \(progress.localizedDescription)") }
 
-        let textField = NSTextField()
+//        let textField = NSTextField()
 
         // FIXME: crash
         // progress∞progress.localizedDescription ∞=> textField∞textField.stringValue
