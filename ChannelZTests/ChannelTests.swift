@@ -26,8 +26,7 @@ extension Range { func channelZ()->Channel<Range, Element> { return channelZSequ
 
 /// Creates an asynchronous trickle of events for the given generator
 func trickleZ<G: GeneratorType>(var from: G, _ interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue())->Channel<G, G.Element> {
-    let receivers = ReceiverList<G.Element>()
-
+    var receivers = ReceiverList<G.Element>()
     let delay = Int64(interval * NSTimeInterval(NSEC_PER_SEC))
     func tick() {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay), queue) {
@@ -57,7 +56,9 @@ public class ChannelTests: XCTestCase {
 
     func testTraps() {
         // TODO: re-name global trap, since it is confusing that it means something different than Channel.trap
-        let bools = (∞=false=∞).trap(10)
+        let channel = ∞=false=∞
+        // var src = channel.source
+        let bools = channel.trap(10)
 
         // test that sending capacity distinct values will store those values
         let send = [true, false, true, false, true, false, true, false, true, false]
@@ -177,48 +178,50 @@ public class ChannelTests: XCTestCase {
     }
 
     func testStreamExtensions() {
-        if let stream = NSInputStream(fileAtPath: __FILE__) {
-            weak var xpc: XCTestExpectation? = expectationWithDescription("input stream")
+        guard let stream = NSInputStream(fileAtPath: __FILE__) else {
+            return XCTFail("could not open \(__FILE__)")
+        }
 
-            let allData = NSMutableData()
-            let obv = stream.channelZStream()
-            var openCount = 0
-            var closeCount = 0
-            var count = 0
-            let sub = obv.receive { switch $0 {
-                case .Opened:
-                    openCount++
-                case .Data(let d):
-                    count += d.count
-                    allData.appendData(NSData(bytes: d, length: d.count))
-                case .Error(let e):
-                    XCTFail(e.description)
-                    xpc?.fulfill()
-                case .Closed:
-                    closeCount++
-                    xpc?.fulfill()
-                }
-            }
+        weak var xpc: XCTestExpectation? = expectationWithDescription("input stream")
 
-            stream.scheduleInRunLoop(NSRunLoop.currentRunLoop(), forMode: NSDefaultRunLoopMode)
-            stream.open()
-
-            waitForExpectationsWithTimeout(1, handler: { _ in })
-
-            XCTAssertEqual(1, openCount)
-            XCTAssertEqual(1, closeCount)
-            XCTAssertGreaterThan(count, 1000)
-            sub.cancel()
-
-            if let str = NSString(data: allData, encoding: NSUTF8StringEncoding) {
-                let advice = "Begin at the beginning, and go on till you come to the end: then stop"
-                XCTAssertTrue(str.containsString(advice))
-            } else {
-                XCTFail("could not create string from data in \(__FILE__)")
+        let allData = NSMutableData()
+        let obv = stream.channelZStream()
+        var openCount = 0
+        var closeCount = 0
+        var count = 0
+        let sub = obv.receive { switch $0 {
+            case .Opened:
+                openCount++
+            case .Data(let d):
+                count += d.count
+                allData.appendData(NSData(bytes: d, length: d.count))
+            case .Error(let e):
+                XCTFail(e.description)
+                xpc?.fulfill()
+            case .Closed:
+                closeCount++
+                xpc?.fulfill()
             }
         }
+
+        stream.scheduleInRunLoop(NSRunLoop.currentRunLoop(), forMode: NSDefaultRunLoopMode)
+        stream.open()
+
+        waitForExpectationsWithTimeout(1, handler: { _ in })
+
+        XCTAssertEqual(1, openCount)
+        XCTAssertEqual(1, closeCount)
+        XCTAssertGreaterThan(count, 1000)
+        sub.cancel()
+
+        if let str = NSString(data: allData, encoding: NSUTF8StringEncoding) {
+            let advice = "Begin at the beginning, and go on till you come to the end: then stop"
+            XCTAssertTrue(str.containsString(advice))
+        } else {
+            XCTFail("could not create string from data in \(__FILE__)")
+        }
     }
-    
+
     func testFilterChannel() {
         let obv = channelZSink(Int)
 
