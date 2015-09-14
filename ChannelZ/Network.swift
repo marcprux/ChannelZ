@@ -16,7 +16,7 @@ public extension NSInputStream {
     /// :param: bufferLength The maximum size of the buffer that will be filled
     public func channelZStream(bufferLength: Int = 1024) -> Channel<ChannelStreamDelegate, InputStreamEvent> {
         precondition(bufferLength > 0, "buffer size must be greater than zero")
-        var receivers = ReceiverList<InputStreamEvent>()
+        let receivers = ReceiverList<InputStreamEvent>()
 
         let delegate = ChannelStreamDelegate(stream: self) { event in
             switch event.rawValue {
@@ -41,7 +41,7 @@ public extension NSInputStream {
             case NSStreamEvent.HasSpaceAvailable.rawValue:
                 break
             case NSStreamEvent.ErrorOccurred.rawValue:
-                receivers.receive(.Error(self.streamError ?? NSError()))
+                receivers.receive(.Error(self.streamError ?? NSError(domain: "Network", code: 0, userInfo: [:])))
                 break
             case NSStreamEvent.EndEncountered.rawValue:
                 receivers.receive(.Closed)

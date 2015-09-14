@@ -13,16 +13,14 @@ import XCTest
 
 class PlayMarkerTests : XCTestCase {
     /// Generate the playground from the README
-    func testPlaydown() {
+    func testPlaydown() throws {
         // TODO: move this to part of the build process
-        if let root = NSURL(fileURLWithPath: __FILE__.stringByDeletingLastPathComponent.stringByDeletingLastPathComponent) {
-            for srcdst in [
-                ("README.md", "Playgrounds/Introduction.playground"),
-                ] {
-                var error: NSError?
-                PlayMarker.generatePlaydown(root.URLByAppendingPathComponent(srcdst.0), playgroundFolder: root.URLByAppendingPathComponent(srcdst.1), error: &error)
-                XCTAssertNil(error)
-            }
+        let file = __FILE__ as NSString
+        let root = NSURL(fileURLWithPath: (file.stringByDeletingLastPathComponent as NSString).stringByDeletingLastPathComponent)
+        for srcdst in [
+            ("README.md", "Playgrounds/Introduction.playground"),
+            ] {
+            try PlayMarker.generatePlaydown(root.URLByAppendingPathComponent(srcdst.0), playgroundFolder: root.URLByAppendingPathComponent(srcdst.1))
         }
     }
 }

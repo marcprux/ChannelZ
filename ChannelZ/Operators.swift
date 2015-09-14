@@ -23,21 +23,21 @@ public func + <S, T>(lhs: Channel<S, T>, rhs: Channel<S, T>)->Channel<[S], (S, T
 public func ∞> <S, T>(lhs: Channel<S, T>, rhs: T->Void)->Receipt { return lhs.receive(rhs) }
 infix operator ∞> { }
 
-/// Sets the value of a channel's source that is sourced by a `SinkType`
-public func ∞= <T, S: SinkType>(lhs: Channel<S, T>, rhs: S.Element)->Void { var src = lhs.source; src.put(rhs) }
+/// Sets the value of a channel's source that is sourced by a `Sink`
+public func ∞= <T, S: Sink>(lhs: Channel<S, T>, rhs: S.Element)->Void { var src = lhs.source; src.put(rhs) }
 infix operator ∞= { }
 
 
-/// Reads the value from the given channel's source that is sourced by an StateSink implementation
+/// Reads the value from the given channel's source that is sourced by an Sink implementation
 public postfix func ∞? <T, S: StateSink>(c: Channel<S, T>)->S.Element { return c.source.value }
 postfix operator ∞? { }
 
 
 /// Increments the value of the source of the channel; works, but only when we define one of them
-//public postfix func ++ <T, S: StateSink where S.Element == Int>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
-//public postfix func ++ <T, S: StateSink where S.Element == Int8>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
-//public postfix func ++ <T, S: StateSink where S.Element == Int16>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
-//public postfix func ++ <T, S: StateSink where S.Element == Float>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + Float(1.0) }
+//public postfix func ++ <T, S: Sink where S.Element == Int>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: Sink where S.Element == Int8>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: Sink where S.Element == Int16>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: Sink where S.Element == Float>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + Float(1.0) }
 
 
 // MARK: Operators that create state channels
@@ -86,8 +86,8 @@ protocol OptionalStateElement {
 }
 
 extension Optional: OptionalStateElement {
-    typealias WrappedType = T
-    var unwrap: T? { return map { $0 } }
+    typealias WrappedType = Wrapped
+    var unwrap: Wrapped? { return map { $0 } }
 }
 
 prefix func ∞?=<S: StateSource, T: Equatable where S.Element: OptionalStateElement, S.Element.WrappedType: Equatable, T == S.Element.WrappedType>(source: S)->Channel<S, T?> {
@@ -123,50 +123,52 @@ public postfix func =∞ <T: Equatable>(value: T?)->PropertySource<T?> { return 
 
 // MARK: Infix operators
 
-/// Creates a one-way pipe betweek a `Channel` and a `SinkType`, such that all receiver emissions are sent to the sink.
+/// Creates a one-way pipe betweek a `Channel` and a `Sink`, such that all receiver emissions are sent to the sink.
 /// This is the operator form of `pipe`
-public func ∞-> <S1, T, S2: SinkType where T == S2.Element>(r: Channel<S1, T>, s: S2)->Receipt { return r.pipe(s) }
+public func ∞-> <S1, T, S2: Sink where T == S2.Element>(r: Channel<S1, T>, s: S2)->Receipt { return r.pipe(s) }
 infix operator ∞-> { }
 
 
-/// Creates a one-way pipe betweek a `Channel` and an `Equatable` `SinkType`, such that all receiver emissions are sent to the sink.
+/// Creates a one-way pipe betweek a `Channel` and an `Equatable` `Sink`, such that all receiver emissions are sent to the sink.
 /// This is the operator form of `pipe`
-public func ∞=> <S1, S2, T1, T2 where S2: SinkType, S2.Element == T1>(c1: Channel<S1, T1>, c2: Channel<S2, T2>)->Receipt {
+public func ∞=> <S1, S2, T1, T2 where S2: Sink, S2.Element == T1>(c1: Channel<S1, T1>, c2: Channel<S2, T2>)->Receipt {
     return conduct(c1, c2)
 }
 
 infix operator ∞=> { }
 
 
-/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `SinkType`, such that when either side is
+/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is
 /// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
 /// This is the operator form of `channel`
-public func <=∞=> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
+public func <=∞=> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return conduit(r1, r2) }
 infix operator <=∞=> { }
 
 
 /// Lossy conduit conversion operators
 infix operator <~∞~> { }
 
-/// Conduit operator that filters out nil values with a custom transformer
-public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType>(lhs: (o: Channel<S1, T1>, f: T1->Optional<S2.Element>), rhs: (o: Channel<S2, T2>, f: T2->Optional<S1.Element>))->Receipt {
-    let lhsm: Channel<S1, S2.Element> = lhs.o.map({ lhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
-    let rhsm: Channel<S2, S1.Element> = rhs.o.map({ rhs.f($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
+///// Conduit operator that filters out nil values with a custom transformer
+public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink>(lhs: (o: Channel<S1, T1>, f: T1->Optional<S2.Element>), rhs: (o: Channel<S2, T2>, f: T2->Optional<S1.Element>))->Receipt {
+    let lhsf = lhs.f
+    let lhsm: Channel<S1, S2.Element> = lhs.o.map({ lhsf($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
+    let rhsf = rhs.f
+    let rhsm: Channel<S2, S1.Element> = rhs.o.map({ rhsf($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
     return conduit(lhsm, rhsm)
 }
 
 
 /// Convert (possibly lossily) between two numeric types
-public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element: ConduitNumericCoercible, S2.Element: ConduitNumericCoercible, T1: ConduitNumericCoercible, T2: ConduitNumericCoercible>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>)->Receipt {
+public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element: ConduitNumericCoercible, S2.Element: ConduitNumericCoercible, T1: ConduitNumericCoercible, T2: ConduitNumericCoercible>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>)->Receipt {
     return conduit(lhs.map({ convertNumericType($0) }), rhs.map({ convertNumericType($0) }))
 }
 
 /// Convert (possibly lossily) between optional and non-optional types
-public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, Optional<T1>>, rhs: Channel<S2, T2>)->Receipt {
+public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, Optional<T1>>, rhs: Channel<S2, T2>)->Receipt {
     return conduit(lhs.filter({ $0 != nil }).map({ $0! }), rhs)
 }
 
-public func <~∞~> <S1, S2, T1, T2 where S1: SinkType, S2: SinkType, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, T1>, rhs: Channel<S2, Optional<T2>>)->Receipt {
+public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, T1>, rhs: Channel<S2, Optional<T2>>)->Receipt {
     return conduit(lhs, rhs.filter({ $0 != nil }).map({ $0! }))
 }
 
@@ -183,8 +185,381 @@ public func &<S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>)->Chann
     return lhs.zip(rhs)
 }
 
-// MARK: Auto-generated boilerplate tuple operations
 
+public protocol OneOfN {
+    var count: Int { get }
+}
+
+/// One of a set number of options
+public enum OneOf2<T1, T2>: OneOfN {
+    public var count: Int { return 2 }
+
+    case V1(T1)
+    case V2(T2)
+}
+
+/// One of a set number of options
+public enum OneOf3<T1, T2, T3>: OneOfN {
+    public var count: Int { return 3 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+
+    public init(nested: OneOf2<OneOf2<T1, T2>, T3>) {
+        switch nested {
+        case .V1(.V1(let v)): self = .V1(v)
+        case .V1(.V2(let v)): self = .V2(v)
+        case .V2(let v): self = .V3(v)
+        }
+    }
+
+    public func fold()->OneOf2<OneOf2<T1, T2>, T3> {
+        switch self {
+        case .V1(let v): return .V1(.V1(v))
+        case .V2(let v): return .V1(.V2(v))
+        case .V3(let v): return .V2(v)
+        }
+    }
+}
+
+/// One of a set number of options
+public enum OneOf4<T1, T2, T3, T4>: OneOfN {
+    public var count: Int { return 4 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+}
+
+/// One of a set number of options
+public enum OneOf5<T1, T2, T3, T4, T5>: OneOfN {
+    public var count: Int { return 5 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+}
+
+/// One of a set number of options
+public enum OneOf6<T1, T2, T3, T4, T5, T6>: OneOfN {
+    public var count: Int { return 6 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+}
+
+/// One of a set number of options
+public enum OneOf7<T1, T2, T3, T4, T5, T6, T7>: OneOfN {
+    public var count: Int { return 7 }
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+}
+
+/// One of a set number of options
+public enum OneOf8<T1, T2, T3, T4, T5, T6, T7, T8>: OneOfN {
+    public var count: Int { return 8 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+}
+
+/// One of a set number of options
+public enum OneOf9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: OneOfN {
+    public var count: Int { return 9 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+}
+
+/// One of a set number of options
+public enum OneOf10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: OneOfN {
+    public var count: Int { return 10 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+}
+
+/// One of a set number of options
+public enum OneOf11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: OneOfN {
+    public var count: Int { return 11 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+}
+
+
+/// One of a set number of options
+public enum OneOf12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: OneOfN {
+    public var count: Int { return 12 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+}
+
+/// One of a set number of options
+public enum OneOf13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: OneOfN {
+    public var count: Int { return 13 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+}
+
+/// One of a set number of options
+public enum OneOf14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>: OneOfN {
+    public var count: Int { return 14 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+}
+
+/// One of a set number of options
+public enum OneOf15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>: OneOfN {
+    public var count: Int { return 15 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+}
+
+/// One of a set number of options
+public enum OneOf16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>: OneOfN {
+    public var count: Int { return 16 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+    case V16(T16)
+}
+
+/// One of a set number of options
+public enum OneOf17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>: OneOfN {
+    public var count: Int { return 17 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+    case V16(T16)
+    case V17(T17)
+}
+
+
+/// One of a set number of options
+public enum OneOf18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>: OneOfN {
+    public var count: Int { return 18 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+    case V16(T16)
+    case V17(T17)
+    case V18(T18)
+}
+
+
+/// One of a set number of options
+public enum OneOf19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>: OneOfN {
+    public var count: Int { return 19 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+    case V16(T16)
+    case V17(T17)
+    case V18(T18)
+    case V19(T19)
+}
+
+
+/// One of a set number of options
+public enum OneOf20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>: OneOfN {
+    public var count: Int { return 20 }
+
+    case V1(T1)
+    case V2(T2)
+    case V3(T3)
+    case V4(T4)
+    case V5(T5)
+    case V6(T6)
+    case V7(T7)
+    case V8(T8)
+    case V9(T9)
+    case V10(T10)
+    case V11(T11)
+    case V12(T12)
+    case V13(T13)
+    case V14(T14)
+    case V15(T15)
+    case V16(T16)
+    case V17(T17)
+    case V18(T18)
+    case V19(T19)
+    case V20(T20)
+
+    public func fold()->OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18>, T19>, T20> {
+        switch self {
+        case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v)))))))))))))))))))
+        case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))))))))
+        case .V3(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))))))))
+        case .V4(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))))))
+        case .V5(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))))))
+        case .V6(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))))
+        case .V7(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))))
+        case .V8(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))
+        case .V9(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))
+        case .V10(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))
+        case .V11(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))
+        case .V12(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))
+        case .V13(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))
+        case .V14(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))
+        case .V15(let v): return .V1(.V1(.V1(.V1(.V1(.V2(v))))))
+        case .V16(let v): return .V1(.V1(.V1(.V1(.V2(v)))))
+        case .V17(let v): return .V1(.V1(.V1(.V2(v))))
+        case .V18(let v): return .V1(.V1(.V2(v)))
+        case .V19(let v): return .V1(.V2(v))
+        case .V20(let v): return .V2(v)
+        }
+    }
+
+}
+
+
+// MARK: Auto-generated boilerplate tuple operations
 
 public func &<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1, T2)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1, T2, T3)> { return combineSources(combineAll(lhs.zip(rhs))) }
 public func &<S1, S2, S3, S4, T1, T2, T3, T4>(lhs: Channel<(S1, S2, S3), (T1, T2, T3)>, rhs: Channel<S4, T4>)->Channel<(S1, S2, S3, S4), (T1, T2, T3, T4)> { return combineSources(combineAll(lhs.zip(rhs))) }
@@ -318,4 +693,3 @@ private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T1
 private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?)?, T18?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.1) } }
 private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)?, T19?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.0?.17, $0.1) } }
 private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)?, T20?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?, T20?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.0?.17, $0.0?.18, $0.1) } }
-

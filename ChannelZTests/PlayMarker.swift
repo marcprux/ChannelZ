@@ -24,29 +24,26 @@ class PlayMarker {
     }
 
     /// Given the markdown file at the specified path, generate a .playground folder for the file
-    class func generatePlaydown(commonMarkPath: NSURL, playgroundFolder: NSURL? = nil, inout error: NSError?) -> [NSURL] {
+    class func generatePlaydown(commonMarkPath: NSURL, playgroundFolder: NSURL? = nil) throws -> [NSURL] {
         var urls: [NSURL] = []
 
         if let outputURL = playgroundFolder ?? commonMarkPath.URLByDeletingPathExtension?.URLByAppendingPathExtension("playground") {
+            let string = try String(contentsOfURL: commonMarkPath, usedEncoding: nil)
+            let marker = PlayMarker(commonMark: string)
+            marker.convertBlocks()
 
-            if let string = String(contentsOfURL: commonMarkPath, usedEncoding: nil, error: &error) {
-                let marker = PlayMarker(commonMark: string)
-                marker.convertBlocks()
+            for output in marker.output {
+                if let data = output.contents.dataUsingEncoding(NSUTF8StringEncoding) {
+                    let dataURL = outputURL.URLByAppendingPathComponent(output.name)
+                    if let dataDir = dataURL.URLByDeletingLastPathComponent {
+                        try NSFileManager.defaultManager().createDirectoryAtURL(dataDir, withIntermediateDirectories: true, attributes: nil)
+                    }
 
-                for output in marker.output {
-                    if let data = output.contents.dataUsingEncoding(NSUTF8StringEncoding) {
-                        let dataURL = outputURL.URLByAppendingPathComponent(output.name)
-                        if let dataDir = dataURL.URLByDeletingLastPathComponent {
-                            NSFileManager.defaultManager().createDirectoryAtURL(dataDir, withIntermediateDirectories: true, attributes: nil, error: nil)
-                        }
-
-                        let existingData = NSData(contentsOfURL: dataURL) ?? NSData()
-                        if existingData != data {
-                            NSLog("writing playground file to: \(dataURL)")
-                            if data.writeToURL(dataURL, options: nil, error: &error) {
-                                urls += [dataURL]
-                            }
-                        }
+                    let existingData = NSData(contentsOfURL: dataURL) ?? NSData()
+                    if existingData != data {
+                        NSLog("writing playground file to: \(dataURL)")
+                        try data.writeToURL(dataURL, options: NSDataWritingOptions.AtomicWrite)
+                        urls += [dataURL]
                     }
                 }
             }
@@ -77,7 +74,7 @@ class PlayMarker {
 
     private func append(string: String?) {
         if let str = string?.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet()) {
-            if count(str) > 0 {
+            if !str.isEmpty {
                 element(node, "p", ("class", "para")).stringValue = str
             }
         }
@@ -94,10 +91,11 @@ class PlayMarker {
 
         let sections = element(playground, "sections")
         for section in output {
-            if section.name.pathExtension == "html" {
-                element(sections, "documentation", ("relative-path", section.name.lastPathComponent))
-            } else if section.name.pathExtension == "swift" {
-                element(sections, "code", ("source-file-name", section.name.lastPathComponent))
+            let sname: NSString = (section.name as NSString)
+            if sname.pathExtension == "html" {
+                element(sections, "documentation", ("relative-path", sname.lastPathComponent))
+            } else if sname.pathExtension == "swift" {
+                element(sections, "code", ("source-file-name", sname.lastPathComponent))
             }
         }
 
@@ -110,13 +108,13 @@ class PlayMarker {
     }
 
     func pushXHTMLContent() {
-        output += [("Documentation/fragment-\(count(output)).html", toXHTML(root))]
+        output += [("Documentation/fragment-\(output.count).html", toXHTML(root))]
         root = NSXMLElement(name: "div") // fresh new root node
         toRoot()
     }
 
     func pushSwiftContent(code: String) {
-        output += [("section-\(count(output)).swift", code)]
+        output += [("section-\(output.count).swift", code)]
     }
 
     func toRoot() -> NSXMLElement {
@@ -124,15 +122,15 @@ class PlayMarker {
         return node
     }
 
-    let patterns = [
-        (NSRegularExpression(pattern: "&", options: nil, error: nil)!, "&amp;", 0),
-        (NSRegularExpression(pattern: "<", options: nil, error: nil)!, "&lt;", 0),
-        (NSRegularExpression(pattern: ">", options: nil, error: nil)!, "&gt;", 0),
-        (NSRegularExpression(pattern: "`(.*?)`", options: nil, error: nil)!, "<code class='code-voice'>$1</code>", 1),
-        (NSRegularExpression(pattern: "\\*\\*(.*?)\\*\\*", options: nil, error: nil)!, "<strong>$1</strong>", 1),
-        (NSRegularExpression(pattern: "\\*(.*?)\\*", options: nil, error: nil)!, "<em>$1</em>", 1),
-        (NSRegularExpression(pattern: "\\[(.*?)\\]\\(#(.*?)\\)", options: nil, error: nil)!, "<em>$1</em>", 1), // no support for intra-Playground anchor links
-        (NSRegularExpression(pattern: "\\[(.*?)\\]\\((.*?)\\)", options: nil, error: nil)!, "<a href='$2'>$1</a>", 1),
+    let patterns: [(NSRegularExpression, String, Int)] = [
+        (try! NSRegularExpression(pattern: "&", options: NSRegularExpressionOptions.AllowCommentsAndWhitespace), "&amp;", 0),
+        (try! NSRegularExpression(pattern: "<", options: NSRegularExpressionOptions.AllowCommentsAndWhitespace), "&lt;", 0),
+        (try! NSRegularExpression(pattern: ">", options: NSRegularExpressionOptions.AllowCommentsAndWhitespace), "&gt;", 0),
+        (try! NSRegularExpression(pattern: "`(.*?)`", options: NSRegularExpressionOptions.AllowCommentsAndWhitespace), "<code class='code-voice'>$1</code>", 1),
+        (try! NSRegularExpression(pattern: "\\*\\*(.*?)\\*\\*", options: NSRegularExpressionOptions.AllowCommentsAndWhitespace), "<strong>$1</strong>", 1),
+        (try! NSRegularExpression(pattern: "\\*(.*?)\\*", options: NSRegularExpressionOptions.AllowCommentsAndWhitespace), "<em>$1</em>", 1),
+        (try! NSRegularExpression(pattern: "\\[(.*?)\\]\\(#(.*?)\\)", options: NSRegularExpressionOptions.AllowCommentsAndWhitespace), "<em>$1</em>", 1), // no support for intra-Playground anchor links
+        (try! NSRegularExpression(pattern: "\\[(.*?)\\]\\((.*?)\\)", options: NSRegularExpressionOptions.AllowCommentsAndWhitespace), "<a href='$2'>$1</a>", 1),
     ]
 
     /// Single-line scans use regualar expressions to parse for bold/italic/monospace
@@ -141,7 +139,7 @@ class PlayMarker {
         var line = NSMutableString(string: scanned)
 
         func replace(exp: NSRegularExpression, str: String) -> Int {
-            return exp.replaceMatchesInString(line, options: nil, range: NSMakeRange(0, line.length), withTemplate: str)
+            return exp.replaceMatchesInString(line, options: NSMatchingOptions(rawValue: 0), range: NSMakeRange(0, line.length), withTemplate: str)
         }
 
         var reps = 0
@@ -150,7 +148,7 @@ class PlayMarker {
             let rep = pattern.1
             let significance = pattern.2
 
-            reps += replace(exp, rep) * significance
+            reps += replace(exp, str: rep) * significance
         }
 
         // maybe HTML: parse it and add it as a child node
@@ -163,16 +161,16 @@ class PlayMarker {
 
     func scanChild(child: NSXMLElement) {
         let line = scanLine().stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
-        if count(line) > 0 {
-            if contains(line, "<") {
+        if !line.isEmpty {
+            if line.characters.indexOf("<") != nil {
                 // maybe HTML: parse it and add it as a child node
-                var error: NSError?
-                if let parsed = NSXMLDocument(XMLString: line, options: Int(NSXMLNodePreserveWhitespace), error: &error) {
+                do {
+                    let parsed = try NSXMLDocument(XMLString: line, options: Int(NSXMLNodePreserveWhitespace))
                     if let root = parsed.rootElement() {
                         root.detach()
                         child.addChild(root)
                     }
-                } else {
+                } catch {
                     child.stringValue = line
                 }
             } else {
@@ -191,7 +189,7 @@ class PlayMarker {
 
     /// High-level conversion of blocks to code
     func convertBlocks() {
-        var string: NSString?
+        let _: NSString?
 
         while !scanner.atEnd {
             if scan("\n```swift") {
@@ -201,7 +199,7 @@ class PlayMarker {
                 pushXHTMLContent()
                 pushSwiftContent(swiftCode.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet()))
             } else if scan("<!--") {
-                let comment = scanThrough("-->")
+                _ = scanThrough("-->")
             } else if scan("\n###### ") {
                 appendHeader(6)
             } else if scan("\n##### ") {
@@ -280,11 +278,11 @@ class PlayMarker {
         let title = element(head, "title")
         title.stringValue = "Playground"
         
-        let style = element(head, "link", ("rel", "stylesheet"), ("type", "text/css"), ("href", "playdown.css"))
-        let charset = element(head, "meta", ("charset", "utf-8"))
-        let xcode = element(head, "meta", ("id", "xcode-display"), ("name", "xcode-display"), ("content", "render"))
-        let mobile = element(head, "meta", ("name", "apple-mobile-web-app-capable"), ("content", "yes"))
-        let viewport = element(head, "meta", ("name", "viewport"), ("content", "width = device-width, maximum-scale=1.0"))
+        _ = element(head, "link", ("rel", "stylesheet"), ("type", "text/css"), ("href", "playdown.css"))
+        _ = element(head, "meta", ("charset", "utf-8"))
+        _ = element(head, "meta", ("id", "xcode-display"), ("name", "xcode-display"), ("content", "render"))
+        _ = element(head, "meta", ("name", "apple-mobile-web-app-capable"), ("content", "yes"))
+        _ = element(head, "meta", ("name", "viewport"), ("content", "width = device-width, maximum-scale=1.0"))
 
 
         let body = element(rootElement, "body", ("id", "conceptual_flow_with_tasks"), ("class", "jazz"))

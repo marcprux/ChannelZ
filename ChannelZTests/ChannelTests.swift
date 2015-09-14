@@ -11,26 +11,24 @@ import ChannelZ
 
 private func moreT<T>()->T { fatalError("you can't take less") }
 
-extension Channel {
+extension ChannelType {
     /// Test method that receives to the observable and returns any elements that are immediately sent to fresh receivers
-    var immediateItems: [T] {
-        var items: [T] = []
+    var immediateItems: [Element] {
+        var items: [Element] = []
         receive({ items += [$0] }).cancel()
         return items
     }
 }
 
 /// Handy extensions to create a sequence from an arrays and ranges
-extension Array { func channelZ()->Channel<Array, T> { return channelZSequence(self) } }
-extension Range { func channelZ()->Channel<Range, T> { return channelZSequence(self) } }
+extension Array { func channelZ()->Channel<Array, Element> { return channelZSequence(self) } }
+extension Range { func channelZ()->Channel<Range, Element> { return channelZSequence(self) } }
 
 /// Creates an asynchronous trickle of events for the given generator
-func trickleZ<G: GeneratorType>(var from: G, interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue())->Channel<G, G.Element> {
+func trickleZ<G: GeneratorType>(var from: G, _ interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue())->Channel<G, G.Element> {
     var receivers = ReceiverList<G.Element>()
-
     let delay = Int64(interval * NSTimeInterval(NSEC_PER_SEC))
-    var tick: ()->() = { } // need to first capture before we can invoke from within itself
-    tick = {
+    func tick() {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay), queue) {
             if receivers.count > 0 { // i.e., they haven't all been cancelled
                 if let next = from.next() {
@@ -45,6 +43,11 @@ func trickleZ<G: GeneratorType>(var from: G, interval: NSTimeInterval, queue: di
     return Channel(source: from) { rcvr in receivers.addReceipt(rcvr) }
 }
 
+//public extension ChannelType where Element : Comparable {
+//    public func sieveIncrementing()->Channel<Source, Element> {
+//        return sieve { return $0.current > $0.previous }
+//    }
+//}
 
 // TODO make a spec with each of https://github.com/ReactiveX/RxScala/blob/0.x/examples/src/test/scala/rx/lang/scala/examples/RxScalaDemo.scala
 
@@ -53,16 +56,18 @@ public class ChannelTests: XCTestCase {
 
     func testTraps() {
         // TODO: re-name global trap, since it is confusing that it means something different than Channel.trap
-        let bools = (∞=false=∞).trap(10)
+        let channel = ∞=false=∞
+        // var src = channel.source
+        let bools = channel.trap(10)
 
         // test that sending capacity distinct values will store those values
-        var send = [true, false, true, false, true, false, true, false, true, false]
-        send.map { bools.channel.source.value = $0 }
+        let send = [true, false, true, false, true, false, true, false, true, false]
+        for x in send { bools.channel.source.value = x }
         XCTAssertEqual(send, bools.values)
 
         // test that sending some mixed values will sieve and constrain to the capacity
-        var mixed = [false, true, true, true, false, true, false, true, false, true, true, false, true, true, false, false, false]
-        mixed.map { bools.channel.source.value = $0 }
+        let mixed = [false, true, true, true, false, true, false, true, false, true, true, false, true, true, false, false, false]
+        for x in mixed { bools.channel.source.value = x }
         XCTAssertEqual(send, bools.values)
     }
 
@@ -139,7 +144,7 @@ public class ChannelTests: XCTestCase {
         }
 
         typealias S1 = Range<Int>
-        typealias S2 = SinkOf<(Float)>
+        typealias S2 = SinkTo<(Float)>
         typealias S3 = ()->Void?
 
         let o1: Channel<S1, Int> = (1...3).channelZ()
@@ -149,11 +154,11 @@ public class ChannelTests: XCTestCase {
         let cc: Channel<(((S1, S2), S2), S2), Int> = o1 + o2 + o2 + o2
 
         // examples of type signatures
-        let ccSub: Channel<((S1, S2), (S2, S2)), Int> = (o1 + o2) + (o2 + o2)
-        let ccVoid: Channel<Void, Int> = cc.dissolve()
-        let ccAny: Channel<(S1, S2, S1), (Int?, Int?, Int?)> = o1 | o2 | o1
-        let ccZip: Channel<(S1, S2, S3), (Int, Int, Void)> = o1 & o2 & o3
-        let ccMany: Channel<(S1, S2, S3, S2, S1), (Int, Int, Void, Int, Int)> = o1 & o2 & o3 & o2 & o1
+        let _: Channel<((S1, S2), (S2, S2)), Int> = (o1 + o2) + (o2 + o2)
+        let _: Channel<Void, Int> = cc.dissolve()
+        let _: Channel<(S1, S2, S1), (Int?, Int?, Int?)> = o1 | o2 | o1
+        let _: Channel<(S1, S2, S3), (Int, Int, Void)> = o1 & o2 & o3
+        let _: Channel<(S1, S2, S3, S2, S1), (Int, Int, Void, Int, Int)> = o1 & o2 & o3 & o2 & o1
 //        let ccMany: Channel<(S1, S2, S3, S1, S2, S3, S1, S2, S3, S1, S2, S3), (Int, Int, Void, Int, Int, Void, Int, Int, Void, Int, Int, Void)> = o1 & o2 & o3 & o1 & o2 & o3 & o1 & o2 & o3 & o1 & o2 & o3
 
         var count = 0
@@ -173,56 +178,58 @@ public class ChannelTests: XCTestCase {
     }
 
     func testStreamExtensions() {
-        if let stream = NSInputStream(fileAtPath: __FILE__) {
-            weak var xpc: XCTestExpectation? = expectationWithDescription("input stream")
+        guard let stream = NSInputStream(fileAtPath: __FILE__) else {
+            return XCTFail("could not open \(__FILE__)")
+        }
 
-            let allData = NSMutableData()
-            let obv = stream.channelZStream()
-            var openCount = 0
-            var closeCount = 0
-            var count = 0
-            let sub = obv.receive { switch $0 {
-                case .Opened:
-                    openCount++
-                case .Data(let d):
-                    count += d.count
-                    allData.appendData(NSData(bytes: d, length: d.count))
-                case .Error(let e):
-                    XCTFail(e.description)
-                    xpc?.fulfill()
-                case .Closed:
-                    closeCount++
-                    xpc?.fulfill()
-                }
-            }
+        weak var xpc: XCTestExpectation? = expectationWithDescription("input stream")
 
-            stream.scheduleInRunLoop(NSRunLoop.currentRunLoop(), forMode: NSDefaultRunLoopMode)
-            stream.open()
-
-            waitForExpectationsWithTimeout(1, handler: { _ in })
-
-            XCTAssertEqual(1, openCount)
-            XCTAssertEqual(1, closeCount)
-            XCTAssertGreaterThan(count, 1000)
-            sub.cancel()
-
-            if let str = NSString(data: allData, encoding: NSUTF8StringEncoding) {
-                let advice = "Begin at the beginning, and go on till you come to the end: then stop"
-                XCTAssertTrue(str.containsString(advice))
-            } else {
-                XCTFail("could not create string from data in \(__FILE__)")
+        let allData = NSMutableData()
+        let obv = stream.channelZStream()
+        var openCount = 0
+        var closeCount = 0
+        var count = 0
+        let sub = obv.receive { switch $0 {
+            case .Opened:
+                openCount++
+            case .Data(let d):
+                count += d.count
+                allData.appendData(NSData(bytes: d, length: d.count))
+            case .Error(let e):
+                XCTFail(e.description)
+                xpc?.fulfill()
+            case .Closed:
+                closeCount++
+                xpc?.fulfill()
             }
         }
+
+        stream.scheduleInRunLoop(NSRunLoop.currentRunLoop(), forMode: NSDefaultRunLoopMode)
+        stream.open()
+
+        waitForExpectationsWithTimeout(1, handler: { _ in })
+
+        XCTAssertEqual(1, openCount)
+        XCTAssertEqual(1, closeCount)
+        XCTAssertGreaterThan(count, 1000)
+        sub.cancel()
+
+        if let str = NSString(data: allData, encoding: NSUTF8StringEncoding) {
+            let advice = "Begin at the beginning, and go on till you come to the end: then stop"
+            XCTAssertTrue(str.containsString(advice))
+        } else {
+            XCTFail("could not create string from data in \(__FILE__)")
+        }
     }
-    
+
     func testFilterChannel() {
         let obv = channelZSink(Int)
 
         var count = 0
-        let sub = obv.filter({ $0 > 0 }).receive({ _ in count += 1 })
+        _ = obv.filter({ $0 > 0 }).receive({ _ in count += 1 })
 
         let numz = -10...3
-        numz.map { obv.source.put($0) }
+        for x in numz { obv.source.put(x) }
 
         XCTAssertEqual(3, count)
     }
@@ -237,19 +244,19 @@ public class ChannelTests: XCTestCase {
         let rcpt2 = channel2.receive({ _ in count2 += 1 })
 
         let numz = -10...3
-        numz.map { obv.source.put($0) }
+        for x in numz { obv.source.put(x) }
 
         XCTAssertEqual(3, count1)
         XCTAssertEqual(11, count2)
 
         rcpt2.cancel()
-        numz.map { obv.source.put($0) }
+        for x in numz { obv.source.put(x) }
 
         XCTAssertEqual(6, count1)
         XCTAssertEqual(11, count2)
 
         rcpt1.cancel()
-        numz.map { obv.source.put($0) }
+        for x in numz { obv.source.put(x) }
 
         XCTAssertEqual(6, count1)
         XCTAssertEqual(11, count2)
@@ -266,9 +273,9 @@ public class ChannelTests: XCTestCase {
         let filt = chan.filter(isMoreThanOneCharacter)
         let sub = filt.receive({ _ in count += 1 })
 
-        for i in 1...10 {
+        for _ in 1...10 {
             let numz = -2...11
-            numz.map { obv.source.put($0) }
+            for x in numz { obv.source.put(x) }
             XCTAssertEqual(4, count)
             sub.cancel() // make sure the count is still 4...
         }
@@ -280,7 +287,7 @@ public class ChannelTests: XCTestCase {
         let xpc: XCTestExpectation = expectationWithDescription("queue delay")
 
         var count = 0
-        let sub = obv.filter({ $0 > 0 }).dispatch(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)).receive({ _ in
+        _ = obv.filter({ $0 > 0 }).dispatch(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)).receive({ _ in
             XCTAssertFalse(NSThread.isMainThread())
             count += 1
             if count >= 3 {
@@ -289,7 +296,7 @@ public class ChannelTests: XCTestCase {
         })
 
         let numz = -10...3
-        numz.map { obv.source.put($0) }
+        for x in numz { obv.source.put(x) }
 
 //        XCTAssertNotEqual(3, count, "should have been a delay")
         waitForExpectationsWithTimeout(1, handler: { _ in })
@@ -340,78 +347,80 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(fibcount * channelCount, fibs.count)
 
         func dedupe<S: SequenceType, T: Equatable where T == S.Generator.Element>(seq: S)->Array<T> {
-            let reduced = reduce(seq, Array<T>()) { (array, item) in
+            let reduced = seq.reduce(Array<T>()) { (array, item) in
                 return array + (item == array.last ? [] : [item])
             }
             return reduced
         }
 
-        let distinctAll = dedupe(sorted(fibs, <))
+        let distinctAll = dedupe(fibs.sort())
         let distinct24 = Array(distinctAll[0..<24])
 
         XCTAssertEqual([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765, 10946, 17711, 28657, 46368, 75025], distinct24)
     }
 
     func testSieveDistinct() {
-        var numberz = [1, 1, 2, 1, 2, 2, 2, 3, 3, 4].channelZ()
+        let numberz = [1, 1, 2, 1, 2, 2, 2, 3, 3, 4].channelZ()
         let distinctor = numberz.sieve(!=)
         XCTAssertEqual([1, 2, 1, 2, 3, 4], distinctor.immediateItems)
         XCTAssertEqual(6, distinctor.map({ _ in arc4random() }).immediateItems.count)
     }
 
     func testSieveLastIncrementing() {
-        var numberz = [1, 1, 2, 1, 2, 2, 2, 3, 3, 4, 1, 3].channelZ()
+        let numberz = [1, 1, 2, 1, 2, 2, 2, 3, 3, 4, 1, 3].channelZ()
+//        let incrementor = numberz.sieveIncrementing() // defined in our test protocol
         let incrementor = numberz.sieve(<)
         XCTAssertEqual([1, 2, 2, 3, 4, 3], incrementor.immediateItems)
     }
 
     func testBuffer() {
-        var numberz = [1, 2, 3, 4, 5, 6, 7].channelZ()
+        let numberz = [1, 2, 3, 4, 5, 6, 7].channelZ()
         let bufferer = numberz.buffer(3)
         XCTAssertEqual([[1, 2, 3], [4, 5, 6]], bufferer.immediateItems)
     }
 
     func testTerminate() {
-        var boolz = [true, true, true, false, true, false, false, true].channelZ()
+        let boolz = [true, true, true, false, true, false, false, true].channelZ()
         let finite = boolz.terminate(!)
         XCTAssertEqual([true, true, true], finite.immediateItems)
 
-        var boolz2 = [true, true, true, false, true, false, false, true].channelZ()
+        let boolz2 = [true, true, true, false, true, false, false, true].channelZ()
         let finite2 = boolz2.terminate(!, terminus: { false })
         XCTAssertEqual([true, true, true, false], finite2.immediateItems)
     }
 
     func testReduceNumbers() {
-        var numberz = (1...100).channelZ()
+        let numberz = (1...100).channelZ()
         let bufferer = numberz.partition(0, isPartition: { b,x in x % 7 == 0 }, combine: +)
         let a1 = 1+2+3+4+5+6+7
         let a2 = 8+9+10+11+12+13+14
         XCTAssertEqual([a1, a2, 126, 175, 224, 273, 322, 371, 420, 469, 518, 567, 616, 665], bufferer.immediateItems)
     }
 
-    func testReduceRunningAverage() {
-        // index creates an indexed pair of elements, a lazy version of Swift's EnumerateGenerator
-        func index<T>()->(item: T)->(index: Int, item: T) { var index = 0; return { item in return (index++, item) } }
-
-        // runningAgerage computes the next average in a sequence given the previous average and the current index
-        func runningAverage(prev: Double, pair: (Int, Double))->Double { return (prev * Double(pair.0) + pair.1) / Double(pair.0+1) }
-
-        // always always returns true
-        func always<T>(_: T)->Bool { return true }
-        
-        var numberz = (1...10).channelZ()
-        let avg1 = numberz.map({ Double($0) }).enumerate().partition(0, withPartitions: true, clearAfterPulse: false, isPartition: always, combine: runningAverage)
-        XCTAssertEqual([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5], avg1.immediateItems)
-
-        let avg2 = numberz.map({ Double($0 * 10) }).map(index()).partition(0, withPartitions: true, clearAfterPulse: false, isPartition: always, combine: runningAverage)
-        XCTAssertEqual([10, 15, 20, 25, 30, 35, 40, 45, 50, 55], avg2.immediateItems)
-
-    }
+    // FIXME: linker error
+//    func testReduceRunningAverage() {
+//        // index creates an indexed pair of elements, a lazy version of Swift's EnumerateGenerator
+//        func index<T>()->(item: T)->(index: Int, item: T) { var index = 0; return { item in return (index++, item) } }
+//
+//        // runningAgerage computes the next average in a sequence given the previous average and the current index
+//        func runningAverage(prev: Double, pair: (Int, Double))->Double { return (prev * Double(pair.0) + pair.1) / Double(pair.0+1) }
+//
+//        // always always returns true
+//        func always<T>(_: T)->Bool { return true }
+//        
+//        var numberz = (1...10).channelZ()
+//        let avg1 = numberz.map({ Double($0) }).enumerate().partition(0, withPartitions: true, clearAfterPulse: false, isPartition: always, combine: runningAverage)
+//        XCTAssertEqual([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5], avg1.immediateItems)
+//
+//        let avg2 = numberz.map({ Double($0 * 10) }).map(index()).partition(0, withPartitions: true, clearAfterPulse: false, isPartition: always, combine: runningAverage)
+//        XCTAssertEqual([10, 15, 20, 25, 30, 35, 40, 45, 50, 55], avg2.immediateItems)
+//
+//    }
 
     func testReduceStrings() {
         func isSpace(buf: String, str: String)->Bool { return str == " " }
-        let characters = map("this is a pretty good string!", { String($0) })
-        var characterz = characters.channelZ()
+        let characters = "this is a pretty good string!".characters.map({ String($0) })
+        let characterz = characters.channelZ()
         let reductor = characterz.partition("", withPartitions: false, isPartition: isSpace, combine: +)
         XCTAssertEqual(["this", "is", "a", "pretty", "good"], reductor.immediateItems)
     }
@@ -461,7 +470,7 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(["Marc", "Prud'hommeaux"], names)
 
         var levels: [Int] = []
-        let rcpt1 = person.level.sieve(<).receive({ levels += [$0] })
+        _ = person.level.sieve(<).receive({ levels += [$0] })
         person.level ∞= 1
         person.level ∞= 2
         person.level ∞= 2
@@ -519,7 +528,7 @@ public class ChannelTests: XCTestCase {
     }
 
     func testUnstableChannels() {
-        let propsrc: PropertySource<Int> = 0∞ // just to show the postfix signature
+        let _: PropertySource<Int> = 0∞ // just to show the postfix signature
         let propa: Channel<PropertySource<Int>, Int> = ∞0∞
         let propb: Channel<PropertySource<Int>, Int> = ∞0∞
 
@@ -546,26 +555,47 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(6, propb.source.value, "cancelled receiver should not have channeled the value")
     }
 
-    /// We use this test to generate the hairy tuple unwrapping code for the Reveicer's flatSink, &, and | functions
+    func testOneOf() {
+        let a = ∞=0=∞
+        let b = ∞="A"=∞
+        let c = ∞=0.0=∞
+
+        var ints = 0
+        var strs = 0
+        var flts = 0
+
+        a.oneOf(b).oneOf(c).receive { r in
+            switch r {
+            case .V1(.V1): ints++
+            case .V1(.V2): strs++
+            case .V2: flts++
+            }
+        }
+
+        XCTAssertEqual(0, ints)
+        XCTAssertEqual(0, strs)
+
+        a.source.value++
+        XCTAssertEqual(1, ints)
+        XCTAssertEqual(0, strs)
+
+        b.source.value = "x"
+        XCTAssertEqual(1, ints)
+        XCTAssertEqual(1, strs)
+    }
+
+    /// We use this test to generate the hairy tuple unwrapping code for the Receiver's flatSink, &, and | functions
     func testGenerateTuples() {
-
-        /// Takes a `Channel` with a nested tuple of outputs types and flattens the outputs into a single tuple
-        let flattenElements4 = "private func flattenElements<S, T1, T2, T3, T4>(rcvr: Channel<S, (((T1, T2), T3), T4)>)->Channel<S, (T1, T2, T3, T4)> { return rcvr.map { ($0.0.0.0, $0.0.0.1, $0.0.1, $0.1) } }"
-
-        /// Takes a `Channel` with a nested tuple of outputs types and flattens the outputs into a single tuple
-        let flatOptionalSink4 = "private func flatOptionalSink<S, T1, T2, T3, T4>(rcvr: Channel<S, (((T1?, T2?)?, T3?)?, T4?)>)->Channel<S, (T1?, T2?, T3?, T4?)> { return rcvr.map { ($0.0?.0?.0, $0.0?.0?.1, $0.0?.1, $0.1) } }"
-
-
 
         let pname: String = "rcvr"
 
         /// repeat the given string a certain number of times
-        let strs: (String, Int)->String = { s,i in join("", Repeat(count: i, repeatedValue: s)) }
+        let strs: (String, Int)->String = { s,i in Repeat(count: i, repeatedValue: s).reduce("", combine: +) }
 
         /// make a type list like T1, T2, T3, T4
-        let types: (String, Int)->String = { s,i in join(", ", (1...i).map({ "\(s)\($0)" })) }
+        let types: (String, Int)->String = { s,i in (1...i).map({ "\(s)\($0)" }).reduce("", combine: { $0 + ($0.isEmpty ? "" : ", ") + $1 }) }
 
-        let otypes: (String, Int)->String = { s,i in join(", ", (1...i).map({ "\(s)\($0)?" })) }
+        let otypes: (String, Int)->String = { s,i in (1...i).map({ "\(s)\($0)?" }).reduce("", combine: { $0 + ($0.isEmpty ? "" : ", ") + $1 }) }
 
 
         func flatTuple(count: Int, pre: String, opt: Bool)->String {
@@ -581,20 +611,20 @@ public class ChannelTests: XCTestCase {
             return str
         }
 
-        XCTAssertEqual("$0.0.0.0, $0.0.0.1, $0.0.1, $0.1", flatTuple(4, "$0", false))
-//        XCTAssertEqual("$0.0?.0?.0, $0.0?.0?.1, $0.0?.1, $0.1", flatTuple(4, "$0", true))
-        XCTAssertEqual("ob.source.0.0.0.0, ob.source.0.0.0.1, ob.source.0.0.1, ob.source.0.1, ob.source.1", flatTuple(5, "ob.source", false))
+        XCTAssertEqual("$0.0.0.0, $0.0.0.1, $0.0.1, $0.1", flatTuple(4, pre: "$0", opt: false))
+        //        XCTAssertEqual("$0.0?.0?.0, $0.0?.0?.1, $0.0?.1, $0.1", flatTuple(4, "$0", true))
+        XCTAssertEqual("ob.source.0.0.0.0, ob.source.0.0.0.1, ob.source.0.0.1, ob.source.0.1, ob.source.1", flatTuple(5, pre: "ob.source", opt: false))
 
         let genFlatElement: (Int)->String = { (n: Int) in
             let parts: [String] = [
                 "private func flattenElements<S, " + types("T", n) + ">(\(pname): Channel",
-                reduce(2...n, "<S, ", { s,i in s + "(" }),
-                reduce(2...n, "T1", { s,i in s + ", T\(i))" }),
+                (2...n).reduce("<S, ", combine: { s,i in s + "(" }),
+                (2...n).reduce("T1", combine: { s,i in s + ", T\(i))" }),
                 ">)->Channel<S, (" + types("T", n) + ")>",
-                " { return \(pname).map { (" + flatTuple(n, "$0", false) + ") } }",
+                " { return \(pname).map { (" + flatTuple(n, pre: "$0", opt: false) + ") } }",
             ]
 
-            return join("", parts)
+            return parts.reduce("", combine: +)
         }
 
 
@@ -605,26 +635,26 @@ public class ChannelTests: XCTestCase {
                 types("S", n),
                 ", T>(\(pname): Channel<",
                 strs("(", n-1),
-                reduce(2...n, "S1", { s,i in s + ", S\(i)" + ")" }),
+                (2...n).reduce("S1", combine: { s,i in s + ", S\(i)" + ")" }),
                 ", T>)->Channel",
                 "<(" + types("S", n) + "), T>",
-                " { let src = \(pname).source; return Channel(source: (" + flatTuple(n, "src", false) + "), reception: rcvr.reception) }",
+                " { let src = \(pname).source; return Channel(source: (" + flatTuple(n, pre: "src", opt: false) + "), reception: rcvr.reception) }",
             ]
 
-            return join("", parts)
+            return parts.reduce("", combine: +)
         }
 
 
-        
+
         let flattenSources5 = "private func flattenSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((((S1, S2), S3), S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { let src = \(pname).source; return Channel(source: (src.0.0.0.0, src.0.0.0.1, src.0.0.1, src.0.1, src.1), reception: rcvr.reception) }"
         XCTAssert(flattenSources5.hasPrefix(genFlatSource(5)), "\nGEN: \(genFlatSource(5))\nVS.: \(flattenSources5)")
         XCTAssertEqual(genFlatSource(5), flattenSources5)
 
         func combineTuple(count: Int, pre: String, opt: Bool)->String {
             if opt {
-                return reduce(0..<count-1, "", { s,i in s + pre + ".0?.\(i), " }) + "\(pre).1"
+                return (0..<count-1).reduce("", combine: { s,i in s + pre + ".0?.\(i), " }) + "\(pre).1"
             } else {
-                return reduce(0..<count-1, "", { s,i in s + pre + ".0.\(i), " }) + "\(pre).1"
+                return (0..<count-1).reduce("", combine: { s,i in s + pre + ".0.\(i), " }) + "\(pre).1"
             }
         }
 
@@ -637,10 +667,10 @@ public class ChannelTests: XCTestCase {
                 types("S", n-1),
                 "), S\(n)), T>)->Channel",
                 "<(" + types("S", n) + "), T>",
-                " { let src = \(pname).source; return Channel(source: (" + combineTuple(n, "src", false) + "), reception: rcvr.reception) }",
+                " { let src = \(pname).source; return Channel(source: (" + combineTuple(n, pre: "src", opt: false) + "), reception: rcvr.reception) }",
             ]
 
-            return join("", parts)
+            return parts.reduce("", combine: +)
         }
 
         let comboSources5 = "private func combineSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((S1, S2, S3, S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { let src = \(pname).source; return Channel(source: (src.0.0, src.0.1, src.0.2, src.0.3, src.1), reception: rcvr.reception) }"
@@ -652,15 +682,15 @@ public class ChannelTests: XCTestCase {
         let genCombineAll: (Int)->String = { (n: Int) in
             let parts: [String] = [
                 "private func combineAll<S, " + types("T", n) + ">(\(pname): Channel",
-                reduce(2...n, "<S, ", { s,i in s }),
-                reduce(2...n-1, "((T1", { s,i in s + ", T\(i)" }) + "), T\(n))",
+                (2...n).reduce("<S, ", combine: { s,i in s }),
+                (2...n-1).reduce("((T1", combine: { s,i in s + ", T\(i)" }) + "), T\(n))",
                 ">)->Channel<S, (" + types("T", n) + ")>",
-                " { return \(pname).map { (" + combineTuple(n, "$0", false) + ") } }",
+                " { return \(pname).map { (" + combineTuple(n, pre: "$0", opt: false) + ") } }",
             ]
 
-            return join("", parts)
+            return parts.reduce("", combine: +)
         }
-        
+
 
 
         let genZip: (Int)->String = { n in
@@ -675,7 +705,7 @@ public class ChannelTests: XCTestCase {
                 " { return combineSources(combineAll(lhs.zip(rhs))) }",
             ]
 
-            return join("", parts)
+            return parts.reduce("", combine: +)
         }
 
 
@@ -690,13 +720,13 @@ public class ChannelTests: XCTestCase {
         let genCombineAny: (Int)->String = { (n: Int) in
             let parts: [String] = [
                 "private func combineAny<S, " + types("T", n) + ">(\(pname): Channel",
-                reduce(2...n, "<S, ", { s,i in s }),
-                reduce(2...n-1, "((T1?", { s,i in s + ", T\(i)?" }) + ")?, T\(n)?)",
+                (2...n).reduce("<S, ", combine: { s,i in s }),
+                (2...n-1).reduce("((T1?", combine: { s,i in s + ", T\(i)?" }) + ")?, T\(n)?)",
                 ">)->Channel<S, (" + otypes("T", n) + ")>",
-                " { return \(pname).map { (" + combineTuple(n, "$0", true) + ") } }",
+                " { return \(pname).map { (" + combineTuple(n, pre: "$0", opt: true) + ") } }",
             ]
 
-            return join("", parts)
+            return parts.reduce("", combine: +)
         }
 
 
@@ -712,9 +742,9 @@ public class ChannelTests: XCTestCase {
                 " { return combineSources(combineAny(lhs.either(rhs))) }",
             ]
 
-            return join("", parts)
+            return parts.reduce("", combine: +)
         }
-        
+
 
 
         /// Channel combination & flattening operation (operator form of `flatAny`)
@@ -724,31 +754,33 @@ public class ChannelTests: XCTestCase {
 
 
         let dumptups: (Int)->(Void) = { max in
-            for i in 3...max { println(genZip(i)) }
-            println()
-            for i in 3...max { println(genOr(i)) }
-            println()
-            for i in 3...max { println(genFlatSource(i)) }
-            println()
-            for i in 3...max { println(genComboSource(i)) }
-            println()
-            for i in 3...max { println(genFlatElement(i)) }
-            println()
-            for i in 3...max { println(genCombineAll(i)) }
-            println()
-            for i in 3...max { println(genCombineAny(i)) }
+            for i in 3...max { print(genZip(i)) }
+            print("")
+            for i in 3...max { print(genOr(i)) }
+            print("")
+            for i in 3...max { print(genFlatSource(i)) }
+            print("")
+            for i in 3...max { print(genComboSource(i)) }
+            print("")
+            for i in 3...max { print(genFlatElement(i)) }
+            print("")
+            for i in 3...max { print(genCombineAll(i)) }
+            print("")
+            for i in 3...max { print(genCombineAny(i)) }
+            print("")
+            for i in 3...max { print(genCombineAny(i)) }
         }
-
-//        dumptups(20)
+        
+        dumptups(20)
     }
 
-        func testPropertyChannel() {
-        var xs: Int = 1
-        var x = channelZProperty(xs)
-        var f: Channel<Void, Int> = x.dissolve() // read-only observable of channel x
+    func testPropertyChannel() {
+        let xs: Int = 1
+        let x = channelZProperty(xs)
+        let f: Channel<Void, Int> = x.dissolve() // read-only observable of channel x
 
         var changes = 0
-        var subscription = f ∞> { _ in changes += 1 }
+        let subscription = f ∞> { _ in changes += 1 }
 
         XCTAssertEqual(0, changes)
         assertChanges(changes, x ∞= (x.source.value + 1))
@@ -761,18 +793,18 @@ public class ChannelTests: XCTestCase {
     }
 
     func testFieldChannelMapObservable() {
-        var xs: Bool = true
-        var x = channelZProperty(xs)
+        let xs: Bool = true
+        let x = channelZProperty(xs)
 
-        var xf: Channel<Void, Bool> = x.dissolve() // read-only observable of channel x
+        let xf: Channel<Void, Bool> = x.dissolve() // read-only observable of channel x
 
-        let fxa = xf ∞> { (x: Bool) in return }
+        _ = xf ∞> { (x: Bool) in return }
 
-        var y = x.map({ "\($0)" })
-        var yf: Channel<Void, String> = y.dissolve() // read-only observable of mapped channel y
+        let y = x.map({ "\($0)" })
+        let yf: Channel<Void, String> = y.dissolve() // read-only observable of mapped channel y
 
         var changes = 0
-        var fya: Receipt = yf ∞> { (x: String) in changes += 1 }
+        let fya: Receipt = yf ∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(0, changes)
         assertChanges(changes, x ∞= (!x.source.value))
@@ -785,18 +817,18 @@ public class ChannelTests: XCTestCase {
     }
 
     func testFieldSieveChannelMapObservable() {
-        var xs: Double = 1
+        let xs: Double = 1
 
-        var x = channelZProperty(xs)
-        var xf: Channel<Void, Double> = x.dissolve() // read-only observable of channel x
+        let x = channelZProperty(xs)
+        let xf: Channel<Void, Double> = x.dissolve() // read-only observable of channel x
 
-        var fxa = xf ∞> { (x: Double) in return }
+        let fxa = xf ∞> { (x: Double) in return }
 
-        var y = x.map({ "\($0)" })
-        var yf: Channel<Void, String> = y.dissolve() // read-only observable of channel y
+        let y = x.map({ "\($0)" })
+        let yf: Channel<Void, String> = y.dissolve() // read-only observable of channel y
 
         var changes = 0
-        var fya: Receipt = yf ∞> { (x: String) in changes += 1 }
+        let fya: Receipt = yf ∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(0, changes)
         assertChanges(changes, x ∞= (x.source.value + 1))
@@ -836,11 +868,11 @@ public class ChannelTests: XCTestCase {
     }
 
     func testHomogeneousConduit() {
-        var a = ∞(Double(1.0))∞
-        var b = ∞(UInt(1))∞
+        let a = ∞(Double(1.0))∞
+        let b = ∞(UInt(1))∞
 
-        var af = a.filter({ $0 >= Double(UInt.min) && $0 <= Double(UInt.max) }).map({ UInt($0) })
-        var bf = b.map({ Double($0) })
+        let af = a.filter({ $0 >= Double(UInt.min) && $0 <= Double(UInt.max) }).map({ UInt($0) })
+        let bf = b.map({ Double($0) })
         let pipeline = conduit(af, bf)
 
         a ∞= 2.0
@@ -876,12 +908,12 @@ public class ChannelTests: XCTestCase {
     }
 
     func testUnstableConduit() {
-        var a = ∞=(1)=∞
-        var b = ∞=(2)=∞
+        let a = ∞=(1)=∞
+        let b = ∞=(2)=∞
 
         // this unstable pipe would never achieve equilibrium, and so relies on re-entrancy checks to halt the flow
-        var af = a.map({ $0 + 1 })
-        let pipeline = conduit(af, b)
+        let af = a.map({ $0 + 1 })
+        _ = conduit(af, b)
 
         a ∞= 2
         XCTAssertEqual(4, a∞?)
@@ -909,10 +941,10 @@ public class ChannelTests: XCTestCase {
         var lastFloat : Float = 0.0
         var lastString : String = ""
 
-        var combo1 = (a | b)
+        _ = (a | b)
 //        combo1.receive({ (floatChange: Float?, uintChange: UInt?) in })
 
-        var combo2 = (a | b | d)
+        let combo2 = (a | b | d)
 
         var changes = 0
 
@@ -948,12 +980,12 @@ public class ChannelTests: XCTestCase {
 
     func testList() {
         func stringsToChars(f: Character->Void) -> String->Void {
-            return { (str: String) in for c in str { f(c) } }
+            return { (str: String) in for c in str.characters { f(c) } }
         }
 
         let strings: Channel<[String], String> = channelZSequence(["abc"])
-        let chars1 = strings.lift(stringsToChars)
-        let chars2 = strings.lift { (f: Character->Void) in { (str: String) in let _ = map(str, f) } }
+        let chars1 = strings.lift2(stringsToChars)
+        _ = strings.lift2 { (f: Character->Void) in { (str: String) in let _ = str.characters.map(f) } }
 
         var buf: [Character] = []
         chars1.receive({ buf += [$0] })
@@ -970,14 +1002,14 @@ public class ChannelTests: XCTestCase {
         var lastFloat : Float = 0.0
         var lastString : String = ""
 
-        var zip1 = (a & b)
+        let zip1 = (a & b)
         zip1 ∞> { (floatChange: Float, uintChange: UInt) in }
 
-        var zip2 = (a & b & d)
+        let zip2 = (a & b & d)
 
         var changes = 0
 
-        let subscription = zip2 ∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
+        _ = zip2 ∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
             changes++
             lastFloat = floatChange
             lastString = stringChange
@@ -1020,7 +1052,7 @@ public class ChannelTests: XCTestCase {
     }
 
     func testMixedCombinations() {
-        let a = (∞(Int(0.0))∞).subsequent()
+        _ = (∞(Int(0.0))∞).subsequent()
 
         // FIXME: works, but slow to compile
 
@@ -1069,8 +1101,8 @@ public class ChannelTests: XCTestCase {
 
         var pulses = 0
         let interval = 0.1
-        let when = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
-        let receiver = channel.dispatch(dispatch_get_main_queue(), delay: interval).receive { void in
+        _ = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
+        _ = channel.dispatch(dispatch_get_main_queue(), delay: interval).receive { void in
             pulses++
             if pulses >= vcount { xpc?.fulfill() }
         }
@@ -1087,20 +1119,20 @@ public class ChannelTests: XCTestCase {
         weak var xpc = expectationWithDescription("testDebounce")
 
         var pulses = 0, items = 0
-        let interval = 0.1
+        _ = 0.1
 //        let when = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
-//        let receiver2: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.buffer(1)
+//        let receiver2: Channel<SinkTo<(Bool)>, [(Bool)]> = channel.buffer(1)
 //        let receiver3: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.throttle(1)
 //        let receiver: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.debounce(1.0, queue: dispatch_get_main_queue())
 
         let vcount = 4
 
         let receiver = channel.throttle(1.0, queue: dispatch_get_main_queue()).receive { voids in
-            println("voids: \(voids.count)")
             pulses++
             items += voids.count
             if items >= vcount { xpc?.fulfill() }
         }
+        XCTAssertTrue(receiver.dynamicType == receiver.dynamicType, "avoid compiler warnings")
 
         for _ in 1...vcount { channel.source.put() }
 
@@ -1110,17 +1142,17 @@ public class ChannelTests: XCTestCase {
 
     }
 
-//    func testZippedGenerators() {
-//        let range = 1...6
-//        let nums = channelZSequence(1...3) + channelZSequence(4...5) + channelZSequence([6])
-//        let strs = channelZSequence(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
-//        var numstrs: [(Int, String)] = []
-//        let zipped = (nums & strs)
-//        zipped.receive({ numstrs += [$0] })
-//        XCTAssertEqual(numstrs.map({ $0.0 }), [1, 2, 3, 4, 5, 6])
-//        XCTAssertEqual(numstrs.map({ $0.1 }), ["one", "two", "three", "four", "five", "six"])
-//    }
-//
+    func testZippedGenerators() {
+        let range = 1...6
+        let nums = channelZSequence(1...3) + channelZSequence(4...5) + channelZSequence([6])
+        let strs = channelZSequence(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
+        var numstrs: [(Int, String)] = []
+        let zipped = (nums & strs)
+        zipped.receive({ numstrs += [$0] })
+        XCTAssertEqual(numstrs.map({ $0.0 }), [1, 2, 3, 4, 5, 6])
+        XCTAssertEqual(numstrs.map({ $0.1 }), ["one", "two", "three", "four", "five", "six"])
+    }
+
 //    func testDeepNestedFilter() {
 //        let t = ∞(1.0)∞
 //

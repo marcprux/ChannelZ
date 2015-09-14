@@ -65,7 +65,7 @@ extension NSObject {
     /// :returns: a channel backed by the KVO property that will receive ArrayChange items for mutations
     public func channelZKeyArray(@autoclosure accessor: ()->NSArray?, keyPath: String? = nil)->Channel<NSObject, ArrayChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
-        var receivers = ReceiverList<ArrayChange>()
+        let receivers = ReceiverList<ArrayChange>()
 
         return Channel(source: self) { [unowned self] receiver in
 
@@ -100,7 +100,7 @@ extension NSObject {
     /// :returns: a channel backed by the KVO property that will receive OrderedSetChange items for mutations
     public func channelZKeyOrderedSet(@autoclosure accessor: ()->NSOrderedSet?, keyPath: String? = nil)->Channel<NSObject, OrderedSetChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
-        var receivers = ReceiverList<OrderedSetChange>()
+        let receivers = ReceiverList<OrderedSetChange>()
 
         return Channel(source: self) { [unowned self] receiver in
 
@@ -135,7 +135,7 @@ extension NSObject {
     /// :returns: a channel backed by the KVO property that will receive SetChange items for mutations
     public func channelZKeySet(@autoclosure accessor: ()->NSSet?, keyPath: String? = nil)->Channel<NSObject, SetChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
-        var receivers = ReceiverList<SetChange>()
+        let receivers = ReceiverList<SetChange>()
 
         return Channel(source: self) { [unowned self] receiver in
 
@@ -295,9 +295,9 @@ infix operator ∞ { precedence 255 }
 
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
-    typealias Element = T
-    typealias State = (T?, T)
+public final class KeyValueSource<T>: StateSink, StateSource {
+    public typealias Element = T
+    public typealias State = (T?, T)
     private let receivers = ReceiverList<State>()
 
     public private(set) weak var object: NSObject?
@@ -346,7 +346,7 @@ public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
 
     public func set(value: T) -> Bool {
         if let target = self.object {
-            setValueForKeyPath(target, keyPath, optional, value)
+            setValueForKeyPath(target, keyPath: keyPath, nullable: optional, value: value)
             return true
         } else {
             return false
@@ -381,10 +381,10 @@ public final class KeyValueSource<T>: SinkType, StateSink, StateSource {
 
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
-    typealias T = O?
-    typealias Element = T
-    typealias State = (T?, T)
+public final class KeyValueOptionalSource<O>: StateSink, StateSource {
+    public typealias T = O?
+    public typealias Element = T
+    public typealias State = (T?, T)
     private let receivers = ReceiverList<State>()
 
     public private(set) weak var object: NSObject?
@@ -434,7 +434,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
 
     public func set(value: T) -> Bool {
         if let target = self.object {
-            setValueForKeyPath(target, keyPath, optional, value)
+            setValueForKeyPath(target, keyPath: keyPath, nullable: optional, value: value)
             return true
         } else {
             return false
@@ -495,7 +495,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
         /// Singleton notification center; we don't currently support multiple NSNotificationCenter observers
         private static let RegisterNotificationCenter = NSNotificationCenter.defaultCenter()
 
-        private static let KVOOptions = NSKeyValueObservingOptions(NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue | NSKeyValueObservingOptions.Initial.rawValue)
+        private static let KVOOptions = NSKeyValueObservingOptions(rawValue: NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue | NSKeyValueObservingOptions.Initial.rawValue)
     }
 
     /// The signature for the callback when a change occurs
@@ -522,7 +522,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
             return ob
         } else {
             let ob = TargetObserverRegister(targetPtr: Unmanaged.passUnretained(target))
-            objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, ob, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+            objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, ob, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             #if DEBUG_CHANNELZ
                 ChannelZKeyValueObserverCount++
             #endif
@@ -545,7 +545,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
     func addObserver(keyPath: String, handler: Callback) -> Int {
         let observer = Observer(identifier: ++identifierCounter, handler: handler)
 
-        var observers = keyObservers[keyPath] ?? []
+        let observers = keyObservers[keyPath] ?? []
         keyObservers[keyPath] = observers + [observer]
 
         if observers.count == 0 { // this is the first observer: actually add it to the target
@@ -556,7 +556,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
     }
 
     func addNotification(name: String, handler: Callback) -> Int {
-        var observers = noteObservers[name] ?? []
+        let observers = noteObservers[name] ?? []
         if observers.count == 0 { // this is the first observer: actually add it to the target
             Context.RegisterNotificationCenter.addObserver(self, selector: Selector("notificationReceived:"), name: name, object: target)
         }
@@ -571,7 +571,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
         let target = self.target // hang on to the target since the accessor won't be valid after we remove the associated object
 
         // remove the associated object
-        objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, nil, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+        objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
 
         for keyPath in keyObservers.keys {
             // FIXME: random crash with certain classes: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x1057715e0> for the key path "isFinished" from <NSBlockOperation 0x105769810> because it is not registered as an observer."
@@ -592,7 +592,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
 
     func removeObserver(keyPath: String, identifier: Int) {
         if let observers = keyObservers[keyPath] {
-            var filtered = observers.filter { $0.identifier != identifier }
+            let filtered = observers.filter { $0.identifier != identifier }
             if filtered.count == 0 { // no more observers left: remove ourselves as the observer
                 // FIXME: random crashes in certain specific observed classes, such as NSBlockOperation:
                 // error: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x109c0daa0> for the key path "isExecuting" from <NSBlockOperation 0x109c07830> because it is not registered as an observer."
@@ -606,7 +606,7 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
 
     func removeNotification(name: String, identifier: Int) {
         if let observers = noteObservers[name] {
-            var filtered = observers.filter { $0.identifier != identifier }
+            let filtered = observers.filter { $0.identifier != identifier }
             if filtered.count == 0 { // no more observers left: remove ourselves as the observer
                 noteObservers.removeValueForKey(name)
                 Context.RegisterNotificationCenter.removeObserver(self, name: name, object: nil)
@@ -617,10 +617,10 @@ public final class KeyValueOptionalSource<O>: SinkType, StateSink, StateSource {
     }
 
     /// Callback for KVO
-    override func observeValueForKeyPath(keyPath: String, ofObject object: AnyObject, change: [NSObject : AnyObject], context: UnsafeMutablePointer<Void>) {
-        if let observers = keyObservers[keyPath] {
+    override func observeValueForKeyPath(keyPath: String?, ofObject object: AnyObject?, change: [String : AnyObject]?, context: UnsafeMutablePointer<Void>) {
+        if let keyPath = keyPath, observers = keyObservers[keyPath] {
             for observer in observers {
-                observer.handler(change)
+                observer.handler(change ?? [:])
             }
         }
     }
@@ -647,11 +647,11 @@ let ChannelZInstrumentorSwizzledISASuffix = "_ChannelZKeyInspection"
 let ChannelZKeyPathForAutoclosureLock = NSLock()
 
 /// Attempts to determine the properties that are accessed by the given autoclosure; does so by temporarily swizzling the object's isa pointer to a generated subclass that instruments access to all the properties; note that this is not thread-safe in the unlikely event that another method (e.g., KVO swizzling) is being used at the same time for the class on another thread
-private func conjectKeypath<T>(target: NSObject, @autoclosure accessor: ()->T, required: Bool) -> String? {
+private func conjectKeypath<T>(target: NSObject, @autoclosure _ accessor: ()->T, _ required: Bool) -> String? {
     var keyPath: String?
 
     let origclass : AnyClass = object_getClass(target)
-    var className = NSStringFromClass(origclass)
+    let className = NSStringFromClass(origclass)
 
     let subclassName = className + ChannelZInstrumentorSwizzledISASuffix // unique subclass name
     let subclass : AnyClass = objc_allocateClassPair(origclass, subclassName, 0)
@@ -695,10 +695,10 @@ private func conjectKeypath<T>(target: NSObject, @autoclosure accessor: ()->T, r
                 if typeEncoding == nil { continue }
 
                 let returnTypePtr = method_copyReturnType(method)
-                let returnType = String.fromCString(returnTypePtr) ?? "@"
+                // let returnType = String.fromCString(returnTypePtr) ?? "@"
                 free(returnTypePtr)
 
-                let propBlock : @objc_block (AnyObject) -> AnyObject? = { (sself : AnyObject) -> (AnyObject?) in
+                let propBlock : @convention(block) (AnyObject) -> AnyObject? = { (sself : AnyObject) -> (AnyObject?) in
                     // add the name of the property that was accessed; read-only properties tend to use their getterName as the key path (e.g., NSOperation.isFinished)
                     let keyName = readonly && getterName != nil ? getterName! : propName
                     keyPath = keyName // remember the keyPath for later
@@ -823,11 +823,10 @@ extension NSObject {
         let receivers = ReceiverList<UserInfo>()
         return Channel(source: center) { [weak self] (receiver: UserInfo->Void) -> Receipt in
             var rindex: Int
-            var oindex: Int
 
             if let target = self {
                 rindex = receivers.addReceiver(receiver) // first add the observer so we get the initial notification
-                oindex = TargetObserverRegister.get(target).addNotification(name) { receivers.receive($0) }
+                TargetObserverRegister.get(target).addNotification(name) { receivers.receive($0) }
             } else {
                 preconditionFailure("cannot add receiver for deallocated instance (channels do not retain their targets)")
             }
@@ -845,7 +844,8 @@ extension NSObject {
 extension NSNumber : ConduitNumericCoercible {
     public class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self? {
         if let value = value as? NSNumber {
-            let type = value.objCType
+            let type = Character(UnicodeScalar(UInt32(value.objCType.memory)))
+            
             if type == "c" { return self.init(char: value.charValue) }
             else if type == "C" { return self.init(unsignedChar: value.unsignedCharValue) }
             else if type == "s" { return self.init(short: value.shortValue) }

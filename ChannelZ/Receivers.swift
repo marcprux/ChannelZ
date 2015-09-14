@@ -74,7 +74,7 @@ public final class ReceiverList<T> {
 
     private func synchronized<X>(lockObj: AnyObject, closure: ()->X) -> X {
         if objc_sync_enter(lockObj) == Int32(OBJC_SYNC_SUCCESS) {
-            var retVal: X = closure()
+            let retVal: X = closure()
             objc_sync_exit(lockObj)
             return retVal
         } else {
@@ -89,7 +89,7 @@ public final class ReceiverList<T> {
 //                    println("re-entrant value change limit of \(maxdepth) reached for receivers")
                 #endif
             } else {
-                for (index, receptor) in self.receivers { receptor(element) }
+                for (_, receptor) in self.receivers { receptor(element) }
             }
             self.entrancy--
         }
@@ -125,23 +125,22 @@ public final class ReceiverList<T> {
     }
 }
 
-
 /// A TrapReceipt is a receptor to a channel that retains a number of values (default 1) when they are sent by the source
-public class TrapReceipt<S, T>: Receipt {
+public class TrapReceipt<C where C: ChannelType>: Receipt {
     public var cancelled: Bool = false
-    public let channel: Channel<S, T>
+    public let channel: C
 
     /// Returns the last value to be added to this trap
-    public var value: T? { return values.last }
+    public var value: C.Element? { return values.last }
 
     /// All the values currently held in the trap
-    public var values: [T]
+    public var values: [C.Element]
 
     public let capacity: Int
 
     private var receipt: Receipt?
 
-    public init(channel: Channel<S, T>, capacity: Int) {
+    public init(channel: C, capacity: Int) {
         self.channel = channel
         self.values = []
         self.capacity = capacity
@@ -156,7 +155,7 @@ public class TrapReceipt<S, T>: Receipt {
     deinit { receipt?.cancel() }
     public func cancel() { receipt?.cancel() }
 
-    public func receive(value: T) {
+    public func receive(value: C.Element) {
         while values.count >= capacity {
             values.removeAtIndex(0)
         }
