@@ -7,6 +7,10 @@
 //
 
 /// Support for AppKit UI channels
+#if os(iOS)
+import Foundation // workaround for compilation bug when compiling on iOS: «@objc attribute used without importing module 'Foundation'»
+#endif
+
 #if os(OSX)
 import AppKit
 
