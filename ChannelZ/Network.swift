@@ -26,7 +26,6 @@ public extension NSInputStream {
                 receivers.receive(.Opened)
                 break
             case NSStreamEvent.HasBytesAvailable.rawValue:
-
                 var buffer = Array<UInt8>(count: bufferLength, repeatedValue: 0)
                 while true {
                     let readlen = self.read(&buffer, maxLength: bufferLength)
@@ -71,7 +70,7 @@ public enum InputStreamEvent {
     /// Event indicating that some data was received on the stream
     case Data([UInt8])
     /// Event indicating that an errors occurred on the stream
-    case Error(NSError)
+    case Error(ErrorType)
     /// Event indicating that the stream was closed
     case Closed
 }

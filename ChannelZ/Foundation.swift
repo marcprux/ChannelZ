@@ -756,7 +756,7 @@ private func setValueForKeyPath<T>(target: NSObject, keyPath: String, nullable: 
         else if let value = value as? UInt16 { target.setValue(NSNumber(unsignedShort: value), forKeyPath: keyPath) }
         else if let value = value as? Int32 { target.setValue(NSNumber(int: value), forKeyPath: keyPath) }
         else if let value = value as? UInt32 { target.setValue(NSNumber(unsignedInt: value), forKeyPath: keyPath) }
-        else if let value = value as? Int { target.setValue(NSNumber(unsignedInteger: value), forKeyPath: keyPath) }
+        else if let value = value as? Int { target.setValue(NSNumber(integer: value), forKeyPath: keyPath) }
         else if let value = value as? UInt { target.setValue(NSNumber(unsignedLong: value), forKeyPath: keyPath) }
         else if let value = value as? Int64 { target.setValue(NSNumber(longLong: value), forKeyPath: keyPath) }
         else if let value = value as? UInt64 { target.setValue(NSNumber(unsignedLongLong: value), forKeyPath: keyPath) }

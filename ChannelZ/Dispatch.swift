@@ -11,7 +11,7 @@ import Dispatch
 public extension ChannelType {
 
     /// Adds a phase that aggregates all pulses into an array and only pulse the aggregated array once the
-    /// specified timespan has passed without it receiving another item. In ReativeX parlance, this is known as `debounce`.
+    /// specified timespan has passed without it receiving another item. In ReactiveX parlance, this is known as `debounce`.
     ///
     /// :param: interval the number of seconds to wait the determine if the aggregation should be pulsed
     /// :queue: the queue on which to dispatch the pulses

@@ -14,6 +14,33 @@ import Foundation // workaround for compilation bug when compiling on iOS: «@ob
 #if os(OSX)
 import AppKit
 
+
+/// An NSObject controller that is compatible with a StateSource and StateSink for storing and retrieving `NSObject` values from bindings
+extension NSObjectController : StateSource, StateSink {
+    public typealias T = AnyObject? // it would be nice if this were generic, but @objc forbids it
+    public typealias State = (T?, T)
+
+    public var value : T {
+        get {
+            return self.content
+        }
+
+        set {
+            self.content = newValue
+        }
+    }
+
+    public func put(value: T) {
+        self.content = value
+    }
+
+    public func channelZState()->Channel<NSObjectController, State> {
+        // KVO on an object controlled drops the value: “Important: The Cocoa bindings controller classes do not provide change values when sending key-value observing notifications to observers. It is the developer’s responsibility to query the controller to determine the new values.”
+        return channelZKey(content, keyPath: "content").resource({ [unowned self] _ in self }).map({ [unowned self] _ in self.content }).precedent()
+    }
+
+}
+
 extension NSControl { // : KeyValueChannelSupplementing {
 
     public func channelZControl()->Channel<ActionTarget, Void> {

@@ -52,12 +52,12 @@ postfix operator ∞ { }
 // MARK: Prefix operators 
 
 /// Creates a channel from the given state source such that emits items for every state operation
-public prefix func ∞ <S: StateSource, T where S.Element == T>(source: S)->Channel<S, T> {
+public prefix func ∞ <S: StateSource, T where S.Element == T>(source: S)->Channel<S.Source, T> {
     return source.channelZState().map({ $0.1 })
 }
 
 /// Creates a distinct sieved channel from the given Equatable state source such that only subsequent state changes are emitted
-public prefix func ∞= <S: StateSource, T: Equatable where S.Element == T>(source: S)->Channel<S, T> {
+public prefix func ∞= <S: StateSource, T: Equatable where S.Element == T>(source: S)->Channel<S.Source, T> {
     return source.channelZState().filter({ $0.0 != $0.1 }).map({ $0.1 }).subsequent()
 }
 
@@ -90,18 +90,18 @@ extension Optional: OptionalStateElement {
     var unwrap: Wrapped? { return map { $0 } }
 }
 
-prefix func ∞?=<S: StateSource, T: Equatable where S.Element: OptionalStateElement, S.Element.WrappedType: Equatable, T == S.Element.WrappedType>(source: S)->Channel<S, T?> {
+prefix func ∞?=<S: StateSource, T: Equatable where S.Element: OptionalStateElement, S.Element.WrappedType: Equatable, T == S.Element.WrappedType>(source: S)->Channel<S.Source, T?> {
 
-    let wrappedState: Channel<S, (S.Element?, S.Element)> = source.channelZState()
+    let wrappedState: Channel<S.Source, (S.Element?, S.Element)> = source.channelZState()
 
     // each of the three following statements should be equivalent, but they return subtly different results! Only the first is correct.
-    let unwrappedState: Channel<S, (T??, T?)> = wrappedState.map({ pair in (pair.0?.unwrap, pair.1.unwrap) })
-//    let unwrappedState: Channel<S, (T??, T?)> = wrappedState.map({ pair in (pair.0?.map({$0}), pair.1.map({$0})) })
+    let unwrappedState: Channel<S.Source, (T??, T?)> = wrappedState.map({ pair in (pair.0?.unwrap, pair.1.unwrap) })
+//    let unwrappedState: Channel<S.Source, (T??, T?)> = wrappedState.map({ pair in (pair.0?.map({$0}), pair.1.map({$0})) })
 //    func unwrap(pair: (S.Element?, S.Element))->(T??, T?) { return (pair.0?.unwrap, pair.1.unwrap) }
-//    let unwrappedState: Channel<S, (T??, T?)> = wrappedState.map({ pair in unwrap(pair) })
+//    let unwrappedState: Channel<S.Source, (T??, T?)> = wrappedState.map({ pair in unwrap(pair) })
 
-    let notEqual: Channel<S, (T??, T?)> = unwrappedState.filter({ pair in pair.0 == nil || pair.0! != pair.1 })
-    let changedState: Channel<S, T?> = notEqual.map({ pair in pair.1 })
+    let notEqual: Channel<S.Source, (T??, T?)> = unwrappedState.filter({ pair in pair.0 == nil || pair.0! != pair.1 })
+    let changedState: Channel<S.Source, T?> = notEqual.map({ pair in pair.1 })
     return changedState
 }
 

@@ -24,25 +24,6 @@ extension ChannelType {
 extension Array { func channelZ()->Channel<Array, Element> { return channelZSequence(self) } }
 extension Range { func channelZ()->Channel<Range, Element> { return channelZSequence(self) } }
 
-/// Creates an asynchronous trickle of events for the given generator
-func trickleZ<G: GeneratorType>(var from: G, _ interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue())->Channel<G, G.Element> {
-    var receivers = ReceiverList<G.Element>()
-    let delay = Int64(interval * NSTimeInterval(NSEC_PER_SEC))
-    func tick() {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay), queue) {
-            if receivers.count > 0 { // i.e., they haven't all been cancelled
-                if let next = from.next() {
-                    receivers.receive(next)
-                    tick()
-                }
-            }
-        }
-    }
-
-    tick()
-    return Channel(source: from) { rcvr in receivers.addReceipt(rcvr) }
-}
-
 //public extension ChannelType where Element : Comparable {
 //    public func sieveIncrementing()->Channel<Source, Element> {
 //        return sieve { return $0.current > $0.previous }
@@ -62,12 +43,12 @@ public class ChannelTests: XCTestCase {
 
         // test that sending capacity distinct values will store those values
         let send = [true, false, true, false, true, false, true, false, true, false]
-        for x in send { bools.channel.source.value = x }
+        for x in send { bools.channel.value = x }
         XCTAssertEqual(send, bools.values)
 
         // test that sending some mixed values will sieve and constrain to the capacity
         let mixed = [false, true, true, true, false, true, false, true, false, true, true, false, true, true, false, false, false]
-        for x in mixed { bools.channel.source.value = x }
+        for x in mixed { bools.channel.value = x }
         XCTAssertEqual(send, bools.values)
     }
 
@@ -102,36 +83,6 @@ public class ChannelTests: XCTestCase {
         // the equivalent of ReactiveX's Repeat
         XCTAssertEqual(channelZSequence(Repeat(count: 10, repeatedValue: "A")).trap(4).values, ["A", "A", "A", "A"])
         XCTAssertEqual(channelZSequence(Repeat(count: 10, repeatedValue: "A")).subsequent().trap(4).values, [])
-    }
-
-    func testTrickle() {
-        var tricklets: [Int] = []
-        let count = 10
-        let channel = trickleZ((1...10).generate(), 0.001)
-        weak var xpc = expectationWithDescription("testTrickle")
-        channel.receive {
-            tricklets += [$0]
-            if tricklets.count >= count { xpc?.fulfill() }
-        }
-
-        waitForExpectationsWithTimeout(5, handler: { err in })
-        XCTAssertEqual(count, tricklets.count)
-    }
-
-    func testTrickleZip() {
-        var tricklets: [(Int, Int)] = []
-        let count = 10
-        let channel1 = trickleZ((1...50).generate(), 0.001)
-        let channel2 = trickleZ((11...20).generate(), 0.005) // slower; channel1 will be buffered by zip()
-        weak var xpc = expectationWithDescription("testTrickleZip")
-        channel1.zip(channel2).receive {
-            tricklets += [$0]
-            if tricklets.count >= count { xpc?.fulfill() }
-        }
-
-        waitForExpectationsWithTimeout(5, handler: { err in })
-        XCTAssertEqual(count, tricklets.count)
-
     }
 
     func testMergedUnreceive() {
@@ -196,7 +147,7 @@ public class ChannelTests: XCTestCase {
                 count += d.count
                 allData.appendData(NSData(bytes: d, length: d.count))
             case .Error(let e):
-                XCTFail(e.description)
+                XCTFail(String(e))
                 xpc?.fulfill()
             case .Closed:
                 closeCount++
@@ -279,84 +230,6 @@ public class ChannelTests: XCTestCase {
             XCTAssertEqual(4, count)
             sub.cancel() // make sure the count is still 4...
         }
-    }
-
-    func XXXtestDispatchChannel() {
-        let obv = channelZSink(Int)
-
-        let xpc: XCTestExpectation = expectationWithDescription("queue delay")
-
-        var count = 0
-        _ = obv.filter({ $0 > 0 }).dispatch(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)).receive({ _ in
-            XCTAssertFalse(NSThread.isMainThread())
-            count += 1
-            if count >= 3 {
-                xpc.fulfill()
-            }
-        })
-
-        let numz = -10...3
-        for x in numz { obv.source.put(x) }
-
-//        XCTAssertNotEqual(3, count, "should have been a delay")
-        waitForExpectationsWithTimeout(1, handler: { _ in })
-        XCTAssertEqual(3, count)
-
-    }
-
-    private func fib(num: Int) -> Int{
-        if(num == 0){
-            return 0;
-        }
-        if(num == 1){
-            return 1;
-        }
-        return fib(num - 1) + fib(num - 2);
-    }
-
-    func testDispatchSyncronize() {
-
-        let channelCount = 10
-        let fibcount = 25
-
-        var fibs: [Int] = [] // the shared mutable data structure; this is why we need sync()
-
-        // this is the queue we will use to synchronize access to fibs
-        let lock = dispatch_queue_create("testDispatchSyncronize.synker", DISPATCH_QUEUE_SERIAL)
-
-
-        let opq = NSOperationQueue()
-        for _ in 1...channelCount {
-            let obv = channelZSink(Int)
-            let rcpt = obv.map(fib).sync(lock).receive({ fibs += [$0] })
-            var source: NSArray = Array(1...fibcount)
-
-            opq.addOperationWithBlock({ () -> Void in
-                source.enumerateObjectsWithOptions(NSEnumerationOptions.Concurrent, usingBlock: { (ob, index, stop) -> Void in
-                    obv.source.put(ob as! Int)
-                })
-            })
-        }
-
-        // we wouldn't need to sync() when we receive through a single source because ReceiptList is itself synchronized...
-        // for op in ops { op() }
-
-        // but when mutliple source are simultaneously accessing a single mutable structure, we need the sync phase
-        opq.waitUntilAllOperationsAreFinished()
-
-        XCTAssertEqual(fibcount * channelCount, fibs.count)
-
-        func dedupe<S: SequenceType, T: Equatable where T == S.Generator.Element>(seq: S)->Array<T> {
-            let reduced = seq.reduce(Array<T>()) { (array, item) in
-                return array + (item == array.last ? [] : [item])
-            }
-            return reduced
-        }
-
-        let distinctAll = dedupe(fibs.sort())
-        let distinct24 = Array(distinctAll[0..<24])
-
-        XCTAssertEqual([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765, 10946, 17711, 28657, 46368, 75025], distinct24)
     }
 
     func testSieveDistinct() {
@@ -1089,56 +962,6 @@ public class ChannelTests: XCTestCase {
 //        XCTAssertEqual(2, andx)
 //        XCTAssertEqual(8, orx)
 //        XCTAssertEqual(8, andorx)
-
-    }
-
-    func testDelay() {
-        let channel = channelZSink(Void)
-
-        weak var xpc = expectationWithDescription("testDebounce")
-
-        let vcount = 4
-
-        var pulses = 0
-        let interval = 0.1
-        _ = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
-        _ = channel.dispatch(dispatch_get_main_queue(), delay: interval).receive { void in
-            pulses++
-            if pulses >= vcount { xpc?.fulfill() }
-        }
-
-        for _ in 1...vcount { channel.source.put() }
-
-        waitForExpectationsWithTimeout(5, handler: { err in })
-        XCTAssertEqual(vcount, pulses) // make sure the pulse contained all the items
-    }
-
-    func testThrottle() {
-        let channel = channelZSink(Void)
-
-        weak var xpc = expectationWithDescription("testDebounce")
-
-        var pulses = 0, items = 0
-        _ = 0.1
-//        let when = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
-//        let receiver2: Channel<SinkTo<(Bool)>, [(Bool)]> = channel.buffer(1)
-//        let receiver3: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.throttle(1)
-//        let receiver: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.debounce(1.0, queue: dispatch_get_main_queue())
-
-        let vcount = 4
-
-        let receiver = channel.throttle(1.0, queue: dispatch_get_main_queue()).receive { voids in
-            pulses++
-            items += voids.count
-            if items >= vcount { xpc?.fulfill() }
-        }
-        XCTAssertTrue(receiver.dynamicType == receiver.dynamicType, "avoid compiler warnings")
-
-        for _ in 1...vcount { channel.source.put() }
-
-        waitForExpectationsWithTimeout(5, handler: { err in })
-        XCTAssertEqual(1, pulses) // make sure the items were aggregated into a single pulse
-        XCTAssertEqual(vcount, items) // make sure the pulse contained all the items
 
     }
 

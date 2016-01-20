@@ -594,11 +594,20 @@ public func channelZProperty<T: Equatable>(initialValue: T)->Channel<PropertySou
 /// to retain a reference to the previous state element
 public protocol StateSource {
     typealias Element
+    typealias Source
 
     var value: Element { get nonmutating set }
 
     /// Creates a Channel from this source that will emit tuples of the old & and state values whenever a state operation occurs
-    func channelZState()->Channel<Self, (Element?, Element)>
+    func channelZState()->Channel<Source, (Element?, Element)>
+}
+
+public extension Channel where S : StateSource {
+    /// A Channel whose source is a `StateSource` can get and set its value directly without mutating the channel
+    public var value : S.Element {
+        get { return source.value }
+        nonmutating set { source.value = newValue }
+    }
 }
 
 /// A PropertySource can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
