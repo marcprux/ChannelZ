@@ -269,6 +269,7 @@ public extension ChannelType {
     }
 }
 
+
 public extension StreamType {
 
     /// Adds a channel phase that will cease sending pulses once the terminator predicate is satisfied.
