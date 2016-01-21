@@ -44,7 +44,10 @@ extension NSObjectController : StateSource, StateSink {
         let kvt: KeyValueTarget<T> = KeyValueTarget(target: self, initialValue: nil, keyPath: keyPath)
         let channel = KeyValueOptionalSource(target: kvt).channelZState()
         // KVO on an object controlled drops the value: “Important: The Cocoa bindings controller classes do not provide change values when sending key-value observing notifications to observers. It is the developer’s responsibility to query the controller to determine the new values.”
-        return channel.resource({ [unowned self] _ in self }).map({ [weak self] _ in self?.valueForKeyPath(keyPath) }).precedent().map({ (old: $0.0, new: $0.1) })
+        let resourced = channel.resource({ [unowned self] _ in self })
+        let mapped = resourced.map({ [weak self] _ in self?.valueForKeyPath(keyPath) })
+        let withState = mapped.precedent()
+        return withState
     }
 
 }

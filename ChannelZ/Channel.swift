@@ -165,10 +165,10 @@ public extension ChannelType {
     /// :param: preserve A closure to execute to determine if a value should be trapped (defaults to retain every previous value)
     ///
     /// :returns: A stateful Channel that emits a tuple of an earlier and the current item
-    public func precedent(preserve: Element->Bool = { _ in true })->Channel<Source, (Element?, Element)> {
+    public func precedent(preserve: Element->Bool = { _ in true })->Channel<Source, (old: Element?, new: Element)> {
         var antecedent: Element?
         return lift2 { receive in { item in
-            let pair: (Element?, Element) = (antecedent, item)
+            let pair: (old: Element?, new: Element) = (antecedent, item)
             receive(pair)
             if preserve(item) { antecedent = item }
             }
@@ -187,7 +187,7 @@ public extension ChannelType {
     /// :returns: A stateful Channel that emits the the pulses that pass the predicate
     public func sieve(predicate: (previous: Element, current: Element)->Bool)->Channel<Source, Element> {
         let flt = { (t: (o: Element?, n: Element)) in t.o == nil || predicate(previous: t.o!, current: t.n) }
-        return precedent().filter(flt).map({ $0.1 })
+        return precedent().filter(flt).map({ $0.new })
     }
 
     /// Adds a channel phase that drops the first `count` elements.
