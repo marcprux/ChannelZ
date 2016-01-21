@@ -232,7 +232,7 @@ public class AppKitTests: XCTestCase {
         let content: NSMutableDictionary = ["x": 12]
 
         let controller = NSObjectController(content: content)
-        controller.channelZControllerPath("content.x").receive({ val = $0.1 })
+        controller.channelZControllerPath("content.x").receive({ val = $0.new })
         XCTAssertEqual(val as? NSNumber, NSNumber(integer: 12))
         content["x"] = 13
         XCTAssertEqual(val as? NSNumber, NSNumber(integer: 13))

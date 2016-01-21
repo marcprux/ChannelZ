@@ -58,7 +58,7 @@ public prefix func ∞ <S: StateSource, T where S.Element == T>(source: S)->Chan
 
 /// Creates a distinct sieved channel from the given Equatable state source such that only subsequent state changes are emitted
 public prefix func ∞= <S: StateSource, T: Equatable where S.Element == T>(source: S)->Channel<S.Source, T> {
-    return source.channelZState().filter({ $0.0 != $0.1 }).map({ $0.1 }).subsequent()
+    return source.channelZState().filter({ $0.old != $0.new }).map({ $0.new }).subsequent()
 }
 
 
@@ -95,13 +95,13 @@ prefix func ∞?=<S: StateSource, T: Equatable where S.Element: OptionalStateEle
     let wrappedState: Channel<S.Source, (old: S.Element?, new: S.Element)> = source.channelZState()
 
     // each of the three following statements should be equivalent, but they return subtly different results! Only the first is correct.
-    let unwrappedState: Channel<S.Source, (T??, T?)> = wrappedState.map({ pair in (pair.0?.unwrap, pair.1.unwrap) })
-//    let unwrappedState: Channel<S.Source, (T??, T?)> = wrappedState.map({ pair in (pair.0?.map({$0}), pair.1.map({$0})) })
-//    func unwrap(pair: (S.Element?, S.Element))->(T??, T?) { return (pair.0?.unwrap, pair.1.unwrap) }
-//    let unwrappedState: Channel<S.Source, (T??, T?)> = wrappedState.map({ pair in unwrap(pair) })
+    let unwrappedState: Channel<S.Source, (old: T??, new: T?)> = wrappedState.map({ pair in (pair.old?.unwrap, pair.new.unwrap) })
+//    let unwrappedState: Channel<S.Source, (old: T??, new: T?)> = wrappedState.map({ pair in (pair.old?.map({$0}), pair.new.map({$0})) })
+//    func unwrap(pair: (S.Element?, S.Element))->(old: T??, new: T?) { return (pair.old?.unwrap, pair.new.unwrap) }
+//    let unwrappedState: Channel<S.Source, (old: T??, new: T?)> = wrappedState.map({ pair in unwrap(pair) })
 
-    let notEqual: Channel<S.Source, (T??, T?)> = unwrappedState.filter({ pair in pair.0 == nil || pair.0! != pair.1 })
-    let changedState: Channel<S.Source, T?> = notEqual.map({ pair in pair.1 })
+    let notEqual: Channel<S.Source, (old: T??, new: T?)> = unwrappedState.filter({ pair in pair.old == nil || pair.old! != pair.new })
+    let changedState: Channel<S.Source, T?> = notEqual.map({ pair in pair.new })
     return changedState
 }
 
