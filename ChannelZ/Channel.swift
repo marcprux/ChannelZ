@@ -159,16 +159,17 @@ public extension StreamType {
 }
 
 public extension ChannelType {
+    public typealias State = (old: Element?, new: Element)
 
     /// Adds a channel phase that retains a previous item and sends it along with the current value as an optional tuple element.
     ///
     /// :param: preserve A closure to execute to determine if a value should be trapped (defaults to retain every previous value)
     ///
     /// :returns: A stateful Channel that emits a tuple of an earlier and the current item
-    public func precedent(preserve: Element->Bool = { _ in true })->Channel<Source, (old: Element?, new: Element)> {
+    public func precedent(preserve: Element->Bool = { _ in true })->Channel<Source, State> {
         var antecedent: Element?
         return lift2 { receive in { item in
-            let pair: (old: Element?, new: Element) = (antecedent, item)
+            let pair: State = (antecedent, item)
             receive(pair)
             if preserve(item) { antecedent = item }
             }
