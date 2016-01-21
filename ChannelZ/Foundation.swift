@@ -19,7 +19,7 @@ extension NSObject {
     /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// :returns: a channel backed by the KVO property that will receive state transition operations
-    public func channelZKeyState<T>(@autoclosure accessor: ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, (T?, T)> {
+    public func channelZKeyState<T>(@autoclosure accessor: ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, (old: T?, new: T)> {
         return KeyValueSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).channelZState()
     }
 
@@ -30,7 +30,7 @@ extension NSObject {
     /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// :returns: a channel backed by the KVO property that will receive state transition operations
-    public func channelZKeyState<T>(@autoclosure accessor: ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, (T??, T?)> {
+    public func channelZKeyState<T>(@autoclosure accessor: ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, (old: T??, new: T?)> {
         return KeyValueOptionalSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).channelZState()
     }
 
@@ -41,7 +41,7 @@ extension NSObject {
     /// 
     /// :returns: a channel backed by the KVO property that will receive items for every time the state changes
     public func channelZKey<T>(@autoclosure accessor: ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, T> {
-        return channelZKeyState(accessor, keyPath: keyPath).map({ $0.1 })
+        return channelZKeyState(accessor, keyPath: keyPath).map({ $0.new })
     }
 
     /// Creates a channel for all state operations for the given key-value-coding compliant optional property
@@ -51,7 +51,7 @@ extension NSObject {
     ///
     /// :returns: a channel backed by the KVO property that will receive items for every time the state changes
     public func channelZKey<T>(@autoclosure accessor: ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, T?> {
-        return channelZKeyState(accessor, keyPath: keyPath).map({ $0.1 })
+        return channelZKeyState(accessor, keyPath: keyPath).map({ $0.new })
     }
 
     // FIXME: channelZKeyArray and channelZKeyOrderedSet are 95% identical and could be unified with a generic but for compiler crashes
@@ -297,7 +297,7 @@ infix operator ∞ { precedence 255 }
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
 public final class KeyValueSource<T>: StateSink, StateSource {
     public typealias Element = T
-    public typealias State = (T?, T)
+    public typealias State = (old: T?, new: T)
     private let receivers = ReceiverList<State>()
 
     public private(set) weak var object: NSObject?
@@ -384,7 +384,7 @@ public final class KeyValueSource<T>: StateSink, StateSource {
 public final class KeyValueOptionalSource<O>: StateSink, StateSource {
     public typealias T = O?
     public typealias Element = T
-    public typealias State = (T?, T)
+    public typealias State = (old: T?, new: T)
     private let receivers = ReceiverList<State>()
 
     public private(set) weak var object: NSObject?
@@ -569,6 +569,7 @@ public final class KeyValueOptionalSource<O>: StateSink, StateSource {
     /// Removes all the observers and clears the map
     private func clear() {
         let target = self.target // hang on to the target since the accessor won't be valid after we remove the associated object
+        let targetClass = NSStringFromClass(target.dynamicType)
 
         // remove the associated object
         objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
@@ -578,6 +579,8 @@ public final class KeyValueOptionalSource<O>: StateSink, StateSource {
             if target is NSBlockOperation {
                 // NSBlockOperation doesn't seem to require observers to be removed?
                 // target.addObserver(self, forKeyPath: keyPath, options: Context.KVOOptions, context: nil) // crash
+            } else if targetClass == "NSObjectController" || targetClass == "NSController" || targetClass == "NSArrayController" || targetClass == "NSTreeController" {
+                // NSObjectController: crashes when trying to remove observer
             } else {
                 target.removeObserver(self, forKeyPath: keyPath, context: nil)
             }

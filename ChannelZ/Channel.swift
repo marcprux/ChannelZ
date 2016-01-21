@@ -599,7 +599,7 @@ public protocol StateSource {
     var value: Element { get nonmutating set }
 
     /// Creates a Channel from this source that will emit tuples of the old & and state values whenever a state operation occurs
-    func channelZState()->Channel<Source, (Element?, Element)>
+    func channelZState()->Channel<Source, (old: Element?, new: Element)>
 }
 
 public extension Channel where S : StateSource {
@@ -613,7 +613,7 @@ public extension Channel where S : StateSource {
 /// A PropertySource can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
 /// The output type is a tuple of (old: T, new: T), where old is the previous value and new is the new value
 public final class PropertySource<T>: StateSink, StateSource {
-    public typealias State = (T?, T)
+    public typealias State = (old: T?, new: T)
     private let receivers = ReceiverList<State>()
     public var value: T { didSet(old) { receivers.receive(State(old, value)) } }
 
@@ -656,7 +656,7 @@ public protocol StateSink : Sink {
 public struct StateOf<T>: Sink, StateSource {
     private let valueget: Void->T
     private let valueset: T->Void
-    private let channler: Void->Channel<Void, (T?, T)>
+    private let channler: Void->Channel<Void, (old: T?, new: T)>
 
     public var value: T {
         get { return valueget() }
@@ -673,7 +673,7 @@ public struct StateOf<T>: Sink, StateSource {
         valueset(x)
     }
 
-    public func channelZState() -> Channel<StateOf<T>, (T?, T)> {
+    public func channelZState() -> Channel<StateOf<T>, (old: T?, new: T)> {
         return channler().resource({ _ in self })
     }
 }

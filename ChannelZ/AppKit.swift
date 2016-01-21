@@ -18,7 +18,7 @@ import AppKit
 /// An NSObject controller that is compatible with a StateSource and StateSink for storing and retrieving `NSObject` values from bindings
 extension NSObjectController : StateSource, StateSink {
     public typealias T = AnyObject? // it would be nice if this were generic, but @objc forbids it
-    public typealias State = (T?, T)
+    public typealias State = (old: T?, new: T)
 
     public var value : T {
         get {
@@ -35,8 +35,16 @@ extension NSObjectController : StateSource, StateSink {
     }
 
     public func channelZState()->Channel<NSObjectController, State> {
+        return channelZControllerPath("content") // "content" is the default key for controllers
+    }
+
+    /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
+    /// change valus are not provided with KVO observation
+    public func channelZControllerPath(keyPath: String)->Channel<NSObjectController, State> {
+        let kvt: KeyValueTarget<T> = KeyValueTarget(target: self, initialValue: nil, keyPath: keyPath)
+        let channel = KeyValueOptionalSource(target: kvt).channelZState()
         // KVO on an object controlled drops the value: “Important: The Cocoa bindings controller classes do not provide change values when sending key-value observing notifications to observers. It is the developer’s responsibility to query the controller to determine the new values.”
-        return channelZKey(content, keyPath: "content").resource({ [unowned self] _ in self }).map({ [unowned self] _ in self.content }).precedent()
+        return channel.resource({ [unowned self] _ in self }).map({ [weak self] _ in self?.valueForKeyPath(keyPath) }).precedent().map({ (old: $0.0, new: $0.1) })
     }
 
 }

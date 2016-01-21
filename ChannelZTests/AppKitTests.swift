@@ -226,5 +226,16 @@ public class AppKitTests: XCTestCase {
         
         vm.amount ∞= vm.amount∞? + 15.0
     }
+
+    func testControllers() {
+        var val: AnyObject? = 0
+        let content: NSMutableDictionary = ["x": 12]
+
+        let controller = NSObjectController(content: content)
+        controller.channelZControllerPath("content.x").receive({ val = $0.1 })
+        XCTAssertEqual(val as? NSNumber, NSNumber(integer: 12))
+        content["x"] = 13
+        XCTAssertEqual(val as? NSNumber, NSNumber(integer: 13))
+    }
 }
 #endif

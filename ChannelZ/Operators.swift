@@ -53,7 +53,7 @@ postfix operator ∞ { }
 
 /// Creates a channel from the given state source such that emits items for every state operation
 public prefix func ∞ <S: StateSource, T where S.Element == T>(source: S)->Channel<S.Source, T> {
-    return source.channelZState().map({ $0.1 })
+    return source.channelZState().map({ $0.new })
 }
 
 /// Creates a distinct sieved channel from the given Equatable state source such that only subsequent state changes are emitted
@@ -92,7 +92,7 @@ extension Optional: OptionalStateElement {
 
 prefix func ∞?=<S: StateSource, T: Equatable where S.Element: OptionalStateElement, S.Element.WrappedType: Equatable, T == S.Element.WrappedType>(source: S)->Channel<S.Source, T?> {
 
-    let wrappedState: Channel<S.Source, (S.Element?, S.Element)> = source.channelZState()
+    let wrappedState: Channel<S.Source, (old: S.Element?, new: S.Element)> = source.channelZState()
 
     // each of the three following statements should be equivalent, but they return subtly different results! Only the first is correct.
     let unwrappedState: Channel<S.Source, (T??, T?)> = wrappedState.map({ pair in (pair.0?.unwrap, pair.1.unwrap) })
