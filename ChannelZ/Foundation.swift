@@ -845,7 +845,7 @@ extension NSObject {
 }
 
 extension NSNumber : ConduitNumericCoercible {
-    public class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self? {
+    @warn_unused_result public class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self? {
         if let value = value as? NSNumber {
             let type = Character(UnicodeScalar(UInt32(value.objCType.memory)))
             

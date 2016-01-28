@@ -213,9 +213,9 @@ public class FoundationTests: XCTestCase {
 
         let sv = channelZProperty("X")
 
-        sv.filter({ _ in true }).map({ $0.utf8.count })
-        sv.filter({ _ in true }).map({ $0.utf8.count })
-        sv.map({ $0.utf8.count })
+        let _ = sv.filter({ _ in true }).map({ $0.utf8.count })
+        let _ = sv.filter({ _ in true }).map({ $0.utf8.count })
+        let _ = sv.map({ $0.utf8.count })
 
         _ = ∞=false=∞
 
