@@ -13,10 +13,10 @@ public extension ChannelType {
     /// Adds a phase that aggregates all pulses into an array and only pulse the aggregated array once the
     /// specified timespan has passed without it receiving another item. In ReactiveX parlance, this is known as `debounce`.
     ///
-    /// :param: interval the number of seconds to wait the determine if the aggregation should be pulsed
-    /// :queue: the queue on which to dispatch the pulses
-    /// :bgq: the serial queue on which the perform event aggregation, defaulting to a shared global serial default queue
-    public func throttle(interval: Double, queue: dispatch_queue_t, bgq: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, [Element]> {
+    /// - Parameter interval: the number of seconds to wait the determine if the aggregation should be pulsed
+    /// - Parameter queue: the queue on which to dispatch the pulses
+    /// - Parameter bgq: the serial queue on which the perform event aggregation, defaulting to a shared global serial default queue
+    @warn_unused_result public func throttle(interval: Double, queue: dispatch_queue_t, bgq: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, [Element]> {
         var pending: Int64 = 0 // the number of outstanding dispatches
         return map({ x in OSAtomicIncrement64(&pending); return x }).dispatch(bgq, delay: interval).accumulate { _ in OSAtomicDecrement64(&pending) <= 0 }.dispatch(queue)
     }
@@ -24,10 +24,10 @@ public extension ChannelType {
     /// Adds a phase that coalesces all pulses into an array and only pulses the aggregated array once the
     /// specified timespan has passed
     ///
-    /// :param: interval the number of seconds to wait the determine if the aggregation should be pulsed
-    /// :queue: the queue on which to dispatch the pulses
-    /// :bgq: the serial queue on which the perform event aggregation, defaulting to a shared global serial default queue
-    public func coalesce(interval: Double, queue: dispatch_queue_t, bgq: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, [Element]> {
+    /// - Parameter interval: the number of seconds to wait the determine if the aggregation should be pulsed
+    /// - Parameter queue: the queue on which to dispatch the pulses
+    /// - Parameter bgq: the serial queue on which the perform event aggregation, defaulting to a shared global serial default queue
+    @warn_unused_result public func coalesce(interval: Double, queue: dispatch_queue_t, bgq: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, [Element]> {
         let future: (Int64)->dispatch_time_t = { dispatch_time(DISPATCH_TIME_NOW, $0) }
         let delay = Int64(interval * Double(NSEC_PER_SEC))
         var nextPulse = future(delay)
@@ -39,10 +39,10 @@ public extension ChannelType {
 
     /// Adds a phase that emits just the last element that was received within the given interval
     ///
-    /// :param: interval the number of seconds to wait the determine if the aggregation should be pulsed
-    /// :queue: the queue on which to dispatch the pulses
-    /// :bgq: the serial queue on which the perform event aggregation, defaulting to a shared global serial default queue
-    public func sample(interval: Double, queue: dispatch_queue_t, bgq: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, Element> {
+    /// - Parameter interval: the number of seconds to wait the determine if the aggregation should be pulsed
+    /// - Parameter queue: the queue on which to dispatch the pulses
+    /// - Parameter bgq: the serial queue on which the perform event aggregation, defaulting to a shared global serial default queue
+    @warn_unused_result public func sample(interval: Double, queue: dispatch_queue_t, bgq: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, Element> {
         // TODO: dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)()
         return coalesce(interval, queue: queue, bgq: bgq).map({ $0.last }).filter({ $0 != nil }).map({ $0! })
     }
@@ -53,7 +53,11 @@ public extension ChannelType {
 public extension ChannelType {
 
     /// Instructs the observable to emit its items on the specified `queue` with an optional `time` delay and write `barrier`
-    public func dispatch(queue: dispatch_queue_t, delay: Double? = 0.0, barrier: Bool = false)->Channel<Source, Element> {
+    ///
+    /// - Parameter queue: the queue on which to execute
+    /// - Parameter delay: the amount of time to delay in seconds, or if nil (the default) execute synchronously
+    /// - Parameter barrier: whether to dispatch with a barrier
+    @warn_unused_result public func dispatch(queue: dispatch_queue_t, delay: Double? = 0.0, barrier: Bool = false)->Channel<Source, Element> {
         return lift2 { receive in { event in
             let rcvr = { receive(event) }
              if let delay = delay {
@@ -81,8 +85,9 @@ public extension ChannelType {
 
     /// Instructs the observable to synchronize on the specified `lockQueue` when emitting items
     ///
-    /// :param: lockQueue The GDC queue to synchronize on; if nil, a queue named "io.glimpse.Channel.sync" will be created and used
-    public func sync(lockQueue: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, Element> {
+    /// - Parameter lockQueue: The GDC queue to synchronize on; if nil, a queue named "io.glimpse.Channel.sync" 
+    ///   will be created and used
+    @warn_unused_result public func sync(lockQueue: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, Element> {
         return lift2 { receive in { event in dispatch_sync(lockQueue) { receive(event) } } }
     }
 }
