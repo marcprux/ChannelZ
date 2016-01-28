@@ -206,7 +206,7 @@ public class DispatchTests: XCTestCase {
                 xpc?.fulfill()
             }
         }
-        waitForExpectationsWithTimeout(5, handler: { err in })
+        waitForExpectationsWithTimeout(30, handler: { err in })
 
         let swstr = String(view)
         let nsstr = (try? NSString(contentsOfFile: file, encoding: NSUTF8StringEncoding)) ?? "XXX"
