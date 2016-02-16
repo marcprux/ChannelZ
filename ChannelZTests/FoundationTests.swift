@@ -41,7 +41,7 @@ public class FoundationTests: XCTestCase {
         var receipt: Receipt!
         assertMemoryBlock(check: ChannelThingsInstances) {
             let thing = ChannelThing()
-            receipt = thing.stringish.drop(1).sieve(!=).filter({ $0 != nil }).map({ $0! }).receive({ strs += [$0] })
+            receipt = thing.stringish.drop(1).sieve(!=).filter({ $0 != nil }).map(unsafeUnwrap).receive({ strs += [$0] })
             let strings: [String?] = ["a", "b", nil, "b", "b", "c"]
             for x in strings { thing.stringish ∞= x }
             XCTAssertFalse(receipt.cancelled)
