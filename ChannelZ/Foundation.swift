@@ -423,7 +423,7 @@ public final class KeyValueOptionalSource<O>: StateSink, StateSource {
 
     /// access to the underlying source value
     public var value: T {
-        get { return get() }
+        get { return get() ?? nil }
         set(v) { set(v) }
     }
 
@@ -441,9 +441,9 @@ public final class KeyValueOptionalSource<O>: StateSink, StateSource {
         }
     }
 
-    private func get() -> T! {
-        let keyValue: AnyObject? = self.object?.valueForKeyPath(self.keyPath)
-        return coerceCocoaType(keyValue)
+    private func get() -> T? {
+        let keyValue = self.object?.valueForKeyPath(self.keyPath)
+        return keyValue as? T ?? coerceCocoaType(keyValue)
     }
 
     private func addReceiver(receiver: State->Void)->Receipt {

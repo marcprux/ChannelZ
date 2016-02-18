@@ -687,6 +687,12 @@ public struct StateOf<T>: Sink, StateSource {
         channler = { return source.channelZState().dissolve() }
     }
 
+    public init(get: Void->T, set: T->Void, channeler: Void->Channel<Void, (old: T?, new: T)>) {
+        valueget = get
+        valueset = set
+        channler = channeler
+    }
+
     public mutating func put(x: T) {
         valueset(x)
     }
