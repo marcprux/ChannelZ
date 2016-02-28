@@ -402,7 +402,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "io.glimpse.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = ChannelZ;
 				SKIP_INSTALL = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
 		};
