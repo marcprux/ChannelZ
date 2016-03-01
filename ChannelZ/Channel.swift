@@ -28,6 +28,9 @@ public protocol ChannelType : StreamType {
 
     /// The underlying unconstrained source of this `Channel`
     var source: Source { get }
+
+    /// Derives a new channel with the given source
+    @warn_unused_result func resource<X>(newsource: Source->X) -> Channel<X, Element>
 }
 
 /// A Channel is a passive multi-phase receiver of items of a given type: `pulses`. It is a push-based version
@@ -73,7 +76,7 @@ public struct Channel<S, T> : ChannelType {
         return reception(receiver)
     }
 
-    /// Creates a new channel with the given source
+    /// Derives a new channel with the given source
     @warn_unused_result public func resource<X>(newsource: S->X) -> Channel<X, T> {
         return Channel<X, T>(source: newsource(source), reception: self.reception)
     }
@@ -620,16 +623,53 @@ public protocol StateSource {
     @warn_unused_result func channelZState() -> Channel<Source, (old: Element?, new: Element)>
 }
 
-public extension Channel where S : StateSource {
+public extension ChannelType where Source : StateSource {
     /// A Channel whose source is a `StateSource` can get and set its value directly without mutating the channel
-    public var value : S.Element {
+    public var value : Source.Element {
         get { return source.value }
         nonmutating set { source.value = newValue }
     }
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
-    public func stateMap<X>(get get: S.Element -> X, set: X -> S.Element) -> Channel<StateOf<X>, T> {
+    public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<StateOf<X>, Element> {
         return resource { source in StateOf(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.channelZState().dissolve().map { old, new in (old: old.flatMap(get), new: get(new)) } }) }
+    }
+}
+
+public extension ChannelType where Source : StateSource, Source.Element == Element {
+    /// For a channel whose underlying state matches the pulse types, perform a `stateMap` and a `map` with the same `get` transform
+    public func restate<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<StateOf<X>, X> {
+        return stateMap(get: get, set: set).map(get)
+    }
+}
+
+/// A WrapperType is able to map itself through a wrapped optional
+public protocol OptionalMappable : NilLiteralConvertible {
+    typealias Wrapped
+    init(_ some: Wrapped)
+    func flatMap<U>(@noescape f: (Wrapped) throws -> U?) rethrows -> U?
+}
+
+extension Optional : OptionalMappable { }
+
+public extension ChannelType where Source : StateSource, Element: OptionalMappable, Source.Element == Element, Element.Wrapped: Hashable {
+    public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Element, U?)>(mapping: S) -> Channel<StateOf<U?>, U?> {
+        var getMapping: [Element.Wrapped: U] = [:]
+        var setMapping: [U: Element] = [:]
+
+        for (key, value) in mapping {
+            if let key = key.flatMap({ $0 }) {
+                getMapping[key] = value
+            }
+            if let value = value {
+                setMapping[value] = key
+            }
+        }
+
+        let get: (Element -> U?) = { $0.flatMap({ getMapping[$0] }) ?? nil }
+        let set: (U? -> Element) = { $0.flatMap({ setMapping[$0] }) ?? nil }
+
+        return restate(get: get, set: set)
     }
 }
 
