@@ -23,7 +23,14 @@ public protocol StreamType {
     @warn_unused_result func phase(reception: (Self.Element->Void) -> Receipt) -> Self
 }
 
-/// A ChannelType is a passive multi-phase receiver of items of a given type: `pulses`. It is a push-based version
+public protocol ChannelType : StreamType {
+    typealias Source
+
+    /// The underlying unconstrained source of this `Channel`
+    var source: Source { get }
+}
+
+/// A Channel is a passive multi-phase receiver of items of a given type: `pulses`. It is a push-based version
 /// of Swift's pull-based `Generator` type. Channels can add phases that transform, filter, merge
 /// and aggregate pulses that are passed through the channel. They are well-suited to handling
 /// asynchronous stream of events such as networking and UI interactions.
@@ -36,17 +43,10 @@ public protocol StreamType {
 /// http://reactivex.io/documentation/observable.html
 /// The primary differences are that a `Channel` keeps a reference to its source which allows `conduit`s
 /// to be created, and that a `Channel` doesn't have any `onError` or `onCompletion`
-/// signale handlers, which means that a `Channel` is effectively infinite.
+/// signal handlers, which means that a `Channel` is effectively infinite.
 /// Error and completion handling should be implemented at a higher level, where, for example, they
 /// might be supported by having the Channel's Element type be a Swift enum with cases for
 /// `.Value(T)`, `.Error(X)`, and `.Completion`, and by adding a `terminate` phase to the `Channel`
-public protocol ChannelType : StreamType {
-    typealias Source
-
-    /// The underlying unconstrained source of this `Channel`
-    var source: Source { get }
-}
-
 public struct Channel<S, T> : ChannelType {
     public typealias Source = S
     public typealias Element = T
@@ -625,6 +625,11 @@ public extension Channel where S : StateSource {
     public var value : S.Element {
         get { return source.value }
         nonmutating set { source.value = newValue }
+    }
+
+    /// Re-maps a state channel by transforming the source with the given get/set mapping functions
+    public func stateMap<X>(get get: S.Element -> X, set: X -> S.Element) -> Channel<StateOf<X>, T> {
+        return resource { source in StateOf(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.channelZState().dissolve().map { old, new in (old: old.flatMap(get), new: get(new)) } }) }
     }
 }
 

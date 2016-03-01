@@ -13,7 +13,7 @@ public extension NSInputStream {
     /// Creates a Channel for the stream and assigns it to handle `NSStreamDelegate` delegate callbacks
     /// for stream events
     ///
-    /// :param: bufferLength The maximum size of the buffer that will be filled
+    /// - Parameter bufferLength: The maximum size of the buffer that will be filled
     public func channelZStream(bufferLength: Int = 1024) -> Channel<ChannelStreamDelegate, InputStreamEvent> {
         precondition(bufferLength > 0, "buffer size must be greater than zero")
         let receivers = ReceiverList<InputStreamEvent>()

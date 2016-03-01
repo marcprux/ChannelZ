@@ -86,7 +86,7 @@ public final class ReceiverList<T> {
         synchronized(self) { ()->(Void) in
             if self.entrancy++ > self.maxdepth {
                 #if DEBUG_CHANNELZ
-                    //print("re-entrant value change limit of \(self.maxdepth) reached for receivers")
+                    print("re-entrant value change limit of \(self.maxdepth) reached for receivers")
                 #endif
             } else {
                 for (_, receptor) in self.receivers { receptor(element) }

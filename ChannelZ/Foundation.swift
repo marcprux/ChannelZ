@@ -15,10 +15,10 @@ extension NSObject {
     /// Creates a channel for all state operations for the given key-value-coding property that will emit
     /// a tuple of the previous value (or nil if unavailable) and current state.
     ///
-    /// :param: accessor an accessor for the value of the property (autoclosure)
-    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    /// - Parameter accessor: an accessor for the value of the property (autoclosure)
+    /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
-    /// :returns: a channel backed by the KVO property that will receive state transition operations
+    /// - Returns a channel backed by the KVO property that will receive state transition operations
     public func channelZKeyState<T>(@autoclosure accessor: ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, (old: T?, new: T)> {
         return KeyValueSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).channelZState()
     }
@@ -26,30 +26,30 @@ extension NSObject {
     /// Creates a channel for all state operations for the given key-value-coding property that will emit
     /// a tuple of the previous value (or nil if unavailable) and current state.
     ///
-    /// :param: accessor an accessor for the value of the property (autoclosure)
-    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    /// - Parameter accessor: an accessor for the value of the property (autoclosure)
+    /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
-    /// :returns: a channel backed by the KVO property that will receive state transition operations
+    /// - Returns a channel backed by the KVO property that will receive state transition operations
     public func channelZKeyState<T>(@autoclosure accessor: ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, (old: T??, new: T?)> {
         return KeyValueOptionalSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).channelZState()
     }
 
     /// Creates a channel for all state operations for the given key-value-coding compliant non-optional property
     ///
-    /// :param: accessor an accessor for the value of the property (autoclosure)
-    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    /// - Parameter accessor: an accessor for the value of the property (autoclosure)
+    /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     /// 
-    /// :returns: a channel backed by the KVO property that will receive items for every time the state changes
+    /// - Returns a channel backed by the KVO property that will receive items for every time the state changes
     public func channelZKey<T>(@autoclosure accessor: ()->T, keyPath: String? = nil)->Channel<KeyValueSource<T>, T> {
         return channelZKeyState(accessor, keyPath: keyPath).map({ $0.new })
     }
 
     /// Creates a channel for all state operations for the given key-value-coding compliant optional property
     ///
-    /// :param: accessor an accessor for the value of the property (autoclosure)
-    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    /// - Parameter accessor: an accessor for the value of the property (autoclosure)
+    /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
-    /// :returns: a channel backed by the KVO property that will receive items for every time the state changes
+    /// - Returns a channel backed by the KVO property that will receive items for every time the state changes
     public func channelZKey<T>(@autoclosure accessor: ()->T?, keyPath: String? = nil)->Channel<KeyValueOptionalSource<T>, T?> {
         return channelZKeyState(accessor, keyPath: keyPath).map({ $0.new })
     }
@@ -59,10 +59,10 @@ extension NSObject {
 
     /// Creates a channel for all KVO-compliant NSArray modifications
     ///
-    /// :param: accessor an accessor for the NSArray of the property (autoclosure)
-    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    /// - Parameter accessor: an accessor for the NSArray of the property (autoclosure)
+    /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
-    /// :returns: a channel backed by the KVO property that will receive ArrayChange items for mutations
+    /// - Returns a channel backed by the KVO property that will receive ArrayChange items for mutations
     public func channelZKeyArray(@autoclosure accessor: ()->NSArray?, keyPath: String? = nil)->Channel<NSObject, ArrayChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
         let receivers = ReceiverList<ArrayChange>()
@@ -94,10 +94,10 @@ extension NSObject {
 
     /// Creates a channel for all KVO-compliant NSOrderedSet modifications
     ///
-    /// :param: accessor an accessor for the NSOrderedSet of the property (autoclosure)
-    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    /// - Parameter accessor: an accessor for the NSOrderedSet of the property (autoclosure)
+    /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
-    /// :returns: a channel backed by the KVO property that will receive OrderedSetChange items for mutations
+    /// - Returns a channel backed by the KVO property that will receive OrderedSetChange items for mutations
     public func channelZKeyOrderedSet(@autoclosure accessor: ()->NSOrderedSet?, keyPath: String? = nil)->Channel<NSObject, OrderedSetChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
         let receivers = ReceiverList<OrderedSetChange>()
@@ -129,10 +129,10 @@ extension NSObject {
 
     /// Creates a channel for all KVO-compliant NSSet modifications
     ///
-    /// :param: accessor an accessor for the NSSet of the property (autoclosure)
-    /// :param: keyPath the keyPath for the value; if ommitted, auto-discovery will be attempted
+    /// - Parameter accessor: an accessor for the NSSet of the property (autoclosure)
+    /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
-    /// :returns: a channel backed by the KVO property that will receive SetChange items for mutations
+    /// - Returns a channel backed by the KVO property that will receive SetChange items for mutations
     public func channelZKeySet(@autoclosure accessor: ()->NSSet?, keyPath: String? = nil)->Channel<NSObject, SetChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
         let receivers = ReceiverList<SetChange>()
@@ -820,8 +820,8 @@ extension NSObject {
 
     /// Registers with the NSNotificationCenter to observable event notications of the given name for this object
     ///
-    /// :param: notificationName the name of the notification to register
-    /// :param: center the NSNotificationCenter to register with (defaults to defaultCenter())
+    /// - Parameter notificationName: the name of the notification to register
+    /// - Parameter center: the NSNotificationCenter to register with (defaults to defaultCenter())
     public func channelZNotification(name: String, center: NSNotificationCenter = NSNotificationCenter.defaultCenter())->Channel<NSNotificationCenter, UserInfo> {
         let receivers = ReceiverList<UserInfo>()
         return Channel(source: center) { [weak self] (receiver: UserInfo->Void) -> Receipt in
