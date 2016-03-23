@@ -11,7 +11,8 @@ import ChannelZ
 import Dispatch
 
 /// Creates an asynchronous trickle of events for the given generator
-func trickleZ<G: GeneratorType>(var from: G, _ interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue())->Channel<G, G.Element> {
+func trickleZ<G: GeneratorType>(fromx: G, _ interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue())->Channel<G, G.Element> {
+    var from = fromx
     var receivers = ReceiverList<G.Element>()
     let delay = Int64(interval * NSTimeInterval(NSEC_PER_SEC))
     func tick() {
@@ -148,7 +149,7 @@ public class DispatchTests: XCTestCase {
         let interval = 0.1
         _ = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
         _ = channel.dispatch(dispatch_get_main_queue(), delay: interval).receive { void in
-            pulses++
+            pulses += 1
             if pulses >= vcount { xpc?.fulfill() }
         }
 
@@ -173,7 +174,7 @@ public class DispatchTests: XCTestCase {
         let vcount = 4
 
         let receiver = channel.throttle(1.0, queue: dispatch_get_main_queue()).receive { voids in
-            pulses++
+            pulses += 1
             items += voids.count
             if items >= vcount { xpc?.fulfill() }
         }
@@ -188,9 +189,9 @@ public class DispatchTests: XCTestCase {
 
     /// Disabled only because it fails on TravisCI
     func XXXtestDispatchFile() {
-        weak var xpc = expectationWithDescription(__FUNCTION__)
+        weak var xpc = expectationWithDescription(#function)
 
-        let file = __FILE__
+        let file = #file
         var view = String.UnicodeScalarView()
 
         channelZFile(file, high: Int(arc4random_uniform(1024)) + 1).receive { event in

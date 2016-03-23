@@ -11,14 +11,14 @@ import ChannelZ
 import CoreData
 import ObjectiveC
 
-func assertChanges<T where T: Equatable>(@autoclosure check: ()->T, @autoclosure _ code: ()->(Any), file: String = __FILE__, line: UInt = __LINE__) {
+func assertChanges<T where T: Equatable>(@autoclosure check: ()->T, @autoclosure _ code: ()->(Any), file: StaticString = #file, line: UInt = #line) {
     let start = check()
     code()
     let end = check()
     XCTAssertNotEqual(start, end, "assertChanges failure", file: file, line: line)
 }
 
-func assertRemains<T where T: Equatable>(@autoclosure check: ()->T, @autoclosure _ code:  ()->(Any), file: String = __FILE__, line: UInt = __LINE__) {
+func assertRemains<T where T: Equatable>(@autoclosure check: ()->T, @autoclosure _ code:  ()->(Any), file: StaticString = #file, line: UInt = #line) {
     let start = check()
     code()
     let end = check()
@@ -29,7 +29,7 @@ func quellNoisyWarnings<T>(t: T) { }
 
 public class FoundationTests: XCTestCase {
 
-    func assertMemoryBlock<T where T: Equatable>(file: String = __FILE__, line: UInt = __LINE__, @autoclosure check:  ()->T, code: ()->()) {
+    func assertMemoryBlock<T where T: Equatable>(file: StaticString = #file, line: UInt = #line, @autoclosure check:  ()->T, code: ()->()) {
         let start = check()
         autoreleasepool(code)
         let end = check()
@@ -41,7 +41,7 @@ public class FoundationTests: XCTestCase {
         var receipt: Receipt!
         assertMemoryBlock(check: ChannelThingsInstances) {
             let thing = ChannelThing()
-            receipt = thing.stringish.drop(1).sieve(!=).filter({ $0 != nil }).map(unsafeUnwrap).receive({ strs += [$0] })
+            receipt = thing.stringish.drop(1).sieve(!=).filter({ $0 != nil }).map({ $0! }).receive({ strs += [$0] })
             let strings: [String?] = ["a", "b", nil, "b", "b", "c"]
             for x in strings { thing.stringish ∞= x }
             XCTAssertFalse(receipt.cancelled)
@@ -560,11 +560,11 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(0, changes)
 
         channel.source.put(1)
-        XCTAssertEqual(0, --changes)
+        assertSingleChange(&changes)
 
 //        let sinkof = SinkTo(channel.source)
 //        sinkof.put(2)
-//        XCTAssertEqual(0, --changes, "sink wrapper around observable should have passed elements through to subscriptions")
+//        assertSingleChange(&changes, "sink wrapper around observable should have passed elements through to subscriptions")
 //
 //        subscription.cancel()
 //        sinkof.put(2)
@@ -748,7 +748,7 @@ public class FoundationTests: XCTestCase {
 //        state.num1 = nil
 //        XCTAssertEqual(5, state.dbl, "niling optional field should not alter bound non-optional field")
 //
-//        state.dbl++
+//        state.dbl += 1
 //        XCTAssertEqual(state.dbl, state.num1?.doubleValue ?? -999)
 //
 //        state.num1 = 9.9
@@ -781,7 +781,7 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(1, state.int)
         XCTAssertEqual(1.0, state.dbl)
 
-        state.dbl++
+        state.dbl += 1
         XCTAssertEqual(2, state.int)
         XCTAssertEqual(2.0, state.dbl)
 
@@ -789,7 +789,7 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(2, state.int)
         XCTAssertEqual(2.8, state.dbl)
 
-        state.int--
+        state.int -= 1
         XCTAssertEqual(1, state.int)
         XCTAssertEqual(1.0, state.dbl)
     }
@@ -982,7 +982,7 @@ public class FoundationTests: XCTestCase {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
             s.doubleField <=∞=> c∞c.doubleField
-            c.doubleField++
+            c.doubleField += 1
             XCTAssertEqual(s.doubleField∞?, c.doubleField)
             s.doubleField ∞= s.doubleField∞? + 1
             XCTAssertEqual(s.doubleField∞?, c.doubleField)
@@ -992,7 +992,7 @@ public class FoundationTests: XCTestCase {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
             s.floatField <=∞=> c∞c.floatField
-            c.floatField++
+            c.floatField += 1
             XCTAssertEqual(s.floatField∞?,  c.floatField)
             s.floatField ∞= s.floatField∞? + 1
             XCTAssertEqual(s.floatField∞?, c.floatField)
@@ -1002,7 +1002,7 @@ public class FoundationTests: XCTestCase {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
             s.intField <=∞=> c∞c.intField
-            c.intField++
+            c.intField += 1
             XCTAssertEqual(s.intField∞?, c.intField)
             s.intField ∞= s.intField∞? + 1
             XCTAssertEqual(s.intField∞?, c.intField)
@@ -1012,7 +1012,7 @@ public class FoundationTests: XCTestCase {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
             s.uInt32Field <=∞=> c∞c.uInt32Field
-            c.uInt32Field++
+            c.uInt32Field += 1
             XCTAssertEqual(s.uInt32Field∞?, c.uInt32Field)
             s.uInt32Field ∞= s.uInt32Field∞? + 1
             // FIXME: this fails; maybe the Obj-C conversion is not exact?
@@ -1033,7 +1033,7 @@ public class FoundationTests: XCTestCase {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
             s.numberField <~∞~> c∞c.intField
-            c.intField++
+            c.intField += 1
             XCTAssertEqual(s.intField∞?, c.numberField.integerValue)
             s.numberField ∞= s.numberField∞?.integerValue + 1
             XCTAssertEqual(s.intField∞?, c.numberField.integerValue)
@@ -1043,7 +1043,7 @@ public class FoundationTests: XCTestCase {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
             s.numberField <~∞~> c∞c.doubleField
-            c.doubleField++
+            c.doubleField += 1
             XCTAssertEqual(s.doubleField∞?, c.numberField.doubleValue)
             s.numberField ∞= s.numberField∞?.doubleValue + 1
             XCTAssertEqual(s.doubleField∞?, c.numberField.doubleValue)
@@ -1054,7 +1054,7 @@ public class FoundationTests: XCTestCase {
             let c = NumericHolderClass()
             s.numberField <~∞~> c∞c.int8Field
             // FIXME: crash!
-//            c.int8Field++
+//            c.int8Field += 1
             XCTAssertEqual(s.int8Field∞?, c.numberField.charValue)
 //            s.numberField ∞= NSNumber(char: s.numberField.value.charValue + 1)
             XCTAssertEqual(s.int8Field∞?, c.numberField.charValue)
@@ -1064,7 +1064,7 @@ public class FoundationTests: XCTestCase {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
             s.numberField <~∞~> c∞c.intField
-            c.intField++
+            c.intField += 1
             XCTAssertEqual(s.intField∞?, c.numberField.integerValue)
             s.numberField ∞= s.numberField∞?.integerValue + 1
             XCTAssertEqual(s.intField∞?, c.numberField.integerValue)
@@ -1074,7 +1074,7 @@ public class FoundationTests: XCTestCase {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
             s.doubleField <~∞~> c∞c.floatField
-            c.floatField++
+            c.floatField += 1
             XCTAssertEqual(s.doubleField∞?, Double(c.floatField))
             s.doubleField ∞= s.doubleField∞? + 1
             XCTAssertEqual(s.doubleField∞?, Double(c.floatField))
@@ -1084,7 +1084,7 @@ public class FoundationTests: XCTestCase {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
             s.doubleField <~∞~> c∞c.intField
-            c.intField++
+            c.intField += 1
             XCTAssertEqual(s.doubleField∞?, Double(c.intField))
             s.doubleField ∞= s.doubleField∞? + 1
             XCTAssertEqual(s.doubleField∞?, Double(c.intField))
@@ -1277,9 +1277,9 @@ public class FoundationTests: XCTestCase {
             XCTAssertEqual(1, ChannelZKeyValueObserverCount - startCount)
 
             XCTAssertEqual(0, changes)
-            ob.int++
+            ob.int += 1
             XCTAssertEqual(1, changes)
-            ob.int++
+            ob.int += 1
             XCTAssertEqual(2, changes)
         }
 
@@ -1305,9 +1305,9 @@ public class FoundationTests: XCTestCase {
                 XCTAssertEqual(1, ChannelZKeyValueObserverCount - startCount)
 
                 XCTAssertEqual(0 * count, changes)
-                ob.int++
+                ob.int += 1
                 XCTAssertEqual(1 * count, changes)
-                ob.int++
+                ob.int += 1
                 XCTAssertEqual(2 * count, changes)
             }
         }
@@ -1360,7 +1360,7 @@ public class FoundationTests: XCTestCase {
 
                 var ptrs: [UnsafeMutablePointer<Void>] = []
                 for _ in 1...10 {
-                    let ptr = UnsafeMutablePointer<Void>()
+                    let ptr: UnsafeMutablePointer<Void> = nil
                     ptrs += [ptr]
                     op.addObserver(self, forKeyPath: "cancelled", options: .New, context: ptr)
                 }
@@ -1461,12 +1461,12 @@ public class FoundationTests: XCTestCase {
             XCTAssertEqual(0, opened)
 
             undo.beginUndoGrouping()
-            XCTAssertEqual(0, --opened)
+            assertSingleChange(&opened)
             XCTAssertEqual(0, closed)
 
             undo.endUndoGrouping()
             XCTAssertEqual(0, opened)
-            XCTAssertEqual(0, --closed)
+            assertSingleChange(&closed)
 
             undo.endUndoGrouping()
             undo.undo() // final undo needed or else the NSUndoManager won't be release (by the run loop?)
@@ -1542,11 +1542,11 @@ public class FoundationTests: XCTestCase {
         _ = 10
         state1∞state1.int <=∞=> state2∞state2.int
 
-        state1.int++
+        state1.int += 1
         XCTAssertEqual(state1.int, 1)
         XCTAssertEqual(state2.int, 1)
 
-        state2.int++
+        state2.int += 1
         XCTAssertEqual(state1.int, 2)
         XCTAssertEqual(state2.int, 2)
     }
@@ -1560,11 +1560,11 @@ public class FoundationTests: XCTestCase {
         let off = 10
         (state1∞state1.int).map({ $0 + 10 }) <=∞=> state2∞state2.int
 
-        state1.int++
+        state1.int += 1
         XCTAssertEqual(state1.int, 1 + (off * 2))
         XCTAssertEqual(state2.int, 1 + (off * 2))
 
-        state2.int++
+        state2.int += 1
         XCTAssertEqual(state1.int, 2 + (off * 3))
         XCTAssertEqual(state2.int, 2 + (off * 4))
     }
@@ -1655,6 +1655,10 @@ public class FoundationTests: XCTestCase {
         state∞state.optobj ∞> { _ in count += 1 }
     }
 
+    func assertSingleChange(inout count: Int, line: UInt = #line) {
+        count -= 1
+        XCTAssertEqual(0, count, file: #file, line: #line)
+    }
 
     public func testDeepKeyPath() {
         let state = StatefulObjectSubSubclass()
@@ -1665,22 +1669,22 @@ public class FoundationTests: XCTestCase {
 
         XCTAssertEqual(0, count)
 
-        state.state.int++
-        XCTAssertEqual(0, --count)
+        state.state.int += 1
+        assertSingleChange(&count)
 
         let oldstate = state.state
 
         state.state = StatefulObject()
-        XCTAssertEqual(0, --count)
+        assertSingleChange(&count)
 
-        oldstate.int++
+        oldstate.int += 1
         XCTAssertEqual(0, count, "should not be watching stale state")
 
-        state.state.int++
-        XCTAssertEqual(0, --count)
+        state.state.int += 1
+        assertSingleChange(&count)
 
-        state.state.int--
-        XCTAssertEqual(0, --count)
+        state.state.int -= 1
+        assertSingleChange(&count)
 
         state.state = StatefulObject()
         XCTAssertEqual(0, count, "new intermediate with same terminal value should not pass sieve") // or should it?
@@ -1696,13 +1700,13 @@ public class FoundationTests: XCTestCase {
 
         state.optobj = StatefulObjectSubSubclass()
 
-        //        XCTAssertEqual(0, --count)
+        //        assertSingleChange(&count)
 
         state.optobj!.optobj = StatefulObjectSubSubclass()
-        XCTAssertEqual(0, --count)
+        assertSingleChange(&count)
 
-        state.optobj!.optobj!.int++
-        XCTAssertEqual(0, --count)
+        state.optobj!.optobj!.int += 1
+        assertSingleChange(&count)
         
     }
 
@@ -1857,11 +1861,11 @@ public class StatefulObject : NSObject {
 
     public override init() {
         super.init()
-        StatefulObjectCount++
+        StatefulObjectCount += 1
     }
 
     deinit {
-        StatefulObjectCount--
+        StatefulObjectCount -= 1
     }
 }
 
@@ -1875,11 +1879,11 @@ var InstanceTrackingUndoManagerInstanceCount = 0
 class InstanceTrackingUndoManager : NSUndoManager {
     override init() {
         super.init()
-        InstanceTrackingUndoManagerInstanceCount++
+        InstanceTrackingUndoManagerInstanceCount += 1
     }
 
     deinit {
-        InstanceTrackingUndoManagerInstanceCount--
+        InstanceTrackingUndoManagerInstanceCount -= 1
     }
 }
 
@@ -1893,8 +1897,8 @@ class MemoryDemo : NSObject {
     dynamic var stringField : String = ""
 
     // track creates and releases
-    override init() { MemoryDemoCount++ }
-    deinit { MemoryDemoCount-- }
+    override init() { MemoryDemoCount += 1 }
+    deinit { MemoryDemoCount -= 1 }
 }
 
 class NumericHolderClass : NSObject {
@@ -1972,6 +1976,6 @@ class ChannelThing: NSObject {
     let string = ∞=("")=∞
     let stringish = ∞(nil as String?)∞
 
-    override init() { ChannelThingsInstances++ }
-    deinit { ChannelThingsInstances-- }
+    override init() { ChannelThingsInstances += 1 }
+    deinit { ChannelThingsInstances -= 1 }
 }

@@ -84,14 +84,15 @@ public final class ReceiverList<T> {
 
     public func receive(element: T) {
         synchronized(self) { ()->(Void) in
-            if self.entrancy++ > self.maxdepth {
+            self.entrancy += 1
+            if self.entrancy > self.maxdepth + 1 {
                 #if DEBUG_CHANNELZ
                     print("re-entrant value change limit of \(self.maxdepth) reached for receivers")
                 #endif
             } else {
                 for (_, receptor) in self.receivers { receptor(element) }
             }
-            self.entrancy--
+            self.entrancy -= 1
         }
     }
 
@@ -104,7 +105,8 @@ public final class ReceiverList<T> {
     /// Adds a custom receiver block and returns a token that can later be used to remove the receiver
     public func addReceiver(receptor: (T)->())->Int {
         return synchronized(self) {
-            let index = self.receptorIndex++
+            let index = self.receptorIndex
+            self.receptorIndex += 1
             precondition(self.entrancy == 0, "cannot add to receivers while they are flowing")
             self.receivers += [(index, receptor)]
             return index

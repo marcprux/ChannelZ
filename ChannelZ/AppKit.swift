@@ -61,7 +61,7 @@ extension NSControl { // : KeyValueChannelSupplementing {
 
         let target = (self.target as? ActionTarget) ?? ActionTarget(control: self) // use the existing dispatch target if it exists
         self.target = target
-        self.action = Selector("channelEvent")
+        self.action = #selector(ActionTarget.channelEvent)
 
 
         return Channel<ActionTarget, Void>(source: target, reception: target.receivers.addReceipt)
@@ -114,7 +114,7 @@ extension NSMenuItem {
 
         let target = (self.target as? ActionTarget) ?? ActionTarget(control: self) // use the existing dispatch target if it exists
         self.target = target
-        self.action = Selector("channelEvent")
+        self.action = #selector(ActionTarget.channelEvent)
         return Channel<ActionTarget, Void>(source: target, reception: target.receivers.addReceipt)
     }
 }

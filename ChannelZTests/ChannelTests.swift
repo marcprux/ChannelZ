@@ -129,8 +129,8 @@ public class ChannelTests: XCTestCase {
     }
 
     func testStreamExtensions() {
-        guard let stream = NSInputStream(fileAtPath: __FILE__) else {
-            return XCTFail("could not open \(__FILE__)")
+        guard let stream = NSInputStream(fileAtPath: #file) else {
+            return XCTFail("could not open \(#file)")
         }
 
         weak var xpc: XCTestExpectation? = expectationWithDescription("input stream")
@@ -142,7 +142,7 @@ public class ChannelTests: XCTestCase {
         var count = 0
         let sub = obv.receive { switch $0 {
             case .Opened:
-                openCount++
+                openCount += 1
             case .Data(let d):
                 count += d.count
                 allData.appendData(NSData(bytes: d, length: d.count))
@@ -150,7 +150,7 @@ public class ChannelTests: XCTestCase {
                 XCTFail(String(e))
                 xpc?.fulfill()
             case .Closed:
-                closeCount++
+                closeCount += 1
                 xpc?.fulfill()
             }
         }
@@ -169,7 +169,7 @@ public class ChannelTests: XCTestCase {
             let advice = "Begin at the beginning, and go on till you come to the end: then stop"
             XCTAssertTrue(str.containsString(advice))
         } else {
-            XCTFail("could not create string from data in \(__FILE__)")
+            XCTFail("could not create string from data in \(#file)")
         }
     }
 
@@ -273,7 +273,7 @@ public class ChannelTests: XCTestCase {
     // FIXME: linker error
 //    func testReduceRunningAverage() {
 //        // index creates an indexed pair of elements, a lazy version of Swift's EnumerateGenerator
-//        func index<T>()->(item: T)->(index: Int, item: T) { var index = 0; return { item in return (index++, item) } }
+//        func index<T>()->(item: T)->(index: Int, item: T) { var index = 0; return { item in return (index += 1, item) } }
 //
 //        // runningAgerage computes the next average in a sequence given the previous average and the current index
 //        func runningAverage(prev: Double, pair: (Int, Double))->Double { return (prev * Double(pair.0) + pair.1) / Double(pair.0+1) }
@@ -385,7 +385,7 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(0, propa.source.value)
         XCTAssertEqual(0.0, propb.source.value)
 
-        propa.source.value++
+        propa.source.value += 1
         XCTAssertEqual(1, propa.source.value)
         XCTAssertEqual(1.0, propb.source.value)
 
@@ -395,7 +395,7 @@ public class ChannelTests: XCTestCase {
 
         rcpt.cancel()
 
-        propa.source.value--
+        propa.source.value -= 1
         XCTAssertEqual(1, propa.source.value)
         XCTAssertEqual(2.0, propb.source.value, "cancelled receiver should not have channeled the value")
     }
@@ -413,17 +413,17 @@ public class ChannelTests: XCTestCase {
         // these values are all contingent on the setting of ChannelZReentrancyLimit
         XCTAssertEqual(1, ChannelZReentrancyLimit)
 
-        propa.source.value++
+        propa.source.value += 1
         XCTAssertEqual(4, propa.source.value)
         XCTAssertEqual(3, propb.source.value)
 
-        propb.source.value++
+        propb.source.value += 1
         XCTAssertEqual(6, propa.source.value)
         XCTAssertEqual(6, propb.source.value)
 
         rcpt.cancel()
 
-        propa.source.value--
+        propa.source.value -= 1
         XCTAssertEqual(5, propa.source.value)
         XCTAssertEqual(6, propb.source.value, "cancelled receiver should not have channeled the value")
     }
@@ -439,16 +439,16 @@ public class ChannelTests: XCTestCase {
 
         a.oneOf(b).oneOf(c).receive { r in
             switch r {
-            case .V1(.V1): ints++
-            case .V1(.V2): strs++
-            case .V2: flts++
+            case .V1(.V1): ints += 1
+            case .V1(.V2): strs += 1
+            case .V2: flts += 1
             }
         }
 
         XCTAssertEqual(0, ints)
         XCTAssertEqual(0, strs)
 
-        a.source.value++
+        a.source.value += 1
         XCTAssertEqual(1, ints)
         XCTAssertEqual(0, strs)
 
@@ -822,7 +822,7 @@ public class ChannelTests: XCTestCase {
         var changes = 0
 
         combo2 ∞> { (floatChange: Float?, uintChange: UInt?, stringChange: String?) in
-            changes++
+            changes += 1
             if let float = floatChange {
                 lastFloat = float
             }
@@ -835,17 +835,20 @@ public class ChannelTests: XCTestCase {
         changes -= 3
 
         a ∞= a∞? + 1
-        XCTAssertEqual(0, --changes)
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
         XCTAssertEqual("false", lastString)
         XCTAssertEqual(Float(4.0), lastFloat)
 
         c ∞= true
-        XCTAssertEqual(0, --changes)
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
         XCTAssertEqual("true", lastString)
         XCTAssertEqual(Float(4.0), lastFloat)
 
         c ∞= false
-        XCTAssertEqual(0, --changes)
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
         XCTAssertEqual("false", lastString)
         XCTAssertEqual(Float(4.0), lastFloat)
 
@@ -883,12 +886,13 @@ public class ChannelTests: XCTestCase {
         var changes = 0
 
         _ = zip2 ∞> { (floatChange: Float, uintChange: UInt, stringChange: String) in
-            changes++
+            changes += 1
             lastFloat = floatChange
             lastString = stringChange
         }
 
-        XCTAssertEqual(0, --changes)
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
         XCTAssertEqual("false", lastString)
         XCTAssertEqual(Float(3.0), lastFloat)
 
@@ -898,7 +902,8 @@ public class ChannelTests: XCTestCase {
         b ∞= b∞? + 1
         b ∞= b∞? + 1
         c ∞= true
-        XCTAssertEqual(0, --changes)
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
         XCTAssertEqual("true", lastString)
         XCTAssertEqual(Float(4.0), lastFloat)
 
@@ -908,17 +913,20 @@ public class ChannelTests: XCTestCase {
         c ∞= !c∞?
 
         a ∞= a∞? + 1
-        XCTAssertEqual(0, --changes)
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
         XCTAssertEqual("false", lastString)
         XCTAssertEqual(Float(5.0), lastFloat)
 
         a ∞= a∞? + 1
-        XCTAssertEqual(0, --changes)
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
         XCTAssertEqual("true", lastString)
         XCTAssertEqual(Float(6.0), lastFloat)
 
         a ∞= a∞? + 1
-        XCTAssertEqual(0, --changes)
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
         XCTAssertEqual("false", lastString)
         XCTAssertEqual(Float(7.0), lastFloat)
 
@@ -951,13 +959,13 @@ public class ChannelTests: XCTestCase {
 //        XCTAssertEqual(0, orx)
 //        XCTAssertEqual(0, andorx)
 //
-//        a.source.value++
+//        a.source.value += 1
 //
 //        XCTAssertEqual(1, andx, "last and fires a single and change")
 //        XCTAssertEqual(4, orx, "each or four")
 //        XCTAssertEqual(4, andorx, "four groups in mixed")
 //
-//        a.source.value++
+//        a.source.value += 1
 //
 //        XCTAssertEqual(2, andx)
 //        XCTAssertEqual(8, orx)

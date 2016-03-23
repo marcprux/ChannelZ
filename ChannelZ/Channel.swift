@@ -9,7 +9,7 @@
 // MARK: Channel Basics
 
 public protocol StreamType {
-    typealias Element
+    associatedtype Element
 
     /// Adds the given receiver block to this Channel's source's list to receive the pulses emitted by the
     /// source through the Channel's phases.
@@ -24,7 +24,7 @@ public protocol StreamType {
 }
 
 public protocol ChannelType : StreamType {
-    typealias Source
+    associatedtype Source
 
     /// The underlying unconstrained source of this `Channel`
     var source: Source { get }
@@ -97,8 +97,9 @@ public extension StreamType {
     /// - Parameter sink: the sink that will accept all the pulses from the Channel
     ///
     /// - Returns: A `Receipt` for the pipe
-    public func pipe<S2: Sink where S2.Element == Element>(var sink: S2) -> Receipt {
-        return receive { sink.put($0) }
+    public func pipe<S2: Sink where S2.Element == Element>(sink: S2) -> Receipt {
+        var s = sink
+        return receive { s.put($0) }
     }
 
     /// Lifts a function to the current Stream and returns a new channel phase that when received to will pass
@@ -211,8 +212,8 @@ public extension ChannelType {
     ///
     /// - Returns: A stateful Channel that emits a tuple with the element's index
     @warn_unused_result public func enumerate() -> Channel<Source, (Int, Element)> {
-        var index = 0
-        return map({ (index++, $0) })
+        var index = -1
+        return map({ index += 1; return (index, $0) })
     }
 
     /// Adds a channel phase with the result of repeatedly calling `combine` with an accumulated value 
@@ -261,16 +262,17 @@ public extension ChannelType {
     ///
     /// - Returns: A stateful Channel that buffers its accumulated pulses until the terminator predicate passes
     @warn_unused_result public func partition<U>(initial: U, withPartitions: Bool = true, clearAfterPulse: Bool = true, isPartition: (U, Element) -> Bool, combine: (U, Element) -> U) -> Channel<Source, U> {
-        return reduce(initial) { (var accumulation, item, receive) in
-            if isPartition(accumulation, item) {
-                if withPartitions { accumulation = combine(accumulation, item) }
-                receive(accumulation)
-                if clearAfterPulse { accumulation = initial }
+        return reduce(initial) { (accumulation, item, receive) in
+            var acc = accumulation
+            if isPartition(acc, item) {
+                if withPartitions { acc = combine(acc, item) }
+                receive(acc)
+                if clearAfterPulse { acc = initial }
             } else {
-                accumulation = combine(accumulation, item)
+                acc = combine(acc, item)
             }
 
-            return accumulation
+            return acc
         }
     }
 }
@@ -312,8 +314,9 @@ public extension StreamType {
     }
 
     /// Adds a channel phase that will terminate receipt after the given number of pulses have been received
-    @warn_unused_result public func take(var count: Int = 1) -> Self {
-        return terminate({ _ in --count < 0 })
+    @warn_unused_result public func take(count: Int = 1) -> Self {
+        var c = count
+        return terminate({ _ in c -= 1; return c < 0 })
     }
 }
 
@@ -587,7 +590,7 @@ extension SequenceType {
 /// Creates a Channel sourced by a `GeneratorType` that will emit all its elements to new receivers
 @warn_unused_result public func channelZGenerator<S, T where S: GeneratorType, S.Element == T>(from: S) -> Channel<S, T> {
     return Channel(source: from) { rcvr in
-        for item in anyGenerator(from) { rcvr(item) }
+        for item in AnyGenerator(from) { rcvr(item) }
         return ReceiptOf() // cancelled receipt since it will never receive more pulses
     }
 }
@@ -614,8 +617,8 @@ extension SequenceType {
 /// This is an optimization of `Channel.precedent()`, since it means that the Channel doesn't need
 /// to retain a reference to the previous state element
 public protocol StateSource {
-    typealias Element
-    typealias Source
+    associatedtype Element
+    associatedtype Source
 
     var value: Element { get nonmutating set }
 
@@ -645,7 +648,7 @@ public extension ChannelType where Source : StateSource, Source.Element == Eleme
 
 /// A WrapperType is able to map itself through a wrapped optional
 public protocol OptionalMappable : NilLiteralConvertible {
-    typealias Wrapped
+    associatedtype Wrapped
     init(_ some: Wrapped)
     func flatMap<U>(@noescape f: (Wrapped) throws -> U?) rethrows -> U?
 }
@@ -692,7 +695,7 @@ public final class PropertySource<T>: StateSink, StateSource {
 }
 
 public protocol Sink {
-    typealias Element
+    associatedtype Element
     mutating func put(value: Element)
 }
 

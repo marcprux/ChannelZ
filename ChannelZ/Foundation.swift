@@ -487,7 +487,7 @@ public final class KeyValueOptionalSource<O>: StateSink, StateSource {
 
     private struct Context {
         /// Global pointer to the context that will holder the observer list
-        private static var ObserverListAssociatedKey = UnsafePointer<Void>()
+        private static var ObserverListAssociatedKey: UnsafePointer<Void> = nil
 
         /// Global lock for getting/setting the observer
         private static var RegisterLock = NSLock()
@@ -524,7 +524,7 @@ public final class KeyValueOptionalSource<O>: StateSink, StateSource {
             let ob = TargetObserverRegister(targetPtr: Unmanaged.passUnretained(target))
             objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, ob, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             #if DEBUG_CHANNELZ
-                ChannelZKeyValueObserverCount++
+                ChannelZKeyValueObserverCount += 1
             #endif
             Context.RegisterLock.unlock()
             return ob
@@ -537,13 +537,14 @@ public final class KeyValueOptionalSource<O>: StateSink, StateSource {
 
     deinit {
         #if DEBUG_CHANNELZ
-            ChannelZKeyValueObserverCount--
+            ChannelZKeyValueObserverCount -= 1
         #endif
         clear()
     }
 
     func addObserver(keyPath: String, handler: Callback) -> Int {
-        let observer = Observer(identifier: ++identifierCounter, handler: handler)
+        identifierCounter += 1
+        let observer = Observer(identifier: identifierCounter, handler: handler)
 
         let observers = keyObservers[keyPath] ?? []
         keyObservers[keyPath] = observers + [observer]
@@ -558,10 +559,11 @@ public final class KeyValueOptionalSource<O>: StateSink, StateSource {
     func addNotification(name: String, handler: Callback) -> Int {
         let observers = noteObservers[name] ?? []
         if observers.count == 0 { // this is the first observer: actually add it to the target
-            Context.RegisterNotificationCenter.addObserver(self, selector: Selector("notificationReceived:"), name: name, object: target)
+            Context.RegisterNotificationCenter.addObserver(self, selector: #selector(self.notificationReceived), name: name, object: target)
         }
 
-        let observer = Observer(identifier: ++identifierCounter, handler: handler)
+        identifierCounter += 1
+        let observer = Observer(identifier: identifierCounter, handler: handler)
         noteObservers[name] = observers + [observer]
         return observer.identifier
     }
@@ -662,7 +664,14 @@ private func conjectKeypath<T>(target: NSObject, @autoclosure _ accessor: ()->T,
 
     let nsobjectclass : AnyClass = object_getClass(NSObject())
 
-    for var propclass : AnyClass = origclass; propclass !== nsobjectclass; propclass = class_getSuperclass(propclass) {
+    var classes: [AnyClass] = []
+    var cls: AnyClass = origclass
+    while cls !== nsobjectclass {
+        classes.append(cls)
+        cls = class_getSuperclass(cls)
+    }
+
+    for propclass in classes {
 
         var propCount : UInt32 = 0
         let propList = class_copyPropertyList(propclass, &propCount)

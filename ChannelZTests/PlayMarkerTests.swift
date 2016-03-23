@@ -15,7 +15,7 @@ class PlayMarkerTests : XCTestCase {
     /// Generate the playground from the README
     func testPlaydown() throws {
         // TODO: move this to part of the build process
-        let file = __FILE__ as NSString
+        let file = #file as NSString
         let root = NSURL(fileURLWithPath: (file.stringByDeletingLastPathComponent as NSString).stringByDeletingLastPathComponent)
         for srcdst in [
             ("README.md", "Playgrounds/Introduction.playground"),

@@ -80,7 +80,7 @@ public prefix func ∞= <S: StateSource, T: Equatable where S.Element == T>(sour
 // which just refers to this internal ∞?= implementation. Bummer.
 
 protocol OptionalStateElement {
-    typealias WrappedType
+    associatedtype WrappedType
     var unwrap: WrappedType? { get }
 //    func map<U>(f: (WrappedType) -> U) -> U?
 }
@@ -151,9 +151,9 @@ infix operator <~∞~> { }
 ///// Conduit operator that filters out nil values with a custom transformer
 public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink>(lhs: (o: Channel<S1, T1>, f: T1->Optional<S2.Element>), rhs: (o: Channel<S2, T2>, f: T2->Optional<S1.Element>))->Receipt {
     let lhsf = lhs.f
-    let lhsm: Channel<S1, S2.Element> = lhs.o.map({ lhsf($0) ?? nil }).filter({ $0 != nil }).map(unsafeUnwrap)
+    let lhsm: Channel<S1, S2.Element> = lhs.o.map({ lhsf($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
     let rhsf = rhs.f
-    let rhsm: Channel<S2, S1.Element> = rhs.o.map({ rhsf($0) ?? nil }).filter({ $0 != nil }).map(unsafeUnwrap)
+    let rhsm: Channel<S2, S1.Element> = rhs.o.map({ rhsf($0) ?? nil }).filter({ $0 != nil }).map({ $0! })
     return conduit(lhsm, rhsm)
 }
 
@@ -165,11 +165,11 @@ public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element: Condui
 
 /// Convert (possibly lossily) between optional and non-optional types
 public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, Optional<T1>>, rhs: Channel<S2, T2>)->Receipt {
-    return conduit(lhs.filter({ $0 != nil }).map(unsafeUnwrap), rhs)
+    return conduit(lhs.filter({ $0 != nil }).map({ $0! }), rhs)
 }
 
 public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(lhs: Channel<S1, T1>, rhs: Channel<S2, Optional<T2>>)->Receipt {
-    return conduit(lhs, rhs.filter({ $0 != nil }).map(unsafeUnwrap))
+    return conduit(lhs, rhs.filter({ $0 != nil }).map({ $0! }))
 }
 
 

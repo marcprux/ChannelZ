@@ -16,6 +16,11 @@ import AppKit
 
 public class AppKitTests: XCTestCase {
 
+    func decrement(inout x: Int) -> Int {
+        x -= 1
+        return x
+    }
+
     public func testCocoaBindings() {
         let objc = NSObjectController(content: NSNumber(integer: 1))
         XCTAssertEqual(1, (objc.content as? NSNumber) ?? -999)
@@ -84,16 +89,19 @@ public class AppKitTests: XCTestCase {
         comps∞comps.year ∞> { _ in counter += 1 }
         comps∞comps.month ∞> { _ in counter += 1 }
         comps.year = 2016
-        XCTAssertEqual(0, --counter)
+        counter -= 1
+        XCTAssertEqual(0, counter)
 
         let prog = NSProgress(totalUnitCount: 100)
         prog∞prog.totalUnitCount ∞> { _ in counter += 1 }
         prog.totalUnitCount = 200
-        XCTAssertEqual(0, --counter)
+        counter -= 1
+        XCTAssertEqual(0, counter)
 
         prog∞prog.fractionCompleted ∞> { _ in counter += 1 }
-        prog.completedUnitCount++
-        XCTAssertEqual(0, --counter)
+        prog.completedUnitCount += 1
+        counter -= 1
+        XCTAssertEqual(0, counter)
     }
     
 
@@ -121,10 +129,12 @@ public class AppKitTests: XCTestCase {
         XCTAssertEqual(clicks, 0)
 
         let cmd = button.channelZControl()
-        let subscription = cmd.receive({ _ in clicks += 1 })
+        let subscription = cmd.receive({ _ in
+            clicks += 1
+        })
 
-        assertRemains(--clicks, button.performClick(self))
-        assertRemains(--clicks, button.performClick(self))
+        assertRemains(decrement(&clicks), button.performClick(self))
+        assertRemains(decrement(&clicks), button.performClick(self))
 
         subscription.cancel()
 
