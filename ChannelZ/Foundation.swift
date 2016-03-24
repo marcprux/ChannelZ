@@ -64,6 +64,7 @@ extension NSObject {
     ///
     /// - Returns a channel backed by the KVO property that will receive ArrayChange items for mutations
     public func channelZKeyArray(@autoclosure accessor: ()->NSArray?, keyPath: String? = nil)->Channel<NSObject, ArrayChange> {
+
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
         let receivers = ReceiverList<ArrayChange>()
 
