@@ -540,7 +540,7 @@ public extension ChannelType {
 /// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is
 /// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
 public func conduit<S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(c1: Channel<S1, T1>, _ c2: Channel<S2, T2>) -> Receipt {
-    return ReceiptOf(receipts: [c1∞->c2.source, c2∞->c1.source])
+    return ReceiptOf(receipts: [c1.pipe(c2.source), c2.pipe(c1.source)])
 }
 
 /// Creates a one-way conduit betweek a `Channel`s whose source is an `Equatable` `Sink`, such that when the left
@@ -748,4 +748,83 @@ public struct StateOf<T>: Sink, StateSource {
     @warn_unused_result public func channelZState() -> Channel<StateOf<T>, (old: T?, new: T)> {
         return channler().resource({ _ in self })
     }
+}
+
+
+/// Experimental: creates a channel for a type that is formed of 2 elements
+@warn_unused_result public func channelZDecomposedState<T, T1, T2>(constructor: (T1, T2) -> T, values: (T1, T2)) -> Channel<(Channel<StateOf<T1>, T1>, Channel<StateOf<T2>, T2>), T> {
+    let channel = channelZProperty(constructor(
+        values.0,
+        values.1
+        )
+    )
+    let source = (
+        channelZProperty(values.0).resource(StateOf.init),
+        channelZProperty(values.1).resource(StateOf.init)
+    )
+    func update(x: Any) { channel.value = constructor(
+        source.0.value,
+        source.1.value
+        )
+    }
+    source.0.receive(update)
+    source.1.receive(update)
+
+    return channel.resource { _ in source }
+}
+
+/// Experimental: creates a channel for a type that is formed of 3 elements
+@warn_unused_result public func channelZDecomposedState<T, T1, T2, T3>(constructor: (T1, T2, T3) -> T, values: (T1, T2, T3)) -> Channel<(Channel<StateOf<T1>, T1>, Channel<StateOf<T2>, T2>, Channel<StateOf<T3>, T3>), T> {
+    let channel = channelZProperty(constructor(
+        values.0,
+        values.1,
+        values.2
+        )
+    )
+    let source = (
+        channelZProperty(values.0).resource(StateOf.init),
+        channelZProperty(values.1).resource(StateOf.init),
+        channelZProperty(values.2).resource(StateOf.init)
+    )
+    func update(x: Any) { channel.value = constructor(
+        source.0.value,
+        source.1.value,
+        source.2.value
+        )
+    }
+    source.0.receive(update)
+    source.1.receive(update)
+    source.2.receive(update)
+
+    return channel.resource { _ in source }
+}
+
+/// Experimental: creates a channel for a type that is formed of 3 elements
+@warn_unused_result public func channelZDecomposedState<T, T1, T2, T3, T4>(constructor: (T1, T2, T3, T4) -> T, values: (T1, T2, T3, T4)) -> Channel<(Channel<StateOf<T1>, T1>, Channel<StateOf<T2>, T2>, Channel<StateOf<T3>, T3>, Channel<StateOf<T4>, T4>), T> {
+    let channel = channelZProperty(constructor(
+        values.0,
+        values.1,
+        values.2,
+        values.3
+        )
+    )
+    let source = (
+        channelZProperty(values.0).resource(StateOf.init),
+        channelZProperty(values.1).resource(StateOf.init),
+        channelZProperty(values.2).resource(StateOf.init),
+        channelZProperty(values.3).resource(StateOf.init)
+    )
+    func update(x: Any) { channel.value = constructor(
+        source.0.value,
+        source.1.value,
+        source.2.value,
+        source.3.value
+        )
+    }
+    source.0.receive(update)
+    source.1.receive(update)
+    source.2.receive(update)
+    source.3.receive(update)
+
+    return channel.resource { _ in source }
 }
