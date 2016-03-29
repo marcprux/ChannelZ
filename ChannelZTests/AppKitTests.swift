@@ -247,5 +247,55 @@ public class AppKitTests: XCTestCase {
         content["x"] = 13
         XCTAssertEqual(val as? NSNumber, NSNumber(integer: 13))
     }
+
+    func testMultipleControllerListeners() {
+        let stepper = NSStepper()
+        let channel = stepper.channelZBinding(controller: NSObjectController(content: 0)).map({ $0.new as? NSNumber })
+//        let channel = stepper.channelZBinding(controller: NSObjectController(content: 0)).filter({ (old, new) in old == nil ? (new != nil) : (old! != new) }).map({ $0.new as? NSNumber })
+
+        stepper.minValue = 0
+        stepper.maxValue = 100
+        stepper.increment = 1
+
+        XCTAssertEqual(0, stepper.integerValue)
+        XCTAssertEqual(0, channel.source.content as? NSNumber)
+
+        channel.source.content = 50
+
+        XCTAssertEqual(50, stepper.integerValue)
+        XCTAssertEqual(50, channel.source.content as? NSNumber)
+
+        stepper.performClick(nil) // undocumented, but this decrements the stepper
+
+        XCTAssertEqual(49, stepper.integerValue)
+        XCTAssertEqual(49, channel.source.content as? NSNumber)
+
+        var clickCount = 0
+
+        // note that this demonstrates the difference between 
+        // channel.sieve(!=) { receive() && receive() }
+        // and
+        // channel { sieve(!=).receive() && sieve(!=).receive() }
+        channel.subsequent().sieve(!=).receive { x in
+            clickCount += 1
+        }
+        channel.subsequent().sieve(!=).receive { x in
+            clickCount += 1
+        }
+
+        stepper.performClick(nil)
+
+        XCTAssertEqual(48, stepper.integerValue)
+        XCTAssertEqual(48, channel.source.content as? NSNumber)
+        XCTAssertEqual(2, clickCount)
+
+        stepper.performClick(nil)
+
+        XCTAssertEqual(47, stepper.integerValue)
+        XCTAssertEqual(47, channel.source.content as? NSNumber)
+        XCTAssertEqual(4, clickCount)
+
+    }
+
 }
 #endif

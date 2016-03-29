@@ -19,6 +19,26 @@ public protocol ChannelController: class, NSObjectProtocol, StateSource, StateSi
     var value: ContentType { get set }
 }
 
+public extension NSObjectProtocol where Self : NSController {
+    /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
+    /// change valus are not provided with KVO observation
+    public func channelZControllerPath(keyPath: String)->Channel<Self, (old: AnyObject??, new: AnyObject?)> {
+        let kvt: KeyValueTarget<NSObject?> = KeyValueTarget(target: self, initialValue: nil, keyPath: keyPath)
+        let channel = KeyValueOptionalSource(target: kvt).channelZState()
+        let resourced = channel.resource({ [unowned self] _ in self })
+
+        // KVO on an object controller drops the value: “Important: The Cocoa bindings controller classes do not provide change values when sending key-value observing notifications to observers. It is the developer’s responsibility to query the controller to determine the new values.”
+        // so we manually pull the latest value out of the object whenever we fire a change so we 
+        // maintain the channel contract
+        let mapped = resourced.map({ [weak self] _ in self?.valueForKeyPath(keyPath) })
+
+        // manually store the previous value for eventual comparison
+        let withState = mapped.precedent() // .filter({ old, new in old == nil || old! != new })
+
+        return withState
+    }
+}
+
 /// An NSObject controller that is compatible with a StateSource and StateSink for storing and retrieving `NSObject` values from bindings
 extension NSObjectController : ChannelController {
     public typealias ContentType = AnyObject? // it would be nice if this were generic, but @objc forbids it
@@ -41,19 +61,6 @@ extension NSObjectController : ChannelController {
     public func channelZState()->Channel<NSObjectController, State> {
         return channelZControllerPath("content") // "content" is the default key for controllers
     }
-
-    /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
-    /// change valus are not provided with KVO observation
-    public func channelZControllerPath(keyPath: String)->Channel<NSObjectController, State> {
-        let kvt: KeyValueTarget<ContentType> = KeyValueTarget(target: self, initialValue: nil, keyPath: keyPath)
-        let channel = KeyValueOptionalSource(target: kvt).channelZState()
-        // KVO on an object controlled drops the value: “Important: The Cocoa bindings controller classes do not provide change values when sending key-value observing notifications to observers. It is the developer’s responsibility to query the controller to determine the new values.”
-        let resourced = channel.resource({ [unowned self] _ in self })
-        let mapped = resourced.map({ [weak self] _ in self?.valueForKeyPath(keyPath) })
-        let withState = mapped.precedent()
-        return withState
-    }
-
 }
 
 extension NSControl { // : KeyValueChannelSupplementing {
@@ -72,9 +79,9 @@ extension NSControl { // : KeyValueChannelSupplementing {
     }
 
     /// Creates a binding to an intermediate NSObjectController with the given options and returns the bound channel
-    public func channelZBinding(binding: String = NSValueBinding, controller: NSObjectController = NSObjectController(content: nil), options: [String : AnyObject] = [:]) -> Channel<NSObjectController, NSObjectController.State> {
-        bind(binding, toObject: controller, withKeyPath: "content", options: options)
-        return controller.channelZState()
+    public func channelZBinding(binding: String = NSValueBinding, controller: NSObjectController = NSObjectController(content: nil), keyPath: String = "content", options: [String : AnyObject] = [:]) -> Channel<NSObjectController, NSObjectController.State> {
+        bind(binding, toObject: controller, withKeyPath: keyPath, options: options)
+        return controller.channelZControllerPath(keyPath)
     }
 
     public func supplementKeyValueChannel(forKeyPath: String, receiver: (AnyObject?)->()) -> (()->())? {

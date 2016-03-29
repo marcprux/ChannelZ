@@ -86,14 +86,18 @@ public final class ReceiverList<T> {
         synchronized(self) { ()->(Void) in
             self.entrancy += 1
             if self.entrancy > self.maxdepth + 1 {
-                #if DEBUG_CHANNELZ
-                    print("re-entrant value change limit of \(self.maxdepth) reached for receivers")
-                #endif
+                self.reentrantChannelReception(element)
             } else {
                 for (_, receptor) in self.receivers { receptor(element) }
             }
             self.entrancy -= 1
         }
+    }
+
+    public func reentrantChannelReception(element: Any) {
+        #if DEBUG_CHANNELZ
+            debugPrint("ChannelZ reentrant channel short-circuit; break on \(#function) to debug", element)
+        #endif
     }
 
     /// Adds a receiver that will return a receipt that simply removes itself from the list

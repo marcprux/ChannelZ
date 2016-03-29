@@ -207,6 +207,79 @@ public class FoundationTests: XCTestCase {
         #endif
     }
 
+    func testMultipleSimpleChannels() {
+//        let intChannel = channelZProperty(0).sieve(!=)
+        let intChannel = ∞=0=∞
+
+        var changeCount: Int = 0
+
+        let r1 = intChannel.receive { v in
+            changeCount = changeCount + 1
+        }
+        let r2 = intChannel.receive { v in
+            changeCount = changeCount + 1
+        }
+
+        changeCount = 0 // clear any initial assignations
+        XCTAssertEqual(0, changeCount)
+
+        intChannel.value += 1
+        XCTAssertEqual(2, changeCount)
+
+        intChannel.value = 1 // no change
+        XCTAssertEqual(2, changeCount)
+
+        intChannel.value += 1
+        XCTAssertEqual(4, changeCount)
+
+        r1.cancel()
+        intChannel.value += 1
+        XCTAssertEqual(5, changeCount)
+
+        r2.cancel()
+        intChannel.value += 1
+        XCTAssertEqual(5, changeCount)
+
+    }
+
+    func testMultipleKVOChannels() {
+        let ob = NumericHolderClass()
+
+        let intChannel = ob.channelZKey(ob.intField) // .sieve(!=)
+//        let intChannel = ob.channelZKeyState(ob.intField).filter({ $0.old != $0.new }).map({ $0.new })
+
+        var changeCount: Int = 0
+
+        let receiverCount = 2
+        var receivers: [Receipt] = []
+        for _ in 1...receiverCount {
+            receivers.append(intChannel.sieve(!=).receive { _ in
+                changeCount += 1
+            })
+        }
+
+        changeCount = 0 // clear any initial assignations
+        XCTAssertEqual(0, changeCount)
+
+        ob.intField += 1
+        XCTAssertEqual(receiverCount, changeCount)
+
+        ob.intField = 1 // no change
+        XCTAssertEqual(receiverCount, changeCount)
+
+        ob.intField += 1
+        XCTAssertEqual(receiverCount * 2, changeCount)
+
+//        receivers.first.cancel()
+//        ob.intField += 1
+//        XCTAssertEqual(5, changeCount)
+//
+//        receivers.last.cancel()
+//        ob.intField += 1
+//        XCTAssertEqual(5, changeCount)
+
+    }
+
     func testFilteredChannels() {
 
         var strlen = 0

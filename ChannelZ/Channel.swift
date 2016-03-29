@@ -187,11 +187,25 @@ public extension ChannelType {
     ///
     /// For example, to create a filter for distinct equatable pulses, you would do: `sieve(!=)`
     ///
-    /// - Note: the most recent value will be retained by the Channel for as long as there are receivers
-    ///
     /// - Parameter predicate: a function that evaluates the current item against the previous item
     ///
     /// - Returns: A stateful Channel that emits the the pulses that pass the predicate
+    ///
+    /// - Note: The most recent value will be retained by the Channel for as long as there are receivers.
+    ///   When mutiple receivers are added after a sieve they will not be processed
+    ///   since the sieve will filter out multiple calls. For example, only the first receiver
+    ///   will ever be invoked in this scenario:
+    ///
+    ///       let channel = channelZProperty(1).sieve(!=)
+    ///       let r1 = channel.receive({ _ in print("First Receiver") })
+    ///       let r2 = channel.receive({ _ in print("Second Receiver") })
+    ///
+    ///   In order to process multiple receivers, the sieve needs to be added at the end:
+    ///
+    ///       let channel = channelZProperty(1)
+    ///       let r1 = channel.sieve(!=).receive({ _ in print("First Receiver") })
+    ///       let r2 = channel.sieve(!=).receive({ _ in print("Second Receiver") })
+    ///
     @warn_unused_result public func sieve(predicate: (previous: Element, current: Element) -> Bool) -> Channel<Source, Element> {
         let flt = { (t: (o: Element?, n: Element)) in t.o == nil || predicate(previous: t.o!, current: t.n) }
         return precedent().filter(flt).map({ $0.new })
