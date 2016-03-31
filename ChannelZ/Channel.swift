@@ -72,7 +72,7 @@ public struct Channel<S, T> : ChannelType {
         return Channel(source: self.source, reception: reception)
     }
 
-    /// Adds a received block that will accept the output pulses of the channel
+    /// Adds a receiver block that will accept the output pulses of the channel
     public func receive(receiver: T -> Void) -> Receipt {
         return reception(receiver)
     }
@@ -286,8 +286,8 @@ public protocol DistinctPulseSource {
 public extension ChannelType where Source : DistinctPulseSource {
 
     /// Returns a closure that can be used to determine if the current pulse operation is distinct
-    @warn_unused_result internal func distinctPulseCounter() -> Void -> Bool {
-        var lastPulseCount: Int64 = -1
+    @warn_unused_result internal func distinguishPulse() -> Void -> Bool {
+        var lastPulseCount: Int64?
         return {
             let pc = self.source.pulseCount
             if lastPulseCount != pc {
@@ -305,8 +305,10 @@ public extension ChannelType where Source : DistinctPulseSource {
     ///
     /// - Returns: A stateful Channel that emits a tuple with the element's index
     @warn_unused_result public func enumerate() -> Channel<Source, (Int, Element)> {
+        // since the mapped function will be called for each receiver, we need to ensure that the index is
+        // incremented only once per pulse, rather than each time the mapped function is executed
+        let isDistinctPulse = distinguishPulse()
         var index: Int = -1
-        let isDistinctPulse = distinctPulseCounter()
 
         func pulseIndex(value: Element) -> (Int, Element) {
             if isDistinctPulse() { index += 1 }

@@ -228,7 +228,7 @@ public extension ChannelType where Source : DistinctPulseSource {
     ///
     /// - Note: this phase with retain the previous *two* pulse items
     @warn_unused_result public func precedent() -> Channel<Source, StatePulse<Element>> {
-        let isDistinctPulse = distinctPulseCounter()
+        let isDistinctPulse = distinguishPulse()
         var antecedents: (Element?, Element?) = (nil, nil)
         return lift2 { receive in
             { item in
