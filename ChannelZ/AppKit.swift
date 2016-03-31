@@ -22,50 +22,44 @@ public protocol ChannelController: class, NSObjectProtocol, StateSource, StateSi
 public extension NSObjectProtocol where Self : NSController {
     /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
     /// change valus are not provided with KVO observation
-    public func channelZControllerPath(keyPath: String)->Channel<Self, (old: AnyObject??, new: AnyObject?)> {
-        let kvt: KeyValueTarget<NSObject?> = KeyValueTarget(target: self, initialValue: nil, keyPath: keyPath)
-        let channel = KeyValueOptionalSource(target: kvt).channelZState()
-        let resourced = channel.resource({ [unowned self] _ in self })
+    public func channelZControllerPath(keyPath: String) -> Channel<KeyValueOptionalSource<AnyObject>, StatePulse<AnyObject?>> {
+        let channel = channelZKeyState(valueForKeyPath(keyPath), keyPath: keyPath)
 
         // KVO on an object controller drops the value: “Important: The Cocoa bindings controller classes do not provide change values when sending key-value observing notifications to observers. It is the developer’s responsibility to query the controller to determine the new values.”
         // so we manually pull the latest value out of the object whenever we fire a change so we 
         // maintain the channel contract
-        let mapped = resourced.map({ [weak self] _ in self?.valueForKeyPath(keyPath) })
-
-        // manually store the previous value for eventual comparison
-        let withState = mapped.precedent() // .filter({ old, new in old == nil || old! != new })
-
-        return withState
+        return channel.map({ [weak self] _ in self?.valueForKeyPath(keyPath) }).precedent()
     }
 }
 
 /// An NSObject controller that is compatible with a StateSource and StateSink for storing and retrieving `NSObject` values from bindings
-extension NSObjectController : ChannelController {
-    public typealias ContentType = AnyObject? // it would be nice if this were generic, but @objc forbids it
-    public typealias State = (old: ContentType?, new: ContentType)
-
-    public var value : ContentType {
-        get {
-            return self.content
-        }
-
-        set {
-            self.content = newValue
-        }
-    }
-
-    public func put(value: ContentType) {
-        self.content = value
-    }
-
-    public func channelZState()->Channel<NSObjectController, State> {
-        return channelZControllerPath("content") // "content" is the default key for controllers
-    }
-}
+// FIXME: disabled because KVO is hopelessly broken on NSController subclasses
+//extension NSObjectController : ChannelController {
+//    public typealias ContentType = AnyObject? // it would be nice if this were generic, but @objc forbids it
+//    public typealias State = StatePulse<ContentType>
+//
+//    public var value : ContentType {
+//        get {
+//            return self.content
+//        }
+//
+//        set {
+//            self.content = newValue
+//        }
+//    }
+//
+//    public func put(value: ContentType) {
+//        self.content = value
+//    }
+//
+//    public func channelZState() -> Channel<NSObjectController, State> {
+//        return channelZControllerPath("content") // "content" is the default key for controllers
+//    }
+//}
 
 extension NSControl { // : KeyValueChannelSupplementing {
 
-    public func channelZControl()->Channel<ActionTarget, Void> {
+    public func channelZControl() -> Channel<ActionTarget, Void> {
         if self.target != nil && !(self.target is ActionTarget) {
             fatalError("controlz event handling overrides existing target/action for control; if this is really what you want to do, explicitly nil the target & action of the control")
         }
@@ -79,12 +73,12 @@ extension NSControl { // : KeyValueChannelSupplementing {
     }
 
     /// Creates a binding to an intermediate NSObjectController with the given options and returns the bound channel
-    public func channelZBinding(binding: String = NSValueBinding, controller: NSObjectController = NSObjectController(content: nil), keyPath: String = "content", options: [String : AnyObject] = [:]) -> Channel<NSObjectController, NSObjectController.State> {
+    public func channelZBinding<C: NSController where C: NSObjectProtocol>(binding: String = NSValueBinding, controller: C = C.init(), keyPath: String = "content", options: [String : AnyObject] = [:]) -> Channel<(kvo: KeyValueOptionalSource<AnyObject>, controller: C), StatePulse<AnyObject?>> {
         bind(binding, toObject: controller, withKeyPath: keyPath, options: options)
-        return controller.channelZControllerPath(keyPath)
+        return controller.channelZControllerPath(keyPath).resource({ ($0, controller) })
     }
 
-    public func supplementKeyValueChannel(forKeyPath: String, receiver: (AnyObject?)->()) -> (()->())? {
+    public func supplementKeyValueChannel(forKeyPath: String, receiver: (AnyObject?) -> ()) -> (() -> ())? {
         // NSControl action events do not trigger KVO notifications, so we manually supplement any subscriptions with control events
 
         if forKeyPath == "doubleValue" {
@@ -123,7 +117,7 @@ extension NSControl { // : KeyValueChannelSupplementing {
 
 extension NSMenuItem {
 
-    public func channelZMenu()->Channel<ActionTarget, Void> {
+    public func channelZMenu() -> Channel<ActionTarget, Void> {
 
         if self.target != nil && !(self.target is ActionTarget) {
             fatalError("controlz event handling overrides existing target/action for menu item; if this is really what you want to do, explicitly nil the target & action of the control")

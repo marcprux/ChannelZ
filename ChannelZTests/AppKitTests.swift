@@ -75,6 +75,7 @@ public class AppKitTests: XCTestCase {
         undo∞undo.undoActionName ∞> { _ in counter += 1 }
         undo∞undo.redoActionName ∞> { _ in counter += 1 }
 
+        counter -= 1
 
         let df = NSDateFormatter()
         df∞df.dateFormat ∞> { _ in counter += 1 }
@@ -184,6 +185,7 @@ public class AppKitTests: XCTestCase {
         textField.enabled = false
         XCTAssertEqual(true, enabled)
 
+        withExtendedLifetime(textField) { }
     }
 
     func testControls() {
@@ -248,54 +250,102 @@ public class AppKitTests: XCTestCase {
         XCTAssertEqual(val as? NSNumber, NSNumber(integer: 13))
     }
 
+    func testControllerBinding() {
+//        let controller = NSObjectController(content: 0)
+//        let channel = controller.channelZKeyState(controller.content)
+
+        let controller = NumericHolderClass()
+        let channel = controller.channelZKeyState(controller.intField)
+
+        var changes = (0, 0, 0)
+
+        channel.receive { val in changes.0 += 1 }
+        channel.receive { val in changes.1 += 1 }
+        channel.receive { val in changes.2 += 1 }
+
+        XCTAssertEqual(1, changes.0)
+        XCTAssertEqual(1, changes.1)
+        XCTAssertEqual(1, changes.2)
+
+        controller.intField = 123
+
+        XCTAssertEqual(2, changes.0)
+        XCTAssertEqual(2, changes.1)
+        XCTAssertEqual(2, changes.2)
+    }
+
     func testMultipleControllerListeners() {
         let stepper = NSStepper()
-        let channel = stepper.channelZBinding(controller: NSObjectController(content: 0)).map({ $0.new as? NSNumber })
-//        let channel = stepper.channelZBinding(controller: NSObjectController(content: 0)).filter({ (old, new) in old == nil ? (new != nil) : (old! != new) }).map({ $0.new as? NSNumber })
+        let channel = stepper.channelZBinding(controller: NSObjectController(content: 0)) // .map({ $0.new as? NSNumber }).resource({ $0.kvo }).subsequent()
 
         stepper.minValue = 0
         stepper.maxValue = 100
         stepper.increment = 1
 
         XCTAssertEqual(0, stepper.integerValue)
-        XCTAssertEqual(0, channel.source.content as? NSNumber)
+        XCTAssertEqual(0, channel.source.kvo.value as? NSNumber)
 
-        channel.source.content = 50
+        channel.source.kvo.value = 50
 
         XCTAssertEqual(50, stepper.integerValue)
-        XCTAssertEqual(50, channel.source.content as? NSNumber)
+        XCTAssertEqual(50, channel.source.kvo.value as? NSNumber)
 
         stepper.performClick(nil) // undocumented, but this decrements the stepper
 
         XCTAssertEqual(49, stepper.integerValue)
-        XCTAssertEqual(49, channel.source.content as? NSNumber)
+        XCTAssertEqual(49, channel.source.kvo.value as? NSNumber)
 
-        var clickCount = 0
+        var changeCounts = (-1, -1, -1)
 
-        // note that this demonstrates the difference between 
-        // channel.sieve(!=) { receive() && receive() }
-        // and
-        // channel { sieve(!=).receive() && sieve(!=).receive() }
-        channel.subsequent().sieve(!=).receive { x in
-            clickCount += 1
-        }
-        channel.subsequent().sieve(!=).receive { x in
-            clickCount += 1
-        }
+        channel.receive { x in changeCounts.0 += 1 }
+        channel.receive { x in changeCounts.1 += 1 }
+        channel.receive { x in changeCounts.2 += 1 }
+
+        XCTAssertEqual(0, changeCounts.0)
+        XCTAssertEqual(0, changeCounts.1)
+        XCTAssertEqual(0, changeCounts.2)
 
         stepper.performClick(nil)
 
+        XCTAssertEqual(1, changeCounts.0)
+        XCTAssertEqual(1, changeCounts.1)
+        XCTAssertEqual(1, changeCounts.2)
+        XCTAssertEqual(48, channel.source.kvo.value as? NSNumber)
         XCTAssertEqual(48, stepper.integerValue)
-        XCTAssertEqual(48, channel.source.content as? NSNumber)
-        XCTAssertEqual(2, clickCount)
 
         stepper.performClick(nil)
 
+        XCTAssertEqual(2, changeCounts.0)
+        XCTAssertEqual(2, changeCounts.1)
+        XCTAssertEqual(2, changeCounts.2)
+        XCTAssertEqual(47, channel.source.kvo.value as? NSNumber)
         XCTAssertEqual(47, stepper.integerValue)
-        XCTAssertEqual(47, channel.source.content as? NSNumber)
-        XCTAssertEqual(4, clickCount)
 
+        withExtendedLifetime(stepper) { } // just so stepper is retained until the end
     }
+
+    override public func tearDown() {
+        super.tearDown()
+
+        // ensure that all the bindings and observers are properly cleaned up
+        #if DEBUG_CHANNELZ
+            XCTAssertEqual(0, ChannelZTests.StatefulObjectCount, "all StatefulObject instances should have been deallocated")
+            ChannelZTests.StatefulObjectCount = 0
+
+            XCTAssertEqual(0, ChannelZ.ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
+            ChannelZ.ChannelZKeyValueObserverCount = 0
+
+//            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "reentrant receptions detected")
+//            ChannelZ.ChannelZReentrantReceptions = 0
+
+            // XCTAssertEqual(0, ChannelZ.ChannelZNotificationObserverCount, "Notification observers were not cleaned up")
+            // ChannelZ.ChannelZNotificationObserverCount = 0
+
+        #else
+            XCTFail("Why are you running tests with debugging off?")
+        #endif
+    }
+
 
 }
 #endif
