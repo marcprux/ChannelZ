@@ -118,7 +118,7 @@ public class ChannelTests: XCTestCase {
 
         // examples of type signatures
         let _: Channel<((S1, S2), (S2, S2)), Int> = (o1 + o2) + (o2 + o2)
-        let _: Channel<Void, Int> = cc.dissolve()
+        let _: Channel<Void, Int> = cc.desource()
         let _: Channel<(S1, S2, S1), (Int?, Int?, Int?)> = o1 | o2 | o1
         let _: Channel<(S1, S2, S3), (Int, Int, Void)> = o1 & o2 & o3
         let _: Channel<(S1, S2, S3, S2, S1), (Int, Int, Void, Int, Int)> = o1 & o2 & o3 & o2 & o1
@@ -413,11 +413,14 @@ public class ChannelTests: XCTestCase {
     }
 
     func testUnstableChannels() {
+        // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
+        defer { ChannelZ.ChannelZReentrantReceptions = 0 }
+
         let _: PropertySource<Int> = 0∞ // just to show the postfix signature
         let propa: Channel<PropertySource<Int>, Int> = ∞0∞
         let propb: Channel<PropertySource<Int>, Int> = ∞0∞
 
-        let rcpt = propa <=∞=> propb.map({ $0 + 1 })
+        let rcpt = propb.map({ $0 + 1 }) <=∞=> propa
 
         XCTAssertEqual(1, propa.source.value)
         XCTAssertEqual(1, propb.source.value)
@@ -438,6 +441,7 @@ public class ChannelTests: XCTestCase {
         propa.source.value -= 1
         XCTAssertEqual(5, propa.source.value)
         XCTAssertEqual(6, propb.source.value, "cancelled receiver should not have channeled the value")
+
     }
 
     func testOneOf() {
@@ -457,16 +461,16 @@ public class ChannelTests: XCTestCase {
             }
         }
 
-        XCTAssertEqual(0, ints)
-        XCTAssertEqual(0, strs)
-
-        a.source.value += 1
-        XCTAssertEqual(1, ints)
-        XCTAssertEqual(0, strs)
-
-        b.source.value = "x"
         XCTAssertEqual(1, ints)
         XCTAssertEqual(1, strs)
+
+        a.source.value += 1
+        XCTAssertEqual(2, ints)
+        XCTAssertEqual(1, strs)
+
+        b.source.value = "x"
+        XCTAssertEqual(2, ints)
+        XCTAssertEqual(2, strs)
     }
 
     /// We use this test to generate the hairy tuple unwrapping code for the Receiver's flatSink, &, and | functions
@@ -663,12 +667,12 @@ public class ChannelTests: XCTestCase {
     func testPropertyChannel() {
         let xs: Int = 1
         let x = channelZProperty(xs)
-        let f: Channel<Void, Int> = x.dissolve() // read-only observable of channel x
+        let f: Channel<Void, Int> = x.desource() // read-only observable of channel x
 
         var changes = 0
         let subscription = f ∞> { _ in changes += 1 }
 
-        XCTAssertEqual(0, changes)
+        XCTAssertEqual(1, changes)
         assertChanges(changes, x ∞= (x.source.value + 1))
         assertChanges(changes, x ∞= (3))
         assertRemains(changes, x ∞= (3))
@@ -682,17 +686,17 @@ public class ChannelTests: XCTestCase {
         let xs: Bool = true
         let x = channelZProperty(xs)
 
-        let xf: Channel<Void, Bool> = x.dissolve() // read-only observable of channel x
+        let xf: Channel<Void, Bool> = x.desource() // read-only observable of channel x
 
         _ = xf ∞> { (x: Bool) in return }
 
         let y = x.map({ "\($0)" })
-        let yf: Channel<Void, String> = y.dissolve() // read-only observable of mapped channel y
+        let yf: Channel<Void, String> = y.desource() // read-only observable of mapped channel y
 
         var changes = 0
         let fya: Receipt = yf ∞> { (x: String) in changes += 1 }
 
-        XCTAssertEqual(0, changes)
+        XCTAssertEqual(1, changes)
         assertChanges(changes, x ∞= (!x.source.value))
         assertChanges(changes, x ∞= (true))
         assertRemains(changes, x ∞= (true))
@@ -706,17 +710,17 @@ public class ChannelTests: XCTestCase {
         let xs: Double = 1
 
         let x = channelZProperty(xs)
-        let xf: Channel<Void, Double> = x.dissolve() // read-only observable of channel x
+        let xf: Channel<Void, Double> = x.desource() // read-only observable of channel x
 
         let fxa = xf ∞> { (x: Double) in return }
 
         let y = x.map({ "\($0)" })
-        let yf: Channel<Void, String> = y.dissolve() // read-only observable of channel y
+        let yf: Channel<Void, String> = y.desource() // read-only observable of channel y
 
         var changes = 0
         let fya: Receipt = yf ∞> { (x: String) in changes += 1 }
 
-        XCTAssertEqual(0, changes)
+        XCTAssertEqual(1, changes)
         assertChanges(changes, x ∞= (x.source.value + 1))
         assertRemains(changes, x ∞= (2))
         assertRemains(changes, x ∞= (2))
@@ -759,7 +763,7 @@ public class ChannelTests: XCTestCase {
 
         let af = a.filter({ $0 >= Double(UInt.min) && $0 <= Double(UInt.max) }).map({ UInt($0) })
         let bf = b.map({ Double($0) })
-        let pipeline = conduit(af, bf)
+        let pipeline = af.bind(bf)
 
         a ∞= 2.0
         XCTAssertEqual(2.0, a∞?)
@@ -794,12 +798,15 @@ public class ChannelTests: XCTestCase {
     }
 
     func testUnstableConduit() {
+        // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
+        defer { ChannelZ.ChannelZReentrantReceptions = 0 }
+
         let a = ∞=(1)=∞
         let b = ∞=(2)=∞
 
         // this unstable pipe would never achieve equilibrium, and so relies on re-entrancy checks to halt the flow
         let af = a.map({ $0 + 1 })
-        _ = conduit(af, b)
+        _ = af.conduit(b)
 
         a ∞= 2
         XCTAssertEqual(4, a∞?)
@@ -950,16 +957,16 @@ public class ChannelTests: XCTestCase {
 
         // FIXME: works, but slow to compile
 
-        let and: Channel<Void, (Int, Int, Int, Int)> = (a & a & a & a).dissolve()
+        let and: Channel<Void, (Int, Int, Int, Int)> = (a & a & a & a).desource()
         var andx = 0
         and.receive({ _ in andx += 1 })
 
-        let or: Channel<Void, (Int?, Int?, Int?, Int?)> = (a | a | a | a).dissolve()
+        let or: Channel<Void, (Int?, Int?, Int?, Int?)> = (a | a | a | a).desource()
         var orx = 0
         or.receive({ _ in orx += 1 })
 
-//        let andor = (a & a | a & a | a & a | a).dissolve() // slow compile
-        let andor: Channel<Void, ((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = (a & a | a & a | a & a | a).dissolve()
+//        let andor = (a & a | a & a | a & a | a).desource() // slow compile
+        let andor: Channel<Void, ((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = (a & a | a & a | a & a | a).desource()
 
         var andorx = 0
         andor.receive({ _ in andorx += 1 })
@@ -1069,11 +1076,11 @@ public class ChannelTests: XCTestCase {
         enm.receive { (i, n) in counts.insert(i) }
         enm.receive { (i, n) in counts.insert(i) }
 
-        XCTAssertEqual([], counts)
-        prop.value = "a"
         XCTAssertEqual([0], counts)
-        prop.value = "b"
+        prop.value = "a"
         XCTAssertEqual([0, 1], counts)
+        prop.value = "b"
+        XCTAssertEqual([0, 1, 2], counts)
     }
 
 //    func testDeepNestedFilter() {
@@ -1082,7 +1089,7 @@ public class ChannelTests: XCTestCase {
 //        func identity<A>(a: A) -> A { return a }
 //        func always<A>(a: A) -> Bool { return true }
 //
-//        let deepNest = t.dissolve()
+//        let deepNest = t.desource()
 //            .map(identity).filter(always)
 //            .map(identity).filter(always)
 //            .map(identity).filter(always)
@@ -1099,7 +1106,7 @@ public class ChannelTests: XCTestCase {
 //
 //
 //        // FilteredChannel<MappableChannel<....
-//        let flatNest = deepNest.dissolve()
+//        let flatNest = deepNest.desource()
 //
 //        let deepReceiver = deepNest.receive({ _ in })
 //
@@ -1145,7 +1152,7 @@ public class ChannelTests: XCTestCase {
 //        XCTAssertEqual("ChannelZ.ReceiverOf", _stdlib_getDemangledTypeName(deepReceiver))
 //
 //        // FilteredChannel<MappableChannel<....
-//        let flatObservable = deepNest.dissolve()
+//        let flatObservable = deepNest.desource()
 //        let flatChannel = deepNest.channel()
 //
 //        XCTAssertEqual("ChannelZ.Observable", _stdlib_getDemangledTypeName(flatObservable))
@@ -1164,5 +1171,17 @@ public class ChannelTests: XCTestCase {
 ////        XCTAssertEqual(0, --changes) // FIXME: prime message is getting lost somehow
 //    }
 //
+
+    override public func tearDown() {
+        super.tearDown()
+
+        // ensure that all the bindings and observers are properly cleaned up
+        #if DEBUG_CHANNELZ
+            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "unexpected reentrant receptions detected")
+            ChannelZ.ChannelZReentrantReceptions = 0
+        #else
+            XCTFail("Why are you running tests with debugging off?")
+        #endif
+    }
 
 }

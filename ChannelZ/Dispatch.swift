@@ -44,7 +44,7 @@ public extension ChannelType {
     /// - Parameter bgq: the serial queue on which the perform event aggregation, defaulting to a shared global serial default queue
     @warn_unused_result public func sample(interval: Double, queue: dispatch_queue_t, bgq: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, Element> {
         // TODO: dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)()
-        return coalesce(interval, queue: queue, bgq: bgq).map({ $0.last }).filter({ $0 != nil }).map({ $0! })
+        return coalesce(interval, queue: queue, bgq: bgq).map({ $0.last }).some()
     }
     
 }

@@ -66,6 +66,7 @@ public class AppKitTests: XCTestCase {
         let constraint = NSLayoutConstraint()
         constraint∞constraint.constant ∞> { _ in counter += 1 }
         constraint∞constraint.active ∞> { _ in counter += 1 }
+        counter -= 2
 
         let undo = NSUndoManager()
         undo.channelZNotification(NSUndoManagerDidUndoChangeNotification) ∞> { _ in counter += 1 }
@@ -74,8 +75,7 @@ public class AppKitTests: XCTestCase {
         undo∞undo.levelsOfUndo ∞> { _ in counter += 1 }
         undo∞undo.undoActionName ∞> { _ in counter += 1 }
         undo∞undo.redoActionName ∞> { _ in counter += 1 }
-
-        counter -= 1
+        counter -= 6
 
         let df = NSDateFormatter()
         df∞df.dateFormat ∞> { _ in counter += 1 }
@@ -90,17 +90,20 @@ public class AppKitTests: XCTestCase {
         comps∞comps.year ∞> { _ in counter += 1 }
         comps∞comps.month ∞> { _ in counter += 1 }
         comps.year = 2016
-        counter -= 1
+        counter -= 4
+
         XCTAssertEqual(0, counter)
 
         let prog = NSProgress(totalUnitCount: 100)
         prog∞prog.totalUnitCount ∞> { _ in counter += 1 }
         prog.totalUnitCount = 200
         counter -= 1
+        counter -= 1
         XCTAssertEqual(0, counter)
 
         prog∞prog.fractionCompleted ∞> { _ in counter += 1 }
         prog.completedUnitCount += 1
+        counter -= 1
         counter -= 1
         XCTAssertEqual(0, counter)
     }
@@ -119,11 +122,13 @@ public class AppKitTests: XCTestCase {
 //            println("state change: \(x)")
         }
 
+        XCTAssertEqual(stateChanges, 1)
+
         button.state = NSOnState
         button.state = NSOffState
         button.state = NSOnState
         button.state = NSOffState
-        XCTAssertEqual(stateChanges, 4)
+        XCTAssertEqual(stateChanges, 5)
 
         var clicks = 0 // track the number of clicks on the button
 
@@ -185,7 +190,7 @@ public class AppKitTests: XCTestCase {
         textField.enabled = false
         XCTAssertEqual(true, enabled)
 
-        withExtendedLifetime(textField) { }
+        textField.removeFromSuperview()
     }
 
     func testControls() {

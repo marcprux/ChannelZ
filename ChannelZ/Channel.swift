@@ -85,7 +85,7 @@ public struct Channel<S, T> : ChannelType {
     /// Erases the source type from this `Channel` to `Void`, which can be useful for simplyfying the signature
     /// for functions that don't care about the source's type or for channel phases that want to ensure the source
     /// cannot be accessed from future phases
-    @warn_unused_result public func dissolve() -> Channel<Void, T> {
+    @warn_unused_result public func desource() -> Channel<Void, T> {
         return resource({ _ in Void() })
     }
 

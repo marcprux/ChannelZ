@@ -44,7 +44,7 @@ public class FoundationTests: XCTestCase {
         var receipt: Receipt!
         assertMemoryBlock(check: ChannelThingsInstances) {
             let thing = ChannelThing()
-            receipt = thing.stringish.drop(1).sieve(!=).filter({ $0 != nil }).map({ $0! }).receive({ strs += [$0] })
+            receipt = thing.stringish.drop(1).sieve(!=).some().receive({ strs += [$0] })
             let strings: [String?] = ["a", "b", nil, "b", "b", "c"]
             for x in strings { thing.stringish ∞= x }
             XCTAssertFalse(receipt.cancelled)
@@ -145,7 +145,7 @@ public class FoundationTests: XCTestCase {
 
         var changeCount: Int = 0
 
-        let ob1 = observedBool.receive { v in
+        let ob1 = observedBool.subsequent().receive { v in
             changeCount = changeCount + 1
         }
         withExtendedLifetime(ob1) { }
@@ -359,7 +359,7 @@ public class FoundationTests: XCTestCase {
 //        XCTAssertEqual(7, strlen)
 
 
-        let x = channelZProperty(1).filter { $0 <= 10 }
+        let x = channelZProperty(1).subsequent().filter { $0 <= 10 }
 
         var changeCount: Double = 0
         var changeLog: String = ""
@@ -504,7 +504,7 @@ public class FoundationTests: XCTestCase {
         var changes = 0
         c.receive { _ in changes += 1 }
 
-        XCTAssertEqual(0, changes)
+        XCTAssertEqual(1, changes)
         assertChanges(changes, c ∞= c.source.value + 1)
         assertRemains(changes, c ∞= 2)
         assertRemains(changes, c ∞= 2)
@@ -547,7 +547,7 @@ public class FoundationTests: XCTestCase {
         var changes = 0
         channel ∞> { _ in changes += 1 }
 
-        XCTAssertEqual(0, changes)
+        XCTAssertEqual(1, changes)
 
         assertRemains(changes, c ∞= ("")) // default to default should not change
         assertChanges(changes, c ∞= ("A"))
@@ -562,7 +562,7 @@ public class FoundationTests: XCTestCase {
         var changes = 0
         autoreleasepool {
             let _ = c ∞> { _ in changes += 1 } // note we do not assign it locally, so it should immediately get cleaned up
-            XCTAssertEqual(0, changes)
+            XCTAssertEqual(1, changes)
         }
 
         // FIXME: not working in Swift 1.2; receiver block is called, but changes outside of autorelease block isn't updated
@@ -645,7 +645,7 @@ public class FoundationTests: XCTestCase {
         // bindz((n1, identity), (n2, identity))
         // (n1, { $0 + 1 }) <~∞~> (n2, { $0.integerValue - 1 }) <~∞~> (n3, { $0 + 1 })
 
-        let n1_n2 = n1.map({ NSNumber(int: $0 + 1) }) <=∞=> n2.map({ $0.integerValue - 1 })
+        let n1_n2 = n1.map({ NSNumber(int: $0 + 1) }).conduit(n2.map({ $0.integerValue - 1 }))
         _ = (n2, { .Some($0.integerValue - 1) }) <~∞~> (n3, { .Some($0 + 1) })
 
         n1 ∞= 2
@@ -810,7 +810,7 @@ public class FoundationTests: XCTestCase {
         let obzn1 = state∞(state.num1)
         let obzn2 = state∞(state.num2)
 
-        _ = conduit(obzn1, obzn2)
+        _ = obzn1.conduit(obzn2)
 
         state.num2 = 44.56
         XCTAssert(state.num1 === state.num2, "change the other side")
@@ -916,6 +916,9 @@ public class FoundationTests: XCTestCase {
     }
 
     func testHaltingConduits() {
+        // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
+        defer { ChannelZ.ChannelZReentrantReceptions = 0 }
+
         // create a binding from an int to a float; when the float is set to a round number, it changes the int, otherwise it halts
         typealias T1 = Float
         typealias T2 = Float
@@ -950,6 +953,9 @@ public class FoundationTests: XCTestCase {
     }
 
     func testConversionConduits() {
+        // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
+        defer { ChannelZ.ChannelZReentrantReceptions = 0 }
+
         let num = ∞((Double(0.0)))∞
         num ∞= 0
 
@@ -1090,6 +1096,9 @@ public class FoundationTests: XCTestCase {
     }
 
     func testNumericConversion() {
+        // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
+        defer { ChannelZ.ChannelZReentrantReceptions = 0 }
+
         let fl: Float = convertNumericType(Double(2.34))
         XCTAssertEqual(fl, Float(2.34))
 
@@ -1102,7 +1111,7 @@ public class FoundationTests: XCTestCase {
         autoreleasepool {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
-            s.doubleField <=∞=> c∞c.doubleField
+            s.doubleField.conduit(c∞c.doubleField)
             c.doubleField += 1
             XCTAssertEqual(s.doubleField∞?, c.doubleField)
             s.doubleField ∞= s.doubleField∞? + 1
@@ -1112,7 +1121,7 @@ public class FoundationTests: XCTestCase {
         autoreleasepool {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
-            s.floatField <=∞=> c∞c.floatField
+            s.floatField.conduit(c∞c.floatField)
             c.floatField += 1
             XCTAssertEqual(s.floatField∞?,  c.floatField)
             s.floatField ∞= s.floatField∞? + 1
@@ -1122,7 +1131,7 @@ public class FoundationTests: XCTestCase {
         autoreleasepool {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
-            s.intField <=∞=> c∞c.intField
+            s.intField.conduit(c∞c.intField)
             c.intField += 1
             XCTAssertEqual(s.intField∞?, c.intField)
             s.intField ∞= s.intField∞? + 1
@@ -1132,7 +1141,7 @@ public class FoundationTests: XCTestCase {
         autoreleasepool {
             let s = NumericHolderStruct()
             let c = NumericHolderClass()
-            s.uInt32Field <=∞=> c∞c.uInt32Field
+            s.uInt32Field.conduit(c∞c.uInt32Field)
             c.uInt32Field += 1
             XCTAssertEqual(s.uInt32Field∞?, c.uInt32Field)
             s.uInt32Field ∞= s.uInt32Field∞? + 1
@@ -1396,7 +1405,7 @@ public class FoundationTests: XCTestCase {
             var changes = 0
             let ob = StatefulObject()
             XCTAssertEqual(0, ob.int)
-            (ob ∞ ob.int).receive { _ in changes += 1 }
+            (ob ∞ ob.int).subsequent().receive { _ in changes += 1 }
             XCTAssertEqual(1, ChannelZKeyValueObserverCount - startCount)
 
             XCTAssertEqual(0, changes)
@@ -1581,6 +1590,8 @@ public class FoundationTests: XCTestCase {
             undo.channelZNotification(NSUndoManagerDidCloseUndoGroupNotification).receive({ _ in closed += 1 })
 
 
+            counter = 0
+
             XCTAssertEqual(0, counter)
 
             XCTAssertEqual(0, opened)
@@ -1665,7 +1676,7 @@ public class FoundationTests: XCTestCase {
 
         // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
         _ = 10
-        state1∞state1.int <=∞=> state2∞state2.int
+        (state1∞state1.int).conduit(state2∞state2.int)
 
         state1.int += 1
         XCTAssertEqual(state1.int, 1)
@@ -1678,12 +1689,15 @@ public class FoundationTests: XCTestCase {
 
     /// Test reentrancy guards for conduits that would never achieve equilibrium
     public func XXXtestKVOReentrancy() {
+        // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
+        defer { ChannelZ.ChannelZReentrantReceptions = 0 }
+
         let state1 = StatefulObject()
         let state2 = StatefulObject()
 
         // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
         let off = 10
-        (state1∞state1.int).map({ $0 + 10 }) <=∞=> state2∞state2.int
+        (state1∞state1.int).map({ $0 + 10 }).conduit(state2∞state2.int)
 
         state1.int += 1
         XCTAssertEqual(state1.int, 1 + (off * 2))
@@ -1692,9 +1706,145 @@ public class FoundationTests: XCTestCase {
         state2.int += 1
         XCTAssertEqual(state1.int, 2 + (off * 3))
         XCTAssertEqual(state2.int, 2 + (off * 4))
+    }
 
-        // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
-        ChannelZ.ChannelZReentrantReceptions = 0
+    public func testKVOConduit() {
+        let state1 = StatefulObject()
+        let state2 = StatefulObject()
+
+        state1.int = 1
+        state2.int = 2
+
+        XCTAssertEqual(1, state1.int)
+        XCTAssertEqual(2, state2.int)
+
+        let i1 = (state1∞state1.int)
+        let i2 = (state2∞state2.int)
+
+        XCTAssertEqual(1, state1.int)
+        XCTAssertEqual(2, state2.int)
+
+        //        let rcvr = i1.bind(i2)
+        let rcvr = i2.conduit(i1)
+
+        XCTAssertEqual(2, state1.int)
+        XCTAssertEqual(2, state2.int)
+
+        state2.int += 1
+
+        XCTAssertEqual(3, state1.int)
+        XCTAssertEqual(3, state2.int)
+
+        state1.int += 1
+
+        XCTAssertEqual(4, state1.int)
+        XCTAssertEqual(4, state2.int)
+
+        rcvr.cancel() // unbind
+
+        state2.int += 1
+        
+        XCTAssertEqual(4, state1.int)
+        XCTAssertEqual(5, state2.int)
+        
+    }
+
+    public func testKVOBind() {
+        let state1 = StatefulObject()
+        let state2 = StatefulObject()
+
+        state1.int = 1
+        state2.int = 2
+
+        XCTAssertEqual(1, state1.int)
+        XCTAssertEqual(2, state2.int)
+
+        let i1 = (state1∞state1.int)
+        let i2 = (state2∞state2.int)
+
+        XCTAssertEqual(1, state1.int)
+        XCTAssertEqual(2, state2.int)
+
+        let rcvr = i1.bind(i2)
+//        let rcvr = i2.bind(i1)
+
+        XCTAssertEqual(1, state1.int)
+        XCTAssertEqual(1, state2.int)
+
+        state2.int += 2
+
+        XCTAssertEqual(3, state1.int)
+        XCTAssertEqual(3, state2.int)
+
+        state1.int += 1
+
+        XCTAssertEqual(4, state1.int)
+        XCTAssertEqual(4, state2.int)
+
+        rcvr.cancel() // unbind
+
+        state2.int += 1
+
+        XCTAssertEqual(4, state1.int)
+        XCTAssertEqual(5, state2.int)
+
+    }
+
+    /// Test reentrancy guards for conduits that would never achieve equilibrium
+    public func testKVOBindOptional() {
+        let state1 = StatefulObject()
+        let state2 = StatefulObject()
+
+        state1.num1 = nil
+        state2.num1 = 2
+
+        XCTAssertEqual(nil, state1.num1)
+        XCTAssertEqual(2, state2.num1)
+
+        let i1 = (state1∞state1.num1)
+        let i2 = (state2∞state2.num1)
+
+        XCTAssertEqual(nil, state1.num1)
+        XCTAssertEqual(2, state2.num1)
+
+        let rcvr = i1.bind(i2)
+//        let rcvr = i2.bind(i1)
+
+        XCTAssertEqual(nil, state1.num1)
+        XCTAssertEqual(nil, state2.num1)
+
+        state2.num1 = 2
+
+        XCTAssertEqual(2, state1.num1)
+        XCTAssertEqual(2, state2.num1)
+
+        state2.num1 = state2.num1!.integerValue + 1
+
+        XCTAssertEqual(3, state1.num1)
+        XCTAssertEqual(3, state2.num1)
+
+        state1.num1 = state1.num1!.integerValue + 1
+
+        XCTAssertEqual(4, state1.num1)
+        XCTAssertEqual(4, state2.num1)
+
+        state1.num1 = nil
+
+        XCTAssertEqual(nil, state1.num1)
+        XCTAssertEqual(nil, state2.num1)
+
+        state2.num1 = 99
+
+        XCTAssertEqual(99, state1.num1)
+        XCTAssertEqual(99, state2.num1)
+
+        rcvr.cancel() // unbind
+
+        state2.num1 = state2.num1!.integerValue + 1
+        
+        XCTAssertEqual(99, state1.num1)
+        XCTAssertEqual(100, state2.num1)
+        
     }
 
     /// Test reentrancy guards for conduits that would never achieve equilibrium
@@ -1712,34 +1862,34 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(0, reentrants())
 
         // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
-        state1.map({ $0 + 1 }) <=∞=> state2
-        state2.map({ $0 + 2 }) <=∞=> state3
-        state3.map({ $0 + 3 }) <=∞=> state1
-        state3.map({ $0 + 4 }) <=∞=> state2
-        state3.map({ $0 + 5 }) <=∞=> state3
+        state1.map({ $0 + 1 }).conduit(state2)
+        state2.map({ $0 + 2 }).conduit(state3)
+        state3.map({ $0 + 3 }).conduit(state1)
+        state3.map({ $0 + 4 }).conduit(state2)
+        state3.map({ $0 + 5 }).conduit(state3)
 
-        XCTAssertEqual(0, reentrants())
+        XCTAssertEqual(166, reentrants())
 
         state1 ∞= state1∞? + 1
-        XCTAssertEqual(state1∞?, 5)
-        XCTAssertEqual(state2∞?, 5)
-        XCTAssertEqual(state3∞?, 1)
+        XCTAssertEqual(state1∞?, 30)
+        XCTAssertEqual(state2∞?, 30)
+        XCTAssertEqual(state3∞?, 31)
 
-        XCTAssertEqual(236, reentrants())
+        XCTAssertEqual(185, reentrants())
 
         state2 ∞= state2∞? + 1
-        XCTAssertEqual(state1∞?, 10)
-        XCTAssertEqual(state2∞?, 10)
-        XCTAssertEqual(state3∞?, 6)
+        XCTAssertEqual(state1∞?, 35)
+        XCTAssertEqual(state2∞?, 35)
+        XCTAssertEqual(state3∞?, 36)
 
-        XCTAssertEqual(165, reentrants())
+        XCTAssertEqual(112, reentrants())
 
         state3 ∞= state3∞? + 1
-        XCTAssertEqual(state1∞?, 12)
-        XCTAssertEqual(state2∞?, 13)
-        XCTAssertEqual(state3∞?, 7)
+        XCTAssertEqual(state1∞?, 42)
+        XCTAssertEqual(state2∞?, 43)
+        XCTAssertEqual(state3∞?, 42)
 
-        XCTAssertEqual(162, reentrants())
+        XCTAssertEqual(139, reentrants())
 
         // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
         reentrants()
@@ -1765,7 +1915,7 @@ public class FoundationTests: XCTestCase {
         autoreleasepool {
             let md1 = MemoryDemo()
             let md2 = MemoryDemo()
-            md1∞md1.stringField <=∞=> md2∞md2.stringField
+            (md1∞md1.stringField).conduit(md2∞md2.stringField)
             md1.stringField += "Hello "
             md2.stringField += "World"
             XCTAssertEqual(md1.stringField, "Hello World")
@@ -1803,7 +1953,7 @@ public class FoundationTests: XCTestCase {
         // in order to watch a keyPath more than 1 level deep, we need to manually specify it
         state∞(state.state.int, "state.int") ∞> { _ in count += 1 }
 
-        XCTAssertEqual(0, count)
+        assertSingleChange(&count)
 
         state.state.int += 1
         assertSingleChange(&count)
@@ -1929,13 +2079,14 @@ public class FoundationTests: XCTestCase {
 
         // ensure that all the bindings and observers are properly cleaned up
         #if DEBUG_CHANNELZ
-            XCTAssertEqual(0, ChannelZTests.StatefulObjectCount, "all StatefulObject instances should have been deallocated")
+            XCTAssertEqual(0, ChannelZTests.StatefulObjectCount, "\(self.name) all StatefulObject instances should have been deallocated")
             ChannelZTests.StatefulObjectCount = 0
 
-            XCTAssertEqual(0, ChannelZ.ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
+            XCTAssertEqual(0, ChannelZ.ChannelZKeyValueObserverCount, "\(self.name) KV observers were not cleaned up")
             ChannelZ.ChannelZKeyValueObserverCount = 0
 
-//            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "reentrant receptions detected")
+            // tests that expect reentrant detection should manually clear it with ChannelZReentrantReceptions = 0
+            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "\(self.name) unexpected reentrant receptions detected")
             ChannelZ.ChannelZReentrantReceptions = 0
 
             // XCTAssertEqual(0, ChannelZ.ChannelZNotificationObserverCount, "Notification observers were not cleaned up")

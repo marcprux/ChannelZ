@@ -28,10 +28,13 @@ public struct StatePulse<T> : StatePulseType {
 }
 
 /// Abstraction of a source that can create a channel that emits a tuple of old & new state values.
-public protocol StateSource : DistinctPulseSource {
+/// The implementation (or the implementation's underlying source) is assumed to be a reference
+/// since changing the value is nonmutating.
+public protocol StateSource : DistinctPulseSource, Sink {
     associatedtype Element
     associatedtype Source
 
+    /// The underlying state value of this source
     var value: Element { get nonmutating set }
 
     /// Creates a Channel from this source that will emit tuples of the old & and state values whenever a state operation occurs
@@ -59,7 +62,7 @@ public final class PropertySource<T>: StateSink, StateSource {
 
 public protocol Sink {
     associatedtype Element
-    mutating func put(value: Element)
+    func put(value: Element)
 }
 
 /// Equivalent to SinkOf
@@ -83,8 +86,7 @@ public extension StreamType {
     ///
     /// - Returns: A `Receipt` for the pipe
     public func pipe<S2: Sink where S2.Element == Element>(sink: S2) -> Receipt {
-        var s = sink
-        return receive { s.put($0) }
+        return receive { sink.put($0) }
     }
 }
 
@@ -111,7 +113,7 @@ public struct StateOf<T>: Sink, StateSource {
     public init<S where S: StateSink, S: StateSource, S.Element == T>(_ source: S) {
         valueget = { source.value }
         valueset = { source.value = $0 }
-        channler = { source.channelZState().dissolve() }
+        channler = { source.channelZState().desource() }
         pulseCounter = { source.pulseCount }
     }
 
@@ -132,14 +134,29 @@ public struct StateOf<T>: Sink, StateSource {
 }
 
 /// A WrapperType is able to map itself through a wrapped optional
-public protocol OptionalMappable : NilLiteralConvertible {
+/// This protocol is an artifact of the inability for a protocol extension to be constrained
+/// to a concrete generic type, so when we want to constrain a protocol to Optional types,
+/// we rely on its implementation of `flatMap`
+/// It needs to be public in order for protocols to conform
+public protocol _OptionalType : NilLiteralConvertible {
     associatedtype Wrapped
     init(_ some: Wrapped)
     func flatMap<U>(@noescape f: (Wrapped) throws -> U?) rethrows -> U?
 }
 
-extension Optional : OptionalMappable { }
+extension Optional : _OptionalType { }
 
+extension _OptionalType {
+    /// Convert this type to an optional; shorthand for `flatMap({ $0 })`
+    func toOptional() -> Wrapped? {
+        return self.flatMap({ $0 })
+    }
+}
+
+/// Compares two optional types by comparing their underlying unwrapped optional values
+func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ rhs: T) -> Bool {
+    return lhs.toOptional() != rhs.toOptional()
+}
 
 /// Experimental: creates a channel for a type that is formed of 2 elements
 @warn_unused_result public func channelZDecomposedState<T, T1, T2>(constructor: (T1, T2) -> T, values: (T1, T2)) -> Channel<(Channel<StateOf<T1>, T1>, Channel<StateOf<T2>, T2>), T> {
@@ -270,32 +287,38 @@ public extension ChannelType where Source : DistinctPulseSource {
     }
 }
 
+public extension StreamType where Element : StatePulseType {
+    /// Filters the channel for only changed instances of the underlying `StatePulse`
+    @warn_unused_result public func changes(changed: (Element.T, Element.T) -> Bool) -> Self {
+        return filter({ $0.old == nil || changed($0.old!, $0.new) })
+    }
+}
+
+public extension StreamType where Element : StatePulseType, Element.T : Equatable {
+    /// Filters the channel for only changed instances of the underlying `StatePulse`
+    @warn_unused_result public func changes() -> Self {
+        return changes(!=)
+    }
+}
+
+public extension StreamType where Element : StatePulseType, Element.T : _OptionalType, Element.T.Wrapped : Equatable {
+    /// Filters the channel for only changed optional instances of the underlying `StatePulse`
+    @warn_unused_result public func changes() -> Self {
+        return changes(optionalTypeEqual)
+    }
+}
+
 public extension ChannelType where Element : StatePulseType {
     /// Maps to the `new` value of the `StatePulse` element
     @warn_unused_result public func new() -> Channel<Source, Element.T> {
         return map({ $0.new })
     }
-
-    /// Filters the channel for only changed instances of the underlying `StatePulse`
-    @warn_unused_result public func changes(changed: (Element.T, Element.T) -> Bool) -> Channel<Source, Element.T> {
-        return filter({ $0.old == nil || changed($0.old!, $0.new) }).new()
-    }
-
 }
 
-public extension ChannelType where Element : StatePulseType, Element.T : Equatable {
-    /// Filters the channel for only changed instances of the underlying `StatePulse`
-    @warn_unused_result public func changes() -> Channel<Source, Element.T> {
-        return changes(!=)
-    }
-}
-
-public extension ChannelType where Element : StatePulseType, Element.T : OptionalMappable, Element.T.Wrapped : Equatable {
-    /// Filters the channel for only changed instances of the underlying `StatePulse` of optional instances
-    @warn_unused_result public func changes() -> Channel<Source, Element.T> {
-        // OptionalMappable just exists because we can only constrain a protocol extension based on other protocols;
-        // it will always be an Optional, but equatablility is only defined for Optional, not OptionalMappable
-        return changes({ $0.0.flatMap({ $0 }) != $0.1.flatMap({ $0 }) })
+public extension ChannelType where Element : _OptionalType {
+    /// Adds phases that filter for `Optional.Some` pulses (i.e., drops `nil`s) and maps to their `flatMap`ped (i.e., unwrapped) values
+    @warn_unused_result public func some() -> Channel<Source, Element.Wrapped> {
+        return map({ opt in opt.toOptional() }).filter({ $0 != nil }).map({ $0! })
     }
 }
 
@@ -308,7 +331,7 @@ public extension ChannelType where Source : StateSource {
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
     public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<StateOf<X>, Element> {
-        return resource { source in StateOf(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.channelZState().dissolve().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }, pulser: { source.pulseCount }) }
+        return resource { source in StateOf(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.channelZState().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }, pulser: { source.pulseCount }) }
     }
 }
 
@@ -319,13 +342,13 @@ public extension ChannelType where Source : StateSource, Source.Element == Eleme
     }
 }
 
-public extension ChannelType where Source : StateSource, Element: OptionalMappable, Source.Element == Element, Element.Wrapped: Hashable {
+public extension ChannelType where Source : StateSource, Element: _OptionalType, Source.Element == Element, Element.Wrapped: Hashable {
     public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Element, U?)>(mapping: S) -> Channel<StateOf<U?>, U?> {
         var getMapping: [Element.Wrapped: U] = [:]
         var setMapping: [U: Element] = [:]
 
         for (key, value) in mapping {
-            if let key = key.flatMap({ $0 }) {
+            if let key = key.toOptional() {
                 getMapping[key] = value
             }
             if let value = value {
@@ -341,16 +364,68 @@ public extension ChannelType where Source : StateSource, Element: OptionalMappab
 }
 
 
-/// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is
-/// changed, the other side is updated; each source must be a reference type for the `sink` to not be mutative
-public func conduit<S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, S2.Element == T1>(c1: Channel<S1, T1>, _ c2: Channel<S2, T2>) -> Receipt {
-    return ReceiptOf(receipts: [c1.pipe(c2.source), c2.pipe(c1.source)])
+public extension ChannelType {
+    /// Creates a one-way pipe betweek a `Channel`s whose source is a `Sink`, such that when the left
+    /// side is changed the right side is updated
+    public func conduct<T, S : Sink where S.Element == Self.Element>(to: Channel<S, T>) -> Receipt {
+        return self.pipe(to.source)
+    }
+
 }
 
-/// Creates a one-way conduit betweek a `Channel`s whose source is an `Equatable` `Sink`, such that when the left
-/// side is changed the right side is updated
-public func conduct<S1, S2, T1, T2 where S2: Sink, S2.Element == T1>(c1: Channel<S1, T1>, _ c2: Channel<S2, T2>) -> Receipt {
-    return c1∞->c2.source
+public extension ChannelType where Source : Sink {
+    /// Creates a two-way conduit betweek two `Channel`s whose source is a `Sink`, such that when either side is
+    /// changed, the other side is updated
+    ///
+    /// - Note: the `to` channel will immediately receive a sync from the `this` channel, making `this` channel's state dominant
+    public func conduit<Source2 where Source2 : Sink, Source2.Element == Self.Element>(to: Channel<Source2, Source.Element>) -> Receipt {
+        // since self is the dominant channel, ignore any immediate pulses through the right channel
+        let rhs = to.subsequent().pipe(self.source)
+        let lhs = self.pipe(to.source)
+        return ReceiptOf(receipts: [lhs, rhs])
+    }
+}
+
+public extension ChannelType where Source : StateSource {
+    /// Creates a two-way conduit betweek two `Channel`s whose source is a `StateSource`, such that when either side is
+    /// changed, the other side is updated provided the filter is satisifed
+    public func conjoin<Source2 where Source2 : StateSource, Source2.Element == Self.Element>(to: Channel<Source2, Self.Source.Element>, filterLeft: (Self.Element, Source2.Element) -> Bool, filterRight: (Self.Source.Element, Self.Source.Element) -> Bool) -> Receipt {
+        let filtered1 = self.filter({ filterLeft($0, to.source.value) })
+        let filtered2 = to.filter({ filterRight($0, self.source.value) })
+        return filtered1.conduit(filtered2)
+    }
+}
+
+public extension ChannelType where Source : StateSource, Source.Element : Equatable, Element : Equatable {
+    /// Creates a two-way binding betweek two `Channel`s whose source is a `StateSource`, such that when either side is
+    /// changed, the other side is updated when they are not equal
+    public func bind<Source2 where Source2 : StateSource, Source2.Element == Self.Element>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+        return conjoin(to, filterLeft: !=, filterRight: !=)
+    }
+}
+
+public extension ChannelType where Source : StateSource, Source.Element : Equatable, Element : _OptionalType, Element.Wrapped : Equatable {
+    /// Creates a two-way binding betweek two `Channel`s whose source is a `StateSource`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal
+    public func bind<Source2 where Source2 : StateSource, Source2.Element == Self.Element>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+        return conjoin(to, filterLeft: optionalTypeEqual, filterRight: !=)
+    }
+}
+
+public extension ChannelType where Source : StateSource, Source.Element : _OptionalType, Source.Element.Wrapped : Equatable, Element : Equatable {
+    /// Creates a two-way binding betweek two `Channel`s whose source is a `StateSource`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal
+    public func bind<Source2 where Source2 : StateSource, Source2.Element == Self.Element>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+        return conjoin(to, filterLeft: !=, filterRight: optionalTypeEqual)
+    }
+}
+
+public extension ChannelType where Source : StateSource, Source.Element : _OptionalType, Source.Element.Wrapped : Equatable, Element : _OptionalType, Element.Wrapped : Equatable {
+    /// Creates a two-way binding betweek two `Channel`s whose source is a `StateSource`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal
+    public func bind<Source2 where Source2 : StateSource, Source2.Element == Self.Element>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+        return conjoin(to, filterLeft: optionalTypeEqual, filterRight: optionalTypeEqual)
+    }
 }
 
 // MARK: Utilities
