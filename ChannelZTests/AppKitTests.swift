@@ -281,7 +281,7 @@ public class AppKitTests: XCTestCase {
 
     func testMultipleControllerListeners() {
         let stepper = NSStepper()
-        let channel = stepper.channelZBinding(controller: NSObjectController(content: 0)) // .map({ $0.new as? NSNumber }).resource({ $0.kvo }).subsequent()
+        let channel = stepper.channelZBinding(controller: NSObjectController(content: 0))
 
         stepper.minValue = 0
         stepper.maxValue = 100
@@ -340,8 +340,8 @@ public class AppKitTests: XCTestCase {
             XCTAssertEqual(0, ChannelZ.ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
             ChannelZ.ChannelZKeyValueObserverCount = 0
 
-//            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "reentrant receptions detected")
-//            ChannelZ.ChannelZReentrantReceptions = 0
+            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "reentrant receptions detected")
+            ChannelZ.ChannelZReentrantReceptions = 0
 
             // XCTAssertEqual(0, ChannelZ.ChannelZNotificationObserverCount, "Notification observers were not cleaned up")
             // ChannelZ.ChannelZNotificationObserverCount = 0
