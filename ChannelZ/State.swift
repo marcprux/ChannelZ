@@ -105,6 +105,7 @@ public struct StateOf<T>: Sink, StateSource {
 
     public var pulseCount: Int64 { return pulseCounter() }
 
+    /// The underlying value of this `StateOf` instance
     public var value: T {
         get { return valueget() }
         nonmutating set { put(newValue) }
@@ -112,7 +113,7 @@ public struct StateOf<T>: Sink, StateSource {
 
     public init<S where S: StateSink, S: StateSource, S.Element == T>(_ source: S) {
         valueget = { source.value }
-        valueset = { source.value = $0 }
+        valueset = { source.put($0) }
         channler = { source.channelZState().desource() }
         pulseCounter = { source.pulseCount }
     }

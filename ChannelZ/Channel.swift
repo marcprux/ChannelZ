@@ -55,6 +55,7 @@ public struct Channel<S, T> : ChannelType {
     public typealias Source = S
     public typealias Element = T
 
+    /// The underlying source of this Channel.
     public let source: S
 
     /// The closure that will be performed whenever a pulse is emitted; analogous to ReactiveX's `onNext`

@@ -110,7 +110,7 @@ public final class ReceiverList<T> {
 
     public func reentrantChannelReception(element: Any) {
         #if DEBUG_CHANNELZ
-            print("ChannelZ reentrant channel short-circuit; break on \(#function) to debug", element)
+            print("ChannelZ reentrant channel short-circuit; break on \(#function) to debug", element.dynamicType)
             OSAtomicIncrement64(&ChannelZReentrantReceptions)
         #endif
     }
