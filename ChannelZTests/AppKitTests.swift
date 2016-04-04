@@ -153,8 +153,9 @@ public class AppKitTests: XCTestCase {
     func testTextFieldProperties() {
         let textField = NSTextField()
 
+        let window = NSWindow()
         /// seems to be needed or else the button won't get clicked
-        (NSWindow().contentView)?.addSubview(textField)
+        (window.contentView)?.addSubview(textField)
 
         var text = ""
 
@@ -191,6 +192,7 @@ public class AppKitTests: XCTestCase {
         XCTAssertEqual(true, enabled)
 
         textField.removeFromSuperview()
+        withExtendedLifetime(window) { }
     }
 
     func testControls() {

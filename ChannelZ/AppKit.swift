@@ -25,10 +25,19 @@ public extension NSObjectProtocol where Self : NSController {
     public func channelZControllerPath(keyPath: String) -> Channel<KeyValueOptionalSource<AnyObject>, StatePulse<AnyObject?>> {
         let channel = channelZKeyState(valueForKeyPath(keyPath), keyPath: keyPath)
 
-        // KVO on an object controller drops the value: “Important: The Cocoa bindings controller classes do not provide change values when sending key-value observing notifications to observers. It is the developer’s responsibility to query the controller to determine the new values.”
+        // KVO on an object controller drops the value: 
+        // “Important: The Cocoa bindings controller classes do not provide change values when sending key-value observing notifications to observers. It is the developer’s responsibility to query the controller to determine the new values.”
         // so we manually pull the latest value out of the object whenever we fire a change so we 
         // maintain the channel contract
-        return channel.map({ [weak self] _ in self?.valueForKeyPath(keyPath) }).precedent()
+
+        // first map it to placeholders for storing new state
+        let wrapped = channel.map({ [weak self] state in
+            StatePulse(old: state.old, new: self?.valueForKeyPath(keyPath), index: state.index)
+            })
+
+        // now save the old state and return new instances
+        let saved = wrapped.precedent().new()
+        return saved
     }
 }
 
@@ -69,7 +78,7 @@ extension NSControl { // : KeyValueChannelSupplementing {
         self.action = #selector(ActionTarget.channelEvent)
 
 
-        return Channel<ActionTarget, Void>(source: target, reception: target.receivers.addReceipt)
+        return Channel<ActionTarget, Void>(source: target, reception: { target.receivers.addReceipt($0) })
     }
 
     /// Creates a binding to an intermediate NSObjectController with the given options and returns the bound channel
@@ -126,7 +135,7 @@ extension NSMenuItem {
         let target = (self.target as? ActionTarget) ?? ActionTarget(control: self) // use the existing dispatch target if it exists
         self.target = target
         self.action = #selector(ActionTarget.channelEvent)
-        return Channel<ActionTarget, Void>(source: target, reception: target.receivers.addReceipt)
+        return Channel<ActionTarget, Void>(source: target, reception: { target.receivers.addReceipt($0) })
     }
 }
 

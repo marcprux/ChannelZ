@@ -10,27 +10,30 @@ import Darwin
 
 /// A StatePulseType is an representation of a calue change event, such that a pulse has
 /// an `old` value (optionally none for the first state pulse) and a `new` value
-public protocol StatePulseType {
+public protocol StatePulseType : EnumeratedPulseType {
     associatedtype T
     var old: T? { get }
     var new: T { get }
 }
 
-/// A StatePulse encapsulates a state change from an old value to a new value
+/// A StatePulse encapsulates a state change from an old value to a new value with an anonymous `AnyForwardIndex` index yype
 public struct StatePulse<T> : StatePulseType {
     public let old: T?
     public let new: T
+    public let index: AnyForwardIndex
+    public var item: (T?, T) { return (old, new) }
 
-    public init(old: T?, new: T) {
+    public init(old: T?, new: T, index: AnyForwardIndex) {
         self.old = old
         self.new = new
+        self.index = index
     }
 }
 
 /// Abstraction of a source that can create a channel that emits a tuple of old & new state values.
 /// The implementation (or the implementation's underlying source) is assumed to be a reference
 /// since changing the value is nonmutating.
-public protocol StateSource : DistinctPulseSource, Sink {
+public protocol StateSource : Sink {
     associatedtype Element
     associatedtype Source
 
@@ -46,15 +49,21 @@ public protocol StateSource : DistinctPulseSource, Sink {
 public final class PropertySource<T>: StateSink, StateSource {
     public typealias State = StatePulse<T>
     private let receivers = ReceiverList<State>()
-    public var value: T { didSet(old) { receivers.receive(StatePulse(old: old, new: value)) } }
-    public var pulseCount: Int64 { return receivers.pulseCount }
+    private var pulseIndex: Int64 = 0
+
+    public var value: T {
+        didSet(old) {
+            receivers.receive(StatePulse(old: old, new: value, index: AnyForwardIndex(OSAtomicIncrement64(&pulseIndex))))
+        }
+    }
     
     public init(_ value: T) { self.value = value }
     public func put(x: T) { value = x }
 
     @warn_unused_result public func channelZState() -> Channel<PropertySource<T>, State> {
         return Channel(source: self) { rcvr in
-            rcvr(State(old: Optional<T>.None, new: self.value)) // immediately issue the original value with no previous value
+            // immediately issue the original value with no previous value
+            rcvr(State(old: Optional<T>.None, new: self.value, index: AnyForwardIndex(self.pulseIndex)))
             return self.receivers.addReceipt(rcvr)
         }
     }
@@ -97,15 +106,11 @@ public protocol StateSink : Sink {
 }
 
 /// A type-erased wrapper around some state source whose value changes will emit a `StatePulse`
-public struct StateOf<T>: Sink, StateSource {
+public struct AnyState<T>: Sink, StateSource {
     private let valueget: Void -> T
     private let valueset: T -> Void
     private let channler: Void -> Channel<Void, StatePulse<T>>
-    private let pulseCounter: Void -> Int64
 
-    public var pulseCount: Int64 { return pulseCounter() }
-
-    /// The underlying value of this `StateOf` instance
     public var value: T {
         get { return valueget() }
         nonmutating set { put(newValue) }
@@ -113,23 +118,21 @@ public struct StateOf<T>: Sink, StateSource {
 
     public init<S where S: StateSink, S: StateSource, S.Element == T>(_ source: S) {
         valueget = { source.value }
-        valueset = { source.put($0) }
+        valueset = { source.value = $0 }
         channler = { source.channelZState().desource() }
-        pulseCounter = { source.pulseCount }
     }
 
-    public init(get: Void -> T, set: T -> Void, channeler: Void -> Channel<Void, StatePulse<T>>, pulser: Void -> Int64) {
+    public init(get: Void -> T, set: T -> Void, channeler: Void -> Channel<Void, StatePulse<T>>) {
         valueget = get
         valueset = set
         channler = channeler
-        pulseCounter = pulser
     }
 
     public func put(x: T) {
         valueset(x)
     }
 
-    @warn_unused_result public func channelZState() -> Channel<StateOf<T>, StatePulse<T>> {
+    @warn_unused_result public func channelZState() -> Channel<AnyState<T>, StatePulse<T>> {
         return channler().resource({ _ in self })
     }
 }
@@ -160,15 +163,15 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
 }
 
 /// Experimental: creates a channel for a type that is formed of 2 elements
-@warn_unused_result public func channelZDecomposedState<T, T1, T2>(constructor: (T1, T2) -> T, values: (T1, T2)) -> Channel<(Channel<StateOf<T1>, T1>, Channel<StateOf<T2>, T2>), T> {
+@warn_unused_result public func channelZDecomposedState<T, T1, T2>(constructor: (T1, T2) -> T, values: (T1, T2)) -> Channel<(Channel<AnyState<T1>, T1>, Channel<AnyState<T2>, T2>), T> {
     let channel = channelZProperty(constructor(
         values.0,
         values.1
         )
     )
     let source = (
-        channelZProperty(values.0).resource(StateOf.init),
-        channelZProperty(values.1).resource(StateOf.init)
+        channelZProperty(values.0).anyState(),
+        channelZProperty(values.1).anyState()
     )
     func update(x: Any) { channel.value = constructor(
         source.0.value,
@@ -182,7 +185,7 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
 }
 
 /// Experimental: creates a channel for a type that is formed of 3 elements
-@warn_unused_result public func channelZDecomposedState<T, T1, T2, T3>(constructor: (T1, T2, T3) -> T, values: (T1, T2, T3)) -> Channel<(Channel<StateOf<T1>, T1>, Channel<StateOf<T2>, T2>, Channel<StateOf<T3>, T3>), T> {
+@warn_unused_result public func channelZDecomposedState<T, T1, T2, T3>(constructor: (T1, T2, T3) -> T, values: (T1, T2, T3)) -> Channel<(Channel<AnyState<T1>, T1>, Channel<AnyState<T2>, T2>, Channel<AnyState<T3>, T3>), T> {
     let channel = channelZProperty(constructor(
         values.0,
         values.1,
@@ -190,9 +193,9 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
         )
     )
     let source = (
-        channelZProperty(values.0).resource(StateOf.init),
-        channelZProperty(values.1).resource(StateOf.init),
-        channelZProperty(values.2).resource(StateOf.init)
+        channelZProperty(values.0).anyState(),
+        channelZProperty(values.1).anyState(),
+        channelZProperty(values.2).anyState()
     )
     func update(x: Any) { channel.value = constructor(
         source.0.value,
@@ -208,7 +211,7 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
 }
 
 /// Experimental: creates a channel for a type that is formed of 3 elements
-@warn_unused_result public func channelZDecomposedState<T, T1, T2, T3, T4>(constructor: (T1, T2, T3, T4) -> T, values: (T1, T2, T3, T4)) -> Channel<(Channel<StateOf<T1>, T1>, Channel<StateOf<T2>, T2>, Channel<StateOf<T3>, T3>, Channel<StateOf<T4>, T4>), T> {
+@warn_unused_result public func channelZDecomposedState<T, T1, T2, T3, T4>(constructor: (T1, T2, T3, T4) -> T, values: (T1, T2, T3, T4)) -> Channel<(Channel<AnyState<T1>, T1>, Channel<AnyState<T2>, T2>, Channel<AnyState<T3>, T3>, Channel<AnyState<T4>, T4>), T> {
     let channel = channelZProperty(constructor(
         values.0,
         values.1,
@@ -217,10 +220,10 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
         )
     )
     let source = (
-        channelZProperty(values.0).resource(StateOf.init),
-        channelZProperty(values.1).resource(StateOf.init),
-        channelZProperty(values.2).resource(StateOf.init),
-        channelZProperty(values.3).resource(StateOf.init)
+        channelZProperty(values.0).anyState(),
+        channelZProperty(values.1).anyState(),
+        channelZProperty(values.2).anyState(),
+        channelZProperty(values.3).anyState()
     )
     func update(x: Any) { channel.value = constructor(
         source.0.value,
@@ -237,24 +240,26 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
     return channel.resource { _ in source }
 }
 
-public extension ChannelType where Source : DistinctPulseSource {
-    /// Adds a channel phase that retains a previous item and sends it along with the current value as an optional tuple element.
-    /// This mechanism allows for the simualation of a state Channel that emits a `StatePulse` even when the underlying
-    /// value change mechanics are unavailable.
+public extension ChannelType where Element : IndexedPulseType {
+
+
+    /// Adds a channel phase that retains a previous item and sends it along with 
+    /// the current value as an optional tuple element.
+    /// This mechanism allows for the simualation of a state Channel that emits a `StatePulse` 
+    /// even when the underlying value change mechanics are unavailable.
     ///
     /// - Returns: a state Channel that emits a tuple of an earlier and the current item
     ///
     /// - Note: this phase with retain the previous *two* pulse items
     @warn_unused_result public func precedent() -> Channel<Source, StatePulse<Element>> {
-        let isDistinctPulse = distinguishPulse()
+        // bump the antecedent stack whenever we receive a distinct pulse
         var antecedents: (Element?, Element?) = (nil, nil)
-        return lift2 { receive in
+        let remember = pulsar { antecedents = ($0, antecedents.0) }
+
+        return lift { receive in
             { item in
-                if isDistinctPulse() {
-                    antecedents.1 = antecedents.0 // bump the antecedent stack
-                    antecedents.0 = item
-                }
-                let pair = StatePulse(old: antecedents.1, new: item)
+                remember(item)
+                let pair = StatePulse(old: antecedents.1, new: item, index: AnyForwardIndex(item.index))
                 receive(pair)
             }
         }
@@ -273,18 +278,28 @@ public extension ChannelType where Source : DistinctPulseSource {
     ///   the Channel for as long as there are receivers.
     ///
     @warn_unused_result public func sieve(predicate: (previous: Element, current: Element) -> Bool) -> Channel<Source, Element> {
-        let flt = { (t: StatePulse<Element>) in t.old == nil || predicate(previous: t.old!, current: t.new) }
-        return precedent().filter(flt).new()
+        func changed(t: StatePulse<Element>) -> Bool {
+            return t.old == nil || predicate(previous: t.old!, current: t.new)
+        }
+        return precedent().filter(changed).new()
+    }
+}
+
+public extension ChannelType where Element : IndexedPulseType {
+
+    /// Adds an observer closure to a change in the given equatable property
+    public func watch<T>(getter: Element -> T, eq: (T, T) -> Bool, receiver: T -> Void) -> Receipt {
+        return sieve({ eq(getter($0), getter($1)) }).map(getter).receive(receiver)
     }
 
     /// Adds an observer closure to a change in the given equatable property
     public func observe<T: Equatable>(getter: Element -> T, receiver: T -> Void) -> Receipt {
-        return map(getter).sieve(!=).receive(receiver)
+        return watch(getter, eq: !=, receiver: receiver)
     }
 
     /// Adds an observer closure to a change in the given optional equatable property
     public func observe<T: Equatable>(getter: Element -> Optional<T>, receiver: Optional<T> -> Void) -> Receipt {
-        return map(getter).sieve(!=).receive(receiver)
+        return watch(getter, eq: !=, receiver: receiver)
     }
 }
 
@@ -314,6 +329,12 @@ public extension ChannelType where Element : StatePulseType {
     @warn_unused_result public func new() -> Channel<Source, Element.T> {
         return map({ $0.new })
     }
+
+    /// Maps to the `old` value of the `StatePulse` element
+    @warn_unused_result public func old() -> Channel<Source, Element.T?> {
+        return map({ $0.old })
+    }
+
 }
 
 public extension ChannelType where Element : _OptionalType {
@@ -323,6 +344,8 @@ public extension ChannelType where Element : _OptionalType {
     }
 }
 
+@noreturn func makeT<T>() -> T { fatalError() }
+
 public extension ChannelType where Source : StateSource {
     /// A Channel whose source is a `StateSource` can get and set its value directly without mutating the channel
     public var value : Source.Element {
@@ -331,20 +354,28 @@ public extension ChannelType where Source : StateSource {
     }
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
-    public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<StateOf<X>, Element> {
-        return resource { source in StateOf(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.channelZState().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }, pulser: { source.pulseCount }) }
+    public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, Element> {
+        return resource { source in AnyState(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.channelZState().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new), index: state.index) } }) }
     }
+}
+
+public extension ChannelType where Source : StateSource, Source : StateSink {
+    /// Creates a type-erased `StateSource` with `AnyState` for this channel
+    public func anyState() -> Channel<AnyState<Source.Element>, Element> {
+        return resource(AnyState.init)
+    }
+
 }
 
 public extension ChannelType where Source : StateSource, Source.Element == Element {
     /// For a channel whose underlying state matches the pulse types, perform a `stateMap` and a `map` with the same `get` transform
-    public func restate<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<StateOf<X>, X> {
+    public func restate<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, X> {
         return stateMap(get: get, set: set).map(get)
     }
 }
 
 public extension ChannelType where Source : StateSource, Element: _OptionalType, Source.Element == Element, Element.Wrapped: Hashable {
-    public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Element, U?)>(mapping: S) -> Channel<StateOf<U?>, U?> {
+    public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Element, U?)>(mapping: S) -> Channel<AnyState<U?>, U?> {
         var getMapping: [Element.Wrapped: U] = [:]
         var setMapping: [U: Element] = [:]
 
@@ -439,15 +470,22 @@ public extension ChannelType where Source : StateSource, Source.Element : _Optio
 }
 
 /// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receivers
-@warn_unused_result public func channelZSequence<S, T where S: SequenceType, S.Generator.Element == T>(from: S) -> Channel<S, T> {
-    return from.channelZSequence()
+@warn_unused_result public func channelZEnumerate<S, T where S: SequenceType, S.Generator.Element == T>(from: S) -> Channel<S, EnumeratedPulse<T>> {
+    return from.channelZEnumerate()
+}
+
+public extension ChannelType where Element : EnumeratedPulseType {
+    /// Unwraps the underlying item from an enumerated pulse
+    @warn_unused_result func items() -> Channel<Source, Element.Element> {
+        return map({ $0.item })
+    }
 }
 
 extension SequenceType {
     /// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receivers
-    @warn_unused_result func channelZSequence() -> Channel<Self, Self.Generator.Element> {
+    @warn_unused_result func channelZEnumerate() -> Channel<Self, EnumeratedPulse<Self.Generator.Element>> {
         return Channel(source: self) { rcvr in
-            for item in self { rcvr(item) }
+            for (i, item) in self.enumerate() { rcvr(EnumeratedPulse(index: i, item: item)) }
             return ReceiptOf() // cancelled receipt since it will never receive more pulses
         }
     }
@@ -477,4 +515,8 @@ extension SequenceType {
 /// Creates a Channel sourced by a Swift or Objective-C Equatable property
 @warn_unused_result public func channelZProperty<T: Equatable>(initialValue: T) -> Channel<PropertySource<T>, T> {
     return ∞=initialValue=∞
+}
+
+@warn_unused_result public func channelZPropertyState<T>(initialValue: T) -> Channel<PropertySource<T>, StatePulse<T>> {
+    return PropertySource(initialValue).channelZState()
 }

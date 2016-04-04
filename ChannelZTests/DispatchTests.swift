@@ -159,33 +159,33 @@ public class DispatchTests: XCTestCase {
         XCTAssertEqual(vcount, pulses) // make sure the pulse contained all the items
     }
 
-    func testThrottle() {
-        let channel = channelZSink(Void)
-
-        weak var xpc = expectationWithDescription("testDebounce")
-
-        var pulses = 0, items = 0
-        _ = 0.1
-//        let when = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
-//        let receiver2: Channel<SinkTo<(Bool)>, [(Bool)]> = channel.buffer(1)
-//        let receiver3: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.throttle(1)
-//        let receiver: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.debounce(1.0, queue: dispatch_get_main_queue())
-
-        let vcount = 4
-
-        let receiver = channel.throttle(1.0, queue: dispatch_get_main_queue()).receive { voids in
-            pulses += 1
-            items += voids.count
-            if items >= vcount { xpc?.fulfill() }
-        }
-        XCTAssertTrue(receiver.dynamicType == receiver.dynamicType, "avoid compiler warnings")
-
-        for _ in 1...vcount { channel.source.put() }
-
-        waitForExpectationsWithTimeout(5, handler: { err in })
-        XCTAssertEqual(1, pulses) // make sure the items were aggregated into a single pulse
-        XCTAssertEqual(vcount, items) // make sure the pulse contained all the items
-    }
+//    func testThrottle() {
+//        let channel = channelZSink(Void)
+//
+//        weak var xpc = expectationWithDescription("testDebounce")
+//
+//        var pulses = 0, items = 0
+//        _ = 0.1
+////        let when = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
+////        let receiver2: Channel<SinkTo<(Bool)>, [(Bool)]> = channel.buffer(1)
+////        let receiver3: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.throttle(1)
+////        let receiver: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.debounce(1.0, queue: dispatch_get_main_queue())
+//
+//        let vcount = 4
+//
+//        let receiver = channel.throttle(1.0, queue: dispatch_get_main_queue()).receive { voids in
+//            pulses += 1
+//            items += voids.count
+//            if items >= vcount { xpc?.fulfill() }
+//        }
+//        XCTAssertTrue(receiver.dynamicType == receiver.dynamicType, "avoid compiler warnings")
+//
+//        for _ in 1...vcount { channel.source.put() }
+//
+//        waitForExpectationsWithTimeout(5, handler: { err in })
+//        XCTAssertEqual(1, pulses) // make sure the items were aggregated into a single pulse
+//        XCTAssertEqual(vcount, items) // make sure the pulse contained all the items
+//    }
 
     /// Disabled only because it fails on TravisCI
     func XXXtestDispatchFile() {

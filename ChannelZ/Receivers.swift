@@ -73,9 +73,7 @@ public var ChannelZReentrancyLimit: Int = 1
 public final class ReceiverList<T> {
     public typealias Receptor = T -> ()
     public let maxdepth: Int
-    /// The counter for the current pulse that is in the process of being emitted; this can be used to
-    /// distinguish between distinct pulse events
-    public internal(set) var pulseCount: Int64 = 0
+
     private var receivers: [(index: Int64, receptor: Receptor)] = []
     private var entrancy: Int64 = 0
     private var receptorIndex: Int64 = 0
@@ -101,7 +99,6 @@ public final class ReceiverList<T> {
         if currentEntrancy > maxdepth + 1 {
             reentrantChannelReception(element)
         } else {
-            OSAtomicIncrement64(&pulseCount)
             for (_, receptor) in receivers {
                 receptor(element)
             }
@@ -136,44 +133,5 @@ public final class ReceiverList<T> {
     /// Clear all the receivers
     public func clear() {
         receivers = []
-    }
-}
-
-/// A TrapReceipt is a receptor to a channel that retains a number of values (default 1) when they are sent by the source
-public class TrapReceipt<C where C: ChannelType>: Receipt {
-    public var cancelled: Bool = false
-    public let channel: C
-
-    /// Returns the last value to be added to this trap
-    public var value: C.Element? { return values.last }
-
-    /// All the values currently held in the trap
-    public var values: [C.Element]
-
-    public let capacity: Int
-
-    private var receipt: Receipt?
-
-    public init(channel: C, capacity: Int) {
-        self.channel = channel
-        self.values = []
-        self.capacity = capacity
-        self.values.reserveCapacity(capacity)
-
-        let receipt = channel.receive({ [weak self] (value) -> Void in
-            let _ = self?.receive(value)
-        })
-        self.receipt = receipt
-    }
-
-    deinit { receipt?.cancel() }
-    public func cancel() { receipt?.cancel() }
-
-    public func receive(value: C.Element) {
-        while values.count >= capacity {
-            values.removeAtIndex(0)
-        }
-
-        values.append(value)
     }
 }

@@ -8,21 +8,6 @@
 
 // MARK: Channel Basics
 
-/// A StreamType is a sourceless stream that emits elements
-public protocol StreamType {
-    associatedtype Element
-
-    /// Adds the given receiver block to be executed with the pulses that pass through this stream.
-    ///
-    /// - Parameter receiver: the block to be executed whenever this Stream pulses an item
-    ///
-    /// - Returns: A `Receipt`, which can be used to later `cancel` reception
-    func receive(receiver: Element -> Void) -> Receipt
-
-    /// Creates a new form of this stream type with the given reception
-    @warn_unused_result func phase(reception: (Self.Element -> Void) -> Receipt) -> Self
-}
-
 /// A ChannelType is a StreamType with the addition of a Source
 public protocol ChannelType : StreamType {
     associatedtype Source
@@ -55,7 +40,6 @@ public struct Channel<S, T> : ChannelType {
     public typealias Source = S
     public typealias Element = T
 
-    /// The underlying source of this Channel.
     public let source: S
 
     /// The closure that will be performed whenever a pulse is emitted; analogous to ReactiveX's `onNext`
@@ -89,109 +73,7 @@ public struct Channel<S, T> : ChannelType {
     @warn_unused_result public func desource() -> Channel<Void, T> {
         return resource({ _ in Void() })
     }
-
 }
-
-public extension StreamType {
-
-    /// Lifts a function to the current Stream and returns a new channel phase that when received to will pass
-    /// the values of the current Channel through the Operator function.
-    ///
-    /// - Parameter receptor: The functon that transforms one receiver to another
-    ///
-    /// - Returns: The new Channel
-    @warn_unused_result public func lift(receptor: (Element -> Void) -> (Element -> Void)) -> Self {
-        return phase { receiver in self.receive(receptor(receiver)) }
-    }
-
-    /// Adds a channel phase which only emits those pulses for which a given predicate holds.
-    ///
-    /// - Parameter predicate: a function that evaluates the pulses emitted by the source Channel,
-    ///   returning `true` if they pass the filter
-    ///
-    /// - Returns: A stateless Channel that emits only those pulses in the original Channel that the filter evaluates as `true`
-    @warn_unused_result public func filter(predicate: Element -> Bool) -> Self {
-        return lift { receive in { item in if predicate(item) { receive(item) } } }
-    }
-
-}
-
-/// MARK: Stateful Channel operations (accumulators, etc.)
-public extension StreamType {
-
-    /// Adds a channel phase that drops any pulses that are immediately emitted upon a receiver being added but
-    /// passes any pulses that are emitted after the receiver is added.
-    /// In ReactiveX parlance, this convert this `observable` Channel from `cold` to `hot`
-    ///
-    /// - Returns: A Channel that drops any elements that are emitted upon a receiver being added
-    @warn_unused_result public func subsequent() -> Self {
-        return phase { receiver in
-            var immediate = true
-            let receipt = self.receive { item in if !immediate { receiver(item) } }
-            immediate = false
-            return receipt
-        }
-    }
-}
-
-public extension StreamType {
-
-    /// Adds a channel phase that will cease sending pulses once the terminator predicate is satisfied.
-    ///
-    /// - Parameter terminator: A predicate function that will result in cancellation of all receipts when it evaluates to `true`
-    /// - Parameter includeFinal: Whether to send the final pulse to receivers before terminating (defaults to `false`)
-    /// - Parameter terminus: An optional final sentinal closure that will be sent once after the `terminator` evaluates to `true`
-    ///
-    /// - Returns: A stateful Channel that emits pulses until the `terminator` evaluates to true
-    @warn_unused_result public func terminate(terminator: Element -> Bool, includeFinal: Bool = false, terminus: (() -> Element)? = nil) -> Self {
-        var receipts: [Receipt] = []
-        var terminated = false
-
-        return phase { receiver in
-            let receipt = self.receive { item in
-                if terminated { return }
-                if terminator(item) {
-                    if includeFinal {
-                        receiver(item)
-                    }
-
-                    terminated = true
-                    if let terminus = terminus {
-                        receiver(terminus())
-                    }
-                    for r in receipts { r.cancel() }
-                } else {
-                    receiver(item)
-                }
-            }
-            receipts += [receipt]
-            return receipt
-        }
-    }
-
-    /// Adds a channel phase that will terminate receipt after the given number of pulses have been received
-    @warn_unused_result public func take(count: Int = 1) -> Self {
-        var c = count
-        return terminate({ _ in c -= 1; return c < 0 })
-    }
-}
-
-public extension StreamType {
-    /// Adds a channel phase that spits the channel in two, where the first channel accepts elements that
-    /// fail the given predicate filter, and the second channel emits the elements that pass the predicate
-    /// (mnemonic: "right" also means "correct").
-    ///
-    /// Note that the predicate will be evaluated exactly twice for each emitted item
-    ///
-    /// - Parameter predicate: a function that evaluates the pulses emitted by the source Channel,
-    ///   returning `true` if they pass the filter
-    ///
-    /// - Returns: A stateless Channel pair that passes elements depending on whether they pass or fail the predicate, respectively
-    public func split(predicate: Element -> Bool) -> (unfiltered: Self, filtered: Self) {
-        return (filter({ !predicate($0) }), filter(predicate))
-    }
-}
-
 
 public extension ChannelType {
 
@@ -201,7 +83,7 @@ public extension ChannelType {
     /// - Parameter receptor: The functon that transforms one receiver to another
     ///
     /// - Returns: The new Channel
-    @warn_unused_result public func lift2<Element2>(receptor: (Element2 -> Void) -> (Element -> Void)) -> Channel<Source, Element2> {
+    @warn_unused_result public func lift<Element2>(receptor: (Element2 -> Void) -> (Element -> Void)) -> Channel<Source, Element2> {
         return Channel<Source, Element2>(source: source) { receiver in self.receive(receptor(receiver)) }
     }
 
@@ -211,94 +93,74 @@ public extension ChannelType {
     ///
     /// - Returns: A stateless Channel that emits the pulses from the source Channel, transformed by the given function
     @warn_unused_result public func map<U>(transform: Element -> U) -> Channel<Source, U> {
-        return lift2 { receive in { item in receive(transform(item)) } }
+        return lift { receive in { item in receive(transform(item)) } }
     }
 }
 
-public extension ChannelType {
+public extension ChannelType where Element : IndexedPulseType {
 
-    /// Adds a channel phase with the result of repeatedly calling `combine` with an accumulated value
-    /// initialized to `initial` and each element of `self`, in turn
-    ///
-    /// - Parameter initial: the initial accumulated value
-    /// - Parameter combine: the accumulator function that will return the accumulation; the final funcation tuple
-    ///   element should be called ad a side-effect to cause the accumulation to be pulsed
-    @warn_unused_result public func reduce<U>(initial: U, combine: (U, Element, U -> Void) -> U) -> Channel<Source, U> {
-        var accumulation = initial
-        return lift2 { receive in { item in accumulation = combine(accumulation, item, receive) } }
-    }
-
-    /// Accumulate the given pulses into an array until the given predicate is satisifed, and
-    /// then flush all the elements of the array.
-    ///
-    /// - Parameter predicate: that will cause the accumulated elements to be pulsed
-    ///
-    /// - Returns: A stateful Channel that maintains an accumulation of elements
-    @warn_unused_result public func accumulate(predicate: ([Element], Element) -> Bool) -> Channel<Source, [Element]> {
-        return reduce([]) { a, x, f in predicate(a, x) ? { f(a+[x]); return [] }() : a+[x] }
-    }
-
-    /// Adds a channel phase that buffers emitted pulses such that the receiver will
-    /// receive a array of the buffered pulses
-    ///
-    /// - Parameter count: the size of the buffer
-    ///
-    /// - Returns: A stateful Channel that buffers its pulses until it the buffer reaches `count`
-    @warn_unused_result public func buffer(count: Int) -> Channel<Source, [Element]> {
-        // note: a more optimized version of this could append to a single buffer with capacity set the count
-        // similar to how Java 8 streams implement their "mutable reduction operation" collect() method
-        // http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html#MutableReduction
-        return accumulate { a, x in a.count >= count-1 }
-    }
-
-    /// Adds a channel phase that aggregates pulses with the given combine function and then
-    /// emits the pulses when the partition predicate is satisified.
-    ///
-    /// - Parameter initial: the initial accumulated value
-    /// - Parameter combine: the combinator function to call with the accumulated value
-    /// - Parameter isPartition: the predicate that signifies whether an item should cause the 
-    ///   accumulated value to be emitted and cleared
-    /// - Parameter withPartitions: if true (the default), then terminator pulses will be included in the accumulation
-    /// - Parameter clearAfterPulse: if true (the default), the accumulated value will be cleared after each pulse
-    ///
-    /// - Returns: A stateful Channel that buffers its accumulated pulses until the terminator predicate passes
-    @warn_unused_result public func partition<U>(initial: U, withPartitions: Bool = true, clearAfterPulse: Bool = true, isPartition: (U, Element) -> Bool, combine: (U, Element) -> U) -> Channel<Source, U> {
-        return reduce(initial) { (accumulation, item, receive) in
-            var acc = accumulation
-            if isPartition(acc, item) {
-                if withPartitions { acc = combine(acc, item) }
-                receive(acc)
-                if clearAfterPulse { acc = initial }
-            } else {
-                acc = combine(acc, item)
-            }
-
-            return acc
-        }
-    }
-}
-
-
-/// A PulseSource provides the notion of a distinct event ID for a current pulse
-public protocol DistinctPulseSource {
-    var pulseCount: Int64 { get }
-}
-
-public extension ChannelType where Source : DistinctPulseSource {
-
-    /// Returns a closure that can be used to determine if the current pulse operation is distinct
-    @warn_unused_result internal func distinguishPulse() -> Void -> Bool {
-        var lastPulseCount: Int64?
-        return {
-            let pc = self.source.pulseCount
-            if lastPulseCount != pc {
-                lastPulseCount = pc
-                return true
-            } else {
-                return false
-            }
-        }
-    }
+//    /// Adds a channel phase with the result of repeatedly calling `combine` with an accumulated value
+//    /// initialized to `initial` and each element of `self`, in turn
+//    ///
+//    /// - Parameter initial: the initial accumulated value
+//    /// - Parameter combine: the accumulator function that will return the accumulation; the final funcation tuple
+//    ///   element should be called ad a side-effect to cause the accumulation to be pulsed
+//    @warn_unused_result public func reduce<U>(initial: U, combine: (U, Element, U -> Void) -> U) -> Channel<Source, U> {
+//        var accumulation = initial
+//        // FIXME: this is broken for multiple receivers; we need to do something like:
+//        let accumulate = pulsar { item in { receive in { accumulation = combine(accumulation, item, receive) } } }
+//
+//        return lift { receive in { item in accumulation = combine(accumulation, item, receive) } }
+//    }
+//
+//    /// Accumulate the given pulses into an array until the given predicate is satisifed, and
+//    /// then flush all the elements of the array.
+//    ///
+//    /// - Parameter predicate: that will cause the accumulated elements to be pulsed
+//    ///
+//    /// - Returns: A stateful Channel that maintains an accumulation of elements
+//    @warn_unused_result public func accumulate(predicate: ([Element], Element) -> Bool) -> Channel<Source, [Element]> {
+//        return reduce([]) { a, x, f in predicate(a, x) ? { f(a+[x]); return [] }() : a+[x] }
+//    }
+//
+//    /// Adds a channel phase that buffers emitted pulses such that the receiver will
+//    /// receive a array of the buffered pulses
+//    ///
+//    /// - Parameter count: the size of the buffer
+//    ///
+//    /// - Returns: A stateful Channel that buffers its pulses until it the buffer reaches `count`
+//    @warn_unused_result public func buffer(count: Int) -> Channel<Source, [Element]> {
+//        // note: a more optimized version of this could append to a single buffer with capacity set the count
+//        // similar to how Java 8 streams implement their "mutable reduction operation" collect() method
+//        // http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html#MutableReduction
+//        return accumulate { a, x in a.count >= count-1 }
+//    }
+//
+//    /// Adds a channel phase that aggregates pulses with the given combine function and then
+//    /// emits the pulses when the partition predicate is satisified.
+//    ///
+//    /// - Parameter initial: the initial accumulated value
+//    /// - Parameter combine: the combinator function to call with the accumulated value
+//    /// - Parameter isPartition: the predicate that signifies whether an item should cause the
+//    ///   accumulated value to be emitted and cleared
+//    /// - Parameter withPartitions: if true (the default), then terminator pulses will be included in the accumulation
+//    /// - Parameter clearAfterPulse: if true (the default), the accumulated value will be cleared after each pulse
+//    ///
+//    /// - Returns: A stateful Channel that buffers its accumulated pulses until the terminator predicate passes
+//    @warn_unused_result public func partition<U>(initial: U, withPartitions: Bool = true, clearAfterPulse: Bool = true, isPartition: (U, Element) -> Bool, combine: (U, Element) -> U) -> Channel<Source, U> {
+//        return reduce(initial) { (accumulation, item, receive) in
+//            var acc = accumulation
+//            if isPartition(acc, item) {
+//                if withPartitions { acc = combine(acc, item) }
+//                receive(acc)
+//                if clearAfterPulse { acc = initial }
+//            } else {
+//                acc = combine(acc, item)
+//            }
+//
+//            return acc
+//        }
+//    }
 
     /// Adds a channel phase that emits a tuples of pairs (*n*, *x*),
     /// where *n*\ s are consecutive `Int`\ s starting at zero,
@@ -306,17 +168,15 @@ public extension ChannelType where Source : DistinctPulseSource {
     ///
     /// - Returns: A stateful Channel that emits a tuple with the element's index
     @warn_unused_result public func enumerate() -> Channel<Source, (Int, Element)> {
-        // since the mapped function will be called for each receiver, we need to ensure that the index is
-        // incremented only once per pulse, rather than each time the mapped function is executed
-        let isDistinctPulse = distinguishPulse()
-        var index: Int = -1
+        var pulseCount: Int = -1
+        let incrementer = pulsar { _ in pulseCount += 1 }
 
-        func pulseIndex(value: Element) -> (Int, Element) {
-            if isDistinctPulse() { index += 1 }
-            return (index, value)
+        func enumeratedPulse(value: Element) -> (Int, Element) {
+            incrementer(value)
+            return (pulseCount, value)
         }
 
-        return map(pulseIndex)
+        return map(enumeratedPulse)
     }
 
     /// Adds a channel phase that drops the first `count` elements.
@@ -486,14 +346,6 @@ public extension Channel {
 
 }
 
-/// Utilites for creating the special trap receipt (useful for testing)
-public extension ChannelType {
-    /// Adds a receiver that will retain a certain number of values
-    public func trap(capacity: Int = 1) -> TrapReceipt<Self> {
-        return TrapReceipt(channel: self, capacity: capacity)
-    }
-}
-
 /// Concatinates multiple channels with the same source and element types into a single channel;
 /// note that the source is incuded in a tuple with the element in order to identify which source emitted the pulse
 @warn_unused_result public func concatChannels<S, T>(channels: [Channel<S, T>]) -> Channel<[S], (S, T)> {
@@ -519,3 +371,7 @@ public extension ChannelType {
         return ReceiptOf(receipts: rcpts)
     })
 }
+
+/// Utility function for marking code that is yet to be written
+@noreturn func crash<T>() -> T { fatalError("implementme") }
+

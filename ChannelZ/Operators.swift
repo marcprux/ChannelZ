@@ -68,7 +68,7 @@ prefix func ∞?=<S: StateSource, T: Equatable where S.Element: _OptionalType, S
     let wrappedState: Channel<S.Source, StatePulse<S.Element>> = source.channelZState()
 
     // each of the three following statements should be equivalent, but they return subtly different results! Only the first is correct.
-    let unwrappedState: Channel<S.Source, StatePulse<T?>> = wrappedState.map({ pair in StatePulse(old: pair.old?.toOptional(), new: pair.new.toOptional()) })
+    let unwrappedState: Channel<S.Source, StatePulse<T?>> = wrappedState.map({ pair in StatePulse(old: pair.old?.toOptional(), new: pair.new.toOptional(), index: pair.index) })
 //    let unwrappedState: Channel<S.Source, (old: T??, new: T?)> = wrappedState.map({ pair in (pair.old?.map({$0}), pair.new.map({$0})) })
 //    func unwrap(pair: (S.Element?, S.Element)) -> (old: T??, new: T?) { return (pair.old?.unwrap, pair.new.unwrap) }
 //    let unwrappedState: Channel<S.Source, (old: T??, new: T?)> = wrappedState.map({ pair in unwrap(pair) })
