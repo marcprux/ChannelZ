@@ -9,7 +9,7 @@
 import Dispatch
 
 /// An `Receipt` is the result of `receive`ing to a Observable or Channel
-public protocol Receipt {
+public protocol Receipt : class {
 
     /// Whether the receipt is cancelled or not
     var cancelled: Bool { get }

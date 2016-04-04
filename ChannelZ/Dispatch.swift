@@ -8,7 +8,7 @@
 
 import Dispatch
 
-public extension ChannelType where Element : IndexedPulseType {
+public extension ChannelType {
 
 //    /// Adds a phase that aggregates all pulses into an array and only pulse the aggregated array once the
 //    /// specified timespan has passed without it receiving another item. In ReactiveX parlance, this is known as `debounce`.

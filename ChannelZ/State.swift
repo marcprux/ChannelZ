@@ -10,7 +10,7 @@ import Darwin
 
 /// A StatePulseType is an representation of a calue change event, such that a pulse has
 /// an `old` value (optionally none for the first state pulse) and a `new` value
-public protocol StatePulseType : EnumeratedPulseType {
+public protocol StatePulseType {
     associatedtype T
     var old: T? { get }
     var new: T { get }
@@ -20,13 +20,10 @@ public protocol StatePulseType : EnumeratedPulseType {
 public struct StatePulse<T> : StatePulseType {
     public let old: T?
     public let new: T
-    public let index: AnyForwardIndex
-    public var item: (T?, T) { return (old, new) }
 
-    public init(old: T?, new: T, index: AnyForwardIndex) {
+    public init(old: T?, new: T) {
         self.old = old
         self.new = new
-        self.index = index
     }
 }
 
@@ -49,11 +46,10 @@ public protocol StateSource : Sink {
 public final class PropertySource<T>: StateSink, StateSource {
     public typealias State = StatePulse<T>
     private let receivers = ReceiverList<State>()
-    private var pulseIndex: Int64 = 0
 
     public var value: T {
         didSet(old) {
-            receivers.receive(StatePulse(old: old, new: value, index: AnyForwardIndex(OSAtomicIncrement64(&pulseIndex))))
+            receivers.receive(StatePulse(old: old, new: value))
         }
     }
     
@@ -63,7 +59,7 @@ public final class PropertySource<T>: StateSink, StateSource {
     @warn_unused_result public func channelZState() -> Channel<PropertySource<T>, State> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
-            rcvr(State(old: Optional<T>.None, new: self.value, index: AnyForwardIndex(self.pulseIndex)))
+            rcvr(State(old: Optional<T>.None, new: self.value))
             return self.receivers.addReceipt(rcvr)
         }
     }
@@ -240,8 +236,7 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
     return channel.resource { _ in source }
 }
 
-public extension ChannelType where Element : IndexedPulseType {
-
+public extension ChannelType {
 
     /// Adds a channel phase that retains a previous item and sends it along with 
     /// the current value as an optional tuple element.
@@ -251,24 +246,15 @@ public extension ChannelType where Element : IndexedPulseType {
     /// - Returns: a state Channel that emits a tuple of an earlier and the current item
     ///
     /// - Note: this phase with retain the previous *two* pulse items
-    @warn_unused_result public func precedent() -> Channel<Source, StatePulse<Element>> {
-        // bump the antecedent stack whenever we receive a distinct pulse
-        var antecedents: (Element?, Element?) = (nil, nil)
-        let remember = pulsar { antecedents = ($0, antecedents.0) }
-
-        return lift { receive in
-            { item in
-                remember(item)
-                let pair = StatePulse(old: antecedents.1, new: item, index: AnyForwardIndex(item.index))
-                receive(pair)
-            }
-        }
+    @warn_unused_result public func precedent() -> Channel<EffectSource<Source>, StatePulse<Element>> {
+        return affect((old: Optional<Element>.None, new: Optional<Element>.None)) { (state, element) in (old: state.new, new: element) }.map { (element, state) in StatePulse(old: state.old, new: element) }
     }
 
     /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
     /// recent emitted or passed item.
     ///
-    /// For example, to create a filter for distinct equatable pulses, you would do: `sieve(!=)`
+    /// For example, to create a filter for distinct equatable pulses, you would do: `changes(!=)`.
+    /// For channels that already emit `StatePulse` types, use `Channel.sieve`.
     ///
     /// - Parameter predicate: a function that evaluates the current item against the previous item
     ///
@@ -277,19 +263,16 @@ public extension ChannelType where Element : IndexedPulseType {
     /// - Note: Since `sieve` uses `precedent`, the most recent value will be retained by 
     ///   the Channel for as long as there are receivers.
     ///
-    @warn_unused_result public func sieve(predicate: (previous: Element, current: Element) -> Bool) -> Channel<Source, Element> {
-        func changed(t: StatePulse<Element>) -> Bool {
-            return t.old == nil || predicate(previous: t.old!, current: t.new)
-        }
-        return precedent().filter(changed).new()
+    @warn_unused_result public func changes(predicate: (previous: Element, current: Element) -> Bool) -> Channel<EffectSource<Source>, Element> {
+        return precedent().sieve(predicate).new()
     }
 }
 
-public extension ChannelType where Element : IndexedPulseType {
+public extension ChannelType {
 
     /// Adds an observer closure to a change in the given equatable property
     public func watch<T>(getter: Element -> T, eq: (T, T) -> Bool, receiver: T -> Void) -> Receipt {
-        return sieve({ eq(getter($0), getter($1)) }).map(getter).receive(receiver)
+        return changes({ eq(getter($0), getter($1)) }).map(getter).receive(receiver)
     }
 
     /// Adds an observer closure to a change in the given equatable property
@@ -305,22 +288,26 @@ public extension ChannelType where Element : IndexedPulseType {
 
 public extension StreamType where Element : StatePulseType {
     /// Filters the channel for only changed instances of the underlying `StatePulse`
-    @warn_unused_result public func changes(changed: (Element.T, Element.T) -> Bool) -> Self {
-        return filter({ $0.old == nil || changed($0.old!, $0.new) })
+    @warn_unused_result public func sieve(changed: (Element.T, Element.T) -> Bool) -> Self {
+        return filter { state in
+            // the initial state assignment is always fresh
+            guard let old = state.old else { return true }
+            return changed(old, state.new)
+        }
     }
 }
 
 public extension StreamType where Element : StatePulseType, Element.T : Equatable {
     /// Filters the channel for only changed instances of the underlying `StatePulse`
-    @warn_unused_result public func changes() -> Self {
-        return changes(!=)
+    @warn_unused_result public func sieve() -> Self {
+        return sieve(!=)
     }
 }
 
 public extension StreamType where Element : StatePulseType, Element.T : _OptionalType, Element.T.Wrapped : Equatable {
     /// Filters the channel for only changed optional instances of the underlying `StatePulse`
-    @warn_unused_result public func changes() -> Self {
-        return changes(optionalTypeEqual)
+    @warn_unused_result public func sieve() -> Self {
+        return sieve(optionalTypeEqual)
     }
 }
 
@@ -355,7 +342,7 @@ public extension ChannelType where Source : StateSource {
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
     public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, Element> {
-        return resource { source in AnyState(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.channelZState().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new), index: state.index) } }) }
+        return resource { source in AnyState(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.channelZState().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }) }
     }
 }
 
@@ -469,23 +456,11 @@ public extension ChannelType where Source : StateSource, Source.Element : _Optio
     return Channel<SinkTo<T>, T>(source: sink) { rcvrs.addReceipt($0) }
 }
 
-/// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receivers
-@warn_unused_result public func channelZEnumerate<S, T where S: SequenceType, S.Generator.Element == T>(from: S) -> Channel<S, EnumeratedPulse<T>> {
-    return from.channelZEnumerate()
-}
-
-public extension ChannelType where Element : EnumeratedPulseType {
-    /// Unwraps the underlying item from an enumerated pulse
-    @warn_unused_result func items() -> Channel<Source, Element.Element> {
-        return map({ $0.item })
-    }
-}
-
 extension SequenceType {
     /// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receivers
-    @warn_unused_result func channelZEnumerate() -> Channel<Self, EnumeratedPulse<Self.Generator.Element>> {
+    @warn_unused_result public func channelZSequence() -> Channel<Self, Self.Generator.Element> {
         return Channel(source: self) { rcvr in
-            for (i, item) in self.enumerate() { rcvr(EnumeratedPulse(index: i, item: item)) }
+            for item in self { rcvr(item) }
             return ReceiptOf() // cancelled receipt since it will never receive more pulses
         }
     }

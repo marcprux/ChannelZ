@@ -97,97 +97,6 @@ public extension ChannelType {
     }
 }
 
-public extension ChannelType where Element : IndexedPulseType {
-
-//    /// Adds a channel phase with the result of repeatedly calling `combine` with an accumulated value
-//    /// initialized to `initial` and each element of `self`, in turn
-//    ///
-//    /// - Parameter initial: the initial accumulated value
-//    /// - Parameter combine: the accumulator function that will return the accumulation; the final funcation tuple
-//    ///   element should be called ad a side-effect to cause the accumulation to be pulsed
-//    @warn_unused_result public func reduce<U>(initial: U, combine: (U, Element, U -> Void) -> U) -> Channel<Source, U> {
-//        var accumulation = initial
-//        // FIXME: this is broken for multiple receivers; we need to do something like:
-//        let accumulate = pulsar { item in { receive in { accumulation = combine(accumulation, item, receive) } } }
-//
-//        return lift { receive in { item in accumulation = combine(accumulation, item, receive) } }
-//    }
-//
-//    /// Accumulate the given pulses into an array until the given predicate is satisifed, and
-//    /// then flush all the elements of the array.
-//    ///
-//    /// - Parameter predicate: that will cause the accumulated elements to be pulsed
-//    ///
-//    /// - Returns: A stateful Channel that maintains an accumulation of elements
-//    @warn_unused_result public func accumulate(predicate: ([Element], Element) -> Bool) -> Channel<Source, [Element]> {
-//        return reduce([]) { a, x, f in predicate(a, x) ? { f(a+[x]); return [] }() : a+[x] }
-//    }
-//
-//    /// Adds a channel phase that buffers emitted pulses such that the receiver will
-//    /// receive a array of the buffered pulses
-//    ///
-//    /// - Parameter count: the size of the buffer
-//    ///
-//    /// - Returns: A stateful Channel that buffers its pulses until it the buffer reaches `count`
-//    @warn_unused_result public func buffer(count: Int) -> Channel<Source, [Element]> {
-//        // note: a more optimized version of this could append to a single buffer with capacity set the count
-//        // similar to how Java 8 streams implement their "mutable reduction operation" collect() method
-//        // http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html#MutableReduction
-//        return accumulate { a, x in a.count >= count-1 }
-//    }
-//
-//    /// Adds a channel phase that aggregates pulses with the given combine function and then
-//    /// emits the pulses when the partition predicate is satisified.
-//    ///
-//    /// - Parameter initial: the initial accumulated value
-//    /// - Parameter combine: the combinator function to call with the accumulated value
-//    /// - Parameter isPartition: the predicate that signifies whether an item should cause the
-//    ///   accumulated value to be emitted and cleared
-//    /// - Parameter withPartitions: if true (the default), then terminator pulses will be included in the accumulation
-//    /// - Parameter clearAfterPulse: if true (the default), the accumulated value will be cleared after each pulse
-//    ///
-//    /// - Returns: A stateful Channel that buffers its accumulated pulses until the terminator predicate passes
-//    @warn_unused_result public func partition<U>(initial: U, withPartitions: Bool = true, clearAfterPulse: Bool = true, isPartition: (U, Element) -> Bool, combine: (U, Element) -> U) -> Channel<Source, U> {
-//        return reduce(initial) { (accumulation, item, receive) in
-//            var acc = accumulation
-//            if isPartition(acc, item) {
-//                if withPartitions { acc = combine(acc, item) }
-//                receive(acc)
-//                if clearAfterPulse { acc = initial }
-//            } else {
-//                acc = combine(acc, item)
-//            }
-//
-//            return acc
-//        }
-//    }
-
-    /// Adds a channel phase that emits a tuples of pairs (*n*, *x*),
-    /// where *n*\ s are consecutive `Int`\ s starting at zero,
-    /// and *x*\ s are the elements
-    ///
-    /// - Returns: A stateful Channel that emits a tuple with the element's index
-    @warn_unused_result public func enumerate() -> Channel<Source, (Int, Element)> {
-        var pulseCount: Int = -1
-        let incrementer = pulsar { _ in pulseCount += 1 }
-
-        func enumeratedPulse(value: Element) -> (Int, Element) {
-            incrementer(value)
-            return (pulseCount, value)
-        }
-
-        return map(enumeratedPulse)
-    }
-
-    /// Adds a channel phase that drops the first `count` elements.
-    ///
-    /// - Parameter count: the number of elements to skip before emitting pulses
-    ///
-    /// - Returns: A stateful Channel that drops the first `count` elements.
-    @warn_unused_result public func drop(count: Int) -> Channel<Source, Element> {
-        return enumerate().filter({ $0.0 >= count }).map({ $0.1 })
-    }
-}
 
 /// MARK: Muti-Channel combination operations
 
@@ -372,6 +281,147 @@ public extension Channel {
     })
 }
 
+
+// MARK - Effect utilities for channels that need to maintain state
+
+/// An EffectSource is a hybrid Receipt and Channel; it can be used to add side-effects to
+/// a channel, and cancel those side effects (along with any contingent receivers)
+public protocol EffectSourceType : Receipt {
+    associatedtype Source
+    /// The underlying source for this effect
+    var source: Source { get }
+    /// Cancels the effect and all dependent receivers
+    func cancel()
+}
+
+/// An EffectSource is a hybrid Receipt and Channel; it can be used to add side-effects to
+/// a channel, and cancel those side effects (along with any contingent receivers)
+public final class EffectSource<Source> : EffectSourceType {
+    /// The underlying source for this effect
+    public let source: Source
+    private var effect: Receipt?
+    private var receipts: [Receipt] = []
+
+    public var cancelled: Bool { return effect == nil }
+
+    public init(source: Source, effect: Receipt) {
+        self.source = source
+        self.effect = effect
+    }
+
+    /// Cancels the effect and all dependent receivers
+    public func cancel() {
+        for receipt in receipts {
+            receipt.cancel()
+        }
+        receipts.removeAll()
+        effect?.cancel()
+        effect = nil
+    }
+}
+
+public extension ChannelType where Source : EffectSourceType {
+    /// Takes an EffectSource and cancels the side-effect, which also cancels
+    /// all the downstream receivers for that side-effect to be cancelled.
+    public func unaffect() -> Channel<Source.Source, Element> {
+        source.cancel()
+        return resource { $0.source }
+    }
+}
+
+public extension ChannelType {
+    /// Performs a side-effect when the channel receives a pulse. This can be used to manage some 
+    /// arbitrary and hidden state regardless of the number of receivers that are on the channel.
+    @warn_unused_result public func affect<T>(store: T, affector: (T, Element) -> T) -> Channel<EffectSource<Source>, (Element, T)> {
+        var value = store
+        let effect = EffectSource(source: source, effect: receive { x in
+            value = affector(value, x)
+        })
+
+        return Channel(source: effect, reception: { receiver in
+            let receipt = self.receive(receiver)
+            effect.receipts.append(receipt)
+            return receipt
+        }).map({ ($0, value) })
+    }
+
+    /// Adds a channel phase with the result of repeatedly calling `combine` with an accumulated value
+    /// initialized to `initial` and each element of `self`, in turn.
+    /// Analogous to `SequenceType.reduce`.
+    ///
+    /// - Parameter initial: the initial accumulated value
+    /// - Parameter combine: the accumulator function that will return the accumulation
+    @warn_unused_result public func reduce<T>(initial: T, combine: (T, Element) -> T) -> Channel<EffectSource<Source>, T> {
+        return affect(initial, affector: combine).map { (element, reduction) in reduction }
+    }
+
+    /// Adds a channel phase that emits a tuples of pairs (*n*, *x*),
+    /// where *n*\ s are consecutive `Int`\ s starting at zero,
+    /// and *x*\ s are the elements/
+    ///
+    /// Analogous to `SequenceType.enumerate` and `EnumerateGenerator`
+    ///
+    /// - Returns: A stateful Channel that emits a tuple with the element's index
+    @warn_unused_result public func enumerate() -> Channel<EffectSource<Source>, (index: Int, element: Element)> {
+        return affect(-1) { (index, element) in index + 1 }.map { (element, index) in (index, element) }
+    }
+
+    /// Adds a channel phase that aggregates pulses with the given combine function and then
+    /// emits the pulses when the partition predicate is satisified.
+    ///
+    /// - Parameter initial: the initial accumulated value
+    /// - Parameter combine: the combinator function to call with the accumulated value
+    /// - Parameter isPartition: the predicate that signifies whether an item should cause the
+    ///   accumulated value to be emitted and cleared
+    ///
+    /// - Returns: A stateful Channel that buffers its accumulated pulses until the terminator predicate passes
+    @warn_unused_result public func partition<U>(initial: U, isPartition: (U, Element) -> Bool, combine: (U, Element) -> U) -> Channel<EffectSource<Source>, U> {
+        typealias Buffer = (store: U, flush: U?)
+
+        func bufferer(buffer: Buffer, item: Element) -> Buffer {
+            let combined = combine(buffer.store, item)
+            if isPartition(buffer.store, item) {
+                return Buffer(store: initial, flush: combined)
+            } else {
+                return Buffer(store: combined, flush: nil)
+            }
+        }
+
+        return reduce(Buffer(store: initial, flush: nil), combine: { buffer, element in bufferer(buffer, item: element) }).map({ $0.flush }).some()
+    }
+
+    /// Accumulate the given pulses into an array until the given predicate is satisifed, and
+    /// then flush all the elements of the array.
+    ///
+    /// - Parameter predicate: that will cause the accumulated elements to be pulsed
+    ///
+    /// - Returns: A stateful Channel that maintains an accumulation of elements
+    @warn_unused_result public func accumulate(predicate: ([Element], Element) -> Bool) -> Channel<EffectSource<Source>, [Element]> {
+        return partition([], isPartition: predicate) { (accumulation, element) in accumulation + [element] }
+    }
+
+    /// Adds a channel phase that buffers emitted pulses such that the receiver will
+    /// receive a array of the buffered pulses
+    ///
+    /// - Parameter count: the size of the buffer
+    ///
+    /// - Returns: A stateful Channel that buffers its pulses until it the buffer reaches `count`
+    @warn_unused_result public func buffer(limit: Int) -> Channel<EffectSource<Source>, [Element]> {
+        return accumulate { a, x in a.count >= limit-1 }
+    }
+
+    /// Adds a channel phase that drops the first `count` elements.
+    ///
+    /// - Parameter count: the number of elements to skip before emitting pulses
+    ///
+    /// - Returns: A stateful Channel that drops the first `count` elements.
+    @warn_unused_result public func drop(count: Int) -> Channel<EffectSource<Source>, Element> {
+        return enumerate().filter { $0.index >= count }.map { $0.element }
+    }
+}
+
+
 /// Utility function for marking code that is yet to be written
+@available(*, deprecated, message="Crashes, always")
 @noreturn func crash<T>() -> T { fatalError("implementme") }
 

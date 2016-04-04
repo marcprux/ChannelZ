@@ -14,6 +14,10 @@ import ObjectiveC
 import WebKit
 import AppKit
 
+/// We seem to need to keep around a global window in order to testing AppKit controls to not cause random crashes
+private let window: NSWindow = NSWindow()
+private let contentView: NSView = window.contentView!
+
 public class AppKitTests: XCTestCase {
 
     func decrement(inout x: Int) -> Int {
@@ -112,8 +116,8 @@ public class AppKitTests: XCTestCase {
     func testButtonCommand() {
         let button = NSButton()
 
-        /// seems to be needed or else the button won't get clicked
-        (NSWindow().contentView)?.addSubview(button)
+        contentView.addSubview(button) /// seems to be needed or else the button won't get clicked
+        defer { button.removeFromSuperview() }
 
         var stateChanges = 0
 
@@ -153,13 +157,14 @@ public class AppKitTests: XCTestCase {
     func testTextFieldProperties() {
         let textField = NSTextField()
 
-        let window = NSWindow()
-        /// seems to be needed or else the button won't get clicked
-        (window.contentView)?.addSubview(textField)
+        contentView.addSubview(textField) /// seems to be needed or else the button won't get clicked
+        defer { textField.removeFromSuperview() }
 
         var text = ""
 
-        let textChannel = textField∞(textField.stringValue)
+        //        let textChannel = textField∞(textField.stringValue) // intermittent crashes
+        let textChannel = textField.channelZKey(textField.stringValue, keyPath: "stringValue")
+
         let textReceiver = textChannel.receive({ text = $0 })
 
         var enabled = true
@@ -190,9 +195,6 @@ public class AppKitTests: XCTestCase {
 
         textField.enabled = false
         XCTAssertEqual(true, enabled)
-
-        textField.removeFromSuperview()
-        withExtendedLifetime(window) { }
     }
 
     func testControls() {
@@ -204,6 +206,10 @@ public class AppKitTests: XCTestCase {
         let vm = ViewModel()
 
         let stepper = NSStepper()
+
+        contentView.addSubview(stepper) /// seems to be needed or else the button won't get clicked
+        defer { stepper.removeFromSuperview() }
+
         stepper.maxValue = vm.amountMax
         stepper∞stepper.doubleValue <=∞=> vm.amount
 
@@ -283,6 +289,10 @@ public class AppKitTests: XCTestCase {
 
     func testMultipleControllerListeners() {
         let stepper = NSStepper()
+
+        contentView.addSubview(stepper) /// seems to be needed or else the button won't get clicked
+        defer { stepper.removeFromSuperview() }
+
         let channel = stepper.channelZBinding(controller: NSObjectController(content: 0))
 
         stepper.minValue = 0
@@ -290,17 +300,17 @@ public class AppKitTests: XCTestCase {
         stepper.increment = 1
 
         XCTAssertEqual(0, stepper.integerValue)
-        XCTAssertEqual(0, channel.source.kvo.value as? NSNumber)
+        XCTAssertEqual(0, channel.source.kvo.source.value as? NSNumber)
 
-        channel.source.kvo.value = 50
+        channel.source.kvo.source.value = 50
 
         XCTAssertEqual(50, stepper.integerValue)
-        XCTAssertEqual(50, channel.source.kvo.value as? NSNumber)
+        XCTAssertEqual(50, channel.source.kvo.source.value as? NSNumber)
 
         stepper.performClick(nil) // undocumented, but this decrements the stepper
 
         XCTAssertEqual(49, stepper.integerValue)
-        XCTAssertEqual(49, channel.source.kvo.value as? NSNumber)
+        XCTAssertEqual(49, channel.source.kvo.source.value as? NSNumber)
 
         var changeCounts = (-1, -1, -1)
 
@@ -317,7 +327,7 @@ public class AppKitTests: XCTestCase {
         XCTAssertEqual(1, changeCounts.0)
         XCTAssertEqual(1, changeCounts.1)
         XCTAssertEqual(1, changeCounts.2)
-        XCTAssertEqual(48, channel.source.kvo.value as? NSNumber)
+        XCTAssertEqual(48, channel.source.kvo.source.value as? NSNumber)
         XCTAssertEqual(48, stepper.integerValue)
 
         stepper.performClick(nil)
@@ -325,7 +335,7 @@ public class AppKitTests: XCTestCase {
         XCTAssertEqual(2, changeCounts.0)
         XCTAssertEqual(2, changeCounts.1)
         XCTAssertEqual(2, changeCounts.2)
-        XCTAssertEqual(47, channel.source.kvo.value as? NSNumber)
+        XCTAssertEqual(47, channel.source.kvo.source.value as? NSNumber)
         XCTAssertEqual(47, stepper.integerValue)
 
         withExtendedLifetime(stepper) { } // just so stepper is retained until the end

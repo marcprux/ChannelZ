@@ -20,6 +20,11 @@ extension StreamType {
     }
 }
 
+/// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receivers
+@warn_unused_result public func channelZSequence<S, T where S: SequenceType, S.Generator.Element == T>(from: S) -> Channel<S, S.Generator.Element> {
+    return from.channelZSequence()
+}
+
 // TODO make a spec with each of https://github.com/ReactiveX/RxScala/blob/0.x/examples/src/test/scala/rx/lang/scala/examples/RxScalaDemo.scala
 
 
@@ -41,13 +46,13 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(send, bools.values)
     }
 
-    func testChannelTraps() {
-        let seq = [1, 2, 3, 4, 5]
-        let seqz = channelZEnumerate(seq).precedent()
-        let trapz = seqz.trap(10)
-        let values = trapz.values.map({ $0.old != nil ? [$0.old!.item, $0.new.item] : [$0.new.item] })
-        XCTAssertEqual(values, [[1], [1, 2], [2, 3], [3, 4], [4, 5]])
-    }
+//    func testChannelTraps() {
+//        let seq = [1, 2, 3, 4, 5]
+//        let seqz = channelZSequence(seq).precedent()
+//        let trapz = seqz.trap(10)
+//        let values = trapz.values.map({ $0.old != nil ? [$0.old!.item, $0.new.item] : [$0.new.item] })
+//        XCTAssertEqual(values, [[1], [1, 2], [2, 3], [3, 4], [4, 5]])
+//    }
 
     func testGenerators() {
         let seq = [true, false, true, false, true]
@@ -56,22 +61,22 @@ public class ChannelTests: XCTestCase {
 //        let trap1 = gfun1.trap(3)
 //        XCTAssertEqual(seq[2...4], trap1.values[0...2], "trap should contain the last 3 elements of the sequence generator")
 
-        let gfun2 = channelZEnumerate(seq).items() // GeneratorChannel with sequence
+        let gfun2 = channelZSequence(seq) // GeneratorChannel with sequence
         let trap2 = gfun2.trap(3)
         XCTAssertEqual(seq[2...4], trap2.values[0...2], "trap should contain the last 3 elements of the sequence generator")
 
-        let trapped = (channelZEnumerate(1...5).items() & channelZEnumerate(6...10).items()).trap(1000)
+        let trapped = (channelZSequence(1...5) & channelZSequence(6...10)).trap(1000)
         
         XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]]) // tupes aren't equatable
 
         // observable concatenation
         // the equivalent of ReactiveX's Range
-        let merged = (channelZEnumerate(1...3).items() + channelZEnumerate(3...5).items() + channelZEnumerate(2...6).items()).trap(1000)
+        let merged = (channelZSequence(1...3) + channelZSequence(3...5) + channelZSequence(2...6)).trap(1000)
         XCTAssertEqual(merged.values, [1, 2, 3, 3, 4, 5, 2, 3, 4, 5, 6])
 
         // the equivalent of ReactiveX's Repeat
-        XCTAssertEqual(channelZEnumerate(Repeat(count: 10, repeatedValue: "A")).items().trap(4).values, ["A", "A", "A", "A"])
-        XCTAssertEqual(channelZEnumerate(Repeat(count: 10, repeatedValue: "A")).subsequent().items().trap(4).values, [])
+        XCTAssertEqual(channelZSequence(Repeat(count: 10, repeatedValue: "A")).trap(4).values, ["A", "A", "A", "A"])
+        XCTAssertEqual(channelZSequence(Repeat(count: 10, repeatedValue: "A")).subsequent().trap(4).values, [])
     }
 
     func testMergedUnreceive() {
@@ -87,7 +92,7 @@ public class ChannelTests: XCTestCase {
         typealias S2 = SinkTo<(Float)>
         typealias S3 = ()->Void?
 
-        let o1: Channel<S1, Int> = channelZEnumerate(1...3).items()
+        let o1: Channel<S1, Int> = channelZSequence(1...3)
         let o2: Channel<S2, Int> = channelZSink(Float).map({ Int($0) })
         let o3: Channel<S3, Void> = channelZClosure(coinFlip)
 
@@ -222,45 +227,132 @@ public class ChannelTests: XCTestCase {
     }
 
     func testSieveDistinct() {
-        let numberz = channelZEnumerate([1, 1, 2, 1, 2, 2, 2, 3, 3, 4])
-        let distinctor = numberz.sieve({ $0.item != $1.item }).items()
-        XCTAssertEqual([1, 2, 1, 2, 3, 4], distinctor.immediateItems)
-        XCTAssertEqual(6, distinctor.map({ _ in arc4random() }).immediateItems.count)
+        let numberz = channelZProperty(1)
+
+        var items: [Int] = []
+        numberz.changes(!=).receive {
+            items.append($0)
+        }
+
+        for num in [1, 2, 1, 2, 2, 2, 3, 3, 4] {
+            numberz.source.value = num
+        }
+
+        XCTAssertEqual([1, 2, 1, 2, 3, 4], items)
     }
 
     func testSieveLastIncrementing() {
-        let numberz = channelZEnumerate([1, 1, 2, 1, 2, 2, 2, 3, 3, 4, 1, 3])
-//        let incrementor = numberz.sieveIncrementing() // defined in our test protocol
-//        let incrementor = numberz.sieve(<)
-        let incrementor = numberz.sieve({ $0.item < $1.item }).items()
+        let numberz = channelZProperty(1)
 
-        XCTAssertEqual([1, 2, 2, 3, 4, 3], incrementor.immediateItems)
+        var items: [Int] = []
+        numberz.changes(<).receive {
+            items.append($0)
+        }
+
+        for n in [1, 1, 2, 1, 2, 2, 2, 3, 3, 4, 1, 3] {
+            numberz.source.put(n)
+        }
+
+        XCTAssertEqual([1, 2, 2, 3, 4, 3], items)
     }
 
-//    func testBuffer() {
-//        let numberz = channelZEnumerate([1, 2, 3, 4, 5, 6, 7])
-//        let bufferer = numberz.buffer(3)
-//        let items = bufferer.items() // .immediateItems
-////        XCTAssertEqual([[1, 2, 3], [4, 5, 6]], bufferer.immediateItems)
-//    }
-//
+    func testReduceImmediate() {
+        let numberz = channelZSequence([1, 2, 3, 4, 5, 6, 7])
+        let sum = numberz.reduce(0, combine: +)
+
+        var sums: [Int] = []
+        sum.receive { x in sums.append(x) }
+
+//        XCTAssertEqual(sums, [1, 3, 6, 10, 15, 21, 28])
+        XCTAssertEqual(sums, [28, 28, 28, 28, 28, 28, 28])
+    }
+
+    func testReduceMultiple() {
+        let numberz = channelZPropertyState(0).new()
+
+        let sum = numberz.reduce(0, combine: +)
+
+        var raws = (Array<Int>(), Array<Int>())
+        let r0 = numberz.receive { x in raws.0.append(x) }
+
+        var sums = (Array<Int>(), Array<Int>(), Array<Int>())
+        let r1 = sum.receive { x in sums.0.append(x) }
+        let r2 = sum.receive { x in sums.1.append(x) }
+        let r3 = sum.receive { x in sums.2.append(x) }
+
+        let r4 = numberz.receive { x in raws.1.append(x) }
+
+        for i in 1...7 { numberz.value = i }
+
+        XCTAssertEqual(raws.0, Array(0...7))
+        XCTAssertEqual(sums.0, [0, 1, 3, 6, 10, 15, 21, 28])
+        XCTAssertEqual(sums.1, [0, 1, 3, 6, 10, 15, 21, 28])
+        XCTAssertEqual(sums.2, [0, 1, 3, 6, 10, 15, 21, 28])
+        XCTAssertEqual(raws.1, Array(0...7))
+
+        XCTAssertFalse(r0.cancelled)
+        XCTAssertFalse(r1.cancelled)
+        XCTAssertFalse(r2.cancelled)
+        XCTAssertFalse(r3.cancelled)
+        XCTAssertFalse(r4.cancelled)
+
+        sum.unaffect()
+
+        numberz.value = 99
+
+        XCTAssertEqual(raws.0, Array(0...7) + [99])
+        XCTAssertEqual(sums.0, [0, 1, 3, 6, 10, 15, 21, 28])
+        XCTAssertEqual(sums.1, [0, 1, 3, 6, 10, 15, 21, 28])
+        XCTAssertEqual(sums.2, [0, 1, 3, 6, 10, 15, 21, 28])
+        XCTAssertEqual(raws.1, Array(0...7) + [99])
+
+        XCTAssertFalse(r0.cancelled)
+        XCTAssertTrue(r1.cancelled)
+        XCTAssertTrue(r2.cancelled)
+        XCTAssertTrue(r3.cancelled)
+        XCTAssertFalse(r4.cancelled)
+
+        withExtendedLifetime((r0, r1, r2, r3, r4)) { }
+    }
+
+    func testBuffer() {
+        let numberz = channelZProperty(0)
+        let bufferer = numberz.buffer(3)
+
+        var items: [[Int]] = []
+        bufferer.receive { items.append($0) }
+        for i in 1...10 { numberz.value = i }
+        // note that 9 & 10 are dropped because they don't satisfy the buffering requirement
+        XCTAssertTrue([[0, 1, 2], [3, 4, 5], [6, 7, 8]] == items, "Bad buffered items: \(items)")
+    }
+
 //    func testTerminate() {
-//        let boolz = channelZEnumerate([true, true, true, false, true, false, false, true])
+//        let boolz = channelZSequence([true, true, true, false, true, false, false, true])
 //        let finite = boolz.terminate(!)
 //        XCTAssertEqual([true, true, true], finite.immediateItems)
 //
-//        let boolz2 = channelZEnumerate([true, true, true, false, true, false, false, true])
+//        let boolz2 = channelZSequence([true, true, true, false, true, false, false, true])
 //        let finite2 = boolz2.terminate(!, terminus: { false })
 //        XCTAssertEqual([true, true, true, false], finite2.immediateItems)
 //    }
-//
-//    func testReduceNumbers() {
-//        let numberz = channelZEnumerate(1...100)
-//        let bufferer = numberz.partition(0, isPartition: { b,x in x % 7 == 0 }, combine: +)
-//        let a1 = 1+2+3+4+5+6+7
-//        let a2 = 8+9+10+11+12+13+14
-//        XCTAssertEqual([a1, a2, 126, 175, 224, 273, 322, 371, 420, 469, 518, 567, 616, 665], bufferer.immediateItems)
-//    }
+
+    func testReduceNumbers() {
+        let numberz = channelZProperty(0)
+        // computes the running sum of each batch of 7 non-zero numbers
+        let bufferer = numberz.partition(0, isPartition: { b,x in x > 0 && x % 7 == 0 }, combine: +)
+        var items = (Array<Int>(), Array<Int>(), Array<Int>())
+        bufferer.receive { items.0.append($0) }
+        bufferer.receive { items.1.append($0) }
+        bufferer.receive { items.2.append($0) }
+
+        for i in 1...100 { numberz.value = i }
+        let a1 = 1+2+3+4+5+6+7
+        let a2 = 8+9+10+11+12+13+14
+
+        XCTAssertEqual([a1, a2, 126, 175, 224, 273, 322, 371, 420, 469, 518, 567, 616, 665], items.0)
+        XCTAssertEqual([a1, a2, 126, 175, 224, 273, 322, 371, 420, 469, 518, 567, 616, 665], items.1)
+        XCTAssertEqual([a1, a2, 126, 175, 224, 273, 322, 371, 420, 469, 518, 567, 616, 665], items.2)
+    }
 
     // FIXME: linker error
 //    func testReduceRunningAverage() {
@@ -859,7 +951,7 @@ public class ChannelTests: XCTestCase {
 //            return { (str: String) in for c in str.characters { f(c) } }
 //        }
 //
-//        let strings: Channel<[String], String> = channelZEnumerate(["abc"])
+//        let strings: Channel<[String], String> = channelZSequence(["abc"])
 //        let chars1 = strings.lift2(stringsToChars)
 //        _ = strings.lift2 { (f: Character->Void) in { (str: String) in let _ = str.characters.map(f) } }
 //
@@ -971,8 +1063,8 @@ public class ChannelTests: XCTestCase {
 
 //    func testZippedGenerators() {
 //        let range = 1...6
-//        let nums = channelZEnumerate(1...3) + channelZEnumerate(4...5) + channelZEnumerate([6])
-//        let strs = channelZEnumerate(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
+//        let nums = channelZSequence(1...3) + channelZSequence(4...5) + channelZSequence([6])
+//        let strs = channelZSequence(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
 //        var numstrs: [(Int, String)] = []
 //        let zipped = (nums & strs)
 //        zipped.receive({ numstrs += [$0] })
@@ -981,7 +1073,7 @@ public class ChannelTests: XCTestCase {
 //    }
 
     func testPropertyChannelSieve() {
-        let stringz = PropertySource("").channelZState().changes().new().subsequent()
+        let stringz = PropertySource("").channelZState().sieve().new().subsequent()
         var strs: [String] = []
 
         stringz.receive({ strs.append($0) })
@@ -1019,7 +1111,7 @@ public class ChannelTests: XCTestCase {
     }
 
     func testMultipleReceiversOnSievedPropertyChannel() {
-        let prop = PropertySource(111).channelZState().changes() // also works
+        let prop = PropertySource(111).channelZState().sieve() // also works
 //        let prop = PropertySource(111).channelZState().sieve(!=).new()
 
         var counts = (0, 0, 0)
@@ -1048,33 +1140,6 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(3, counts.2)
     }
 
-    func testPulseIndices() {
-        let prop = channelZPropertyState(Void)
-        var indices = (Array<AnyForwardIndex>(), Array<AnyForwardIndex>(), Array<AnyForwardIndex>())
-
-        XCTAssertEqual(0, indices.0.count)
-        XCTAssertEqual(0, indices.1.count)
-        XCTAssertEqual(0, indices.2.count)
-
-        prop.receive({ indices.0.append($0.index) })
-        prop.receive({ indices.1.append($0.index) })
-        prop.receive({ indices.2.append($0.index) })
-
-        XCTAssertEqual(1, indices.0.count)
-        XCTAssertEqual(1, indices.1.count)
-        XCTAssertEqual(1, indices.2.count)
-
-        for _ in 1...9 { prop.source.put(Void) }
-
-        XCTAssertEqual(10, indices.0.count)
-        XCTAssertEqual(10, indices.1.count)
-        XCTAssertEqual(10, indices.2.count)
-
-        XCTAssertEqual(indices.0, indices.1)
-        XCTAssertEqual(indices.0, indices.2)
-
-    }
-
     func testEnumerateWithMultipleReceivers() {
         let prop = channelZPropertyState("")
         let enumerated = prop.enumerate()
@@ -1100,8 +1165,8 @@ public class ChannelTests: XCTestCase {
     }
 
     func testDrpoWithMultipleReceivers() {
-        let prop = channelZPropertyState(0)
-        let dropped = prop.drop(3).new()
+        let prop: Channel<PropertySource<Int>, Int> = channelZProperty(0)
+        let dropped: Channel<EffectSource<PropertySource<Int>>, Int> = prop.drop(3)
 
         var values = (Array<Int>(), Array<Int>(), Array<Int>())
         dropped.receive({ values.0.append($0) })

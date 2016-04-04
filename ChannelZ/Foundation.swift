@@ -299,7 +299,6 @@ public protocol KeyValueSourceType : class, StateSink, StateSource {
     var keyPath: String { get }
     var object: NSObject? { get }
     var receivers: ReceiverList<StatePulse<Element>> { get }
-    var pulseIndex: Int64 { get }
 
     func get() -> Element
     func createPulse(change: NSDictionary) -> StatePulse<Element>
@@ -353,7 +352,7 @@ public extension KeyValueSourceType {
 
     private func addReceiver(receiver: StatePulse<Element> -> Void) -> Receipt {
         // immediately issue the original value with no previous value
-        receiver(StatePulse<Element>(old: Optional<Element>.None, new: get(), index: AnyForwardIndex(pulseIndex)))
+        receiver(StatePulse<Element>(old: Optional<Element>.None, new: get()))
 
         let kp = keyPath
         let index = receivers.addReceiver(receiver)
@@ -378,7 +377,6 @@ public final class KeyValueSource<T>: KeyValueSourceType {
     public let optional = false
     public private(set) weak var object: NSObject?
     public let receivers = ReceiverList<StatePulse<Element>>()
-    public private(set) var pulseIndex: Int64 = 0
 
     public init(target: KeyValueTarget<Element>) {
         self.object = target.target
@@ -395,7 +393,7 @@ public final class KeyValueSource<T>: KeyValueSourceType {
     public func createPulse(change: NSDictionary) -> StatePulse<Element> {
         let newv: Element? = coerceFoundationType(change[NSKeyValueChangeNewKey]!)
         let oldv: Element? = coerceFoundationType(change[NSKeyValueChangeOldKey]!)
-        return StatePulse<Element>(old: oldv, new: newv!, index: AnyForwardIndex(OSAtomicIncrement64(&pulseIndex)))
+        return StatePulse<Element>(old: oldv, new: newv!)
     }
 }
 
@@ -407,7 +405,6 @@ public final class KeyValueOptionalSource<T>: KeyValueSourceType {
     public let optional = true
     public private(set) weak var object: NSObject?
     public let receivers = ReceiverList<StatePulse<Element>>()
-    public private(set) var pulseIndex: Int64 = 0
 
     public init(target: KeyValueTarget<Element>) {
         self.object = target.target
@@ -424,7 +421,7 @@ public final class KeyValueOptionalSource<T>: KeyValueSourceType {
     public func createPulse(change: NSDictionary) -> StatePulse<Element> {
         let newv: Element = coerceFoundationType(change[NSKeyValueChangeNewKey]!)
         let oldv: Element = coerceFoundationType(change[NSKeyValueChangeOldKey]!)
-        return StatePulse<Element>(old: oldv, new: newv, index: AnyForwardIndex(OSAtomicIncrement64(&pulseIndex)))
+        return StatePulse<Element>(old: oldv, new: newv)
     }
 }
 
