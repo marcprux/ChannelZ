@@ -154,11 +154,6 @@ public func <~∞~> <S1, S2, T1, T2 where S1: Sink, S2: Sink, S1.Element == T2, 
 
 // MARK: Channel Tuple flatten/combine support
 
-/// Channel combination & flattening operation (operator form of `flatAny`)
-public func |<S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>) -> Channel<(S1, S2), (T1?, T2?)> {
-    return lhs.either(rhs)
-}
-
 /// Channel zipping & flattening operation
 public func &<S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>) -> Channel<(S1, S2), (T1, T2)> {
     return lhs.zip(rhs)
@@ -166,12 +161,12 @@ public func &<S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>) -> Cha
 
 
 public protocol OneOfN {
-    var count: Int { get }
+    var arity: Int { get }
 }
 
 /// One of a set number of options
 public enum OneOf2<T1, T2>: OneOfN {
-    public var count: Int { return 2 }
+    public var arity: Int { return 2 }
 
     case V1(T1)
     case V2(T2)
@@ -179,7 +174,7 @@ public enum OneOf2<T1, T2>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf3<T1, T2, T3>: OneOfN {
-    public var count: Int { return 3 }
+    public var arity: Int { return 3 }
 
     case V1(T1)
     case V2(T2)
@@ -204,7 +199,7 @@ public enum OneOf3<T1, T2, T3>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf4<T1, T2, T3, T4>: OneOfN {
-    public var count: Int { return 4 }
+    public var arity: Int { return 4 }
 
     case V1(T1)
     case V2(T2)
@@ -214,7 +209,7 @@ public enum OneOf4<T1, T2, T3, T4>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf5<T1, T2, T3, T4, T5>: OneOfN {
-    public var count: Int { return 5 }
+    public var arity: Int { return 5 }
 
     case V1(T1)
     case V2(T2)
@@ -225,7 +220,7 @@ public enum OneOf5<T1, T2, T3, T4, T5>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf6<T1, T2, T3, T4, T5, T6>: OneOfN {
-    public var count: Int { return 6 }
+    public var arity: Int { return 6 }
 
     case V1(T1)
     case V2(T2)
@@ -237,7 +232,7 @@ public enum OneOf6<T1, T2, T3, T4, T5, T6>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf7<T1, T2, T3, T4, T5, T6, T7>: OneOfN {
-    public var count: Int { return 7 }
+    public var arity: Int { return 7 }
     case V1(T1)
     case V2(T2)
     case V3(T3)
@@ -249,7 +244,7 @@ public enum OneOf7<T1, T2, T3, T4, T5, T6, T7>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf8<T1, T2, T3, T4, T5, T6, T7, T8>: OneOfN {
-    public var count: Int { return 8 }
+    public var arity: Int { return 8 }
 
     case V1(T1)
     case V2(T2)
@@ -263,7 +258,7 @@ public enum OneOf8<T1, T2, T3, T4, T5, T6, T7, T8>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: OneOfN {
-    public var count: Int { return 9 }
+    public var arity: Int { return 9 }
 
     case V1(T1)
     case V2(T2)
@@ -278,7 +273,7 @@ public enum OneOf9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: OneOfN {
-    public var count: Int { return 10 }
+    public var arity: Int { return 10 }
 
     case V1(T1)
     case V2(T2)
@@ -294,7 +289,7 @@ public enum OneOf10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: OneOfN {
-    public var count: Int { return 11 }
+    public var arity: Int { return 11 }
 
     case V1(T1)
     case V2(T2)
@@ -312,7 +307,7 @@ public enum OneOf11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: OneOfN {
-    public var count: Int { return 12 }
+    public var arity: Int { return 12 }
 
     case V1(T1)
     case V2(T2)
@@ -330,7 +325,7 @@ public enum OneOf12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: OneOfN {
 
 /// One of a set number of options
 public enum OneOf13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: OneOfN {
-    public var count: Int { return 13 }
+    public var arity: Int { return 13 }
 
     case V1(T1)
     case V2(T2)
@@ -349,7 +344,7 @@ public enum OneOf13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: One
 
 /// One of a set number of options
 public enum OneOf14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>: OneOfN {
-    public var count: Int { return 14 }
+    public var arity: Int { return 14 }
 
     case V1(T1)
     case V2(T2)
@@ -369,7 +364,7 @@ public enum OneOf14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>
 
 /// One of a set number of options
 public enum OneOf15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>: OneOfN {
-    public var count: Int { return 15 }
+    public var arity: Int { return 15 }
 
     case V1(T1)
     case V2(T2)
@@ -390,7 +385,7 @@ public enum OneOf15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
 /// One of a set number of options
 public enum OneOf16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>: OneOfN {
-    public var count: Int { return 16 }
+    public var arity: Int { return 16 }
 
     case V1(T1)
     case V2(T2)
@@ -412,7 +407,7 @@ public enum OneOf16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
 /// One of a set number of options
 public enum OneOf17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>: OneOfN {
-    public var count: Int { return 17 }
+    public var arity: Int { return 17 }
 
     case V1(T1)
     case V2(T2)
@@ -436,7 +431,7 @@ public enum OneOf17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
 /// One of a set number of options
 public enum OneOf18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>: OneOfN {
-    public var count: Int { return 18 }
+    public var arity: Int { return 18 }
 
     case V1(T1)
     case V2(T2)
@@ -461,7 +456,7 @@ public enum OneOf18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
 /// One of a set number of options
 public enum OneOf19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>: OneOfN {
-    public var count: Int { return 19 }
+    public var arity: Int { return 19 }
 
     case V1(T1)
     case V2(T2)
@@ -487,7 +482,7 @@ public enum OneOf19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
 /// One of a set number of options
 public enum OneOf20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>: OneOfN {
-    public var count: Int { return 20 }
+    public var arity: Int { return 20 }
 
     case V1(T1)
     case V2(T2)
@@ -559,43 +554,96 @@ public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, 
 public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18)>, rhs: Channel<S19, T19>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19)> { return combineSources(combineAll(lhs.zip(rhs))) }
 public func &<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19)>, rhs: Channel<S20, T20>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20)> { return combineSources(combineAll(lhs.zip(rhs))) }
 
-public func |<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1?, T2?)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1?, T2?, T3?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, T1, T2, T3, T4>(lhs: Channel<(S1, S2, S3), (T1?, T2?, T3?)>, rhs: Channel<S4, T4>)->Channel<(S1, S2, S3, S4), (T1?, T2?, T3?, T4?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, T1, T2, T3, T4, T5>(lhs: Channel<(S1, S2, S3, S4), (T1?, T2?, T3?, T4?)>, rhs: Channel<S5, T5>)->Channel<(S1, S2, S3, S4, S5), (T1?, T2?, T3?, T4?, T5?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, T1, T2, T3, T4, T5, T6>(lhs: Channel<(S1, S2, S3, S4, S5), (T1?, T2?, T3?, T4?, T5?)>, rhs: Channel<S6, T6>)->Channel<(S1, S2, S3, S4, S5, S6), (T1?, T2?, T3?, T4?, T5?, T6?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, T1, T2, T3, T4, T5, T6, T7>(lhs: Channel<(S1, S2, S3, S4, S5, S6), (T1?, T2?, T3?, T4?, T5?, T6?)>, rhs: Channel<S7, T7>)->Channel<(S1, S2, S3, S4, S5, S6, S7), (T1?, T2?, T3?, T4?, T5?, T6?, T7?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, T1, T2, T3, T4, T5, T6, T7, T8>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7), (T1?, T2?, T3?, T4?, T5?, T6?, T7?)>, rhs: Channel<S8, T8>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, T1, T2, T3, T4, T5, T6, T7, T8, T9>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?)>, rhs: Channel<S9, T9>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?)>, rhs: Channel<S10, T10>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?)>, rhs: Channel<S11, T11>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?)>, rhs: Channel<S12, T12>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?)>, rhs: Channel<S13, T13>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?)>, rhs: Channel<S14, T14>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?)>, rhs: Channel<S15, T15>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?)>, rhs: Channel<S16, T16>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?)>, rhs: Channel<S17, T17>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?)>, rhs: Channel<S18, T18>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)>, rhs: Channel<S19, T19>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)> { return combineSources(combineAny(lhs.either(rhs))) }
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)>, rhs: Channel<S20, T20>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?, T20?)> { return combineSources(combineAny(lhs.either(rhs))) }
 
-private func flattenSources<S1, S2, S3, T>(rcvr: Channel<((S1, S2), S3), T>)->Channel<(S1, S2, S3), T> { return rcvr.resource { src in (src.0.0, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, T>(rcvr: Channel<(((S1, S2), S3), S4), T>)->Channel<(S1, S2, S3, S4), T> { return rcvr.resource { src in (src.0.0.0, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((((S1, S2), S3), S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { return rcvr.resource { src in (src.0.0.0.0, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, T>(rcvr: Channel<(((((S1, S2), S3), S4), S5), S6), T>)->Channel<(S1, S2, S3, S4, S5, S6), T> { return rcvr.resource { src in (src.0.0.0.0.0, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, T>(rcvr: Channel<((((((S1, S2), S3), S4), S5), S6), S7), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7), T> { return rcvr.resource { src in (src.0.0.0.0.0.0, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, T>(rcvr: Channel<(((((((S1, S2), S3), S4), S5), S6), S7), S8), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, T>(rcvr: Channel<((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T>(rcvr: Channel<(((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T>(rcvr: Channel<((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T>(rcvr: Channel<(((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, T>(rcvr: Channel<((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, T>(rcvr: Channel<(((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, T>(rcvr: Channel<((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, T>(rcvr: Channel<(((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, T>(rcvr: Channel<((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, T>(rcvr: Channel<(((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), S18), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, T>(rcvr: Channel<((((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), S18), S19), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
-private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T>(rcvr: Channel<(((((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), S18), S19), S20), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+/// Channel combination & flattening operation (operator form of `flatAny`)
+public func |<S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>) -> Channel<(S1, S2), OneOf2<T1, T2>> {
+    return lhs.or(rhs)
+}
+
+public func |<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), OneOf2<T1, T2>>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), OneOf3<T1, T2, T3>> {
+    return combineSources(lhs.or(rhs)).map { oneof in
+        switch oneof {
+        case .V1(.V1(let x)): return .V1(x)
+        case .V1(.V2(let x)): return .V2(x)
+        case .V2(let x): return .V3(x)
+        }
+    }
+}
+
+public func |<S1, S2, S3, S4, T1, T2, T3, T4>(lhs: Channel<(S1, S2, S3), OneOf3<T1, T2, T3>>, rhs: Channel<S4, T4>)->Channel<(S1, S2, S3, S4), OneOf4<T1, T2, T3, T4>> {
+    return combineSources(lhs.or(rhs)).map { oneof in
+        switch oneof {
+        case .V1(.V1(let x)): return .V1(x)
+        case .V1(.V2(let x)): return .V2(x)
+        case .V1(.V3(let x)): return .V3(x)
+        case .V2(let x): return .V4(x)
+        }
+    }
+}
+
+public func |<S1, S2, S3, S4, S5, T1, T2, T3, T4, T5>(lhs: Channel<(S1, S2, S3, S4), OneOf4<T1, T2, T3, T4>>, rhs: Channel<S5, T5>)->Channel<(S1, S2, S3, S4, S5), OneOf5<T1, T2, T3, T4, T5>> {
+    return combineSources(lhs.or(rhs)).map { oneof in
+        switch oneof {
+        case .V1(.V1(let x)): return .V1(x)
+        case .V1(.V2(let x)): return .V2(x)
+        case .V1(.V3(let x)): return .V3(x)
+        case .V1(.V4(let x)): return .V4(x)
+        case .V2(let x): return .V5(x)
+        }
+    }
+}
+
+public func |<S1, S2, S3, S4, S5, S6, T1, T2, T3, T4, T5, T6>(lhs: Channel<(S1, S2, S3, S4, S5), OneOf5<T1, T2, T3, T4, T5>>, rhs: Channel<S6, T6>)->Channel<(S1, S2, S3, S4, S5, S6), OneOf6<T1, T2, T3, T4, T5, T6>> {
+    return combineSources(lhs.or(rhs)).map { oneof in
+        switch oneof {
+        case .V1(.V1(let x)): return .V1(x)
+        case .V1(.V2(let x)): return .V2(x)
+        case .V1(.V3(let x)): return .V3(x)
+        case .V1(.V4(let x)): return .V4(x)
+        case .V1(.V5(let x)): return .V5(x)
+        case .V2(let x): return .V6(x)
+        }
+    }
+}
+
+
+//public func |<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1?, T2?)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1?, T2?, T3?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, T1, T2, T3, T4>(lhs: Channel<(S1, S2, S3), (T1?, T2?, T3?)>, rhs: Channel<S4, T4>)->Channel<(S1, S2, S3, S4), (T1?, T2?, T3?, T4?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, T1, T2, T3, T4, T5>(lhs: Channel<(S1, S2, S3, S4), (T1?, T2?, T3?, T4?)>, rhs: Channel<S5, T5>)->Channel<(S1, S2, S3, S4, S5), (T1?, T2?, T3?, T4?, T5?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, T1, T2, T3, T4, T5, T6>(lhs: Channel<(S1, S2, S3, S4, S5), (T1?, T2?, T3?, T4?, T5?)>, rhs: Channel<S6, T6>)->Channel<(S1, S2, S3, S4, S5, S6), (T1?, T2?, T3?, T4?, T5?, T6?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, T1, T2, T3, T4, T5, T6, T7>(lhs: Channel<(S1, S2, S3, S4, S5, S6), (T1?, T2?, T3?, T4?, T5?, T6?)>, rhs: Channel<S7, T7>)->Channel<(S1, S2, S3, S4, S5, S6, S7), (T1?, T2?, T3?, T4?, T5?, T6?, T7?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, T1, T2, T3, T4, T5, T6, T7, T8>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7), (T1?, T2?, T3?, T4?, T5?, T6?, T7?)>, rhs: Channel<S8, T8>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, T1, T2, T3, T4, T5, T6, T7, T8, T9>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?)>, rhs: Channel<S9, T9>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?)>, rhs: Channel<S10, T10>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?)>, rhs: Channel<S11, T11>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?)>, rhs: Channel<S12, T12>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?)>, rhs: Channel<S13, T13>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?)>, rhs: Channel<S14, T14>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?)>, rhs: Channel<S15, T15>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?)>, rhs: Channel<S16, T16>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?)>, rhs: Channel<S17, T17>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?)>, rhs: Channel<S18, T18>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)>, rhs: Channel<S19, T19>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)>, rhs: Channel<S20, T20>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?, T20?)> { return combineSources(combineAny(lhs.either(rhs))) }
+//
+//private func flattenSources<S1, S2, S3, T>(rcvr: Channel<((S1, S2), S3), T>)->Channel<(S1, S2, S3), T> { return rcvr.resource { src in (src.0.0, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, T>(rcvr: Channel<(((S1, S2), S3), S4), T>)->Channel<(S1, S2, S3, S4), T> { return rcvr.resource { src in (src.0.0.0, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((((S1, S2), S3), S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { return rcvr.resource { src in (src.0.0.0.0, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, T>(rcvr: Channel<(((((S1, S2), S3), S4), S5), S6), T>)->Channel<(S1, S2, S3, S4, S5, S6), T> { return rcvr.resource { src in (src.0.0.0.0.0, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, T>(rcvr: Channel<((((((S1, S2), S3), S4), S5), S6), S7), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7), T> { return rcvr.resource { src in (src.0.0.0.0.0.0, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, T>(rcvr: Channel<(((((((S1, S2), S3), S4), S5), S6), S7), S8), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, T>(rcvr: Channel<((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T>(rcvr: Channel<(((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T>(rcvr: Channel<((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T>(rcvr: Channel<(((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, T>(rcvr: Channel<((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, T>(rcvr: Channel<(((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, T>(rcvr: Channel<((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, T>(rcvr: Channel<(((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, T>(rcvr: Channel<((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, T>(rcvr: Channel<(((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), S18), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, T>(rcvr: Channel<((((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), S18), S19), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
+//private func flattenSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T>(rcvr: Channel<(((((((((((((((((((S1, S2), S3), S4), S5), S6), S7), S8), S9), S10), S11), S12), S13), S14), S15), S16), S17), S18), S19), S20), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), T> { return rcvr.resource { src in (src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.0.1, src.0.0.0.0.0.0.1, src.0.0.0.0.0.1, src.0.0.0.0.1, src.0.0.0.1, src.0.0.1, src.0.1, src.1) } }
 
 private func combineSources<S1, S2, S3, T>(rcvr: Channel<((S1, S2), S3), T>)->Channel<(S1, S2, S3), T> { return rcvr.resource { src in (src.0.0, src.0.1, src.1) } }
 private func combineSources<S1, S2, S3, S4, T>(rcvr: Channel<((S1, S2, S3), S4), T>)->Channel<(S1, S2, S3, S4), T> { return rcvr.resource { src in (src.0.0, src.0.1, src.0.2, src.1) } }
@@ -617,24 +665,24 @@ private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S
 private func combineSources<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T>(rcvr: Channel<((S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), S20), T>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), T> { return rcvr.resource { src in (src.0.0, src.0.1, src.0.2, src.0.3, src.0.4, src.0.5, src.0.6, src.0.7, src.0.8, src.0.9, src.0.10, src.0.11, src.0.12, src.0.13, src.0.14, src.0.15, src.0.16, src.0.17, src.0.18, src.1) } }
 
 
-private func flattenElements<S, T1, T2, T3>(rcvr: Channel<S, ((T1, T2), T3)>)->Channel<S, (T1, T2, T3)> { return rcvr.map { ($0.0.0, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4>(rcvr: Channel<S, (((T1, T2), T3), T4)>)->Channel<S, (T1, T2, T3, T4)> { return rcvr.map { ($0.0.0.0, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5>(rcvr: Channel<S, ((((T1, T2), T3), T4), T5)>)->Channel<S, (T1, T2, T3, T4, T5)> { return rcvr.map { ($0.0.0.0.0, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6>(rcvr: Channel<S, (((((T1, T2), T3), T4), T5), T6)>)->Channel<S, (T1, T2, T3, T4, T5, T6)> { return rcvr.map { ($0.0.0.0.0.0, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7>(rcvr: Channel<S, ((((((T1, T2), T3), T4), T5), T6), T7)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7)> { return rcvr.map { ($0.0.0.0.0.0.0, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8>(rcvr: Channel<S, (((((((T1, T2), T3), T4), T5), T6), T7), T8)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8)> { return rcvr.map { ($0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9>(rcvr: Channel<S, ((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(rcvr: Channel<S, (((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(rcvr: Channel<S, ((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(rcvr: Channel<S, (((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(rcvr: Channel<S, ((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(rcvr: Channel<S, (((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(rcvr: Channel<S, ((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(rcvr: Channel<S, (((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(rcvr: Channel<S, ((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(rcvr: Channel<S, (((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17), T18)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(rcvr: Channel<S, ((((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17), T18), T19)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
-private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(rcvr: Channel<S, (((((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17), T18), T19), T20)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3>(rcvr: Channel<S, ((T1, T2), T3)>)->Channel<S, (T1, T2, T3)> { return rcvr.map { ($0.0.0, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4>(rcvr: Channel<S, (((T1, T2), T3), T4)>)->Channel<S, (T1, T2, T3, T4)> { return rcvr.map { ($0.0.0.0, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5>(rcvr: Channel<S, ((((T1, T2), T3), T4), T5)>)->Channel<S, (T1, T2, T3, T4, T5)> { return rcvr.map { ($0.0.0.0.0, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6>(rcvr: Channel<S, (((((T1, T2), T3), T4), T5), T6)>)->Channel<S, (T1, T2, T3, T4, T5, T6)> { return rcvr.map { ($0.0.0.0.0.0, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7>(rcvr: Channel<S, ((((((T1, T2), T3), T4), T5), T6), T7)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7)> { return rcvr.map { ($0.0.0.0.0.0.0, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8>(rcvr: Channel<S, (((((((T1, T2), T3), T4), T5), T6), T7), T8)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8)> { return rcvr.map { ($0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9>(rcvr: Channel<S, ((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(rcvr: Channel<S, (((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(rcvr: Channel<S, ((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(rcvr: Channel<S, (((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(rcvr: Channel<S, ((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(rcvr: Channel<S, (((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(rcvr: Channel<S, ((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(rcvr: Channel<S, (((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(rcvr: Channel<S, ((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(rcvr: Channel<S, (((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17), T18)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(rcvr: Channel<S, ((((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17), T18), T19)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
+//private func flattenElements<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(rcvr: Channel<S, (((((((((((((((((((T1, T2), T3), T4), T5), T6), T7), T8), T9), T10), T11), T12), T13), T14), T15), T16), T17), T18), T19), T20)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20)> { return rcvr.map { ($0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.0.1, $0.0.0.0.0.0.0.1, $0.0.0.0.0.0.1, $0.0.0.0.0.1, $0.0.0.0.1, $0.0.0.1, $0.0.1, $0.1) } }
 
 private func combineAll<S, T1, T2, T3>(rcvr: Channel<S, ((T1, T2), T3)>)->Channel<S, (T1, T2, T3)> { return rcvr.map { ($0.0.0, $0.0.1, $0.1) } }
 private func combineAll<S, T1, T2, T3, T4>(rcvr: Channel<S, ((T1, T2, T3), T4)>)->Channel<S, (T1, T2, T3, T4)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.1) } }
@@ -655,21 +703,31 @@ private func combineAll<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T1
 private func combineAll<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18), T19)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.0.11, $0.0.12, $0.0.13, $0.0.14, $0.0.15, $0.0.16, $0.0.17, $0.1) } }
 private func combineAll<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(rcvr: Channel<S, ((T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19), T20)>)->Channel<S, (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20)> { return rcvr.map { ($0.0.0, $0.0.1, $0.0.2, $0.0.3, $0.0.4, $0.0.5, $0.0.6, $0.0.7, $0.0.8, $0.0.9, $0.0.10, $0.0.11, $0.0.12, $0.0.13, $0.0.14, $0.0.15, $0.0.16, $0.0.17, $0.0.18, $0.1) } }
 
-private func combineAny<S, T1, T2, T3>(rcvr: Channel<S, ((T1?, T2?)?, T3?)>)->Channel<S, (T1?, T2?, T3?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4>(rcvr: Channel<S, ((T1?, T2?, T3?)?, T4?)>)->Channel<S, (T1?, T2?, T3?, T4?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?)?, T5?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?)?, T6?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?)?, T7?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?)?, T8?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?)?, T9?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?)?, T10?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?)?, T11?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?)?, T12?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?)?, T13?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?)?, T14?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?)?, T15?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?)?, T16?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?)?, T17?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?)?, T18?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)?, T19?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.0?.17, $0.1) } }
-private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)?, T20?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?, T20?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.0?.17, $0.0?.18, $0.1) } }
+private func combineAny<S, T1, T2, T3>(channel: Channel<S, OneOf2<OneOf2<T1, T2>, T3>>)->Channel<S, OneOf3<T1, T2, T3>> {
+    return channel.map { oneof in
+        switch oneof {
+        case .V1(.V1(let x)): return .V1(x)
+        case .V1(.V2(let x)): return .V2(x)
+        case .V2(let x): return .V3(x)
+        }
+    }
+}
+
+
+//private func combineAny<S, T1, T2, T3, T4>(rcvr: Channel<S, ((T1?, T2?, T3?)?, T4?)>)->Channel<S, (T1?, T2?, T3?, T4?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?)?, T5?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?)?, T6?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?)?, T7?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?)?, T8?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?)?, T9?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?)?, T10?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?)?, T11?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?)?, T12?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?)?, T13?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?)?, T14?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?)?, T15?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?)?, T16?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?)?, T17?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?)?, T18?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?)?, T19?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.0?.17, $0.1) } }
+//private func combineAny<S, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(rcvr: Channel<S, ((T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?)?, T20?)>)->Channel<S, (T1?, T2?, T3?, T4?, T5?, T6?, T7?, T8?, T9?, T10?, T11?, T12?, T13?, T14?, T15?, T16?, T17?, T18?, T19?, T20?)> { return rcvr.map { ($0.0?.0, $0.0?.1, $0.0?.2, $0.0?.3, $0.0?.4, $0.0?.5, $0.0?.6, $0.0?.7, $0.0?.8, $0.0?.9, $0.0?.10, $0.0?.11, $0.0?.12, $0.0?.13, $0.0?.14, $0.0?.15, $0.0?.16, $0.0?.17, $0.0?.18, $0.1) } }

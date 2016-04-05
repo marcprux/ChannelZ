@@ -127,6 +127,7 @@ public extension ChannelType {
     ///     exceeds capacity, earlier elements will be dropped silently
     ///
     /// - Returns: A stateful Channel that pairs up values from `self` and `with` Channels.
+    @available(*, deprecated, message="Migrate to EffectSource")
     @warn_unused_result public func zip<C2: ChannelType>(with: C2, capacity: Int? = nil) -> Channel<(Source, C2.Source), (Element, C2.Element)> {
         return Channel<(Source, C2.Source), (Element, C2.Element)>(source: (self.source, with.source)) { (rcvr: (Element, C2.Element) -> Void) in
 
@@ -161,6 +162,7 @@ public extension ChannelType {
             })
             
             return ReceiptOf(receipts: [rcpt1, rcpt2])
+            return crash() // FIXME: should be done using an affect
         }
     }
 
@@ -177,6 +179,7 @@ public extension ChannelType {
     /// - Parameter other: the Channel to combine with
     ///
     /// - Returns: A stateful Channel that emits the item of both `self` or `other`.
+    @available(*, deprecated, message="Migrate to EffectSource")
     @warn_unused_result public func combine<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), (Element, C2.Element)> {
         typealias Both = (Element, C2.Element)
         var lasta: Element?
@@ -194,6 +197,8 @@ public extension ChannelType {
             }
             return ReceiptOf(receipts: [rcpt1, rcpt2])
         }
+
+        return crash() // FIXME: should be done using an affect
     }
 
     /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
@@ -204,12 +209,29 @@ public extension ChannelType {
     /// - Parameter other: the Channel to either with
     ///
     /// - Returns: A stateless Channel that emits the item of either `self` or `other`.
+    @available(*, deprecated, message="Migrate to either2 with OneOf2")
     @warn_unused_result public func either<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), (Element?, C2.Element?)> {
         // Note: this should really be a Haskell-style Either enum, but the Swift compiler doesn't yet support them
         typealias Either = (Element?, C2.Element?)
         return Channel<(Source, C2.Source), Either>(source: (self.source, other.source)) { (rcvr: (Either -> Void)) in
             let rcpt1 = self.receive { v1 in rcvr(Either(v1, nil)) }
             let rcpt2 = other.receive { v2 in rcvr(Either(nil, v2)) }
+            return ReceiptOf(receipts: [rcpt1, rcpt2])
+        }
+    }
+
+    /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
+    /// into a tuple of optionals that will be emitted when either of the elements change.
+    /// Unlike `combine`, this phase will begin emitting events immediately upon either of the combined
+    /// channels emitting events; previous values are not retained, so this Channel is stateless.
+    ///
+    /// - Parameter other: the Channel to either with
+    ///
+    /// - Returns: A stateless Channel that emits the item of either `self` or `other`.
+    @warn_unused_result public func or<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), OneOf2<Element, C2.Element>> {
+        return Channel<(Source, C2.Source), OneOf2<Element, C2.Element>>(source: (self.source, other.source)) { (rcvr: (OneOf2<Element, C2.Element> -> Void)) in
+            let rcpt1 = self.receive { rcvr(.V1($0)) }
+            let rcpt2 = other.receive { rcvr(.V2($0)) }
             return ReceiptOf(receipts: [rcpt1, rcpt2])
         }
     }
@@ -239,9 +261,10 @@ public extension ChannelType {
     ///
     /// - Parameter transform: a function that, when applied to an item emitted by the source Channel, returns a Channel
     ///
-    /// - Returns: A stateless Channel that emits the result of applying the transformation function to each
+    /// - Returns: An effected Channel that emits the result of applying the transformation function to each
     ///         item emitted by the source Channel and merging the results of the Channels
     ///         obtained from this transformation.
+    @available(*, deprecated, message="Migrate to EffectSource")
     @warn_unused_result public func flatMap<S2, U>(transform: Element -> Channel<S2, U>) -> Channel<(Source, [S2]), U> {
         return flatten(map(transform))
     }
@@ -266,6 +289,7 @@ public extension Channel {
 /// Flattens a Channel that emits Channels into a single Channel that emits the pulses emitted by
 /// those Channels, without any transformation.
 /// Note: this operation does not retain the sub-sources, since it can merge a heterogeneously-sourced series of channels
+@available(*, deprecated, message="Migrate to EffectSource")
 @warn_unused_result public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>) -> Channel<(S1, [S2]), T> {
     // note that the Channel will always be an empty array of S2s; making the source type a closure returning the array would work, but it crashes the compiler
     var s2s: [S2] = []
@@ -279,6 +303,9 @@ public extension Channel {
 
         return ReceiptOf(receipts: rcpts)
     })
+
+    return crash() // FIXME: should be done using an affect
+
 }
 
 
@@ -333,7 +360,8 @@ public extension ChannelType {
     /// Performs a side-effect when the channel receives a pulse. This can be used to manage some 
     /// arbitrary and hidden state regardless of the number of receivers that are on the channel.
     @warn_unused_result public func affect<T>(store: T, affector: (T, Element) -> T) -> Channel<EffectSource<Source>, (Element, T)> {
-        var value = store
+        var value = store // the captured state
+
         let effect = EffectSource(source: source, effect: receive { x in
             value = affector(value, x)
         })
@@ -370,20 +398,21 @@ public extension ChannelType {
     /// emits the pulses when the partition predicate is satisified.
     ///
     /// - Parameter initial: the initial accumulated value
+    /// - Parameter includePartitions: whether partition elements should be included in the accumulation (default: true)
     /// - Parameter combine: the combinator function to call with the accumulated value
     /// - Parameter isPartition: the predicate that signifies whether an item should cause the
     ///   accumulated value to be emitted and cleared
     ///
     /// - Returns: A stateful Channel that buffers its accumulated pulses until the terminator predicate passes
-    @warn_unused_result public func partition<U>(initial: U, isPartition: (U, Element) -> Bool, combine: (U, Element) -> U) -> Channel<EffectSource<Source>, U> {
+    @warn_unused_result public func partition<U>(initial: U, includePartitions: Bool = true, isPartition: (U, Element) -> Bool, combine: (U, Element) -> U) -> Channel<EffectSource<Source>, U> {
         typealias Buffer = (store: U, flush: U?)
 
         func bufferer(buffer: Buffer, item: Element) -> Buffer {
-            let combined = combine(buffer.store, item)
-            if isPartition(buffer.store, item) {
-                return Buffer(store: initial, flush: combined)
+            let store = buffer.store
+            if isPartition(store, item) {
+                return Buffer(store: initial, flush: includePartitions ? combine(store, item) : store)
             } else {
-                return Buffer(store: combined, flush: nil)
+                return Buffer(store: combine(store, item), flush: nil)
             }
         }
 

@@ -860,7 +860,7 @@ extension NSNumber : ConduitNumericCoercible {
         else if let value = value as? Int64 { return self.init(longLong: value) }
         else if let value = value as? UInt64 { return self.init(unsignedLongLong: value) }
         else if let value = value as? Float { return self.init(float: value) }
-//        else if let value = value as? Float80 { return self.init(double: value) } ?
+//        else if let value = value as? Float80 { return self.init(double: value) }
         else if let value = value as? Double { return self.init(double: value) }
         else { return nil }
     }
@@ -880,7 +880,7 @@ extension NSNumber : ConduitNumericCoercible {
         else if T.self is Int64.Type { return Int64(self.longLongValue) as? T }
         else if T.self is UInt64.Type { return UInt64(self.unsignedLongLongValue) as? T }
         else if T.self is Float.Type { return Float(self.floatValue) as? T }
-//        else if T.self is Float80.Type { return Float80(self) as? T } ??
+//        else if T.self is Float80.Type { return Float80(self) as? T }
         else if T.self is Double.Type { return Double(self.doubleValue) as? T }
         else { return self as? T }
     }
