@@ -923,8 +923,6 @@ public class ChannelTests: XCTestCase {
         _ = (a | b)
         _ = (a | b | c)
 
-//        combo1.receive({ (floatChange: Float?, uintChange: UInt?) in })
-
         let combo2: (Channel<(PropertySource<Float>, PropertySource<UInt>, PropertySource<Bool>), OneOf3<Float, UInt, String>>) = (a | b | d)
 
         combo2.receive { val in
@@ -935,39 +933,36 @@ public class ChannelTests: XCTestCase {
             }
         }
 
-//        var changes = 0
-//
-//        combo2 ∞> { (floatChange: Float?, uintChange: UInt?, stringChange: String?) in
-//            changes += 1
-//            if let float = floatChange {
-//                lastFloat = float
-//            }
-//
-//            if let str = stringChange {
-//                lastString = str
-//            }
-//        }
-//
-//        changes -= 3
-//
-//        a.value = a∞? + 1
-//        changes = changes - 1
-//        XCTAssertEqual(0, changes)
-//        XCTAssertEqual("false", lastString)
-//        XCTAssertEqual(Float(4.0), lastFloat)
-//
-//        c.value = true
-//        changes = changes - 1
-//        XCTAssertEqual(0, changes)
-//        XCTAssertEqual("true", lastString)
-//        XCTAssertEqual(Float(4.0), lastFloat)
-//
-//        c.value = false
-//        changes = changes - 1
-//        XCTAssertEqual(0, changes)
-//        XCTAssertEqual("false", lastString)
-//        XCTAssertEqual(Float(4.0), lastFloat)
+        var changes = 0
 
+        combo2.receive {
+            changes += 1
+            switch $0 {
+            case .V1(let x): lastFloat = x
+            case .V2: break
+            case .V3(let x): lastString = x
+            }
+        }
+
+        changes -= 3
+
+        a.value = a∞? + 1
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
+        XCTAssertEqual("false", lastString)
+        XCTAssertEqual(Float(4.0), lastFloat)
+
+        c.value = true
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
+        XCTAssertEqual("true", lastString)
+        XCTAssertEqual(Float(4.0), lastFloat)
+
+        c.value = false
+        changes = changes - 1
+        XCTAssertEqual(0, changes)
+        XCTAssertEqual("false", lastString)
+        XCTAssertEqual(Float(4.0), lastFloat)
     }
 
 //    func testList() {
@@ -1085,8 +1080,6 @@ public class ChannelTests: XCTestCase {
     }
 
     func testMixedCombinations() {
-        return // FIXME: re-implement | channels
-
         let a = (∞(Int(0.0))∞).subsequent()
 
         // FIXME: works, but slow to compile
@@ -1095,31 +1088,30 @@ public class ChannelTests: XCTestCase {
         var andx = 0
         and.receive({ _ in andx += 1 })
 
-//        let or: Channel<Void, (Int?, Int?, Int?, Int?)> = (a | a | a | a).desource()
-//        var orx = 0
-//        or.receive({ _ in orx += 1 })
-//
-////        let andor = (a & a | a & a | a & a | a).desource() // slow compile
-//        let andor: Channel<Void, ((Int, Int)?, (Int, Int)?, (Int, Int)?, Int?)> = (a & a | a & a | a & a | a).desource()
-//
-//        var andorx = 0
-//        andor.receive({ _ in andorx += 1 })
-//
-//        XCTAssertEqual(0, andx)
-//        XCTAssertEqual(0, orx)
-//        XCTAssertEqual(0, andorx)
-//
-//        a.source.value += 1
-//
-//        XCTAssertEqual(1, andx, "last and fires a single and change")
-//        XCTAssertEqual(4, orx, "each or four")
-//        XCTAssertEqual(4, andorx, "four groups in mixed")
-//
-//        a.source.value += 1
-//
-//        XCTAssertEqual(2, andx)
-//        XCTAssertEqual(8, orx)
-//        XCTAssertEqual(8, andorx)
+        let or: Channel<Void, OneOf4<Int, Int, Int, Int>> = (a | a | a | a).desource()
+        var orx = 0
+        or.receive({ _ in orx += 1 })
+
+        let andor: Channel<Void, OneOf4<(Int, Int), (Int, Int), (Int, Int), Int>> = (a & a | a & a | a & a | a).desource() // typed due to slow compile
+
+        var andorx = 0
+        andor.receive({ _ in andorx += 1 })
+
+        XCTAssertEqual(0, andx)
+        XCTAssertEqual(0, orx)
+        XCTAssertEqual(0, andorx)
+
+        a.source.value += 1
+
+        XCTAssertEqual(1, andx, "last and fires a single and change")
+        XCTAssertEqual(4, orx, "each or four")
+        XCTAssertEqual(4, andorx, "four groups in mixed")
+
+        a.source.value += 1
+
+        XCTAssertEqual(2, andx)
+        XCTAssertEqual(8, orx)
+        XCTAssertEqual(8, andorx)
     }
 
     func testPropertyChannelSieve() {
