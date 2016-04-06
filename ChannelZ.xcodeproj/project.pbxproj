@@ -27,6 +27,7 @@
 		7EDBA1081A87D18300AED2CE /* AppKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EDBA1071A87D18300AED2CE /* AppKitTests.swift */; };
 		7EDBA10A1A87D18C00AED2CE /* UIKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EDBA1091A87D18C00AED2CE /* UIKitTests.swift */; };
 		7EE45E221A210FFE00E9AB52 /* PlayMarkerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */; };
+		7EEE65131CB3EF2500DA3EDA /* Combinators.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EEE65121CB3EF2500DA3EDA /* Combinators.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +68,7 @@
 		7EDBA1071A87D18300AED2CE /* AppKitTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppKitTests.swift; sourceTree = "<group>"; };
 		7EDBA1091A87D18C00AED2CE /* UIKitTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIKitTests.swift; sourceTree = "<group>"; };
 		7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayMarkerTests.swift; sourceTree = "<group>"; };
+		7EEE65121CB3EF2500DA3EDA /* Combinators.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Combinators.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +126,7 @@
 				7E43C2D21A1075D0003747B6 /* AppKit.swift */,
 				7E43C2D61A10763D003747B6 /* UIKit.swift */,
 				7ECE513A1A60A29600924B8E /* Coercible.swift */,
+				7EEE65121CB3EF2500DA3EDA /* Combinators.swift */,
 			);
 			path = ChannelZ;
 			sourceTree = "<group>";
@@ -265,6 +268,7 @@
 				7E806D521A7F4C6F00CB3992 /* Dispatch.swift in Sources */,
 				7E30DC5D1A0D6B1B0050EC52 /* Foundation.swift in Sources */,
 				7E8CDCF31CAAF66D00245939 /* State.swift in Sources */,
+				7EEE65131CB3EF2500DA3EDA /* Combinators.swift in Sources */,
 				7E43C2D31A1075D0003747B6 /* AppKit.swift in Sources */,
 				7E43C2D71A10763D003747B6 /* UIKit.swift in Sources */,
 				7E7E35461A152CCD00777D72 /* CoreData.swift in Sources */,

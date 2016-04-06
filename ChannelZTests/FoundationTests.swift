@@ -30,7 +30,7 @@ func assertSingleChange(inout count: Int, file: StaticString = #file, line: UInt
 }
 
 
-public class FoundationTests: XCTestCase {
+class FoundationTests : ChannelTestCase {
 
     func assertMemoryBlock<T where T: Equatable>(file: StaticString = #file, line: UInt = #line, @autoclosure check:  ()->T, code: ()->()) {
         let start = check()
@@ -1382,7 +1382,7 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(0, ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
     }
 
-    public func testDetachedReceiver() {
+    func testDetachedReceiver() {
         var subscription: Receipt?
         autoreleasepool {
             let state = StatefulObject()
@@ -1394,7 +1394,7 @@ public class FoundationTests: XCTestCase {
         subscription!.cancel() // ensure that the subscription doesn't try to access a bad pointer
     }
 
-    public func teststFieldRemoval() {
+    func teststFieldRemoval() {
         let startCount = ChannelZKeyValueObserverCount
         let startObCount = StatefulObjectCount
         autoreleasepool {
@@ -1415,7 +1415,7 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(0, StatefulObjectCount - startObCount)
     }
 
-    public func testManyKeyReceivers() {
+    func testManyKeyReceivers() {
         let startCount = ChannelZKeyValueObserverCount
         let startObCount = StatefulObjectCount
 
@@ -1446,7 +1446,7 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(0, StatefulObjectCount - startObCount)
     }
 
-    public func XXXtestManyObserversOnBlockOperation() { // FIXME
+    func XXXtestManyObserversOnBlockOperation() { // FIXME
         let state = StatefulObject()
         XCTAssertEqual("ChannelZTests.StatefulObject", NSStringFromClass(state.dynamicType))
         state∞state.int ∞> { _ in }
@@ -1482,7 +1482,7 @@ public class FoundationTests: XCTestCase {
         }
     }
 
-    public func testNSOperationObservers() {
+    func testNSOperationObservers() {
         for _ in 1...10 {
             autoreleasepool {
                 let op = NSOperation()
@@ -1508,21 +1508,21 @@ public class FoundationTests: XCTestCase {
     }
 
     let AutoKeypathPerfomanceCount = 10
-    public func testAutoKeypathPerfomanceWithoutName() {
+    func testAutoKeypathPerfomanceWithoutName() {
         let prog = NSProgress()
         for _ in 1...AutoKeypathPerfomanceCount {
             prog∞prog.totalUnitCount ∞> { _ in }
         }
     }
 
-    public func testAutoKeypathPerfomanceWithName() {
+    func testAutoKeypathPerfomanceWithName() {
         _ = NSProgress()
         for _ in 1...AutoKeypathPerfomanceCount {
 //            prog∞(prog.totalUnitCount, "totalUnitCount") ∞> { _ in }
         }
     }
 
-    public func testPullFiltered() {
+    func testPullFiltered() {
         let intField = ∞(Int(0))∞
 
         _ = intField.map({ Int32($0) }).map({ Double($0) }).map({ Float($0) })
@@ -1543,7 +1543,7 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(-1, intToUIntChannel∞?, "pulling a filtered field should yield nil")
     }
 
-//    public func testChannelSignatures() {
+//    func testChannelSignatures() {
 //        let small = ∞(Int8(0))∞
 //        let larger = small.map({ Int16($0) }).map({ Int32($0) }).map({ Int64($0) })
 //        let largerz = larger
@@ -1568,7 +1568,7 @@ public class FoundationTests: XCTestCase {
 //
 //    }
 
-    public func testObservableCleanup() {
+    func testObservableCleanup() {
 
         autoreleasepool {
             var counter = 0, opened = 0, closed = 0
@@ -1609,14 +1609,14 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(0, InstanceTrackingUndoManagerInstanceCount)
     }
 
-    public func testOperationChannels() {
+    func testOperationChannels() {
         // wrap test in an XCTAssert because it will perform a try/catch
 
         // file:///opt/src/impathic/glimpse/ChannelZ/ChannelTests/ChannelTests.swift: test failure: -[ChannelTests testOperationChannels()] failed: XCTAssertTrue failed: throwing "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x10038d5b0> for the key path "isFinished" from <NSBlockOperation 0x1003854d0> because it is not registered as an observer." -
         XCTAssert(operationChannelTest())
     }
 
-    public func operationChannelTest() -> Bool {
+    func operationChannelTest() -> Bool {
 
         for (doCancel, doStart) in [(true, false), (false, true)] {
             let op = NSBlockOperation { () -> Void in }
@@ -1666,7 +1666,7 @@ public class FoundationTests: XCTestCase {
         return true
     }
 
-    public func testStraightConduit() {
+    func testStraightConduit() {
         let state1 = StatefulObject()
         let state2 = StatefulObject()
 
@@ -1684,7 +1684,7 @@ public class FoundationTests: XCTestCase {
     }
 
     /// Test reentrancy guards for conduits that would never achieve equilibrium
-    public func XXXtestKVOReentrancy() {
+    func XXXtestKVOReentrancy() {
         // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
         defer { ChannelZ.ChannelZReentrantReceptions = 0 }
 
@@ -1704,7 +1704,7 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(state2.int, 2 + (off * 4))
     }
 
-    public func testKVOConduit() {
+    func testKVOConduit() {
         let state1 = StatefulObject()
         let state2 = StatefulObject()
 
@@ -1745,7 +1745,7 @@ public class FoundationTests: XCTestCase {
         
     }
 
-    public func testKVOBind() {
+    func testKVOBind() {
         let state1 = StatefulObject()
         let state2 = StatefulObject()
 
@@ -1787,7 +1787,7 @@ public class FoundationTests: XCTestCase {
     }
 
     /// Test reentrancy guards for conduits that would never achieve equilibrium
-    public func testKVOBindOptional() {
+    func testKVOBindOptional() {
         let state1 = StatefulObject()
         let state2 = StatefulObject()
 
@@ -1844,7 +1844,7 @@ public class FoundationTests: XCTestCase {
     }
 
     /// Test reentrancy guards for conduits that would never achieve equilibrium
-    public func testSwiftReentrancy() {
+    func testSwiftReentrancy() {
         func reentrants() -> Int64 {
             let x = ChannelZReentrantReceptions
             ChannelZReentrantReceptions = 0
@@ -1891,7 +1891,7 @@ public class FoundationTests: XCTestCase {
         reentrants()
     }
 
-//    public func testRequiredToOptional() {
+//    func testRequiredToOptional() {
 //        let state1 = ∞Int(0)∞
 //        let state2 = ∞Optional<Int>()∞
 //
@@ -1907,7 +1907,7 @@ public class FoundationTests: XCTestCase {
 //
 //    }
 
-    public func testMemory2() {
+    func testMemory2() {
         autoreleasepool {
             let md1 = MemoryDemo()
             let md2 = MemoryDemo()
@@ -1924,7 +1924,7 @@ public class FoundationTests: XCTestCase {
     }
 
 
-    public func testAutoKVOIdentification() {
+    func testAutoKVOIdentification() {
         let state = StatefulObjectSubSubclass()
         var count = 0
 
@@ -1942,7 +1942,7 @@ public class FoundationTests: XCTestCase {
         state∞state.optobj ∞> { _ in count += 1 }
     }
 
-    public func testDeepKeyPath() {
+    func testDeepKeyPath() {
         let state = StatefulObjectSubSubclass()
         var count = 0
 
@@ -1972,7 +1972,7 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(0, count, "new intermediate with same terminal value should not pass sieve") // or should it?
     }
 
-    public func testDeepOptionalKeyPath() {
+    func testDeepOptionalKeyPath() {
         let state = StatefulObjectSubSubclass()
         var count = 0
 
@@ -1991,7 +1991,7 @@ public class FoundationTests: XCTestCase {
         
     }
 
-    public func testCollectionArrayKeyPaths() {
+    func testCollectionArrayKeyPaths() {
         let state = StatefulObjectSubSubclass()
         var changes = 0
         _ = state.channelZKeyArray(state.array).receive { change in
@@ -2016,7 +2016,7 @@ public class FoundationTests: XCTestCase {
 
     }
 
-    public func testCollectionOrderedSetKeyPaths() {
+    func testCollectionOrderedSetKeyPaths() {
         let state = StatefulObjectSubSubclass()
         var changes = 0
         _ = state.channelZKeyOrderedSet(state.orderedSet).receive { change in
@@ -2046,7 +2046,7 @@ public class FoundationTests: XCTestCase {
     }
 
 
-    public func testCollectionSetKeyPaths() {
+    func testCollectionSetKeyPaths() {
         let state = StatefulObjectSubSubclass()
         var changes = 0
         _ = state.channelZKeySet(state.set).receive { change in
@@ -2070,7 +2070,7 @@ public class FoundationTests: XCTestCase {
         XCTAssertEqual(4, changes)
     }
 
-    override public func tearDown() {
+    override func tearDown() {
         super.tearDown()
 
         // ensure that all the bindings and observers are properly cleaned up
@@ -2096,38 +2096,38 @@ public class FoundationTests: XCTestCase {
 }
 
 
-public struct StatefulObjectHolder {
+struct StatefulObjectHolder {
     let ob: StatefulObject
 }
 
-public enum SomeEnum { case Yes, No, MaybeSo }
+enum SomeEnum { case Yes, No, MaybeSo }
 
-public struct SwiftStruct {
-    public var intField: Int
-    public var stringField: String?
-    public var enumField: SomeEnum = .No
+struct SwiftStruct {
+    var intField: Int
+    var stringField: String?
+    var enumField: SomeEnum = .No
 }
 
-public struct SwiftEquatableStruct : Equatable {
-    public var intField: Int
-    public var stringField: String?
-    public var enumField: SomeEnum = .No
+struct SwiftEquatableStruct : Equatable {
+    var intField: Int
+    var stringField: String?
+    var enumField: SomeEnum = .No
 }
 
-public func == (lhs: SwiftEquatableStruct, rhs: SwiftEquatableStruct) -> Bool {
+func == (lhs: SwiftEquatableStruct, rhs: SwiftEquatableStruct) -> Bool {
     return lhs.intField == rhs.intField && lhs.stringField == rhs.stringField && lhs.enumField == rhs.enumField
 }
 
-public struct SwiftObservables {
-    public let stringField = ∞=("")=∞
-    public let enumField = ∞=(SomeEnum.No)=∞
-    public let swiftStruct = ∞(SwiftStruct(intField: 1, stringField: "", enumField: .Yes))∞
+struct SwiftObservables {
+    let stringField = ∞=("")=∞
+    let enumField = ∞=(SomeEnum.No)=∞
+    let swiftStruct = ∞(SwiftStruct(intField: 1, stringField: "", enumField: .Yes))∞
 }
 
 
 var StatefulObjectCount = 0
 
-public class StatefulObject : NSObject {
+class StatefulObject : NSObject {
     dynamic var optstr: String?
     dynamic var reqstr: String = ""
 
@@ -2147,7 +2147,7 @@ public class StatefulObject : NSObject {
     dynamic var set = NSMutableSet()
     dynamic var orderedSet = NSMutableOrderedSet()
 
-    public override init() {
+    override init() {
         super.init()
         StatefulObjectCount += 1
     }
@@ -2157,11 +2157,11 @@ public class StatefulObject : NSObject {
     }
 }
 
-public class StatefulObjectSubclass : StatefulObject {
+class StatefulObjectSubclass : StatefulObject {
     dynamic var state = StatefulObject()
 }
 
-public final class StatefulObjectSubSubclass : StatefulObjectSubclass { }
+final class StatefulObjectSubSubclass : StatefulObjectSubclass { }
 
 var InstanceTrackingUndoManagerInstanceCount = 0
 class InstanceTrackingUndoManager : NSUndoManager {
@@ -2175,7 +2175,7 @@ class InstanceTrackingUndoManager : NSUndoManager {
     }
 }
 
-public class CoreDataPerson : NSManagedObject {
+class CoreDataPerson : NSManagedObject {
     dynamic var fullName: String?
     @NSManaged var age: Int16
 }

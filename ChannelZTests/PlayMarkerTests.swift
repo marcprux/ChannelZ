@@ -11,7 +11,7 @@
 import Foundation
 import XCTest
 
-class PlayMarkerTests : XCTestCase {
+class PlayMarkerTests : ChannelTestCase {
     /// Generate the playground from the README
     func testPlaydown() throws {
         // TODO: move this to part of the build process

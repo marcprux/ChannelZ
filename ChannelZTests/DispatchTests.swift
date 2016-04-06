@@ -30,7 +30,8 @@ func trickleZ<G: GeneratorType>(fromx: G, _ interval: NSTimeInterval, queue: dis
     return Channel(source: from) { rcvr in receivers.addReceipt(rcvr) }
 }
 
-public class DispatchTests: XCTestCase {
+class DispatchTests : ChannelTestCase {
+
     func testTrickle() {
         var tricklets: [Int] = []
         let count = 10
@@ -232,11 +233,11 @@ private extension UnicodeCodecType {
     }
 }
 
-public enum InputStreamError : ErrorType {
+enum InputStreamError : ErrorType {
     case OpenError(POSIXError?, String)
 }
 
-public func channelZFile(path: String, queue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false)->Channel<dispatch_io_t, InputStreamEvent> {
+func channelZFile(path: String, queue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false)->Channel<dispatch_io_t, InputStreamEvent> {
     let receivers = ReceiverList<InputStreamEvent>()
 
     let dchan = path.withCString {
@@ -279,7 +280,7 @@ public func channelZFile(path: String, queue: dispatch_queue_t = dispatch_get_gl
     }
 }
 
-//public func channelZSocket(aqueue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), rqueue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false) {
+//func channelZSocket(aqueue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), rqueue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false) {
 //
 //    let nativeSocket = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP)
 //    var sin = sockaddr_in()
@@ -340,7 +341,7 @@ public func channelZFile(path: String, queue: dispatch_queue_t = dispatch_get_gl
 //}
 //
 //
-//public extension ChannelType {
+//extension ChannelType {
 //
 //}
 

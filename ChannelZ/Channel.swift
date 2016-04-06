@@ -117,6 +117,52 @@ public extension ChannelType {
         }
     }
 
+    /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
+    /// into a tuple of optionals that will be emitted when either of the elements change.
+    /// Unlike `combine`, this phase will begin emitting events immediately upon either of the combined
+    /// channels emitting events; previous values are not retained, so this Channel is stateless.
+    ///
+    /// - Parameter other: the Channel to either with
+    ///
+    /// - Returns: A stateless Channel that emits the item of either `self` or `other`.
+    @warn_unused_result public func either<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), OneOf2<Element, C2.Element>> {
+        return Channel<(Source, C2.Source), OneOf2<Element, C2.Element>>(source: (self.source, other.source)) { (rcvr: (OneOf2<Element, C2.Element> -> Void)) in
+            let rcpt1 = self.receive { rcvr(.V1($0)) }
+            let rcpt2 = other.receive { rcvr(.V2($0)) }
+            return ReceiptOf(receipts: [rcpt1, rcpt2])
+        }
+    }
+
+
+    /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
+    /// into a tuple of the latest vaues that have been received on either channel; note that that
+    /// latest version of each of the channels will be retained, and that no tuples will be emitted
+    /// until both the channels have had at least one event. If `source1` emits 2 events followed by
+    /// `source` emitting 1 event, only a tuple with `source1`'s second item will be emitted; the first
+    /// item will be lost.
+    ///
+    /// Unlike `zip`, `combine` does not index the values with each other, but instead emits an event
+    /// whenever either channel emits an event once it has been primed.
+    /// Analogous to ReactiveX's `CombineLatest`
+    ///
+    /// - Parameter other: the Channel to combine with
+    ///
+    /// - Returns: A stateful Channel that emits the item of both `self` or `other`.
+    @warn_unused_result public func combine<C2: ChannelType>(other: C2) -> Channel<(Self.Source, C2.Source), (Element, C2.Element)> {
+        typealias Buffer = (v1: Optional<Element>, v2: Optional<C2.Element>)
+
+        return either(other)
+            .affect(Buffer(nil, nil)) { (prev, element) in
+                switch element {
+                case .V1(let v1): return Buffer(v1: v1, v2: prev.1)
+                case .V2(let v2): return Buffer(v1: prev.0, v2: v2)
+                }
+            }
+            .map { (prev, _) in prev } // drop the current element; it is stored in the state
+            .filter { prev in prev.v1 != nil && prev.v2 != nil }
+            .map { prev in (prev.v1!, prev.v2!) } // force unwrap: the filter prevents nils
+    }
+
     /// Adds a channel phase formed from this Channel and another Channel by combining
     /// corresponding elements in pairs.
     /// The number of receiver invocations of the resulting `Channel<(T, U)>`
@@ -127,129 +173,38 @@ public extension ChannelType {
     ///     exceeds capacity, earlier elements will be dropped silently
     ///
     /// - Returns: A stateful Channel that pairs up values from `self` and `with` Channels.
-    @available(*, deprecated, message="Migrate to EffectSource")
-    @warn_unused_result public func zip<C2: ChannelType>(with: C2, capacity: Int? = nil) -> Channel<(Source, C2.Source), (Element, C2.Element)> {
-        return Channel<(Source, C2.Source), (Element, C2.Element)>(source: (self.source, with.source)) { (rcvr: (Element, C2.Element) -> Void) in
+    @warn_unused_result public func zip<C2: ChannelType>(with: C2, capacity: (Int, Int) = (Int.max, Int.max)) -> Channel<(Self.Source, C2.Source), (Element, C2.Element)> {
+        typealias ZipBuffer = (store: ([Element], [C2.Element]), flush: (Element, C2.Element)?)
 
-            var v1s: [Element] = []
-            var v2s: [C2.Element] = []
-
-            let zipper: () -> () = {
-                // only send the tuple to the subscription when we have at least one
-                while v1s.count > 0 && v2s.count > 0 {
-                    rcvr(v1s.removeAtIndex(0), v2s.removeAtIndex(0))
+        return self.either(with)
+            .affect(ZipBuffer(([], []), nil)) { (buffer, item) in
+                var buf = buffer
+                switch item {
+                case .V1(let v1): buf.store.0.append(v1)
+                case .V2(let v2): buf.store.1.append(v2)
                 }
 
-                // trim to capacity if it was specified
-                if let capacity = capacity {
-                    while v1s.count > capacity {
-                        v1s.removeAtIndex(0)
-                    }
-                    while v2s.count > capacity {
-                        v2s.removeAtIndex(0)
-                    }
+                // if we have a tuple on either side, pop the end
+                if buf.store.0.isEmpty || buf.store.1.isEmpty {
+                    buf.flush = nil // clear any previous flush
+                } else {
+                    let f1 = buf.store.0.removeFirst()
+                    let f2 = buf.store.1.removeFirst()
+                    buf.flush = (f1, f2)
                 }
+
+                if capacity.0 != Int.max && capacity.1 != Int.max {
+                    let counts = (buf.store.0.count, buf.store.1.count)
+                    if counts.0 > capacity.0 { buf.store.0.removeFirst(counts.0 - capacity.0) }
+                    if counts.0 > capacity.1 { buf.store.1.removeFirst(counts.1 - capacity.1) }
+                }
+
+                return buf
             }
-
-            let rcpt1 = self.receive({ v1 in
-                v1s += [v1]
-                zipper()
-            })
-
-            let rcpt2 = with.receive({ v2 in
-                v2s += [v2]
-                zipper()
-            })
-            
-            return ReceiptOf(receipts: [rcpt1, rcpt2])
-            return crash() // FIXME: should be done using an affect
-        }
-    }
-
-    /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
-    /// into a tuple of the latest vaues that have been received on either channel; note that that 
-    /// latest version of each of the channels will be retained, and that no tuples will be emitted
-    /// until both the channels have had at least one event. If `source1` emits 2 events followed by
-    /// `source` emitting 1 event, only a tuple with `source1`'s second item will be emitted; the first
-    /// item will be lost.
-    ///
-    /// Unlike `zip`, `combine` does not index the values with each other, but instead emits an event
-    /// whenever either channel emits an event once it has been primed.
-    ///
-    /// - Parameter other: the Channel to combine with
-    ///
-    /// - Returns: A stateful Channel that emits the item of both `self` or `other`.
-    @available(*, deprecated, message="Migrate to EffectSource")
-    @warn_unused_result public func combine<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), (Element, C2.Element)> {
-        typealias Both = (Element, C2.Element)
-        var lasta: Element?
-        var lastb: C2.Element?
-
-        return Channel<(Source, C2.Source), Both>(source: (self.source, other.source)) { (rcvr: (Both -> Void)) in
-            let rcpt1 = self.receive { a in
-                lasta = a
-                if let lastb = lastb { rcvr(Both(a, lastb)) }
-
+            .map { (buffer, element) in
+                return buffer.flush
             }
-            let rcpt2 = other.receive { b in
-                lastb = b
-                if let lasta = lasta { rcvr(Both(lasta, b)) }
-            }
-            return ReceiptOf(receipts: [rcpt1, rcpt2])
-        }
-
-        return crash() // FIXME: should be done using an affect
-    }
-
-    /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
-    /// into a tuple of optionals that will be emitted when either of the elements change.
-    /// Unlike `combine`, this phase will begin emitting events immediately upon either of the combined
-    /// channels emitting events; previous values are not retained, so this Channel is stateless.
-    ///
-    /// - Parameter other: the Channel to either with
-    ///
-    /// - Returns: A stateless Channel that emits the item of either `self` or `other`.
-    @available(*, deprecated, message="Migrate to either2 with OneOf2")
-    @warn_unused_result public func either<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), (Element?, C2.Element?)> {
-        // Note: this should really be a Haskell-style Either enum, but the Swift compiler doesn't yet support them
-        typealias Either = (Element?, C2.Element?)
-        return Channel<(Source, C2.Source), Either>(source: (self.source, other.source)) { (rcvr: (Either -> Void)) in
-            let rcpt1 = self.receive { v1 in rcvr(Either(v1, nil)) }
-            let rcpt2 = other.receive { v2 in rcvr(Either(nil, v2)) }
-            return ReceiptOf(receipts: [rcpt1, rcpt2])
-        }
-    }
-
-    /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
-    /// into a tuple of optionals that will be emitted when either of the elements change.
-    /// Unlike `combine`, this phase will begin emitting events immediately upon either of the combined
-    /// channels emitting events; previous values are not retained, so this Channel is stateless.
-    ///
-    /// - Parameter other: the Channel to either with
-    ///
-    /// - Returns: A stateless Channel that emits the item of either `self` or `other`.
-    @warn_unused_result public func or<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), OneOf2<Element, C2.Element>> {
-        return Channel<(Source, C2.Source), OneOf2<Element, C2.Element>>(source: (self.source, other.source)) { (rcvr: (OneOf2<Element, C2.Element> -> Void)) in
-            let rcpt1 = self.receive { rcvr(.V1($0)) }
-            let rcpt2 = other.receive { rcvr(.V2($0)) }
-            return ReceiptOf(receipts: [rcpt1, rcpt2])
-        }
-    }
-
-    /// Adds a channel phase that is a combination around `source1` and `source2` that merges elements
-    /// into an exclusive enum that will be emitted when either of the elements change.
-    /// Unlike `combine`, this phase will begin emitting events immediately upon either of the combined
-    /// channels emitting events; previous values are not retained, so this Channel is stateless.
-    ///
-    /// - Parameter other: the Channel to either with
-    ///
-    /// - Returns: A stateless Channel that emits the item of either `self` or `other`.
-    @warn_unused_result public func oneOf<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), OneOf2<Element, C2.Element>> {
-        return Channel(source: (self.source, other.source)) { (rcvr: (OneOf2<Element, C2.Element> -> Void)) in
-            let rcpt1 = self.receive { v1 in rcvr(OneOf2.V1(v1)) }
-            let rcpt2 = other.receive { v2 in rcvr(OneOf2.V2(v2)) }
-            return ReceiptOf(receipts: [rcpt1, rcpt2])
-        }
+            .some()
     }
 }
 
@@ -264,23 +219,22 @@ public extension ChannelType {
     /// - Returns: An effected Channel that emits the result of applying the transformation function to each
     ///         item emitted by the source Channel and merging the results of the Channels
     ///         obtained from this transformation.
-    @available(*, deprecated, message="Migrate to EffectSource")
-    @warn_unused_result public func flatMap<S2, U>(transform: Element -> Channel<S2, U>) -> Channel<(Source, [S2]), U> {
-        return flatten(map(transform))
+    @warn_unused_result public func flatMap<S2, U>(transform: Element -> Channel<S2, U>) -> Channel<Source, U> {
+        return flattenZ(map(transform))
     }
 }
 
 public extension Channel {
 
     @warn_unused_result public func concat(with: Channel<Source, Element>) -> Channel<[Source], (Source, Element)> {
-        return concatChannels([self, with])
+        return concatZ([self, with])
     }
 
 }
 
 /// Concatinates multiple channels with the same source and element types into a single channel;
 /// note that the source is incuded in a tuple with the element in order to identify which source emitted the pulse
-@warn_unused_result public func concatChannels<S, T>(channels: [Channel<S, T>]) -> Channel<[S], (S, T)> {
+@warn_unused_result public func concatZ<S, T>(channels: [Channel<S, T>]) -> Channel<[S], (S, T)> {
     return Channel<[S], (S, T)>(source: channels.map({ c in c.source })) { f in
         return ReceiptOf(receipts: channels.map({ c in c.map({ e in (c.source, e) }).receive(f) }))
     }
@@ -289,88 +243,62 @@ public extension Channel {
 /// Flattens a Channel that emits Channels into a single Channel that emits the pulses emitted by
 /// those Channels, without any transformation.
 /// Note: this operation does not retain the sub-sources, since it can merge a heterogeneously-sourced series of channels
-@available(*, deprecated, message="Migrate to EffectSource")
-@warn_unused_result public func flatten<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>) -> Channel<(S1, [S2]), T> {
-    // note that the Channel will always be an empty array of S2s; making the source type a closure returning the array would work, but it crashes the compiler
-    var s2s: [S2] = []
-    return Channel<(S1, [S2]), T>(source: (channel.source, s2s), reception: { (rcv: T -> Void) -> Receipt in
+@warn_unused_result public func flattenZ<S1, S2, T>(channel: Channel<S1, Channel<S2, T>>) -> Channel<S1, T> {
+    return Channel<S1, T>(source: channel.source, reception: { (rcv: T -> Void) -> Receipt in
         var rcpts: [Receipt] = []
         let rcpt = channel.receive { (rcvrobv: Channel<S2, T>) in
-            s2s += [rcvrobv.source]
-            rcpts += [rcvrobv.receive { (item: T) in rcv(item) }]
+            let rcpt = rcvrobv.receive { (item: T) in rcv(item) }
+            rcpts.append(rcpt)
         }
-        rcpts += [rcpt]
-
+        rcpts.append(rcpt)
         return ReceiptOf(receipts: rcpts)
     })
-
-    return crash() // FIXME: should be done using an affect
-
 }
 
 
 // MARK - Effect utilities for channels that need to maintain state
 
-/// An EffectSource is a hybrid Receipt and Channel; it can be used to add side-effects to
-/// a channel, and cancel those side effects (along with any contingent receivers)
-public protocol EffectSourceType : Receipt {
-    associatedtype Source
-    /// The underlying source for this effect
-    var source: Source { get }
-    /// Cancels the effect and all dependent receivers
-    func cancel()
-}
-
-/// An EffectSource is a hybrid Receipt and Channel; it can be used to add side-effects to
-/// a channel, and cancel those side effects (along with any contingent receivers)
-public final class EffectSource<Source> : EffectSourceType {
-    /// The underlying source for this effect
-    public let source: Source
-    private var effect: Receipt?
-    private var receipts: [Receipt] = []
-
-    public var cancelled: Bool { return effect == nil }
-
-    public init(source: Source, effect: Receipt) {
-        self.source = source
-        self.effect = effect
-    }
-
-    /// Cancels the effect and all dependent receivers
-    public func cancel() {
-        for receipt in receipts {
-            receipt.cancel()
-        }
-        receipts.removeAll()
-        effect?.cancel()
-        effect = nil
-    }
-}
-
-public extension ChannelType where Source : EffectSourceType {
-    /// Takes an EffectSource and cancels the side-effect, which also cancels
-    /// all the downstream receivers for that side-effect to be cancelled.
-    public func unaffect() -> Channel<Source.Source, Element> {
-        source.cancel()
-        return resource { $0.source }
-    }
-}
-
 public extension ChannelType {
-    /// Performs a side-effect when the channel receives a pulse. This can be used to manage some 
-    /// arbitrary and hidden state regardless of the number of receivers that are on the channel.
-    @warn_unused_result public func affect<T>(store: T, affector: (T, Element) -> T) -> Channel<EffectSource<Source>, (Element, T)> {
-        var value = store // the captured state
+    /// Performs a side-effect when the channel receives a pulse. 
+    /// This can be used to manage some arbitrary and hidden state regardless 
+    /// of the number of receivers that are on the channel.
+    @warn_unused_result public func affect<T>(seed: T, affector: (T, Element) -> T) -> Channel<Source, (store: T, element: Element)> {
 
-        let effect = EffectSource(source: source, effect: receive { x in
-            value = affector(value, x)
-        })
+        var state: [Int64: T] = [:] // the captured state, one element per receiver
+        var stateIndex: Int64 = 0
 
-        return Channel(source: effect, reception: { receiver in
-            let receipt = self.receive(receiver)
-            effect.receipts.append(receipt)
-            return receipt
-        }).map({ ($0, value) })
+        let lock = QueueLock(name: "io.glimpse.ChannelZ.effectLock")
+
+        return Channel(source: self.source) { receiver in
+            let index: Int64 = lock.lock {
+                stateIndex += 1
+                let index = stateIndex
+                state[index] = seed
+                return stateIndex
+            }
+
+            let rcpt = self.receive { element in
+                let value: T? = lock.lock {
+                    if var stateValue = state[index] {
+                        stateValue = affector(stateValue, element)
+                        state[index] = stateValue
+                        return stateValue
+                    } else {
+                        return nil
+                    }
+                }
+                if let value = value {
+                    receiver(store: value, element: element)
+                }
+            }
+
+            return ReceiptOf {
+                lock.lock {
+                    state[index] = nil // clear the stored state
+                }
+                rcpt.cancel()
+            }
+        }
     }
 
     /// Adds a channel phase with the result of repeatedly calling `combine` with an accumulated value
@@ -379,8 +307,8 @@ public extension ChannelType {
     ///
     /// - Parameter initial: the initial accumulated value
     /// - Parameter combine: the accumulator function that will return the accumulation
-    @warn_unused_result public func reduce<T>(initial: T, combine: (T, Element) -> T) -> Channel<EffectSource<Source>, T> {
-        return affect(initial, affector: combine).map { (element, reduction) in reduction }
+    @warn_unused_result public func reduce<T>(initial: T, combine: (T, Element) -> T) -> Channel<Source, T> {
+        return affect(initial, affector: combine).map { (reduction, _) in reduction }
     }
 
     /// Adds a channel phase that emits a tuples of pairs (*n*, *x*),
@@ -390,8 +318,8 @@ public extension ChannelType {
     /// Analogous to `SequenceType.enumerate` and `EnumerateGenerator`
     ///
     /// - Returns: A stateful Channel that emits a tuple with the element's index
-    @warn_unused_result public func enumerate() -> Channel<EffectSource<Source>, (index: Int, element: Element)> {
-        return affect(-1) { (index, element) in index + 1 }.map { (element, index) in (index, element) }
+    @warn_unused_result public func enumerate() -> Channel<Source, (index: Int, element: Element)> {
+        return affect(-1) { (index, element) in index + 1 }.map { (index: $0, element: $1) }
     }
 
     /// Adds a channel phase that aggregates pulses with the given combine function and then
@@ -404,7 +332,7 @@ public extension ChannelType {
     ///   accumulated value to be emitted and cleared
     ///
     /// - Returns: A stateful Channel that buffers its accumulated pulses until the terminator predicate passes
-    @warn_unused_result public func partition<U>(initial: U, includePartitions: Bool = true, isPartition: (U, Element) -> Bool, combine: (U, Element) -> U) -> Channel<EffectSource<Source>, U> {
+    @warn_unused_result public func partition<U>(initial: U, includePartitions: Bool = true, isPartition: (U, Element) -> Bool, combine: (U, Element) -> U) -> Channel<Source, U> {
         typealias Buffer = (store: U, flush: U?)
 
         func bufferer(buffer: Buffer, item: Element) -> Buffer {
@@ -425,8 +353,26 @@ public extension ChannelType {
     /// - Parameter predicate: that will cause the accumulated elements to be pulsed
     ///
     /// - Returns: A stateful Channel that maintains an accumulation of elements
-    @warn_unused_result public func accumulate(predicate: ([Element], Element) -> Bool) -> Channel<EffectSource<Source>, [Element]> {
-        return partition([], isPartition: predicate) { (accumulation, element) in accumulation + [element] }
+    @warn_unused_result public func accumulate(includePartitions includePartitions: Bool = true, predicate: ([Element], Element) -> Bool) -> Channel<Source, [Element]> {
+        return partition([], includePartitions: includePartitions, isPartition: predicate) { (accumulation, element) in accumulation + [element] }
+    }
+
+    /// Accumulate the given pulses into an array until the given predicate is satisifed, and
+    /// then flush all the elements of the array.
+    ///
+    /// - Parameter predicate: that will cause the accumulated elements to be pulsed
+    ///
+    /// - Returns: A stateful Channel that maintains an accumulation of elements
+    @warn_unused_result public func split(maxSplit: Int = Int.max, allowEmptySlices: Bool = false, isSeparator: Element -> Bool) -> Channel<Source, [Element]> {
+        let channel = accumulate(includePartitions: allowEmptySlices) { (buffer, element) in isSeparator(element) }
+            .filter({ allowEmptySlices || !$0.isEmpty })
+            .map({ allowEmptySlices ? $0.filter { !isSeparator($0) } : $0 })
+
+        if maxSplit == Int.max {
+            return channel
+        } else {
+            return channel.prefix(maxSplit)
+        }
     }
 
     /// Adds a channel phase that buffers emitted pulses such that the receiver will
@@ -435,17 +381,26 @@ public extension ChannelType {
     /// - Parameter count: the size of the buffer
     ///
     /// - Returns: A stateful Channel that buffers its pulses until it the buffer reaches `count`
-    @warn_unused_result public func buffer(limit: Int) -> Channel<EffectSource<Source>, [Element]> {
+    @warn_unused_result public func buffer(limit: Int) -> Channel<Source, [Element]> {
         return accumulate { a, x in a.count >= limit-1 }
     }
 
-    /// Adds a channel phase that drops the first `count` elements.
+    /// Adds a channel phase that drops the first `count` pulses.
     ///
     /// - Parameter count: the number of elements to skip before emitting pulses
     ///
     /// - Returns: A stateful Channel that drops the first `count` elements.
-    @warn_unused_result public func drop(count: Int) -> Channel<EffectSource<Source>, Element> {
-        return enumerate().filter { $0.index >= count }.map { $0.element }
+    @warn_unused_result public func dropFirst(n: Int = 1) -> Channel<Source, Element> {
+        return enumerate().filter { $0.index >= n }.map { $0.element }
+    }
+
+    /// Adds a channel phase that will terminate receipt after the given number of pulses have been received.
+    ///
+    /// - Parameter count: the number of elements to skip before emitting pulses
+    ///
+    /// - Returns: A stateful Channel that drops the first `count` elements.
+    @warn_unused_result public func prefix(maxLength: Int) -> Channel<Source, Element> {
+        return enumerate().filter { $0.index < maxLength }.map { $0.element }
     }
 }
 

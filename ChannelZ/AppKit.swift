@@ -22,7 +22,7 @@ public protocol ChannelController: class, NSObjectProtocol, StateSource, StateSi
 public extension NSObjectProtocol where Self : NSController {
     /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
     /// change valus are not provided with KVO observation
-    public func channelZControllerPath(keyPath: String) -> Channel<EffectSource<KeyValueOptionalSource<AnyObject>>, StatePulse<AnyObject?>> {
+    public func channelZControllerPath(keyPath: String) -> Channel<KeyValueOptionalSource<AnyObject>, StatePulse<AnyObject?>> {
         let channel = channelZKeyState(valueForKeyPath(keyPath), keyPath: keyPath)
 
         // KVO on an object controller drops the value: 
@@ -82,7 +82,7 @@ extension NSControl { // : KeyValueChannelSupplementing {
     }
 
     /// Creates a binding to an intermediate NSObjectController with the given options and returns the bound channel
-    public func channelZBinding<C: NSController where C: NSObjectProtocol>(binding: String = NSValueBinding, controller: C = C.init(), keyPath: String = "content", options: [String : AnyObject] = [:]) -> Channel<(kvo: EffectSource<KeyValueOptionalSource<AnyObject>>, controller: C), StatePulse<AnyObject?>> {
+    public func channelZBinding<C: NSController where C: NSObjectProtocol>(binding: String = NSValueBinding, controller: C = C.init(), keyPath: String = "content", options: [String : AnyObject] = [:]) -> Channel<(kvo: KeyValueOptionalSource<AnyObject>, controller: C), StatePulse<AnyObject?>> {
         bind(binding, toObject: controller, withKeyPath: keyPath, options: options)
         return controller.channelZControllerPath(keyPath).resource({ ($0, controller) })
     }

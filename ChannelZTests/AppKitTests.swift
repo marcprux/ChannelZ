@@ -18,14 +18,14 @@ import AppKit
 private let window: NSWindow = NSWindow()
 private let contentView: NSView = window.contentView!
 
-public class AppKitTests: XCTestCase {
+class AppKitTests : ChannelTestCase {
 
     func decrement(inout x: Int) -> Int {
         x -= 1
         return x
     }
 
-    public func testCocoaBindings() {
+    func testCocoaBindings() {
         let objc = NSObjectController(content: NSNumber(integer: 1))
         XCTAssertEqual(1, (objc.content as? NSNumber) ?? -999)
 
@@ -64,7 +64,7 @@ public class AppKitTests: XCTestCase {
     }
 
 
-    public func testFoundationExtensions() {
+    func testFoundationExtensions() {
         var counter = 0
 
         let constraint = NSLayoutConstraint()
@@ -300,17 +300,17 @@ public class AppKitTests: XCTestCase {
         stepper.increment = 1
 
         XCTAssertEqual(0, stepper.integerValue)
-        XCTAssertEqual(0, channel.source.kvo.source.value as? NSNumber)
+        XCTAssertEqual(0, channel.source.kvo.value as? NSNumber)
 
-        channel.source.kvo.source.value = 50
+        channel.source.kvo.value = 50
 
         XCTAssertEqual(50, stepper.integerValue)
-        XCTAssertEqual(50, channel.source.kvo.source.value as? NSNumber)
+        XCTAssertEqual(50, channel.source.kvo.value as? NSNumber)
 
         stepper.performClick(nil) // undocumented, but this decrements the stepper
 
         XCTAssertEqual(49, stepper.integerValue)
-        XCTAssertEqual(49, channel.source.kvo.source.value as? NSNumber)
+        XCTAssertEqual(49, channel.source.kvo.value as? NSNumber)
 
         var changeCounts = (-1, -1, -1)
 
@@ -327,7 +327,7 @@ public class AppKitTests: XCTestCase {
         XCTAssertEqual(1, changeCounts.0)
         XCTAssertEqual(1, changeCounts.1)
         XCTAssertEqual(1, changeCounts.2)
-        XCTAssertEqual(48, channel.source.kvo.source.value as? NSNumber)
+        XCTAssertEqual(48, channel.source.kvo.value as? NSNumber)
         XCTAssertEqual(48, stepper.integerValue)
 
         stepper.performClick(nil)
@@ -335,13 +335,13 @@ public class AppKitTests: XCTestCase {
         XCTAssertEqual(2, changeCounts.0)
         XCTAssertEqual(2, changeCounts.1)
         XCTAssertEqual(2, changeCounts.2)
-        XCTAssertEqual(47, channel.source.kvo.source.value as? NSNumber)
+        XCTAssertEqual(47, channel.source.kvo.value as? NSNumber)
         XCTAssertEqual(47, stepper.integerValue)
 
         withExtendedLifetime(stepper) { } // just so stepper is retained until the end
     }
 
-    override public func tearDown() {
+    override func tearDown() {
         super.tearDown()
 
         // ensure that all the bindings and observers are properly cleaned up

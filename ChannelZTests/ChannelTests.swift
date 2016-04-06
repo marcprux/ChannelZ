@@ -9,11 +9,9 @@
 import XCTest
 import ChannelZ
 
-private func moreT<T>()->T { fatalError("you can't take less") }
-
 extension StreamType {
     /// Test method that receives to the observable and returns any elements that are immediately sent to fresh receivers
-    var immediateItems: [Element] {
+    func pullZ() -> [Element] {
         var items: [Element] = []
         receive({ items += [$0] }).cancel()
         return items
@@ -25,10 +23,250 @@ extension StreamType {
     return from.channelZSequence()
 }
 
+/// Creates a Channel sourced by a `SequenceType` that will emit all its elements to new receivers
+@warn_unused_result public func seqZ<T>(from: T...) -> Channel<[T], T> {
+    return from.channelZSequence()
+}
+
 // TODO make a spec with each of https://github.com/ReactiveX/RxScala/blob/0.x/examples/src/test/scala/rx/lang/scala/examples/RxScalaDemo.scala
 
 
-public class ChannelTests: XCTestCase {
+private func feedZ<T, U, S>(input: [T], setup: Channel<PropertySource<T>, T> -> Channel<S, U>) -> [U] {
+    let channel = channelZProperty(input[0])
+    let transformed = setup(channel)
+
+    // store the output; we store 3 separate outputs just to check that EffectSources work correctly
+    var outputs = ([U](), [U](), [U]())
+    let r0 = transformed.receive { outputs.0.append($0) }
+    defer { r0.cancel() }
+
+    let r1 = transformed.receive { outputs.1.append($0) }
+    defer { r2.cancel() }
+
+    let r2 = transformed.receive { outputs.2.append($0) }
+    defer { r2.cancel() }
+
+    for value in input.dropFirst() { channel.source.put(value) }
+    switch arc4random_uniform(3) {
+    case 0: return outputs.0
+    case 1: return outputs.1
+    case 2: return outputs.2
+    default: fatalError("bad random number")
+    }
+}
+
+// Just run the function on the static sequence; the immediate form of feedZ
+private func feedX<T, U>(seq: [T], f: [T] -> U) -> U {
+    return f(seq)
+}
+
+class ChannelTestCase : XCTestCase {
+    /// Enable just a single test; keep this public so we always get a warning
+//    public override func invokeTest() { return invocation?.selector == #selector(ChannelTests.testEnumerations) ? super.invokeTest() : print("skipping test", name) }
+
+
+    override internal func tearDown() {
+        super.tearDown()
+
+        // ensure that all the bindings and observers are properly cleaned up
+        #if DEBUG_CHANNELZ
+            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "unexpected reentrant receptions detected")
+            ChannelZ.ChannelZReentrantReceptions = 0
+        #else
+            XCTFail("Why are you running tests with debugging off?")
+        #endif
+    }
+}
+
+
+
+class ChannelTests : ChannelTestCase {
+    /// Verifies that asyncronous Channels and syncronous Sequences behave the same way
+    func testAnalogousSequenceFunctions() {
+        let nums = [1, 2, 3, 3, 2, -1] // the test set
+
+        XCTAssertEqual(nums, feedZ(nums) { $0 })
+
+        XCTAssertEqual([2, 3, 3, 2], feedX(nums) { $0.filter({ $0 > 1 }) })
+        XCTAssertEqual([2, 3, 3, 2], feedZ(nums) { $0.filter({ $0 > 1 }) })
+
+
+        XCTAssertEqual([-1, -2, -3, -3, -2, 1], feedX(nums) { $0.map(-) })
+        XCTAssertEqual([-1, -2, -3, -3, -2, 1], feedZ(nums) { $0.map(-) })
+
+        let stringMap = ["1", "2", "3", "3", "2", "-1"]
+        XCTAssertEqual(stringMap, feedX(nums) { $0.map(String.init) })
+        XCTAssertEqual(stringMap, feedZ(nums) { $0.map(String.init) })
+
+        XCTAssertEqual(10, feedX(nums) { $0.reduce(0, combine: +) })
+        XCTAssertEqual(10, feedZ(nums) { $0.reduce(0, combine: +) }.last) // last because reduce provides running reductions
+
+        XCTAssertEqual([3, 2, -1], feedX(nums) { $0.dropFirst(3) })
+        XCTAssertEqual([3, 2, -1], feedZ(nums) { $0.dropFirst(3) })
+
+        XCTAssertEqual([1, 2, 3, 3, 2], feedX(nums) { $0.prefix(5) })
+        XCTAssertEqual([1, 2, 3, 3, 2], feedZ(nums) { $0.prefix(5) })
+
+        XCTAssertEqual([2, 3, 4, 6, 6, 9, 6, 9, 4, 6, -2, -3], nums.flatMap { [$0 * 2, $0 * 3] })
+        XCTAssertEqual([2, 3, 4, 6, 6, 9, 6, 9, 4, 6, -2, -3], feedZ(nums) { $0.flatMap { seqZ($0 * 2, $0 * 3) } })
+
+        XCTAssertEqual([1, 4, 9, 9, 4, 1], zip(nums, nums).map(*))
+        XCTAssertEqual([1, 4, 9, 9, 4, 1], feedZ(nums) { $0.zip(nums.channelZSequence()).map(*) })
+
+        XCTAssertEqual([2, 6, 9, 6, -2], zip(nums.dropFirst(), nums).map(*))
+        XCTAssertEqual([2, 6, 9, 6, -2], feedZ(nums) { $0.dropFirst().zip(nums.channelZSequence()).map(*) })
+
+        XCTAssertEqual([2, 6, 9, 6, -2], zip(nums, nums.dropFirst()).map(*))
+        XCTAssertEqual([2, 6, 9, 6, -2], feedZ(nums) { $0.zip(nums.channelZSequence().dropFirst()).map(*) })
+
+
+        let three = { $0 == 3 }
+
+        XCTAssertEqual([[1, 2], [2, -1]], feedX(nums + [3]) { $0.split(isSeparator: three) }.map(Array.init))
+        XCTAssertEqual([[1, 2], [2, -1]], feedZ(nums + [3]) { $0.split(isSeparator: three) })
+
+        XCTAssertEqual([[1, 2], [], [2, -1]], nums.split(allowEmptySlices: true, isSeparator: three).map(Array.init))
+        XCTAssertEqual([[1, 2], [], [2, -1]], feedZ(nums + [3]) { $0.split(allowEmptySlices: true, isSeparator: three) })
+
+        XCTAssertEqual([[1, 2], []], nums.split(2, allowEmptySlices: true, isSeparator: three).dropLast().map(Array.init))
+        XCTAssertEqual([[1, 2], []], feedZ(nums + [3]) { $0.split(2, allowEmptySlices: true, isSeparator: three) })
+
+        XCTAssertEqual([[1, 2]], nums.split(1, allowEmptySlices: true, isSeparator: three).dropLast().map(Array.init))
+        XCTAssertEqual([[1, 2]], feedZ(nums + [3]) { $0.split(1, allowEmptySlices: true, isSeparator: three) })
+
+        XCTAssertEqual([1, 2, -1], feedZ(nums) { $0.changes(<) })
+
+        XCTAssertEqual([1, 2, 3, 2, -1], feedZ(nums) { $0.precedentFilter(!=).new() })
+
+        XCTAssertEqual([[1, 2, 3], [3, 2, -1]], feedZ(nums) { $0.buffer(3) })
+
+        XCTAssertEqual([9, 1], feedZ(nums) { $0.partition(0, isPartition: >, combine: +) })
+
+        XCTAssertEqual([6, 2], feedZ(nums) { $0.partition(0, includePartitions: false, isPartition: >, combine: +) })
+
+        XCTAssertEqual([1, 1, 2, 2, 3, 3, 3, 3, 2, 2, -1, -1], feedZ(nums) { $0.flatMap { seqZ($0) + seqZ($0) } })
+
+//        XCTAssertEqual([1, 1, 4, 4, 9, 9, 9, 9, 4, 4, 1, 1], feedZ(nums) { $0.flatMap { seqZ($0) & seqZ($0) }.map(*) })
+
+        let _ = feedZ(nums) { $0.flatMap { seqZ($0) | seqZ($0).map(String.init) } }
+
+    }
+
+    func testZipImplementations() {
+        let z1 = channelZPropertyState(1).new()
+        let z2 = channelZPropertyState("1").new()
+        let z3 = channelZPropertyState(true).new()
+        let z4 = channelZPropertyState().new()
+
+        var items: [(index: Int, element: (((Int, String), Bool), Void))] = []
+        let zz = z1.zip(z2).zip(z3).zip(z4).enumerate()
+
+        zz.receive {
+            dump($0.index)
+            items.append($0)
+        }
+
+        XCTAssertEqual(1, items.count)
+        XCTAssertEqual(0, items.last?.index)
+
+        z1.value = 2
+        z2.value = "2"
+        z3.value = true
+        z4.value = Void()
+
+        XCTAssertEqual(2, items.count)
+        XCTAssertEqual(1, items.last?.index)
+
+        z1.value = 3
+        z1.value = 4
+
+        z4.value = Void()
+        z4.value = Void()
+
+        z3.value = true
+        z3.value = true
+
+        z2.value = "4"
+        z2.value = "5"
+
+        z4.value = Void()
+        z3.value = true
+        z2.value = "3"
+
+        XCTAssertEqual(4, items.count)
+        XCTAssertEqual(3, items.last?.index)
+
+        z1.value = 5
+
+        XCTAssertEqual(5, items.count)
+        XCTAssertEqual(4, items.last?.index) // last enum
+    }
+
+    func testEnumerateCount() {
+        let z1 = channelZPropertyState(1).new()
+        let z2 = channelZPropertyState("1").new()
+        let zz = z1.either(z2)
+        var counts = (-1, 0, 0, 0)
+
+        zz.enumerate().enumerate().enumerate().receive {
+            counts.0 += 1
+            counts.1 = $0.index
+            counts.2 = $0.element.index
+            counts.3 = $0.element.element.index
+        }
+
+        XCTAssertEqual(counts.0, counts.1)
+        XCTAssertEqual(counts.0, counts.2)
+        XCTAssertEqual(counts.0, counts.3)
+
+        z1.value += 1
+
+        XCTAssertEqual(counts.0, counts.1)
+        XCTAssertEqual(counts.0, counts.2)
+        XCTAssertEqual(counts.0, counts.3)
+
+        z2.value += "1"
+
+        XCTAssertEqual(counts.0, counts.1)
+        XCTAssertEqual(counts.0, counts.2)
+        XCTAssertEqual(counts.0, counts.3)
+    }
+
+    func testEnumerations() {
+        let z1 = channelZPropertyState(true).new()
+        let z2 = channelZPropertyState(1).new()
+        typealias Item = (index: Int, element: (index: Int, element: (index: Int, element: OneOf2<Bool, Int>)))
+
+        let enums = z1.either(z2).enumerate().enumerate().enumerate()
+//        let enums = enumberate(enumberate(enumberate(z1.either(z2))))
+        var elements: [Item] = []
+
+        XCTAssertEqual(0, elements.count)
+        enums.receive({ print("receive 1", $0) })
+        enums.receive({ print("receive 2", $0) })
+        enums.receive({ elements.append($0) })
+        XCTAssertEqual(2, elements.count)
+
+        XCTAssertEqual(0, elements.first?.index)
+        XCTAssertEqual(0, elements.first?.element.index)
+        XCTAssertEqual(0, elements.first?.element.element.index)
+
+        XCTAssertEqual(1, elements.last?.index)
+        XCTAssertEqual(1, elements.last?.element.index)
+        XCTAssertEqual(1, elements.last?.element.element.index)
+
+        z1.value = true
+
+        XCTAssertEqual(2, elements.last?.index)
+        XCTAssertEqual(2, elements.last?.element.index)
+        XCTAssertEqual(2, elements.last?.element.element.index)
+
+        z2.value = 1
+
+        XCTAssertEqual(3, elements.last?.index)
+        XCTAssertEqual(3, elements.last?.element.index)
+        XCTAssertEqual(3, elements.last?.element.element.index)
+    }
 
     func testTraps() {
         let channel = ∞=false=∞
@@ -65,7 +303,7 @@ public class ChannelTests: XCTestCase {
         let trap2 = gfun2.trap(3)
         XCTAssertEqual(seq[2...4], trap2.values[0...2], "trap should contain the last 3 elements of the sequence generator")
 
-        let trapped = (channelZSequence(1...5) & channelZSequence(6...10)).trap(1000)
+        let trapped = (channelZSequence(1...5) ^ channelZSequence(6...10)).trap(1000)
         
         XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]]) // tupes aren't equatable
 
@@ -98,29 +336,28 @@ public class ChannelTests: XCTestCase {
 
         let cc: Channel<(((S1, S2), S2), S2), Int> = o1 + o2 + o2 + o2
 
-        return // TODO: re-implement
         // examples of type signatures
         let _: Channel<((S1, S2), (S2, S2)), Int> = (o1 + o2) + (o2 + o2)
         let _: Channel<Void, Int> = cc.desource()
-//        let _: Channel<(S1, S2, S1), (Int?, Int?, Int?)> = o1 | o2 | o1
-//        let _: Channel<(S1, S2, S3), (Int, Int, Void)> = o1 & o2 & o3
-//        let _: Channel<(S1, S2, S3, S2, S1), (Int, Int, Void, Int, Int)> = o1 & o2 & o3 & o2 & o1
-////        let ccMany: Channel<(S1, S2, S3, S1, S2, S3, S1, S2, S3, S1, S2, S3), (Int, Int, Void, Int, Int, Void, Int, Int, Void, Int, Int, Void)> = o1 & o2 & o3 & o1 & o2 & o3 & o1 & o2 & o3 & o1 & o2 & o3
-//
-//        var count = 0
-//        let sub = cc.receive({ _ in count += 1 })
-//        XCTAssertEqual(3, count)
-//
-//        o2.source.put(4) // put broadcasts to three sources
-//        XCTAssertEqual(6, count)
-//
-//        cc.source.0.0.1.put(5)
-//        XCTAssertEqual(9, count)
-//
-//        sub.cancel()
-//        o2.source.put(6)
-//
-//        XCTAssertEqual(9, count)
+        let _ = o1 | o2 | o1
+        let _: Channel<(S1, S2, S3), (Int, Int, Void)> = o1 ^ o2 ^ o3
+        let _: Channel<(S1, S2, S3, S2, S1), (Int, Int, Void, Int, Int)> = o1 ^ o2 ^ o3 ^ o2 ^ o1
+////        let ccMany: Channel<(S1, S2, S3, S1, S2, S3, S1, S2, S3, S1, S2, S3), (Int, Int, Void, Int, Int, Void, Int, Int, Void, Int, Int, Void)> = o1 ^ o2 ^ o3 ^ o1 ^ o2 ^ o3 ^ o1 ^ o2 ^ o3 ^ o1 ^ o2 ^ o3
+
+        var count = 0
+        let sub = cc.receive({ _ in count += 1 })
+        XCTAssertEqual(3, count)
+
+        o2.source.put(4) // put broadcasts to three sources
+        XCTAssertEqual(6, count)
+
+        cc.source.0.0.1.put(5)
+        XCTAssertEqual(9, count)
+
+        sub.cancel()
+        o2.source.put(6)
+
+        XCTAssertEqual(9, count)
     }
 
     func testStreamExtensions() {
@@ -180,34 +417,6 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(3, count)
     }
 
-    func testSplitChannel() {
-        let obv = channelZSink(Int)
-
-        var count1 = 0, count2 = 0
-        let (channel1, channel2) = obv.split({ $0 <= 0 })
-
-        let rcpt1 = channel1.receive({ _ in count1 += 1 })
-        let rcpt2 = channel2.receive({ _ in count2 += 1 })
-
-        let numz = -10...3
-        for x in numz { obv.source.put(x) }
-
-        XCTAssertEqual(3, count1)
-        XCTAssertEqual(11, count2)
-
-        rcpt2.cancel()
-        for x in numz { obv.source.put(x) }
-
-        XCTAssertEqual(6, count1)
-        XCTAssertEqual(11, count2)
-
-        rcpt1.cancel()
-        for x in numz { obv.source.put(x) }
-
-        XCTAssertEqual(6, count1)
-        XCTAssertEqual(11, count2)
-    }
-
     func testMapChannel() {
         let obv = channelZSink(Int)
 
@@ -254,7 +463,7 @@ public class ChannelTests: XCTestCase {
             numberz.source.put(n)
         }
 
-        XCTAssertEqual([1, 2, 2, 3, 4, 3], items)
+        XCTAssertEqual([1, 1, 1], items)
     }
 
     func testReduceImmediate() {
@@ -264,8 +473,8 @@ public class ChannelTests: XCTestCase {
         var sums: [Int] = []
         sum.receive { x in sums.append(x) }
 
-//        XCTAssertEqual(sums, [1, 3, 6, 10, 15, 21, 28])
-        XCTAssertEqual(sums, [28, 28, 28, 28, 28, 28, 28])
+        XCTAssertEqual(sums, [1, 3, 6, 10, 15, 21, 28])
+//        XCTAssertEqual(sums, [28, 28, 28, 28, 28, 28, 28])
     }
 
     func testReduceMultiple() {
@@ -297,23 +506,30 @@ public class ChannelTests: XCTestCase {
         XCTAssertFalse(r3.cancelled)
         XCTAssertFalse(r4.cancelled)
 
-        sum.unaffect()
+    }
 
-        numberz.value = 99
+    func testEnumerateWithMultipleReceivers() {
+        let prop = channelZPropertyState("")
+        let enumerated = prop.enumerate()
 
-        XCTAssertEqual(raws.0, Array(0...7) + [99])
-        XCTAssertEqual(sums.0, [0, 1, 3, 6, 10, 15, 21, 28])
-        XCTAssertEqual(sums.1, [0, 1, 3, 6, 10, 15, 21, 28])
-        XCTAssertEqual(sums.2, [0, 1, 3, 6, 10, 15, 21, 28])
-        XCTAssertEqual(raws.1, Array(0...7) + [99])
+        var counts = (Array<Int>(), Array<Int>(), Array<Int>())
+        enumerated.receive({ (i, s) in counts.0.append(i) })
+        enumerated.receive({ (i, s) in counts.1.append(i) })
+        enumerated.receive({ (i, s) in counts.2.append(i) })
 
-        XCTAssertFalse(r0.cancelled)
-        XCTAssertTrue(r1.cancelled)
-        XCTAssertTrue(r2.cancelled)
-        XCTAssertTrue(r3.cancelled)
-        XCTAssertFalse(r4.cancelled)
+        XCTAssertEqual([0], counts.0)
+        XCTAssertEqual([0], counts.1)
+        XCTAssertEqual([0], counts.2)
 
-        withExtendedLifetime((r0, r1, r2, r3, r4)) { }
+        prop.source.put("a")
+        XCTAssertEqual([0, 1], counts.0)
+        XCTAssertEqual([0, 1], counts.1)
+        XCTAssertEqual([0, 1], counts.2)
+
+        prop.source.put("b")
+        XCTAssertEqual([0, 1, 2], counts.0)
+        XCTAssertEqual([0, 1, 2], counts.1)
+        XCTAssertEqual([0, 1, 2], counts.2)
     }
 
     func testBuffer() {
@@ -330,11 +546,11 @@ public class ChannelTests: XCTestCase {
 //    func testTerminate() {
 //        let boolz = channelZSequence([true, true, true, false, true, false, false, true])
 //        let finite = boolz.terminate(!)
-//        XCTAssertEqual([true, true, true], finite.immediateItems)
+//        XCTAssertEqual([true, true, true], finite.pullZ())
 //
 //        let boolz2 = channelZSequence([true, true, true, false, true, false, false, true])
 //        let finite2 = boolz2.terminate(!, terminus: { false })
-//        XCTAssertEqual([true, true, true, false], finite2.immediateItems)
+//        XCTAssertEqual([true, true, true, false], finite2.pullZ())
 //    }
 
     func testReduceNumbers() {
@@ -368,18 +584,18 @@ public class ChannelTests: XCTestCase {
 //        
 //        var numberz = (1...10).channelZ()
 //        let avg1 = numberz.map({ Double($0) }).enumerate().partition(0, withPartitions: true, clearAfterPulse: false, isPartition: always, combine: runningAverage)
-//        XCTAssertEqual([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5], avg1.immediateItems)
+//        XCTAssertEqual([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5], avg1.pullZ())
 //
 //        let avg2 = numberz.map({ Double($0 * 10) }).map(index()).partition(0, withPartitions: true, clearAfterPulse: false, isPartition: always, combine: runningAverage)
-//        XCTAssertEqual([10, 15, 20, 25, 30, 35, 40, 45, 50, 55], avg2.immediateItems)
+//        XCTAssertEqual([10, 15, 20, 25, 30, 35, 40, 45, 50, 55], avg2.pullZ())
 //
 //    }
 
-    func channelResults<S: StateSink, T>(channel: Channel<EffectSource<S>, T>, items: [S.Element]) -> [T] {
+    func channelResults<S: StateSink, T>(channel: Channel<S, T>, items: [S.Element]) -> [T] {
         var results: [T] = []
         let _ = channel.receive({ results.append($0) })
         for item in items {
-            channel.source.source.put(item)
+            channel.source.put(item)
         }
         return results
     }
@@ -399,18 +615,18 @@ public class ChannelTests: XCTestCase {
         let numbers = (1...3).channelZSequence()
         
         let multiples = { (n: Int) in [n*2, n*3].channelZSequence() }
-        let flatMapped: Channel<(Range<Int>, [[Int]]), Int> = numbers.flatMap(multiples)
-        XCTAssertEqual([2, 3, 4, 6, 6, 9], flatMapped.immediateItems)
+        let flatMapped = numbers.flatMap(multiples)
+        XCTAssertEqual([2, 3, 4, 6, 6, 9], flatMapped.pullZ())
     }
 
 
-//    func testFlatMapTransformChannel() {
-//        let numbers = (1...3).channelZ()
-//        let quotients = { (n: Int) in [Double(n)/2.0, Double(n)/4.0].channelZ() }
-//        let multiples = { (n: Double) in [Float(n)*3.0, Float(n)*5.0, Float(n)*7.0].channelZ() }
-//        let flatMapped = numbers.flatMap(quotients).flatMap(multiples)
-//        XCTAssertEqual([1.5, 2.5, 3.5, 0.75, 1.25, 1.75, 3, 5, 7, 1.5, 2.5, 3.5, 4.5, 7.5, 10.5, 2.25, 3.75, 5.25], flatMapped.immediateItems)
-//    }
+    func testFlatMapTransformChannel() {
+        let numbers = (1...3).channelZSequence()
+        let quotients = { (n: Int) in [Double(n)/2.0, Double(n)/4.0].channelZSequence() }
+        let multiples = { (n: Double) in [Float(n)*3.0, Float(n)*5.0, Float(n)*7.0].channelZSequence() }
+        let flatMapped = numbers.flatMap(quotients).flatMap(multiples)
+        XCTAssertEqual([1.5, 2.5, 3.5, 0.75, 1.25, 1.75, 3, 5, 7, 1.5, 2.5, 3.5, 4.5, 7.5, 10.5, 2.25, 3.75, 5.25], flatMapped.pullZ())
+    }
 
     func testPropertyReceivers() {
         class Person {
@@ -530,7 +746,7 @@ public class ChannelTests: XCTestCase {
 
     }
 
-    func testOneOf() {
+    func testEitherOr() {
         let a = ∞=0=∞
         let b = ∞="A"=∞
         let c = ∞=0.0=∞
@@ -539,7 +755,7 @@ public class ChannelTests: XCTestCase {
         var strs = 0
         var flts = 0
 
-        a.oneOf(b).oneOf(c).receive { r in
+        a.either(b).either(c).receive { r in
             switch r {
             case .V1(.V1): ints += 1
             case .V1(.V2): strs += 1
@@ -557,197 +773,22 @@ public class ChannelTests: XCTestCase {
         b.source.value = "x"
         XCTAssertEqual(2, ints)
         XCTAssertEqual(2, strs)
-    }
 
-    /// We use this test to generate the hairy tuple unwrapping code for the Receiver's flatSink, &, and | functions
-    func testGenerateTuples() {
-
-        let pname: String = "rcvr"
-
-        /// repeat the given string a certain number of times
-        let strs: (String, Int)->String = { s,i in Repeat(count: i, repeatedValue: s).reduce("", combine: +) }
-
-        /// make a type list like T1, T2, T3, T4
-        let types: (String, Int)->String = { s,i in (1...i).map({ "\(s)\($0)" }).reduce("", combine: { $0 + ($0.isEmpty ? "" : ", ") + $1 }) }
-
-        let otypes: (String, Int)->String = { s,i in (1...i).map({ "\(s)\($0)?" }).reduce("", combine: { $0 + ($0.isEmpty ? "" : ", ") + $1 }) }
-
-
-        func flatTuple(count: Int, pre: String, opt: Bool)->String {
-            var str = ""
-            for i in 1...count {
-                if i > 1 { str += ", " }
-                str += pre
-                for j in i..<count {
-                    str += (opt && j > i ? "?" : "") + ".0"
-                }
-                if i > 1 { str += ".1" }
-            }
-            return str
+        struct TwoBigInts {
+            let a: Int64
+            let b: Int64
         }
 
-        XCTAssertEqual("$0.0.0.0, $0.0.0.1, $0.0.1, $0.1", flatTuple(4, pre: "$0", opt: false))
-        //        XCTAssertEqual("$0.0?.0?.0, $0.0?.0?.1, $0.0?.1, $0.1", flatTuple(4, "$0", true))
-        XCTAssertEqual("ob.source.0.0.0.0, ob.source.0.0.0.1, ob.source.0.0.1, ob.source.0.1, ob.source.1", flatTuple(5, pre: "ob.source", opt: false))
+        XCTAssertEqual(1, sizeof(Int8))
+        XCTAssertEqual(2, sizeof(Int16))
+        XCTAssertEqual(4, sizeof(Int32))
+        XCTAssertEqual(8, sizeof(Int64))
+        XCTAssertEqual(16, sizeof(TwoBigInts))
 
-        let genFlatElement: (Int)->String = { (n: Int) in
-            let parts: [String] = [
-                "private func flattenElements<S, " + types("T", n) + ">(\(pname): Channel",
-                (2...n).reduce("<S, ", combine: { s,i in s + "(" }),
-                (2...n).reduce("T1", combine: { s,i in s + ", T\(i))" }),
-                ">)->Channel<S, (" + types("T", n) + ")>",
-                " { return \(pname).map { (" + flatTuple(n, pre: "$0", opt: false) + ") } }",
-            ]
-
-            return parts.reduce("", combine: +)
-        }
-
-
-
-        let genFlatSource: (Int)->String = { (n: Int) in
-            let parts: [String] = [
-                "private func flattenSources<",
-                types("S", n),
-                ", T>(\(pname): Channel<",
-                strs("(", n-1),
-                (2...n).reduce("S1", combine: { s,i in s + ", S\(i)" + ")" }),
-                ", T>)->Channel",
-                "<(" + types("S", n) + "), T>",
-//                " { let src = \(pname).source; return Channel(source: (" + flatTuple(n, pre: "src", opt: false) + "), reception: rcvr.reception) }",
-                " { return rcvr.resource { src in (" + flatTuple(n, pre: "src", opt: false) + ") } }",
-            ]
-
-            return parts.reduce("", combine: +)
-        }
-
-
-
-//        let flattenSources5 = "private func flattenSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((((S1, S2), S3), S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { let src = \(pname).source; return Channel(source: (src.0.0.0.0, src.0.0.0.1, src.0.0.1, src.0.1, src.1), reception: rcvr.reception) }"
-//        XCTAssert(flattenSources5.hasPrefix(genFlatSource(5)), "\nGEN: \(genFlatSource(5))\nVS.: \(flattenSources5)")
-//        XCTAssertEqual(genFlatSource(5), flattenSources5)
-
-        func combineTuple(count: Int, pre: String, opt: Bool)->String {
-            if opt {
-                return (0..<count-1).reduce("", combine: { s,i in s + pre + ".0?.\(i), " }) + "\(pre).1"
-            } else {
-                return (0..<count-1).reduce("", combine: { s,i in s + pre + ".0.\(i), " }) + "\(pre).1"
-            }
-        }
-
-        let genComboSource: (Int)->String = { (n: Int) in
-            let parts: [String] = [
-                "private func combineSources<",
-                types("S", n),
-                ", T>(\(pname): Channel<",
-                "((",
-                types("S", n-1),
-                "), S\(n)), T>)->Channel",
-                "<(" + types("S", n) + "), T>",
-//                " { let src = \(pname).source; return Channel(source: (" + combineTuple(n, pre: "src", opt: false) + "), reception: rcvr.reception) }",
-                " { return rcvr.resource { src in (" + combineTuple(n, pre: "src", opt: false) + ") } }",
-            ]
-
-            return parts.reduce("", combine: +)
-        }
-
-//        let comboSources5 = "private func combineSources<S1, S2, S3, S4, S5, T>(rcvr: Channel<((S1, S2, S3, S4), S5), T>)->Channel<(S1, S2, S3, S4, S5), T> { let src = \(pname).source; return Channel(source: (src.0.0, src.0.1, src.0.2, src.0.3, src.1), reception: rcvr.reception) }"
-//        XCTAssert(comboSources5.hasPrefix(genComboSource(5)), "\nGEN: \(genComboSource(5))\nVS.: \(comboSources5)")
-//        XCTAssertEqual(genComboSource(5), comboSources5)
-
-        let genCombineAll: (Int)->String = { (n: Int) in
-            let parts: [String] = [
-                "private func combineAll<S, " + types("T", n) + ">(\(pname): Channel",
-                (2...n).reduce("<S, ", combine: { s,i in s }),
-                (2...n-1).reduce("((T1", combine: { s,i in s + ", T\(i)" }) + "), T\(n))",
-                ">)->Channel<S, (" + types("T", n) + ")>",
-                " { return \(pname).map { (" + combineTuple(n, pre: "$0", opt: false) + ") } }",
-            ]
-
-            return parts.reduce("", combine: +)
-        }
-
-
-
-        let genZip: (Int)->String = { n in
-            let parts: [String] = [
-                "public func &<" + types("S", n) + ", " + types("T", n) + ">",
-                "(",
-                "lhs: Channel<(" + types("S", n-1) + "), (" + types("T", n-1) + ")>",
-                ", ",
-                "rhs: Channel<S\(n), T\(n)>",
-                ")->",
-                "Channel<(" + types("S", n) + "), (" + types("T", n) + ")>",
-                " { return combineSources(combineAll(lhs.zip(rhs))) }",
-            ]
-
-            return parts.reduce("", combine: +)
-        }
-
-
-        /// Channel zipping & flattening operation (operator form of `flatZip`)
-        let flatAny = "public func &<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1, T2)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1, T2, T3)> { return combineSources(combineAll(lhs.zip(rhs))) }"
-
-        XCTAssert(flatAny.hasPrefix(genZip(3)), "\nGEN: \(genZip(3))\nVS.: \(flatAny)")
-        XCTAssertEqual(genZip(3), flatAny)
-
-
-
-        let genCombineAny: (Int)->String = { (n: Int) in
-            let parts: [String] = [
-                "private func combineAny<S, " + types("T", n) + ">(\(pname): Channel",
-                (2...n).reduce("<S, ", combine: { s,i in s }),
-                (2...n-1).reduce("((T1?", combine: { s,i in s + ", T\(i)?" }) + ")?, T\(n)?)",
-                ">)->Channel<S, (" + otypes("T", n) + ")>",
-                " { return \(pname).map { (" + combineTuple(n, pre: "$0", opt: true) + ") } }",
-            ]
-
-            return parts.reduce("", combine: +)
-        }
-
-
-        let genOr: (Int)->String = { n in
-            let parts: [String] = [
-                "public func |<" + types("S", n) + ", " + types("T", n) + ">",
-                "(",
-                "lhs: Channel<(" + types("S", n-1) + "), (" + otypes("T", n-1) + ")>",
-                ", ",
-                "rhs: Channel<S\(n), T\(n)>",
-                ")->",
-                "Channel<(" + types("S", n) + "), (" + otypes("T", n) + ")>",
-                " { return combineSources(combineAny(lhs.either(rhs))) }",
-            ]
-
-            return parts.reduce("", combine: +)
-        }
-
-
-
-        /// Channel combination & flattening operation (operator form of `flatAny`)
-        let flatOr = "public func |<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), (T1?, T2?)>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), (T1?, T2?, T3?)> { return combineSources(combineAny(lhs.either(rhs))) }"
-        XCTAssert(flatOr.hasPrefix(genOr(3)), "\nGEN: \(genOr(3))\nVS.: \(flatOr)")
-        XCTAssertEqual(genOr(3), flatOr)
-
-
-        let dumptups: (Int)->(Void) = { max in
-            for i in 3...max { print(genZip(i)) }
-            print("")
-            for i in 3...max { print(genOr(i)) }
-            print("")
-            for i in 3...max { print(genFlatSource(i)) }
-            print("")
-            for i in 3...max { print(genComboSource(i)) }
-            print("")
-            for i in 3...max { print(genFlatElement(i)) }
-            print("")
-            for i in 3...max { print(genCombineAll(i)) }
-            print("")
-            for i in 3...max { print(genCombineAny(i)) }
-            print("")
-            for i in 3...max { print(genCombineAny(i)) }
-        }
-        
-        withExtendedLifetime(dumptups) { } // squash unused warnings
-        //dumptups(20)
+        XCTAssertEqual(sizeof(Int8) + 1, sizeof(OneOf2<Int8, Int8>))
+        XCTAssertEqual(sizeof(Int32) + 1, sizeof(OneOf2<Int16, Int32>))
+        XCTAssertEqual(sizeof(Int16) + 1, sizeof(OneOf3<Int16, Int8, Int8>))
+        XCTAssertEqual(sizeof(TwoBigInts) + 1, sizeof(OneOf3<TwoBigInts, Int8, Int8>))
     }
 
     func testPropertyChannel() {
@@ -989,10 +1030,10 @@ public class ChannelTests: XCTestCase {
         var lastFloat : Float = 0.0
         var lastString : String = ""
 
-        let zip1 = (a & b)
+        let zip1 = (a ^ b)
         zip1 ∞> { (floatChange: Float, uintChange: UInt) in }
 
-        let zip2 = (a & b & d)
+        let zip2: (Channel<(PropertySource<Float>, PropertySource<UInt>, PropertySource<Bool>), (Float, UInt, String)>) = (a ^ b ^ d)
 
         var changes = 0
 
@@ -1046,7 +1087,7 @@ public class ChannelTests: XCTestCase {
     func testEither() {
         let s1 = channelZSequence(1...3)
         let s2 = channelZSequence(["a", "b", "c", "d"])
-        let channel = s1.or(s2)
+        let channel = s1.either(s2)
         var values = (Array<OneOf2<Int, String>>(), Array<OneOf2<Int, String>>(), Array<OneOf2<Int, String>>())
         channel.receive({ values.0.append($0) })
         channel.receive({ values.1.append($0) })
@@ -1073,46 +1114,71 @@ public class ChannelTests: XCTestCase {
         let nums = channelZSequence(1...3) + channelZSequence(4...5) + channelZSequence([6])
         let strs = channelZSequence(range.map({ NSNumberFormatter.localizedStringFromNumber($0, numberStyle: NSNumberFormatterStyle.SpellOutStyle) }).map({ $0 as String }))
         var numstrs: [(Int, String)] = []
-        let zipped = (nums & strs)
+        let zipped: Channel<(((Range<Int>, Range<Int>), [Int]), [String]), (Int, String)> = (nums ^ strs)
         zipped.receive({ numstrs += [$0] })
         XCTAssertEqual(numstrs.map({ $0.0 }), [1, 2, 3, 4, 5, 6])
         XCTAssertEqual(numstrs.map({ $0.1 }), ["one", "two", "three", "four", "five", "six"])
     }
 
-    func testMixedCombinations() {
-        let a = (∞(Int(0.0))∞).subsequent()
-
-        // FIXME: works, but slow to compile
-
-        let and: Channel<Void, (Int, Int, Int, Int)> = (a & a & a & a).desource()
-        var andx = 0
-        and.receive({ _ in andx += 1 })
-
-        let or: Channel<Void, OneOf4<Int, Int, Int, Int>> = (a | a | a | a).desource()
-        var orx = 0
-        or.receive({ _ in orx += 1 })
-
-        let andor: Channel<Void, OneOf4<(Int, Int), (Int, Int), (Int, Int), Int>> = (a & a | a & a | a & a | a).desource() // typed due to slow compile
-
-        var andorx = 0
-        andor.receive({ _ in andorx += 1 })
-
-        XCTAssertEqual(0, andx)
-        XCTAssertEqual(0, orx)
-        XCTAssertEqual(0, andorx)
-
-        a.source.value += 1
-
-        XCTAssertEqual(1, andx, "last and fires a single and change")
-        XCTAssertEqual(4, orx, "each or four")
-        XCTAssertEqual(4, andorx, "four groups in mixed")
-
-        a.source.value += 1
-
-        XCTAssertEqual(2, andx)
-        XCTAssertEqual(8, orx)
-        XCTAssertEqual(8, andorx)
-    }
+//    func testMixedCombinations() {
+//        let a = (∞(Int(0.0))∞).subsequent()
+//
+//        let and: Channel<Void, (Int, Int, Int, Int)> = (a ^ a ^ a ^ a).desource()
+//        var andx = 0
+//        and.receive({ _ in andx += 1 })
+//
+//        let or: Channel<Void, OneOf4<Int, Int, Int, Int>> = (a | a | a | a).desource()
+//        var orx = 0
+//        or.receive({ _ in orx += 1 })
+//
+//        let andor: Channel<Void, OneOf4<(Int, Int), (Int, Int), (Int, Int), Int>> = (a ^ a | a ^ a | a ^ a | a).desource() // typed due to slow compile
+//
+//        let o1 = a
+//        let o2 = o1 | a
+//        let o3 = o2 | a
+//        let o4 = o3 | a
+//        let o5 = o4 | a
+//        let o6 = o5 | a
+//        let o7 = o6 | a
+//        let o8 = o7 | a
+//        let o9 = o8 | a
+//        let o10 = o9 | a
+//        let o11 = o10 | a
+//        let o12 = o11 | a
+//        let o13 = o12 | a
+//        let o14 = o13 | a
+//        let o15 = o14 | a
+//        let o16 = o15 | a
+//        let o17 = o16 | a
+//        let o18 = o17 | a
+//        let o19 = o18 | a
+//        let o20 = o19 | a
+//
+//        // statically check the type
+//        let _: Channel<Void, OneOf20<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>> = o20.desource()
+//
+//        // too complex
+//        // let _: Channel<Void, OneOf20<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>> = (a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a).desource()
+//
+//        var andorx = 0
+//        andor.receive({ _ in andorx += 1 })
+//
+//        XCTAssertEqual(0, andx)
+//        XCTAssertEqual(0, orx)
+//        XCTAssertEqual(0, andorx)
+//
+//        a.source.value += 1
+//
+//        XCTAssertEqual(1, andx, "last and fires a single and change")
+//        XCTAssertEqual(4, orx, "each or four")
+//        XCTAssertEqual(4, andorx, "four groups in mixed")
+//
+//        a.source.value += 1
+//
+//        XCTAssertEqual(2, andx)
+//        XCTAssertEqual(8, orx)
+//        XCTAssertEqual(8, andorx)
+//    }
 
     func testPropertyChannelSieve() {
         let stringz = PropertySource("").channelZState().sieve().new().subsequent()
@@ -1182,145 +1248,23 @@ public class ChannelTests: XCTestCase {
         XCTAssertEqual(3, counts.2)
     }
 
-    func testEnumerateWithMultipleReceivers() {
-        let prop = channelZPropertyState("")
-        let enumerated = prop.enumerate()
-
-        var counts = (Array<Int>(), Array<Int>(), Array<Int>())
-        enumerated.receive({ (i, s) in counts.0.append(i) })
-        enumerated.receive({ (i, s) in counts.1.append(i) })
-        enumerated.receive({ (i, s) in counts.2.append(i) })
-
-        XCTAssertEqual([0], counts.0)
-        XCTAssertEqual([0], counts.1)
-        XCTAssertEqual([0], counts.2)
-
-        prop.source.put("a")
-        XCTAssertEqual([0, 1], counts.0)
-        XCTAssertEqual([0, 1], counts.1)
-        XCTAssertEqual([0, 1], counts.2)
-
-        prop.source.put("b")
-        XCTAssertEqual([0, 1, 2], counts.0)
-        XCTAssertEqual([0, 1, 2], counts.1)
-        XCTAssertEqual([0, 1, 2], counts.2)
-    }
-
-    func testDrpoWithMultipleReceivers() {
+    func testDropWithMultipleReceivers() {
         let prop: Channel<PropertySource<Int>, Int> = channelZProperty(0)
-        let dropped: Channel<EffectSource<PropertySource<Int>>, Int> = prop.drop(3)
+        XCTAssertEqual(24, sizeofValue(prop))
+        let dropped = prop.dropFirst(3)
+        XCTAssertEqual(24, sizeofValue(dropped))
 
         var values = (Array<Int>(), Array<Int>(), Array<Int>())
         dropped.receive({ values.0.append($0) })
         dropped.receive({ values.1.append($0) })
         dropped.receive({ values.2.append($0) })
 
+        XCTAssertEqual(24, sizeofValue(values))
         for i in 1...9 { prop.value = i }
+        XCTAssertEqual(24, sizeofValue(values))
 
         XCTAssertEqual([3, 4, 5, 6, 7, 8, 9], values.0)
         XCTAssertEqual([3, 4, 5, 6, 7, 8, 9], values.1)
         XCTAssertEqual([3, 4, 5, 6, 7, 8, 9], values.2)
     }
-
-//    func testDeepNestedFilter() {
-//        let t = ∞(1.0)∞
-//
-//        func identity<A>(a: A) -> A { return a }
-//        func always<A>(a: A) -> Bool { return true }
-//
-//        let deepNest = t.desource()
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//
-//
-//        // FilteredChannel<MappableChannel<....
-//        let flatNest = deepNest.desource()
-//
-//        let deepReceiver = deepNest.receive({ _ in })
-//
-////        XCTAssertEqual("ChannelZ.FilteredObservable", _stdlib_getDemangledTypeName(deepNest))
-//        XCTAssertEqual("ChannelZ.Observable", _stdlib_getDemangledTypeName(flatNest))
-//        XCTAssertEqual("ChannelZ.ReceiverOf", _stdlib_getDemangledTypeName(deepReceiver))
-//    }
-//
-//    func testDeepNestedChannel() {
-//        let t = ∞(1.0)∞
-//
-//        func identity<A>(a: A) -> A { return a }
-//        func always<A>(a: A) -> Bool { return true }
-//
-//        let deepNest = t
-//            .map(identity).filter(always)
-//            .map({"\($0)"}).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//            .map(identity).filter(always)
-//
-//
-//        var changes = 0
-//        let deepReceiver = deepNest.receive({ _ in changes += 1 })
-//
-//        deepNest.value = 12
-//        XCTAssertEqual(12, t∞?)
-//        XCTAssertEqual(0, --changes)
-//
-//        deepNest.value--
-//        XCTAssertEqual(11, t∞?)
-//        XCTAssertEqual(0, --changes)
-//
-//        XCTAssertEqual("ChannelZ.FilteredChannel", _stdlib_getDemangledTypeName(deepNest))
-//        XCTAssertEqual("ChannelZ.ReceiverOf", _stdlib_getDemangledTypeName(deepReceiver))
-//
-//        // FilteredChannel<MappableChannel<....
-//        let flatObservable = deepNest.desource()
-//        let flatChannel = deepNest.channel()
-//
-//        XCTAssertEqual("ChannelZ.Observable", _stdlib_getDemangledTypeName(flatObservable))
-//        XCTAssertEqual("ChannelZ.ChannelOf", _stdlib_getDemangledTypeName(flatChannel))
-//
-//        let flatReceiver = flatChannel.receive({ _ in })
-//
-//        deepNest.value--
-//        XCTAssertEqual(10, t∞?)
-//        XCTAssertEqual(0, --changes)
-//
-//        deepReceiver.request()
-//        XCTAssertEqual(0, --changes)
-//
-//        flatReceiver.request()
-////        XCTAssertEqual(0, --changes) // FIXME: prime message is getting lost somehow
-//    }
-//
-
-    override public func tearDown() {
-        super.tearDown()
-
-        // ensure that all the bindings and observers are properly cleaned up
-        #if DEBUG_CHANNELZ
-            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "unexpected reentrant receptions detected")
-            ChannelZ.ChannelZReentrantReceptions = 0
-        #else
-            XCTFail("Why are you running tests with debugging off?")
-        #endif
-    }
-
 }

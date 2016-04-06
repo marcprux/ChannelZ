@@ -62,6 +62,23 @@ public class ReceiptOf: Receipt {
 //}
 
 
+/// A simple GCD-based locking scheme
+struct QueueLock {
+    let lock: dispatch_queue_t
+
+    init(name: String) {
+        lock = dispatch_queue_create(name, nil)
+    }
+
+    func lock<T>(f: () -> T) -> T {
+        var value: T?
+        dispatch_sync(lock) {
+            value = f()
+        }
+        return value!
+    }
+}
+
 /// How many levels of re-entrancy are permitted when flowing state observations
 public var ChannelZReentrancyLimit: Int = 1
 
@@ -99,8 +116,8 @@ public final class ReceiverList<T> {
         if currentEntrancy > maxdepth + 1 {
             reentrantChannelReception(element)
         } else {
-            for (_, receptor) in receivers {
-                receptor(element)
+            for (_, receiver) in receivers {
+                receiver(element)
             }
         }
     }

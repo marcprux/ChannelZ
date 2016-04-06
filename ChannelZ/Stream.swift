@@ -20,6 +20,24 @@ public protocol StreamType {
 
     /// Creates a new form of this stream type with the given reception
     @warn_unused_result func phase(reception: (Self.Element -> Void) -> Receipt) -> Self
+
+    /// Adds a stream phase that drops the first `count` elements.
+    ///
+    /// Analogous to `CollectionType.dropFirst`
+    ///
+    /// - Parameter count: the number of elements to skip before emitting pulses
+    ///
+    /// - Returns: A stateful Channel that drops the first `count` elements.
+    @warn_unused_result func dropFirst(count: Int) -> Self
+
+    /// Adds a stream phase that will send only the specified number of pulses.
+    ///
+    /// Analogous to `CollectionType.prefix`
+    ///
+    /// - Parameter count: the number of elements to skip before emitting pulses
+    ///
+    /// - Returns: A stateful Channel that drops the first `count` elements.
+    @warn_unused_result func prefix(count: Int) -> Self
 }
 
 
@@ -105,58 +123,5 @@ public extension StreamType {
             immediate = false
             return receipt
         }
-    }
-
-    /// Adds a stream phase that will cease sending pulses once the terminator predicate is satisfied.
-    ///
-    /// - Parameter terminator: A predicate function that will result in cancellation of all receipts when it evaluates to `true`
-    /// - Parameter includeFinal: Whether to send the final pulse to receivers before terminating (defaults to `false`)
-    /// - Parameter terminus: An optional final sentinal closure that will be sent once after the `terminator` evaluates to `true`
-    ///
-    /// - Returns: A stateful stream that emits pulses until the `terminator` evaluates to true
-    @warn_unused_result public func terminate(terminator: Element -> Bool, includeFinal: Bool = false, terminus: (() -> Element)? = nil) -> Self {
-        var receipts: [Receipt] = []
-        var terminated = false
-
-        return phase { receiver in
-            let receipt = self.receive { item in
-                if terminated { return }
-                if terminator(item) {
-                    if includeFinal {
-                        receiver(item)
-                    }
-
-                    terminated = true
-                    if let terminus = terminus {
-                        receiver(terminus())
-                    }
-                    for r in receipts { r.cancel() }
-                } else {
-                    receiver(item)
-                }
-            }
-            receipts += [receipt]
-            return receipt
-        }
-    }
-
-    /// Adds a stream phase that will terminate receipt after the given number of pulses have been received
-    @warn_unused_result public func take(count: Int = 1) -> Self {
-        var c = count
-        return terminate({ _ in c -= 1; return c < 0 })
-    }
-
-    /// Adds a stream phase that spits the stream in two, where the first stream accepts elements that
-    /// fail the given predicate filter, and the second stream emits the elements that pass the predicate
-    /// (mnemonic: "right" also means "correct").
-    ///
-    /// Note that the predicate will be evaluated exactly twice for each emitted item
-    ///
-    /// - Parameter predicate: a function that evaluates the pulses emitted by the source stream,
-    ///   returning `true` if they pass the filter
-    ///
-    /// - Returns: A stateless stream pair that passes elements depending on whether they pass or fail the predicate, respectively
-    public func split(predicate: Element -> Bool) -> (unfiltered: Self, filtered: Self) {
-        return (filter({ !predicate($0) }), filter(predicate))
     }
 }

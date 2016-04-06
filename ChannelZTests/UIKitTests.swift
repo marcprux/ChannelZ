@@ -14,7 +14,7 @@ import ObjectiveC
 import WebKit
 import UIKit
 
-public class UIKitTests: XCTestCase {
+public class UIKitTests : ChannelTestCase {
 //    func testButtonCommand() {
 //        let button = UIButton()
 //

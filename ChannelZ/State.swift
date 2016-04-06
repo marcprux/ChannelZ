@@ -246,8 +246,25 @@ public extension ChannelType {
     /// - Returns: a state Channel that emits a tuple of an earlier and the current item
     ///
     /// - Note: this phase with retain the previous *two* pulse items
-    @warn_unused_result public func precedent() -> Channel<EffectSource<Source>, StatePulse<Element>> {
-        return affect((old: Optional<Element>.None, new: Optional<Element>.None)) { (state, element) in (old: state.new, new: element) }.map { (element, state) in StatePulse(old: state.old, new: element) }
+    @warn_unused_result public func precedent() -> Channel<Source, StatePulse<Element>> {
+        return affect((old: Optional<Element>.None, new: Optional<Element>.None)) { (state, element) in (old: state.new, new: element) }.map { (state, element) in StatePulse(old: state.old, new: element) }
+    }
+
+    /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
+    /// recent emitted or passed item.
+    ///
+    /// For example, to create a filter for distinct equatable pulses, you would do: `changes(!=)`.
+    /// For channels that already emit `StatePulse` types, use `Channel.sieve`.
+    ///
+    /// - Parameter predicate: a function that evaluates the current item against the previous item
+    ///
+    /// - Returns: A stateful Channel that emits the the pulses that pass the predicate
+    ///
+    /// - Note: Since `sieve` uses `precedent`, the most recent value will be retained by
+    ///   the Channel for as long as there are receivers.
+    ///
+    @warn_unused_result public func precedentFilter(predicate: (previous: Element, current: Element) -> Bool) -> Channel<Source, StatePulse<Element>> {
+        return precedent().sieve(predicate)
     }
 
     /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
@@ -263,8 +280,8 @@ public extension ChannelType {
     /// - Note: Since `sieve` uses `precedent`, the most recent value will be retained by 
     ///   the Channel for as long as there are receivers.
     ///
-    @warn_unused_result public func changes(predicate: (previous: Element, current: Element) -> Bool) -> Channel<EffectSource<Source>, Element> {
-        return precedent().sieve(predicate).new()
+    @warn_unused_result public func changes(predicate: (previous: Element, current: Element) -> Bool) -> Channel<Source, Element> {
+        return precedentFilter(predicate).new()
     }
 }
 
@@ -292,9 +309,40 @@ public extension StreamType where Element : StatePulseType {
         return filter { state in
             // the initial state assignment is always fresh
             guard let old = state.old else { return true }
-            return changed(old, state.new)
+            return changed(state.new, old)
         }
     }
+}
+
+public extension ChannelType where Element : StatePulseType {
+    /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
+    /// recent emitted or passed item. This is an optimization of `Channel.precedentFilter` that uses the underlying
+    /// `StatePulseType` rather than retaining the previous elements.
+    ///
+    /// For example, to create a filter for distinct equatable pulses, you would do: `changes(!=)`.
+    /// For channels that already emit `StatePulse` types, use `Channel.sieve`.
+    ///
+    /// - Parameter predicate: a function that evaluates the current item against the previous item
+    ///
+    /// - Returns: A stateless Channel that emits the the pulses that pass the predicate
+    @warn_unused_result public func stateFilter(predicate: (previous: Element.T, current: Element.T) -> Bool) -> Self {
+        return sieve(predicate)
+    }
+
+    /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
+    /// recent emitted or passed item. This is an optimization of `Channel.precedentFilter` that uses the underlying
+    /// `StatePulseType` rather than retaining the previous elements.
+    ///
+    /// For example, to create a filter for distinct equatable pulses, you would do: `changes(!=)`.
+    /// For channels that already emit `StatePulse` types, use `Channel.sieve`.
+    ///
+    /// - Parameter predicate: a function that evaluates the current item against the previous item
+    ///
+    /// - Returns: A stateless Channel that emits the the pulses that pass the predicate
+    @warn_unused_result public func changes(predicate: (previous: Element.T, current: Element.T) -> Bool) -> Channel<Source, Element.T> {
+        return stateFilter(predicate).new()
+    }
+
 }
 
 public extension StreamType where Element : StatePulseType, Element.T : Equatable {
