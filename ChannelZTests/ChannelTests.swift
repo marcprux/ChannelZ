@@ -152,6 +152,22 @@ class ChannelTests : ChannelTestCase {
 
     }
 
+    func testThreading() {
+        let count = 999
+        var received: Int64 = 0
+        let prop = channelZProperty()
+
+        prop.subsequent().receive {
+            OSAtomicIncrement64(&received)
+        }
+
+        dispatch_apply(count, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)) { _ in
+            prop.source.put()
+        }
+
+        XCTAssertEqual(Int64(count), received)
+    }
+
     func testZipImplementations() {
         let z1 = channelZPropertyState(1).new()
         let z2 = channelZPropertyState("1").new()

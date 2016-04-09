@@ -97,8 +97,8 @@ public extension StreamType {
     /// - Parameter receptor: The functon that transforms one receiver to another
     ///
     /// - Returns: The new stream
-    @warn_unused_result private func luft(receptor: (Element -> Void) -> (Element -> Void)) -> Self {
-        return phase { receiver in self.receive(receptor(receiver)) }
+    @warn_unused_result private func lift(receptor: (Element -> Void) -> (Element -> Void)) -> Self {
+        return phase { self.receive(receptor($0)) }
     }
 
     /// Adds a stream phase which only emits those pulses for which a given predicate holds.
@@ -108,7 +108,7 @@ public extension StreamType {
     ///
     /// - Returns: A stateless stream that emits only those pulses in the original stream that the filter evaluates as `true`
     @warn_unused_result public func filter(predicate: Element -> Bool) -> Self {
-        return luft { receive in { item in if predicate(item) { receive(item) } } }
+        return lift { receive in { item in if predicate(item) { receive(item) } } }
     }
 
     /// Adds a stream phase that drops any pulses that are immediately emitted upon a receiver being added but

@@ -438,7 +438,13 @@ public extension ChannelType {
         return self.pipe(to.source)
     }
 
+    /// Creates a one-way pipe betweek a `Channel`s whose source is a `Sink`, such that when the left
+    /// side is changed the right side is updated
+    public func conduct<T, S : StateSource where S.Element == Self.Element>(to: Channel<S, T>, filter: (Element, Element) -> Bool) -> Receipt {
+        return self.filter({ value in filter(value, to.source.value) }).pipe(to.source)
+    }
 }
+
 
 public extension ChannelType where Source : Sink {
     /// Creates a two-way conduit betweek two `Channel`s whose source is a `Sink`, such that when either side is

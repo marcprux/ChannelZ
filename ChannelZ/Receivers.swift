@@ -102,22 +102,30 @@ public final class ReceiverList<T> {
         self.maxdepth = maxdepth
     }
 
-    private func synchronized<X>(lockObj: AnyObject, closure: () -> X) -> X {
-        var retVal: X?
-        dispatch_sync(lockQueue) {
-            retVal = closure()
-        }
-        return retVal!
+//    private func synchronized<X>(lockObj: AnyObject, closure: () -> X) -> X {
+//        var retVal: X?
+//        dispatch_sync(lockQueue) {
+//            retVal = closure()
+//        }
+//        return retVal!
+//    }
+
+    private func synchronized<X>(lockObj: AnyObject, @noescape closure: () throws -> X) rethrows -> X {
+        objc_sync_enter(lockObj)
+        defer { objc_sync_exit(lockObj) }
+        return try closure()
     }
 
     public func receive(element: T) {
-        let currentEntrancy = OSAtomicIncrement64(&entrancy)
-        defer { OSAtomicDecrement64(&entrancy) }
-        if currentEntrancy > maxdepth + 1 {
-            reentrantChannelReception(element)
-        } else {
-            for (_, receiver) in receivers {
-                receiver(element)
+        synchronized(self) {
+            let currentEntrancy = OSAtomicIncrement64(&entrancy)
+            defer { OSAtomicDecrement64(&entrancy) }
+            if currentEntrancy > maxdepth + 1 {
+                reentrantChannelReception(element)
+            } else {
+                for (_, receiver) in receivers {
+                    receiver(element)
+                }
             }
         }
     }
