@@ -549,3 +549,85 @@ extension SequenceType {
 @warn_unused_result public func channelZPropertyState<T>(initialValue: T) -> Channel<PropertySource<T>, StatePulse<T>> {
     return PropertySource(initialValue).channelZState()
 }
+
+
+// MARK: Lens Support
+
+
+/// A van Laarhoven Lens type
+public protocol LensType {
+    associatedtype A
+    associatedtype B
+
+    @warn_unused_result func set(target: A, _ value: B) -> A
+
+    @warn_unused_result func get(target: A) -> B
+
+}
+
+/// A lens provides the ability to access and modify a sub-element of an immutable data structure
+public struct Lens<A, B> : LensType {
+    private let getter: A -> B
+    private let setter: (A, B) -> A
+
+    public init(get: A -> B, set: (A, B) -> A) {
+        self.getter = get
+        self.setter = set
+    }
+
+    public init(_ get: A -> B, _ set: (inout A, B) -> ()) {
+        self.getter = get
+        self.setter = { var copy = $0; set(&copy, $1); return copy }
+    }
+
+    @warn_unused_result public func set(target: A, _ value: B) -> A {
+        return setter(target, value)
+    }
+
+    @warn_unused_result public func get(target: A) -> B {
+        return getter(target)
+    }
+}
+
+public protocol LensSourceType : StateSink, StateSource {
+    associatedtype Owner : ChannelType
+
+    /// All lens channels have an owner that is itself a StateSource
+    var channel: Owner { get }
+}
+
+/// A Lens on a state channel, which can be used create a property channel on a specific
+/// piece of the source state
+public struct LensSource<C: ChannelType, T where C.Source : StateSource, C.Element == StatePulse<C.Source.Element>>: LensSourceType {
+    public typealias Owner = C
+    public let channel: C
+    public let lens: Lens<C.Source.Element, T>
+
+    public func put(x: T) {
+        self.value = x
+    }
+
+    public var value: T {
+        get { return lens.get(channel.value) }
+        nonmutating set { channel.value = lens.set(channel.value, newValue) }
+    }
+
+    public func channelZState() -> Channel<LensSource, StatePulse<T>> {
+        return channel.map({ pulse in StatePulse(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new)) }).resource({ _ in self })
+    }
+}
+
+public extension ChannelType where Source : StateSource, Element == StatePulse<Source.Element> {
+    /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
+    /// channel can modify sub-elements of a complex data structure
+    public func channelZLens<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+        return LensSource(channel: self, lens: lens).channelZState()
+    }
+}
+
+public extension ChannelType where Source : LensSourceType, Source.Owner.Source : StateSource {
+    /// A lens channel's owner is the value of the lens source itself
+    public var owner: Source.Owner {
+        get { return source.channel }
+    }
+}

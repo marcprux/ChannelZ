@@ -60,9 +60,10 @@ private func feedX<T, U>(seq: [T], f: [T] -> U) -> U {
     return f(seq)
 }
 
+
 class ChannelTestCase : XCTestCase {
     /// Enable just a single test; keep this public so we always get a warning
-//    public override func invokeTest() { return invocation?.selector == #selector(ChannelTests.testEnumerations) ? super.invokeTest() : print("skipping test", name) }
+    public override func invokeTest() { return invocation?.selector == #selector(ChannelTests.testLensChannels) ? super.invokeTest() : print("skipping test", name) }
 
 
     override internal func tearDown() {
@@ -78,9 +79,51 @@ class ChannelTestCase : XCTestCase {
     }
 }
 
-
-
 class ChannelTests : ChannelTestCase {
+    func testLensChannels() {
+        let prop = channelZPropertyState((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
+
+        // van Laarhoven lenses: type Lens a b = forall f. Functor f => (b -> f b) -> a -> f a
+        
+
+        let str = prop.channelZLens(ChannelZ.Lens({ $0.str }, { $0.str = $1 }))
+        let int = prop.channelZLens(ChannelZ.Lens({ $0.int }, { $0.int = $1 }))
+        let dbl = prop.channelZLens(ChannelZ.Lens({ $0.dbl }, { $0.dbl = $1 }))
+        let sub = prop.channelZLens(ChannelZ.Lens({ $0.sub }, { $0.sub = $1 }))
+        let suba = sub.channelZLens(ChannelZ.Lens({ $0.a }, { $0.a = $1 }))
+        let subb = sub.channelZLens(ChannelZ.Lens({ $0.b }, { $0.b = $1 }))
+        let subc = sub.channelZLens(ChannelZ.Lens({ $0.c }, { $0.c = $1 }))
+
+        // subc = Channel<LensSource<Channel<LensSource<Channel<PropertySource<X>, StatePulse<X>>, Y>, StatePulse<Y>>, String>, StatePulse<String>>
+
+        str.value = "Bar"
+        int.value = 2
+        dbl.value = 5.5
+
+        suba.value = false
+        subb.value = 999
+        subc.value = "x"
+
+        XCTAssertEqual(prop.value.str, "Bar")
+        XCTAssertEqual(prop.value.int, 2)
+        XCTAssertEqual(prop.value.dbl, 5.5)
+
+        XCTAssertEqual(prop.value.sub.a, false)
+        XCTAssertEqual(prop.value.sub.b, 999)
+        XCTAssertEqual(prop.value.sub.c, "x")
+
+        // children can affect parent values and it will update state and fire receivers
+        var strx = 0
+        str.subsequent().receive({ _ in strx += 1 })
+        XCTAssertEqual(0, strx)
+
+        subc.owner.owner.value.str = "Baz"
+
+        XCTAssertEqual(prop.value.str, "Baz")
+        XCTAssertEqual(1, strx)
+
+    }
+
     /// Verifies that asyncronous Channels and syncronous Sequences behave the same way
     func testAnalogousSequenceFunctions() {
         let nums = [1, 2, 3, 3, 2, -1] // the test set

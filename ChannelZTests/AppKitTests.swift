@@ -250,6 +250,10 @@ class AppKitTests : ChannelTestCase {
         // progress∞progress.localizedDescription ∞=> textField∞textField.stringValue
         
         vm.amount ∞= vm.amount∞? + 15.0
+
+        withExtendedLifetime(slider) { }
+        withExtendedLifetime(progress) { }
+        withExtendedLifetime(progbar) { }
     }
 
     func testControllers() {
