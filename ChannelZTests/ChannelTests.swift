@@ -83,16 +83,13 @@ class ChannelTests : ChannelTestCase {
     func testLensChannels() {
         let prop = channelZPropertyState((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
 
-        // van Laarhoven lenses: type Lens a b = forall f. Functor f => (b -> f b) -> a -> f a
-        
-
-        let str = prop.channelZLens(ChannelZ.Lens({ $0.str }, { $0.str = $1 }))
-        let int = prop.channelZLens(ChannelZ.Lens({ $0.int }, { $0.int = $1 }))
-        let dbl = prop.channelZLens(ChannelZ.Lens({ $0.dbl }, { $0.dbl = $1 }))
-        let sub = prop.channelZLens(ChannelZ.Lens({ $0.sub }, { $0.sub = $1 }))
-        let suba = sub.channelZLens(ChannelZ.Lens({ $0.a }, { $0.a = $1 }))
-        let subb = sub.channelZLens(ChannelZ.Lens({ $0.b }, { $0.b = $1 }))
-        let subc = sub.channelZLens(ChannelZ.Lens({ $0.c }, { $0.c = $1 }))
+        let str = prop.channelZLens({ $0.str }, { $0.str = $1 })
+        let int = prop.channelZLens({ $0.int }, { $0.int = $1 })
+        let dbl = prop.channelZLens({ $0.dbl }, { $0.dbl = $1 })
+        let sub = prop.channelZLens({ $0.sub }, { $0.sub = $1 })
+        let suba = sub.channelZLens({ $0.a }, { $0.a = $1 })
+        let subb = sub.channelZLens({ $0.b }, { $0.b = $1 })
+        let subc = sub.channelZLens({ $0.c }, { $0.c = $1 })
 
         // subc = Channel<LensSource<Channel<LensSource<Channel<PropertySource<X>, StatePulse<X>>, Y>, StatePulse<Y>>, String>, StatePulse<String>>
 
@@ -113,15 +110,28 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(prop.value.sub.c, "x")
 
         // children can affect parent values and it will update state and fire receivers
-        var strx = 0
-        str.subsequent().receive({ _ in strx += 1 })
-        XCTAssertEqual(0, strx)
+        var strUpdates = 0
+        var strChanges = 0
+        str.subsequent().receive({ _ in strUpdates += 1 })
+        str.subsequent().sieve(!=).receive({ _ in strChanges += 1 })
+        XCTAssertEqual(0, strChanges)
+
+        subc.owner.owner.value.str = "Baz"
+        XCTAssertEqual(prop.value.str, "Baz")
+        XCTAssertEqual(1, strUpdates)
+        XCTAssertEqual(1, strChanges)
+
+        subc.owner.value.b = 7
+        XCTAssertEqual(prop.value.sub.b, 7)
+        XCTAssertEqual(2, strUpdates) // note that str changes even when a different property changed
+        XCTAssertEqual(1, strChanges) // so we sieve for changes
 
         subc.owner.owner.value.str = "Baz"
 
-        XCTAssertEqual(prop.value.str, "Baz")
-        XCTAssertEqual(1, strx)
+        let compound = str.new() & subb.new()
+        compound.receive { x in dump(x) }
 
+//        let MVλ = 1
     }
 
     /// Verifies that asyncronous Channels and syncronous Sequences behave the same way

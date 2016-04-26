@@ -623,6 +623,11 @@ public extension ChannelType where Source : StateSource, Element == StatePulse<S
     public func channelZLens<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, StatePulse<X>> {
         return LensSource(channel: self, lens: lens).channelZState()
     }
+
+    public func channelZLens<X>(get: Source.Element -> X, _ set: (inout Source.Element, X) -> ()) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+        return channelZLens(Lens(get, set))
+    }
+
 }
 
 public extension ChannelType where Source : LensSourceType, Source.Owner.Source : StateSource {
