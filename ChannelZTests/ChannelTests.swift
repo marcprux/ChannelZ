@@ -62,8 +62,10 @@ private func feedX<T, U>(seq: [T], f: [T] -> U) -> U {
 
 
 class ChannelTestCase : XCTestCase {
-    /// Enable just a single test; keep this public so we always get a warning
-    public override func invokeTest() { return invocation?.selector == #selector(ChannelTests.testLensChannels) ? super.invokeTest() : print("skipping test", name) }
+    override func invokeTest() {
+//        return invocation?.selector == #selector(ChannelTests.testLensChannels) ? super.invokeTest() : print("skipping test", name)
+        return super.invokeTest()
+    }
 
 
     override internal func tearDown() {
@@ -129,8 +131,10 @@ class ChannelTests : ChannelTestCase {
         subc.owner.owner.value.str = "Baz"
 
         let compound = str.new() & subb.new()
+        dump(compound)
         compound.receive { x in dump(x) }
 
+//        dump(compound.value)
 //        let MVλ = 1
     }
 

@@ -450,7 +450,7 @@ public extension ChannelType where Source : Sink {
     /// Creates a two-way conduit betweek two `Channel`s whose source is a `Sink`, such that when either side is
     /// changed, the other side is updated
     ///
-    /// - Note: the `to` channel will immediately receive a sync from the `this` channel, making `this` channel's state dominant
+    /// - Note: the `to` channel will immediately receive a sync from the `self` channel, making `self` channel's state dominant
     public func conduit<Source2 where Source2 : Sink, Source2.Element == Self.Element>(to: Channel<Source2, Source.Element>) -> Receipt {
         // since self is the dominant channel, ignore any immediate pulses through the right channel
         let rhs = to.subsequent().pipe(self.source)
