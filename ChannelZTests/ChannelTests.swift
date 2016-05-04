@@ -11,8 +11,8 @@ import ChannelZ
 
 extension StreamType {
     /// Test method that receives to the observable and returns any elements that are immediately sent to fresh receivers
-    func pullZ() -> [Element] {
-        var items: [Element] = []
+    func pullZ() -> [Pulse] {
+        var items: [Pulse] = []
         receive({ items += [$0] }).cancel()
         return items
     }
@@ -32,7 +32,7 @@ extension StreamType {
 
 
 private func feedZ<T, U, S>(input: [T], setup: Channel<PropertySource<T>, T> -> Channel<S, U>) -> [U] {
-    let channel = channelZProperty(input[0])
+    let channel = channelZPropertyValue(input[0])
     let transformed = setup(channel)
 
     // store the output; we store 3 separate outputs just to check that EffectSources work correctly
@@ -46,7 +46,7 @@ private func feedZ<T, U, S>(input: [T], setup: Channel<PropertySource<T>, T> -> 
     let r2 = transformed.receive { outputs.2.append($0) }
     defer { r2.cancel() }
 
-    for value in input.dropFirst() { channel.source.put(value) }
+    for value in input.dropFirst() { channel.source.receive(value) }
     switch arc4random_uniform(3) {
     case 0: return outputs.0
     case 1: return outputs.1
@@ -63,7 +63,7 @@ private func feedX<T, U>(seq: [T], f: [T] -> U) -> U {
 
 class ChannelTestCase : XCTestCase {
     override func invokeTest() {
-//        return invocation?.selector == #selector(ChannelTests.testLensChannels) ? super.invokeTest() : print("skipping test", name)
+//        return invocation?.selector == #selector(ChannelTests.testJacket) ? super.invokeTest() : print("skipping test", name)
         return super.invokeTest()
     }
 
@@ -95,21 +95,21 @@ class ChannelTests : ChannelTestCase {
 
         // subc = Channel<LensSource<Channel<LensSource<Channel<PropertySource<X>, StatePulse<X>>, Y>, StatePulse<Y>>, String>, StatePulse<String>>
 
-        str.value = "Bar"
-        int.value = 2
-        dbl.value = 5.5
+        str.$ = "Bar"
+        int.$ = 2
+        dbl.$ = 5.5
 
-        suba.value = false
-        subb.value = 999
-        subc.value = "x"
+        suba.$ = false
+        subb.$ = 999
+        subc.$ = "x"
 
-        XCTAssertEqual(prop.value.str, "Bar")
-        XCTAssertEqual(prop.value.int, 2)
-        XCTAssertEqual(prop.value.dbl, 5.5)
+        XCTAssertEqual(prop.$.str, "Bar")
+        XCTAssertEqual(prop.$.int, 2)
+        XCTAssertEqual(prop.$.dbl, 5.5)
 
-        XCTAssertEqual(prop.value.sub.a, false)
-        XCTAssertEqual(prop.value.sub.b, 999)
-        XCTAssertEqual(prop.value.sub.c, "x")
+        XCTAssertEqual(prop.$.sub.a, false)
+        XCTAssertEqual(prop.$.sub.b, 999)
+        XCTAssertEqual(prop.$.sub.c, "x")
 
         // children can affect parent values and it will update state and fire receivers
         var strUpdates = 0
@@ -118,23 +118,23 @@ class ChannelTests : ChannelTestCase {
         str.subsequent().sieve(!=).receive({ _ in strChanges += 1 })
         XCTAssertEqual(0, strChanges)
 
-        subc.owner.owner.value.str = "Baz"
-        XCTAssertEqual(prop.value.str, "Baz")
+        subc.owner.owner.$.str = "Baz"
+        XCTAssertEqual(prop.$.str, "Baz")
         XCTAssertEqual(1, strUpdates)
         XCTAssertEqual(1, strChanges)
 
-        subc.owner.value.b = 7
-        XCTAssertEqual(prop.value.sub.b, 7)
+        subc.owner.$.b = 7
+        XCTAssertEqual(prop.$.sub.b, 7)
         XCTAssertEqual(2, strUpdates) // note that str changes even when a different property changed
         XCTAssertEqual(1, strChanges) // so we sieve for changes
 
-        subc.owner.owner.value.str = "Baz"
+        subc.owner.owner.$.str = "Baz"
 
         let compound = str.new() & subb.new()
         dump(compound)
         compound.receive { x in dump(x) }
 
-//        dump(compound.value)
+//        dump(compound.$)
 //        let MVλ = 1
     }
 
@@ -144,46 +144,77 @@ class ChannelTests : ChannelTestCase {
 
         XCTAssertEqual(nums, feedZ(nums) { $0 })
 
-        XCTAssertEqual([2, 3, 3, 2], feedX(nums) { $0.filter({ $0 > 1 }) })
-        XCTAssertEqual([2, 3, 3, 2], feedZ(nums) { $0.filter({ $0 > 1 }) })
+        do {
+            let xpct = [2, 3, 3, 2]
+            XCTAssertEqual(xpct, feedX(nums) { $0.filter({ $0 > 1 }) })
+            XCTAssertEqual(xpct, feedZ(nums) { $0.filter({ $0 > 1 }) })
+        }
 
+        do {
+            let xpct = [-1, -2, -3, -3, -2, 1]
+            XCTAssertEqual(xpct, feedX(nums) { $0.map(-) })
+            XCTAssertEqual(xpct, feedZ(nums) { $0.map(-) })
+        }
 
-        XCTAssertEqual([-1, -2, -3, -3, -2, 1], feedX(nums) { $0.map(-) })
-        XCTAssertEqual([-1, -2, -3, -3, -2, 1], feedZ(nums) { $0.map(-) })
+        do {
+            let xpct = ["1", "2", "3", "3", "2", "-1"]
+            XCTAssertEqual(xpct, feedX(nums) { $0.map(String.init) })
+            XCTAssertEqual(xpct, feedZ(nums) { $0.map(String.init) })
+        }
 
-        let stringMap = ["1", "2", "3", "3", "2", "-1"]
-        XCTAssertEqual(stringMap, feedX(nums) { $0.map(String.init) })
-        XCTAssertEqual(stringMap, feedZ(nums) { $0.map(String.init) })
+        do {
+            let xpct = 10
+            XCTAssertEqual(xpct, feedX(nums) { $0.reduce(0, combine: +) })
+            XCTAssertEqual(xpct, feedZ(nums) { $0.reduce(0, combine: +) }.last) // last because reduce provides running reductions
+        }
 
-        XCTAssertEqual(10, feedX(nums) { $0.reduce(0, combine: +) })
-        XCTAssertEqual(10, feedZ(nums) { $0.reduce(0, combine: +) }.last) // last because reduce provides running reductions
+        do {
+            XCTAssertEqual([3, 2, -1], feedX(nums) { $0.dropFirst(3) })
+            XCTAssertEqual([3, 2, -1], feedZ(nums) { $0.dropFirst(3) })
+        }
 
-        XCTAssertEqual([3, 2, -1], feedX(nums) { $0.dropFirst(3) })
-        XCTAssertEqual([3, 2, -1], feedZ(nums) { $0.dropFirst(3) })
+        do {
+            XCTAssertEqual([1, 2, 3, 3, 2], feedX(nums) { $0.prefix(5) })
+            XCTAssertEqual([1, 2, 3, 3, 2], feedZ(nums) { $0.prefix(5) })
+        }
 
-        XCTAssertEqual([1, 2, 3, 3, 2], feedX(nums) { $0.prefix(5) })
-        XCTAssertEqual([1, 2, 3, 3, 2], feedZ(nums) { $0.prefix(5) })
+        do {
+            let xpct = [2, 3, 4, 6, 6, 9, 6, 9, 4, 6, -2, -3]
+            XCTAssertEqual(xpct, nums.flatMap { [$0 * 2, $0 * 3] })
+            XCTAssertEqual(xpct, feedZ(nums) { $0.flatMap { seqZ($0 * 2, $0 * 3) } })
+        }
 
-        XCTAssertEqual([2, 3, 4, 6, 6, 9, 6, 9, 4, 6, -2, -3], nums.flatMap { [$0 * 2, $0 * 3] })
-        XCTAssertEqual([2, 3, 4, 6, 6, 9, 6, 9, 4, 6, -2, -3], feedZ(nums) { $0.flatMap { seqZ($0 * 2, $0 * 3) } })
+        do {
+            let xpct = [1, 4, 9, 9, 4, 1]
+            XCTAssertEqual(xpct, zip(nums, nums).map(*))
+            XCTAssertEqual(xpct, feedZ(nums) { $0.zip(nums.channelZSequence()).map(*) })
+        }
 
-        XCTAssertEqual([1, 4, 9, 9, 4, 1], zip(nums, nums).map(*))
-        XCTAssertEqual([1, 4, 9, 9, 4, 1], feedZ(nums) { $0.zip(nums.channelZSequence()).map(*) })
+        do {
+            let xpct = [2, 6, 9, 6, -2]
+            XCTAssertEqual(xpct, zip(nums.dropFirst(), nums).map(*))
+            XCTAssertEqual(xpct, feedZ(nums) { $0.dropFirst().zip(nums.channelZSequence()).map(*) })
+        }
 
-        XCTAssertEqual([2, 6, 9, 6, -2], zip(nums.dropFirst(), nums).map(*))
-        XCTAssertEqual([2, 6, 9, 6, -2], feedZ(nums) { $0.dropFirst().zip(nums.channelZSequence()).map(*) })
-
-        XCTAssertEqual([2, 6, 9, 6, -2], zip(nums, nums.dropFirst()).map(*))
-        XCTAssertEqual([2, 6, 9, 6, -2], feedZ(nums) { $0.zip(nums.channelZSequence().dropFirst()).map(*) })
-
+        do {
+            let xpct = [2, 6, 9, 6, -2]
+            XCTAssertEqual(xpct, zip(nums, nums.dropFirst()).map(*))
+            XCTAssertEqual(xpct, feedZ(nums) { $0.zip(nums.channelZSequence().dropFirst()).map(*) })
+        }
 
         let three = { $0 == 3 }
 
-        XCTAssertEqual([[1, 2], [2, -1]], feedX(nums + [3]) { $0.split(isSeparator: three) }.map(Array.init))
-        XCTAssertEqual([[1, 2], [2, -1]], feedZ(nums + [3]) { $0.split(isSeparator: three) })
+        do {
+            let xpct = [[1, 2], [2, -1]]
+            XCTAssertEqual(xpct, feedX(nums + [3]) { $0.split(isSeparator: three) }.map(Array.init))
+            XCTAssertEqual([[1, 2], [2, -1]], feedZ(nums + [3]) { $0.split(isSeparator: three) })
+        }
 
-        XCTAssertEqual([[1, 2], [], [2, -1]], nums.split(allowEmptySlices: true, isSeparator: three).map(Array.init))
-        XCTAssertEqual([[1, 2], [], [2, -1]], feedZ(nums + [3]) { $0.split(allowEmptySlices: true, isSeparator: three) })
+        do {
+            let xpct = [[1, 2], [], [2, -1]]
+            XCTAssertEqual(xpct, nums.split(allowEmptySlices: true, isSeparator: three).map(Array.init))
+            XCTAssertEqual(xpct, feedZ(nums + [3]) { $0.split(allowEmptySlices: true, isSeparator: three) })
+        }
 
         XCTAssertEqual([[1, 2], []], nums.split(2, allowEmptySlices: true, isSeparator: three).dropLast().map(Array.init))
         XCTAssertEqual([[1, 2], []], feedZ(nums + [3]) { $0.split(2, allowEmptySlices: true, isSeparator: three) })
@@ -193,7 +224,7 @@ class ChannelTests : ChannelTestCase {
 
         XCTAssertEqual([1, 2, -1], feedZ(nums) { $0.changes(<) })
 
-        XCTAssertEqual([1, 2, 3, 2, -1], feedZ(nums) { $0.precedentFilter(!=).new() })
+        XCTAssertEqual([1, 2, 3, 2, -1], feedZ(nums) { $0.presieve(!=).new() })
 
         XCTAssertEqual([[1, 2, 3], [3, 2, -1]], feedZ(nums) { $0.buffer(3) })
 
@@ -212,14 +243,14 @@ class ChannelTests : ChannelTestCase {
     func testThreading() {
         let count = 999
         var received: Int64 = 0
-        let prop = channelZProperty()
+        let prop = channelZPropertyValue()
 
         prop.subsequent().receive {
             OSAtomicIncrement64(&received)
         }
 
         dispatch_apply(count, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)) { _ in
-            prop.source.put()
+            prop.source.receive()
         }
 
         XCTAssertEqual(Int64(count), received)
@@ -231,7 +262,7 @@ class ChannelTests : ChannelTestCase {
         let z3 = channelZPropertyState(true).new()
         let z4 = channelZPropertyState().new()
 
-        var items: [(index: Int, element: (((Int, String), Bool), Void))] = []
+        var items: [(index: Int, pulse: (((Int, String), Bool), Void))] = []
         let zz = z1.zip(z2).zip(z3).zip(z4).enumerate()
 
         zz.receive {
@@ -242,34 +273,34 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(1, items.count)
         XCTAssertEqual(0, items.last?.index)
 
-        z1.value = 2
-        z2.value = "2"
-        z3.value = true
-        z4.value = Void()
+        z1.$ = 2
+        z2.$ = "2"
+        z3.$ = true
+        z4.$ = Void()
 
         XCTAssertEqual(2, items.count)
         XCTAssertEqual(1, items.last?.index)
 
-        z1.value = 3
-        z1.value = 4
+        z1.$ = 3
+        z1.$ = 4
 
-        z4.value = Void()
-        z4.value = Void()
+        z4.$ = Void()
+        z4.$ = Void()
 
-        z3.value = true
-        z3.value = true
+        z3.$ = true
+        z3.$ = true
 
-        z2.value = "4"
-        z2.value = "5"
+        z2.$ = "4"
+        z2.$ = "5"
 
-        z4.value = Void()
-        z3.value = true
-        z2.value = "3"
+        z4.$ = Void()
+        z3.$ = true
+        z2.$ = "3"
 
         XCTAssertEqual(4, items.count)
         XCTAssertEqual(3, items.last?.index)
 
-        z1.value = 5
+        z1.$ = 5
 
         XCTAssertEqual(5, items.count)
         XCTAssertEqual(4, items.last?.index) // last enum
@@ -284,21 +315,21 @@ class ChannelTests : ChannelTestCase {
         zz.enumerate().enumerate().enumerate().receive {
             counts.0 += 1
             counts.1 = $0.index
-            counts.2 = $0.element.index
-            counts.3 = $0.element.element.index
+            counts.2 = $0.pulse.index
+            counts.3 = $0.pulse.pulse.index
         }
 
         XCTAssertEqual(counts.0, counts.1)
         XCTAssertEqual(counts.0, counts.2)
         XCTAssertEqual(counts.0, counts.3)
 
-        z1.value += 1
+        z1.$ += 1
 
         XCTAssertEqual(counts.0, counts.1)
         XCTAssertEqual(counts.0, counts.2)
         XCTAssertEqual(counts.0, counts.3)
 
-        z2.value += "1"
+        z2.$ += "1"
 
         XCTAssertEqual(counts.0, counts.1)
         XCTAssertEqual(counts.0, counts.2)
@@ -308,7 +339,7 @@ class ChannelTests : ChannelTestCase {
     func testEnumerations() {
         let z1 = channelZPropertyState(true).new()
         let z2 = channelZPropertyState(1).new()
-        typealias Item = (index: Int, element: (index: Int, element: (index: Int, element: OneOf2<Bool, Int>)))
+        typealias Item = (index: Int, pulse: (index: Int, pulse: (index: Int, pulse: OneOf2<Bool, Int>)))
 
         let enums = z1.either(z2).enumerate().enumerate().enumerate()
 //        let enums = enumberate(enumberate(enumberate(z1.either(z2))))
@@ -321,24 +352,24 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(2, elements.count)
 
         XCTAssertEqual(0, elements.first?.index)
-        XCTAssertEqual(0, elements.first?.element.index)
-        XCTAssertEqual(0, elements.first?.element.element.index)
+        XCTAssertEqual(0, elements.first?.pulse.index)
+        XCTAssertEqual(0, elements.first?.pulse.pulse.index)
 
         XCTAssertEqual(1, elements.last?.index)
-        XCTAssertEqual(1, elements.last?.element.index)
-        XCTAssertEqual(1, elements.last?.element.element.index)
+        XCTAssertEqual(1, elements.last?.pulse.index)
+        XCTAssertEqual(1, elements.last?.pulse.pulse.index)
 
-        z1.value = true
+        z1.$ = true
 
         XCTAssertEqual(2, elements.last?.index)
-        XCTAssertEqual(2, elements.last?.element.index)
-        XCTAssertEqual(2, elements.last?.element.element.index)
+        XCTAssertEqual(2, elements.last?.pulse.index)
+        XCTAssertEqual(2, elements.last?.pulse.pulse.index)
 
-        z2.value = 1
+        z2.$ = 1
 
         XCTAssertEqual(3, elements.last?.index)
-        XCTAssertEqual(3, elements.last?.element.index)
-        XCTAssertEqual(3, elements.last?.element.element.index)
+        XCTAssertEqual(3, elements.last?.pulse.index)
+        XCTAssertEqual(3, elements.last?.pulse.pulse.index)
     }
 
     func testTraps() {
@@ -348,12 +379,12 @@ class ChannelTests : ChannelTestCase {
 
         // test that sending capacity distinct values will store those values
         let send = [true, false, true, false, true, false, true, false, true, false]
-        for x in send { bools.stream.value = x }
+        for x in send { bools.stream.$ = x }
         XCTAssertEqual(send, bools.values)
 
         // test that sending some mixed values will sieve and constrain to the capacity
         let mixed = [false, true, true, true, false, true, false, true, false, true, true, false, true, true, false, false, false]
-        for x in mixed { bools.stream.value = x }
+        for x in mixed { bools.stream.$ = x }
         XCTAssertEqual(send, bools.values)
     }
 
@@ -400,7 +431,7 @@ class ChannelTests : ChannelTestCase {
         }
 
         typealias S1 = Range<Int>
-        typealias S2 = SinkTo<(Float)>
+        typealias S2 = AnyReceiver<(Float)>
         typealias S3 = ()->Void?
 
         let o1: Channel<S1, Int> = channelZSequence(1...3)
@@ -421,14 +452,14 @@ class ChannelTests : ChannelTestCase {
         let sub = cc.receive({ _ in count += 1 })
         XCTAssertEqual(3, count)
 
-        o2.source.put(4) // put broadcasts to three sources
+        o2.source.receive(4) // put broadcasts to three sources
         XCTAssertEqual(6, count)
 
-        cc.source.0.0.1.put(5)
+        cc.source.0.0.1.receive(5)
         XCTAssertEqual(9, count)
 
         sub.cancel()
-        o2.source.put(6)
+        o2.source.receive(6)
 
         XCTAssertEqual(9, count)
     }
@@ -485,7 +516,7 @@ class ChannelTests : ChannelTestCase {
         _ = obv.filter({ $0 > 0 }).receive({ _ in count += 1 })
 
         let numz = -10...3
-        for x in numz { obv.source.put(x) }
+        for x in numz { obv.source.receive(x) }
 
         XCTAssertEqual(3, count)
     }
@@ -503,14 +534,14 @@ class ChannelTests : ChannelTestCase {
 
         for _ in 1...10 {
             let numz = -2...11
-            for x in numz { obv.source.put(x) }
+            for x in numz { obv.source.receive(x) }
             XCTAssertEqual(4, count)
             sub.cancel() // make sure the count is still 4...
         }
     }
 
     func testSieveDistinct() {
-        let numberz = channelZProperty(1)
+        let numberz = channelZPropertyValue(1)
 
         var items: [Int] = []
         numberz.changes(!=).receive {
@@ -518,14 +549,14 @@ class ChannelTests : ChannelTestCase {
         }
 
         for num in [1, 2, 1, 2, 2, 2, 3, 3, 4] {
-            numberz.source.value = num
+            numberz.source.$ = num
         }
 
         XCTAssertEqual([1, 2, 1, 2, 3, 4], items)
     }
 
     func testSieveLastIncrementing() {
-        let numberz = channelZProperty(1)
+        let numberz = channelZPropertyValue(1)
 
         var items: [Int] = []
         numberz.changes(<).receive {
@@ -533,7 +564,7 @@ class ChannelTests : ChannelTestCase {
         }
 
         for n in [1, 1, 2, 1, 2, 2, 2, 3, 3, 4, 1, 3] {
-            numberz.source.put(n)
+            numberz.source.receive(n)
         }
 
         XCTAssertEqual([1, 1, 1], items)
@@ -565,7 +596,7 @@ class ChannelTests : ChannelTestCase {
 
         let r4 = numberz.receive { x in raws.1.append(x) }
 
-        for i in 1...7 { numberz.value = i }
+        for i in 1...7 { numberz.$ = i }
 
         XCTAssertEqual(raws.0, Array(0...7))
         XCTAssertEqual(sums.0, [0, 1, 3, 6, 10, 15, 21, 28])
@@ -594,24 +625,24 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual([0], counts.1)
         XCTAssertEqual([0], counts.2)
 
-        prop.source.put("a")
+        prop.source.receive("a")
         XCTAssertEqual([0, 1], counts.0)
         XCTAssertEqual([0, 1], counts.1)
         XCTAssertEqual([0, 1], counts.2)
 
-        prop.source.put("b")
+        prop.source.receive("b")
         XCTAssertEqual([0, 1, 2], counts.0)
         XCTAssertEqual([0, 1, 2], counts.1)
         XCTAssertEqual([0, 1, 2], counts.2)
     }
 
     func testBuffer() {
-        let numberz = channelZProperty(0)
+        let numberz = channelZPropertyValue(0)
         let bufferer = numberz.buffer(3)
 
         var items: [[Int]] = []
         bufferer.receive { items.append($0) }
-        for i in 1...10 { numberz.value = i }
+        for i in 1...10 { numberz.$ = i }
         // note that 9 & 10 are dropped because they don't satisfy the buffering requirement
         XCTAssertTrue([[0, 1, 2], [3, 4, 5], [6, 7, 8]] == items, "Bad buffered items: \(items)")
     }
@@ -627,7 +658,7 @@ class ChannelTests : ChannelTestCase {
 //    }
 
     func testReduceNumbers() {
-        let numberz = channelZProperty(0)
+        let numberz = channelZPropertyValue(0)
         // computes the running sum of each batch of 7 non-zero numbers
         let bufferer = numberz.partition(0, isPartition: { b,x in x > 0 && x % 7 == 0 }, combine: +)
         var items = (Array<Int>(), Array<Int>(), Array<Int>())
@@ -635,7 +666,7 @@ class ChannelTests : ChannelTestCase {
         bufferer.receive { items.1.append($0) }
         bufferer.receive { items.2.append($0) }
 
-        for i in 1...100 { numberz.value = i }
+        for i in 1...100 { numberz.$ = i }
         let a1 = 1+2+3+4+5+6+7
         let a2 = 8+9+10+11+12+13+14
 
@@ -664,11 +695,11 @@ class ChannelTests : ChannelTestCase {
 //
 //    }
 
-    func channelResults<S: StateSink, T>(channel: Channel<S, T>, items: [S.Element]) -> [T] {
+    func channelResults<S: StateReceiver, T>(channel: Channel<S, T>, items: [S.Pulse]) -> [T] {
         var results: [T] = []
         let _ = channel.receive({ results.append($0) })
         for item in items {
-            channel.source.put(item)
+            channel.source.receive(item)
         }
         return results
     }
@@ -676,10 +707,10 @@ class ChannelTests : ChannelTestCase {
     func testPartitionStrings() {
         func isSpace(buf: String, str: String)->Bool { return str == " " }
 
-        let withPartition = channelResults(channelZProperty("").partition("", isPartition: isSpace, combine: +), items: "1 12 123 1234 12345 123456 1234567 12345678 123456789 ".characters.map({ String($0) }))
+        let withPartition = channelResults(channelZPropertyValue("").partition("", isPartition: isSpace, combine: +), items: "1 12 123 1234 12345 123456 1234567 12345678 123456789 ".characters.map({ String($0) }))
         XCTAssertEqual(["1 ", "12 ", "123 ", "1234 ", "12345 ", "123456 ", "1234567 ", "12345678 ", "123456789 "], withPartition)
 
-        let withoutPartition = channelResults(channelZProperty("").partition("", includePartitions: false, isPartition: isSpace, combine: +), items: "1 12 123 1234 12345 123456 1234567 12345678 123456789 ".characters.map({ String($0) }))
+        let withoutPartition = channelResults(channelZPropertyValue("").partition("", includePartitions: false, isPartition: isSpace, combine: +), items: "1 12 123 1234 12345 123456 1234567 12345678 123456789 ".characters.map({ String($0) }))
         XCTAssertEqual(["1", "12", "123", "1234", "12345", "123456", "1234567", "12345678", "123456789"], withoutPartition)
 
     }
@@ -714,18 +745,18 @@ class ChannelTests : ChannelTestCase {
         var names: [String] = []
         let rcpt = fnamez.receive { names += [$0.1] }
 
-        person.fname.source.put("Marc")
-        person.lname.value = "Prud'hommeaux"
-        person.fname.value = "Marc"
-        person.fname.value = "Marc"
-        person.lname.value = "Prud'hommeaux"
+        person.fname.source.receive("Marc")
+        person.lname.$ = "Prud'hommeaux"
+        person.fname.$ = "Marc"
+        person.fname.$ = "Marc"
+        person.lname.$ = "Prud'hommeaux"
 
         XCTAssertFalse(rcpt.cancelled)
         rcpt.cancel()
         XCTAssertTrue(rcpt.cancelled)
 
-        person.fname.value = "John"
-        person.lname.value = "Doe"
+        person.fname.$ = "John"
+        person.lname.$ = "Doe"
 
         XCTAssertEqual(["Marc", "Prud'hommeaux"], names)
 
@@ -745,46 +776,46 @@ class ChannelTests : ChannelTestCase {
 
         let rcpt = ∞propa <=∞=> ∞propb
 
-        XCTAssertEqual("A", propa.value)
-        XCTAssertEqual("A", propb.value)
+        XCTAssertEqual("A", propa.$)
+        XCTAssertEqual("A", propb.$)
 
-        propa.value = "X"
-        XCTAssertEqual("X", propa.value)
-        XCTAssertEqual("X", propb.value)
+        propa.$ = "X"
+        XCTAssertEqual("X", propa.$)
+        XCTAssertEqual("X", propb.$)
 
-        propb.value = "Y"
-        XCTAssertEqual("Y", propa.value)
-        XCTAssertEqual("Y", propb.value)
+        propb.$ = "Y"
+        XCTAssertEqual("Y", propa.$)
+        XCTAssertEqual("Y", propb.$)
 
         rcpt.cancel()
 
-        propa.value = "Z"
-        XCTAssertEqual("Z", propa.value)
-        XCTAssertEqual("Y", propb.value, "cancelled receiver should not have channeled the value")
+        propa.$ = "Z"
+        XCTAssertEqual("Z", propa.$)
+        XCTAssertEqual("Y", propb.$, "cancelled receiver should not have channeled the value")
     }
 
     func testConversionChannels() {
-        let propa = channelZProperty(0)
-        let propb = channelZProperty(0.0)
+        let propa = channelZPropertyValue(0)
+        let propb = channelZPropertyValue(0.0)
 
         let rcpt = propa.map({ Double($0) }) <=∞=> propb.map({ Int($0) })
 
-        XCTAssertEqual(0, propa.source.value)
-        XCTAssertEqual(0.0, propb.source.value)
+        XCTAssertEqual(0, propa.source.$)
+        XCTAssertEqual(0.0, propb.source.$)
 
-        propa.source.value += 1
-        XCTAssertEqual(1, propa.source.value)
-        XCTAssertEqual(1.0, propb.source.value)
+        propa.source.$ += 1
+        XCTAssertEqual(1, propa.source.$)
+        XCTAssertEqual(1.0, propb.source.$)
 
-        propb.source.value += 1.2
-        XCTAssertEqual(2, propa.source.value)
-        XCTAssertEqual(2.0, propb.source.value, "rounded value should have been mapped back")
+        propb.source.$ += 1.2
+        XCTAssertEqual(2, propa.source.$)
+        XCTAssertEqual(2.0, propb.source.$, "rounded value should have been mapped back")
 
         rcpt.cancel()
 
-        propa.source.value -= 1
-        XCTAssertEqual(1, propa.source.value)
-        XCTAssertEqual(2.0, propb.source.value, "cancelled receiver should not have channeled the value")
+        propa.source.$ -= 1
+        XCTAssertEqual(1, propa.source.$)
+        XCTAssertEqual(2.0, propb.source.$, "cancelled receiver should not have channeled the value")
     }
 
     func testUnstableChannels() {
@@ -797,25 +828,25 @@ class ChannelTests : ChannelTestCase {
 
         let rcpt = propb.map({ $0 + 1 }) <=∞=> propa
 
-        XCTAssertEqual(1, propa.source.value)
-        XCTAssertEqual(1, propb.source.value)
+        XCTAssertEqual(1, propa.source.$)
+        XCTAssertEqual(1, propb.source.$)
 
         // these values are all contingent on the setting of ChannelZReentrancyLimit
         XCTAssertEqual(1, ChannelZReentrancyLimit)
 
-        propa.source.value += 1
-        XCTAssertEqual(4, propa.source.value)
-        XCTAssertEqual(3, propb.source.value)
+        propa.source.$ += 1
+        XCTAssertEqual(4, propa.source.$)
+        XCTAssertEqual(3, propb.source.$)
 
-        propb.source.value += 1
-        XCTAssertEqual(6, propa.source.value)
-        XCTAssertEqual(6, propb.source.value)
+        propb.source.$ += 1
+        XCTAssertEqual(6, propa.source.$)
+        XCTAssertEqual(6, propb.source.$)
 
         rcpt.cancel()
 
-        propa.source.value -= 1
-        XCTAssertEqual(5, propa.source.value)
-        XCTAssertEqual(6, propb.source.value, "cancelled receiver should not have channeled the value")
+        propa.source.$ -= 1
+        XCTAssertEqual(5, propa.source.$)
+        XCTAssertEqual(6, propb.source.$, "cancelled receiver should not have channeled the value")
 
     }
 
@@ -839,11 +870,11 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(1, ints)
         XCTAssertEqual(1, strs)
 
-        a.source.value += 1
+        a.source.$ += 1
         XCTAssertEqual(2, ints)
         XCTAssertEqual(1, strs)
 
-        b.source.value = "x"
+        b.source.$ = "x"
         XCTAssertEqual(2, ints)
         XCTAssertEqual(2, strs)
 
@@ -866,25 +897,25 @@ class ChannelTests : ChannelTestCase {
 
     func testPropertyChannel() {
         let xs: Int = 1
-        let x = channelZProperty(xs)
+        let x = channelZPropertyValue(xs)
         let f: Channel<Void, Int> = x.desource() // read-only observable of channel x
 
         var changes = 0
         let subscription = f ∞> { _ in changes += 1 }
 
         XCTAssertEqual(1, changes)
-        assertChanges(changes, x.value = (x.source.value + 1))
-        assertChanges(changes, x.value = (3))
-        assertRemains(changes, x.value = (3))
-        assertChanges(changes, x.value = (9))
+        assertChanges(changes, x.$ = (x.source.$ + 1))
+        assertChanges(changes, x.$ = (3))
+        assertRemains(changes, x.$ = (3))
+        assertChanges(changes, x.$ = (9))
 
         subscription.cancel()
-        assertRemains(changes, x.value = (-1))
+        assertRemains(changes, x.$ = (-1))
     }
 
     func testFieldChannelMapObservable() {
         let xs: Bool = true
-        let x = channelZProperty(xs)
+        let x = channelZPropertyValue(xs)
 
         let xf: Channel<Void, Bool> = x.desource() // read-only observable of channel x
 
@@ -897,19 +928,19 @@ class ChannelTests : ChannelTestCase {
         let fya: Receipt = yf ∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(1, changes)
-        assertChanges(changes, x.value = (!x.source.value))
-        assertChanges(changes, x.value = (true))
-        assertRemains(changes, x.value = (true))
-        assertChanges(changes, x.value = (false))
+        assertChanges(changes, x.$ = (!x.source.$))
+        assertChanges(changes, x.$ = (true))
+        assertRemains(changes, x.$ = (true))
+        assertChanges(changes, x.$ = (false))
 
         fya.cancel()
-        assertRemains(changes, x.value = (true))
+        assertRemains(changes, x.$ = (true))
     }
 
     func testFieldSieveChannelMapObservable() {
         let xs: Double = 1
 
-        let x = channelZProperty(xs)
+        let x = channelZPropertyValue(xs)
         let xf: Channel<Void, Double> = x.desource() // read-only observable of channel x
 
         let fxa = xf ∞> { (x: Double) in return }
@@ -921,14 +952,14 @@ class ChannelTests : ChannelTestCase {
         let fya: Receipt = yf ∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(1, changes)
-        assertChanges(changes, x.value = (x.source.value + 1))
-        assertRemains(changes, x.value = (2))
-        assertRemains(changes, x.value = (2))
-        assertChanges(changes, x.value = (9))
+        assertChanges(changes, x.$ = (x.source.$ + 1))
+        assertRemains(changes, x.$ = (2))
+        assertRemains(changes, x.$ = (2))
+        assertChanges(changes, x.$ = (9))
 
         fxa.cancel()
         fya.cancel()
-        assertRemains(changes, x.value = (-1))
+        assertRemains(changes, x.$ = (-1))
     }
 
     func testHeterogeneousConduit() {
@@ -937,11 +968,11 @@ class ChannelTests : ChannelTestCase {
 
         let pipeline = a <=∞=> b
 
-        a.value = 2.0
+        a.$ = 2.0
         XCTAssertEqual(2.0, a∞?)
         XCTAssertEqual(2.0, b∞?)
 
-        b.value = 3.0
+        b.$ = 3.0
         XCTAssertEqual(3.0, a∞?)
         XCTAssertEqual(3.0, b∞?)
 
@@ -950,8 +981,8 @@ class ChannelTests : ChannelTestCase {
         XCTAssertTrue(pipeline.cancelled)
 
         // cancelled pipeline shouldn't send state anymore
-        a.value = 8
-        b.value = 9
+        a.$ = 8
+        b.$ = 9
 
         XCTAssertEqual(8, a∞?)
         XCTAssertEqual(9, b∞?)
@@ -965,23 +996,23 @@ class ChannelTests : ChannelTestCase {
         let bf = b.map({ Double($0) })
         let pipeline = af.bind(bf)
 
-        a.value = 2.0
+        a.$ = 2.0
         XCTAssertEqual(2.0, a∞?)
         XCTAssertEqual(UInt(2), b∞?)
 
-        b.value = 3
+        b.$ = 3
         XCTAssertEqual(3.0, a∞?)
         XCTAssertEqual(UInt(3), b∞?)
 
-        a.value = 9.9
+        a.$ = 9.9
         XCTAssertEqual(9.0, a∞?)
         XCTAssertEqual(UInt(9), b∞?)
 
-        a.value = -5.0
+        a.$ = -5.0
         XCTAssertEqual(-5.0, a∞?)
         XCTAssertEqual(UInt(9), b∞?)
 
-        a.value = 8.1
+        a.$ = 8.1
         XCTAssertEqual(8.0, a∞?)
         XCTAssertEqual(UInt(8), b∞?)
 
@@ -990,8 +1021,8 @@ class ChannelTests : ChannelTestCase {
         XCTAssertTrue(pipeline.cancelled)
 
         // cancelled pipeline shouldn't send state anymore
-        a.value = 1
-        b.value = 2
+        a.$ = 1
+        b.$ = 2
 
         XCTAssertEqual(1, a∞?)
         XCTAssertEqual(UInt(2), b∞?)
@@ -1008,17 +1039,17 @@ class ChannelTests : ChannelTestCase {
         let af = a.map({ $0 + 1 })
         _ = af.conduit(b)
 
-        a.value = 2
+        a.$ = 2
         XCTAssertEqual(4, a∞?)
         XCTAssertEqual(4, b∞?)
 
         // these are all contingent on ChannelZReentrancyLimit
 
-        b.value = (10)
+        b.$ = (10)
         XCTAssertEqual(11, a∞?)
         XCTAssertEqual(12, b∞?)
 
-        a.value = 99
+        a.$ = 99
         XCTAssertEqual(101, a∞?)
         XCTAssertEqual(101, b∞?)
     }
@@ -1060,19 +1091,19 @@ class ChannelTests : ChannelTestCase {
 
         changes -= 3
 
-        a.value = a∞? + 1
+        a.$ = a∞? + 1
         changes = changes - 1
         XCTAssertEqual(0, changes)
         XCTAssertEqual("false", lastString)
         XCTAssertEqual(Float(4.0), lastFloat)
 
-        c.value = true
+        c.$ = true
         changes = changes - 1
         XCTAssertEqual(0, changes)
         XCTAssertEqual("true", lastString)
         XCTAssertEqual(Float(4.0), lastFloat)
 
-        c.value = false
+        c.$ = false
         changes = changes - 1
         XCTAssertEqual(0, changes)
         XCTAssertEqual("false", lastString)
@@ -1121,35 +1152,35 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual("false", lastString)
         XCTAssertEqual(Float(3.0), lastFloat)
 
-        a.value = a∞? + 1
-        b.value = b∞? + 1
-        b.value = b∞? + 1
-        b.value = b∞? + 1
-        b.value = b∞? + 1
-        c.value = true
+        a.$ = a∞? + 1
+        b.$ = b∞? + 1
+        b.$ = b∞? + 1
+        b.$ = b∞? + 1
+        b.$ = b∞? + 1
+        c.$ = true
         changes = changes - 1
         XCTAssertEqual(0, changes)
         XCTAssertEqual("true", lastString)
         XCTAssertEqual(Float(4.0), lastFloat)
 
-        c.value = !c∞?
-        c.value = !c∞?
-        c.value = !c∞?
-        c.value = !c∞?
+        c.$ = !c∞?
+        c.$ = !c∞?
+        c.$ = !c∞?
+        c.$ = !c∞?
 
-        a.value = a∞? + 1
+        a.$ = a∞? + 1
         changes = changes - 1
         XCTAssertEqual(0, changes)
         XCTAssertEqual("false", lastString)
         XCTAssertEqual(Float(5.0), lastFloat)
 
-        a.value = a∞? + 1
+        a.$ = a∞? + 1
         changes = changes - 1
         XCTAssertEqual(0, changes)
         XCTAssertEqual("true", lastString)
         XCTAssertEqual(Float(6.0), lastFloat)
 
-        a.value = a∞? + 1
+        a.$ = a∞? + 1
         changes = changes - 1
         XCTAssertEqual(0, changes)
         XCTAssertEqual("false", lastString)
@@ -1240,13 +1271,13 @@ class ChannelTests : ChannelTestCase {
 //        XCTAssertEqual(0, orx)
 //        XCTAssertEqual(0, andorx)
 //
-//        a.source.value += 1
+//        a.source.$ += 1
 //
 //        XCTAssertEqual(1, andx, "last and fires a single and change")
 //        XCTAssertEqual(4, orx, "each or four")
 //        XCTAssertEqual(4, andorx, "four groups in mixed")
 //
-//        a.source.value += 1
+//        a.source.$ += 1
 //
 //        XCTAssertEqual(2, andx)
 //        XCTAssertEqual(8, orx)
@@ -1259,14 +1290,14 @@ class ChannelTests : ChannelTestCase {
 
         stringz.receive({ strs.append($0) })
 
-        stringz.value = "a"
-        stringz.value = "c"
+        stringz.$ = "a"
+        stringz.$ = "c"
         XCTAssertEqual(2, strs.count)
 
-        stringz.value = "d"
+        stringz.$ = "d"
         XCTAssertEqual(3, strs.count)
 
-        stringz.value = "d"
+        stringz.$ = "d"
         XCTAssertEqual(3, strs.count) // change to self shouldn't up the count
     }
 
@@ -1281,11 +1312,11 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(1, counts.0)
         XCTAssertEqual(1, counts.1)
         XCTAssertEqual(1, counts.2)
-        prop.value = 123
+        prop.$ = 123
         XCTAssertEqual(2, counts.0)
         XCTAssertEqual(2, counts.1)
         XCTAssertEqual(2, counts.2)
-        prop.value = 456
+        prop.$ = 456
         XCTAssertEqual(3, counts.0)
         XCTAssertEqual(3, counts.1)
         XCTAssertEqual(3, counts.2)
@@ -1303,26 +1334,26 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(1, counts.0)
         XCTAssertEqual(1, counts.1)
         XCTAssertEqual(1, counts.2)
-        prop.value = 123
+        prop.$ = 123
         XCTAssertEqual(2, counts.0)
         XCTAssertEqual(2, counts.1)
         XCTAssertEqual(2, counts.2)
-        prop.value = 123
+        prop.$ = 123
         XCTAssertEqual(2, counts.0)
         XCTAssertEqual(2, counts.1)
         XCTAssertEqual(2, counts.2)
-        prop.value = 456
+        prop.$ = 456
         XCTAssertEqual(3, counts.0)
         XCTAssertEqual(3, counts.1)
         XCTAssertEqual(3, counts.2)
-        prop.value = 456
+        prop.$ = 456
         XCTAssertEqual(3, counts.0)
         XCTAssertEqual(3, counts.1)
         XCTAssertEqual(3, counts.2)
     }
 
     func XXXtestDropWithMultipleReceivers() {
-        let prop: Channel<PropertySource<Int>, Int> = channelZProperty(0)
+        let prop: Channel<PropertySource<Int>, Int> = channelZPropertyValue(0)
         XCTAssertEqual(24, sizeofValue(prop))
         let dropped = prop.dropFirst(3)
         XCTAssertEqual(24, sizeofValue(dropped))
@@ -1333,7 +1364,7 @@ class ChannelTests : ChannelTestCase {
         dropped.receive({ values.2.append($0) })
 
         XCTAssertEqual(24, sizeofValue(values))
-        for i in 1...9 { prop.value = i }
+        for i in 1...9 { prop.$ = i }
         XCTAssertEqual(24, sizeofValue(values))
 
         XCTAssertEqual([3, 4, 5, 6, 7, 8, 9], values.0)

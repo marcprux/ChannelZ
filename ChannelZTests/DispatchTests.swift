@@ -13,7 +13,7 @@ import Dispatch
 /// Creates an asynchronous trickle of events for the given generator
 func trickleZ<G: GeneratorType>(fromx: G, _ interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue())->Channel<G, G.Element> {
     var from = fromx
-    var receivers = ReceiverList<G.Element>()
+    var receivers = ReceiverQueue<G.Element>()
     let delay = Int64(interval * NSTimeInterval(NSEC_PER_SEC))
     func tick() {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay), queue) {
@@ -77,7 +77,7 @@ class DispatchTests : ChannelTestCase {
         })
 
         let numz = -10...3
-        for x in numz { obv.source.put(x) }
+        for x in numz { obv.source.receive(x) }
 
 //        XCTAssertNotEqual(3, count, "should have been a delay")
         waitForExpectationsWithTimeout(1, handler: { _ in })
@@ -113,7 +113,7 @@ class DispatchTests : ChannelTestCase {
 
             opq.addOperationWithBlock({ () -> Void in
                 source.enumerateObjectsWithOptions(NSEnumerationOptions.Concurrent, usingBlock: { (ob, index, stop) -> Void in
-                    obv.source.put(ob as! Int)
+                    obv.source.receive(ob as! Int)
                 })
             })
         }
@@ -154,7 +154,7 @@ class DispatchTests : ChannelTestCase {
             if pulses >= vcount { xpc?.fulfill() }
         }
 
-        for _ in 1...vcount { channel.source.put() }
+        for _ in 1...vcount { channel.source.receive() }
 
         waitForExpectationsWithTimeout(5, handler: { err in })
         XCTAssertEqual(vcount, pulses) // make sure the pulse contained all the items
@@ -168,7 +168,7 @@ class DispatchTests : ChannelTestCase {
 //        var pulses = 0, items = 0
 //        _ = 0.1
 ////        let when = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
-////        let receiver2: Channel<SinkTo<(Bool)>, [(Bool)]> = channel.buffer(1)
+////        let receiver2: Channel<AnyReceiver<(Bool)>, [(Bool)]> = channel.buffer(1)
 ////        let receiver3: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.throttle(1)
 ////        let receiver: Channel<SinkOf<(Bool)>, [(Bool)]> = channel.debounce(1.0, queue: dispatch_get_main_queue())
 //
@@ -238,7 +238,7 @@ enum InputStreamError : ErrorType {
 }
 
 func channelZFile(path: String, queue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false)->Channel<dispatch_io_t, InputStreamEvent> {
-    let receivers = ReceiverList<InputStreamEvent>()
+    let receivers = ReceiverQueue<InputStreamEvent>()
 
     let dchan = path.withCString {
         dispatch_io_create_with_path(DISPATCH_IO_STREAM, $0, O_RDONLY, 0, queue) { error in

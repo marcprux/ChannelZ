@@ -87,14 +87,15 @@ public var ChannelZReentrancyLimit: Int = 1
     public var ChannelZReentrantReceptions = Int64(0)
 #endif
 
-public final class ReceiverList<T> {
+/// A ReceiverQueue manages a list of receivers and handles dispatching pulses to all the receivers
+public final class ReceiverQueue<T> : ReceiverType {
     public typealias Receptor = T -> ()
     public let maxdepth: Int
 
     private var receivers: [(index: Int64, receptor: Receptor)] = []
     private var entrancy: Int64 = 0
     private var receptorIndex: Int64 = 0
-    private let lockQueue = dispatch_queue_create("io.Glimpse.ReceiverList.LockQueue", nil)
+    private let lockQueue = dispatch_queue_create("io.Glimpse.ReceiverQueue.LockQueue", DISPATCH_QUEUE_CONCURRENT)
 
     public var count: Int { return receivers.count }
 

@@ -14,7 +14,7 @@ import Foundation // workaround for compilation bug when compiling on iOS: «@ob
 #if os(OSX)
 import AppKit
 
-public protocol ChannelController: class, NSObjectProtocol, StateSource, StateSink {
+public protocol ChannelController: class, NSObjectProtocol, StateSource, StateReceiver {
     associatedtype ContentType
     var value: ContentType { get set }
 }
@@ -41,7 +41,7 @@ public extension NSObjectProtocol where Self : NSController {
     }
 }
 
-/// An NSObject controller that is compatible with a StateSource and StateSink for storing and retrieving `NSObject` values from bindings
+/// An NSObject controller that is compatible with a StateSource and StateReceiver for storing and retrieving `NSObject` values from bindings
 // FIXME: disabled because KVO is hopelessly broken on NSController subclasses
 //extension NSObjectController : ChannelController {
 //    public typealias ContentType = AnyObject? // it would be nice if this were generic, but @objc forbids it
@@ -143,7 +143,7 @@ extension NSMenuItem {
 /// object for a target/action pattern, such as with an NSControl or UIControl
 @objc public class ActionTarget: NSObject {
     public let control: NSObject
-    public let receivers = ReceiverList<Void>()
+    public let receivers = ReceiverQueue<Void>()
     public init(control: NSObject) { self.control = control }
     public func channelEvent() { receivers.receive(Void()) }
 }

@@ -57,7 +57,7 @@ public extension ChannelType {
     /// - Parameter queue: the queue on which to execute
     /// - Parameter delay: the amount of time to delay in seconds, or if nil (the default) execute synchronously
     /// - Parameter barrier: whether to dispatch with a barrier
-    @warn_unused_result public func dispatch(queue: dispatch_queue_t, delay: Double? = 0.0, barrier: Bool = false)->Channel<Source, Element> {
+    @warn_unused_result public func dispatch(queue: dispatch_queue_t, delay: Double? = 0.0, barrier: Bool = false)->Channel<Source, Pulse> {
         return lift { receive in { event in
             let rcvr = { receive(event) }
              if let delay = delay {
@@ -87,7 +87,7 @@ public extension ChannelType {
     ///
     /// - Parameter lockQueue: The GDC queue to synchronize on; if nil, a queue named "io.glimpse.Channel.sync" 
     ///   will be created and used
-    @warn_unused_result public func sync(lockQueue: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, Element> {
+    @warn_unused_result public func sync(lockQueue: dispatch_queue_t = channelZSharedSyncQueue)->Channel<Source, Pulse> {
         return lift { receive in { event in dispatch_sync(lockQueue) { receive(event) } } }
     }
 }

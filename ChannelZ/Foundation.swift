@@ -66,7 +66,7 @@ extension NSObject {
     public func channelZKeyArray(@autoclosure accessor: () -> NSArray?, keyPath: String? = nil) -> Channel<NSObject, ArrayChange> {
 
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
-        let receivers = ReceiverList<ArrayChange>()
+        let receivers = ReceiverQueue<ArrayChange>()
 
         return Channel(source: self) { [unowned self] receiver in
 
@@ -101,7 +101,7 @@ extension NSObject {
     /// - Returns a channel backed by the KVO property that will receive OrderedSetChange items for mutations
     public func channelZKeyOrderedSet(@autoclosure accessor: () -> NSOrderedSet?, keyPath: String? = nil) -> Channel<NSObject, OrderedSetChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
-        let receivers = ReceiverList<OrderedSetChange>()
+        let receivers = ReceiverQueue<OrderedSetChange>()
 
         return Channel(source: self) { [unowned self] receiver in
 
@@ -136,7 +136,7 @@ extension NSObject {
     /// - Returns a channel backed by the KVO property that will receive SetChange items for mutations
     public func channelZKeySet(@autoclosure accessor: () -> NSSet?, keyPath: String? = nil) -> Channel<NSObject, SetChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
-        let receivers = ReceiverList<SetChange>()
+        let receivers = ReceiverQueue<SetChange>()
 
         return Channel(source: self) { [unowned self] receiver in
 
@@ -207,98 +207,11 @@ public extension KeyValueTarget {
 }
 
 
-// MARK: Operators
-
-/// Creates a distinct sieved channel from the given Optional Equatable PropertySource (cover for ∞?=)
-public prefix func ∞= <T: Equatable>(source: KeyValueOptionalSource<T>) -> Channel<KeyValueOptionalSource<T>, T?> { return ∞?=source }
-
-/// Creates a source for the given property that will emit state operations
-public postfix func ∞ <T>(kvt: KeyValueTarget<T>) -> KeyValueSource<T> {
-    return KeyValueSource(target: kvt)
-}
-
-/// Creates a source for the given equatable property that will emit state operations
-public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T>) -> KeyValueSource<T> {
-    return KeyValueSource(target: kvt)
-}
-
-/// Creates a source for the given optional property that will emit state operations
-public postfix func ∞ <T>(kvt: KeyValueTarget<T?>) -> KeyValueOptionalSource<T> {
-    return KeyValueOptionalSource(target: kvt)
-}
-
-/// Creates a source for the given equatable & optional property that will emit state operations
-public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T?>) -> KeyValueOptionalSource<T> {
-    return KeyValueOptionalSource(target: kvt)
-}
-
-
-// MARK: Infix operators
-
-/// Use the specified accessor to determine the keyPath for the given autoclosure
-/// For example, slider§slider.doubleValue will return: (slider, { slider.doubleValue }, "doubleValue")
-public func § <T>(object: NSObject, @autoclosure getter: () -> T) -> KeyValueTarget<T> {
-    return KeyValueTarget(target: object, initialValue: getter(), keyPath: conjectKeypath(object, getter, true)!)
-}
-
-/// Use the specified accessor to manually specify the keyPath for the given autoclosure
-public func § <T>(object: NSObject, getkey: (value: T, keyPath: String)) -> KeyValueTarget<T> {
-    return KeyValueTarget(target: object, initialValue: getkey.value, keyPath: getkey.keyPath)
-}
-
-infix operator § { precedence 255 }
-
-
-/// Operation to create a channel from an object's keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, @autoclosure getter: () -> T) -> Channel<KeyValueSource<T>, T> {
-    return ∞(object§getter)∞
-}
-
-/// Operation to create a channel from an object's equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, @autoclosure getter: () -> T) -> Channel<KeyValueSource<T>, T> {
-    return ∞=(object§getter)=∞
-}
-
-/// Operation to create a channel from an object's optional keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, @autoclosure getter: () -> T?) -> Channel<KeyValueOptionalSource<T>, T?> {
-    return ∞(object§getter)∞
-}
-
-/// Operation to create a channel from an object's optional equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, @autoclosure getter: () -> T?) -> Channel<KeyValueOptionalSource<T>, T?> {
-    return ∞=(object§getter)=∞
-}
-
-
-
-/// Operation to create a channel from an object's keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getpath: (value: T, keyPath: String)) -> Channel<KeyValueSource<T>, T> {
-    return ∞(object§getpath)∞
-}
-
-/// Operation to create a channel from an object's equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T, keyPath: String)) -> Channel<KeyValueSource<T>, T> {
-    return ∞=(object§getpath)=∞
-}
-
-/// Operation to create a channel from an object's optional keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getpath: (value: T?, keyPath: String)) -> Channel<KeyValueOptionalSource<T>, T?> {
-    return ∞(object§getpath)∞
-}
-
-/// Operation to create a channel from an object's optional equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T?, keyPath: String)) -> Channel<KeyValueOptionalSource<T>, T?> {
-    return ∞=(object§getpath)=∞
-}
-
-
-infix operator ∞ { precedence 255 }
-
-public protocol KeyValueSourceType : class, StateSink, StateSource {
+public protocol KeyValueSourceType : class, StateContainer {
     var optional: Bool { get }
     var keyPath: String { get }
     var object: NSObject? { get }
-    var receivers: ReceiverList<StatePulse<Element>> { get }
+    var receivers: ReceiverQueue<StatePulse<Element>> { get }
 
     func get() -> Element
     func createPulse(change: NSDictionary) -> StatePulse<Element>
@@ -315,13 +228,13 @@ public extension KeyValueSourceType {
     }
 
     /// access to the underlying source value
-    public var value: Element {
+    public var $: Element {
         get { return get() }
         set(v) { set(v) }
     }
 
-    /// Sets the current value (SinkType implementation)
-    public func put(value: Element) -> Void {
+    /// Sets the current value (ReceiverType implementation)
+    public func receive(value: Element) -> Void {
         set(value)
     }
 
@@ -376,7 +289,7 @@ public final class KeyValueSource<T>: KeyValueSourceType {
     public let keyPath: String
     public let optional = false
     public private(set) weak var object: NSObject?
-    public let receivers = ReceiverList<StatePulse<Element>>()
+    public let receivers = ReceiverQueue<StatePulse<Element>>()
 
     public init(target: KeyValueTarget<Element>) {
         self.object = target.target
@@ -404,7 +317,7 @@ public final class KeyValueOptionalSource<T>: KeyValueSourceType {
     public let keyPath: String
     public let optional = true
     public private(set) weak var object: NSObject?
-    public let receivers = ReceiverList<StatePulse<Element>>()
+    public let receivers = ReceiverQueue<StatePulse<Element>>()
 
     public init(target: KeyValueTarget<Element>) {
         self.object = target.target
@@ -628,7 +541,7 @@ let ChannelZInstrumentorSwizzledISASuffix = "_ChannelZKeyInspection"
 let ChannelZKeyPathForAutoclosureLock = NSLock()
 
 /// Attempts to determine the properties that are accessed by the given autoclosure; does so by temporarily swizzling the object's isa pointer to a generated subclass that instruments access to all the properties; note that this is not thread-safe in the unlikely event that another method (e.g., KVO swizzling) is being used at the same time for the class on another thread
-private func conjectKeypath<T>(target: NSObject, @autoclosure _ accessor: () -> T, _ required: Bool) -> String? {
+func conjectKeypath<T>(target: NSObject, @autoclosure _ accessor: () -> T, _ required: Bool) -> String? {
     var keyPath: String?
 
     let origclass : AnyClass = object_getClass(target)
@@ -808,7 +721,7 @@ extension NSObject {
     /// - Parameter notificationName: the name of the notification to register
     /// - Parameter center: the NSNotificationCenter to register with (defaults to defaultCenter())
     public func channelZNotification(name: String, center: NSNotificationCenter = NSNotificationCenter.defaultCenter()) -> Channel<NSNotificationCenter, UserInfo> {
-        let receivers = ReceiverList<UserInfo>()
+        let receivers = ReceiverQueue<UserInfo>()
         return Channel(source: center) { [weak self] (receiver: UserInfo -> Void) -> Receipt in
             var rindex: Int64
 

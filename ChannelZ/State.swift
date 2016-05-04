@@ -8,113 +8,132 @@
 
 import Darwin
 
-/// A StatePulseType is an representation of a calue change event, such that a pulse has
-/// an `old` value (optionally none for the first state pulse) and a `new` value
-public protocol StatePulseType {
+/// A `ValuableType` simply encapsulates a value
+public protocol ValuableType {
     associatedtype T
+    var $: T { get }
+}
+
+/// A StatePulseType is an encapsulation of state over time, such that a pulse has
+/// an `old` value (optionally none for the initial state pulse) and a `new` value,
+/// which is the current value of the state at the time of emission.
+///
+/// Note that the issuance of a StatePulse does not imply that the state has changed,
+/// since there is no equatability requirement for the underlying type.
+///
+/// - See Also: `Channel.sieve`
+public protocol StatePulseType : ValuableType {
+    associatedtype T
+    /// The previous value of the state; can be `nil` when it is the initial pulse to be emitted
     var old: T? { get }
+    /// The new value of the state
     var new: T { get }
 }
 
-/// A StatePulse encapsulates a state change from an old value to a new value with an anonymous `AnyForwardIndex` index yype
+/// A StatePulse encapsulates a state change from an old value to a new value
 public struct StatePulse<T> : StatePulseType {
+    /// The previous value of the state; can be `nil` when it is the initial pulse to be emitted
     public let old: T?
+    /// The new value of the state
     public let new: T
 
     public init(old: T?, new: T) {
         self.old = old
         self.new = new
     }
+
+    public var $: T { return new }
 }
 
-/// Abstraction of a source that can create a channel that emits a tuple of old & new state values.
-/// The implementation (or the implementation's underlying source) is assumed to be a reference
-/// since changing the value is nonmutating.
-public protocol StateSource : Sink {
+/// Abstraction of a source that can create a channel that emits a tuple of old & new state values,
+/// and provides readable access to the "current" underlying state.
+public protocol StateSource : RawRepresentable {
     associatedtype Element
     associatedtype Source
 
-    /// The underlying state value of this source
-    var value: Element { get nonmutating set }
+    /// The underlying state value of this source; so named because it is an
+    /// anonymous parameter, analagous to a closure's anonymous $0, $1, etc. parameters
+    var $: Element { get }
 
     /// Creates a Channel from this source that will emit tuples of the old & and state values whenever a state operation occurs
     @warn_unused_result func channelZState() -> Channel<Source, StatePulse<Element>>
 }
 
+public extension StateSource {
+    /// The default RawRepresentable implentation does not permit construction;
+    /// concrete implementations may choose to permit initialization
+    ///
+    /// - See Also: `PropertySource`
+    public init?(rawValue: Element) {
+        return nil
+    }
+
+    public var rawValue: Element { return $ }
+}
+
+/// Simple protocol that permits accessing the value of the underlying source type as
+/// well as updating it via the `ReceiverType`'s `receive` function.
+/// The implementation (or the implementation's underlying source) is assumed to be a reference
+/// since changing the value is nonmutating.
+public protocol StateReceiver : ReceiverType {
+    // ideally we would have value be set-only, and read/write state would be marked by combining
+    // StateSource and StateReceiver; however, we aren't allowed to declare a protocol has having
+    // a set-only property
+    var $: Pulse { get set }
+}
+
+/// A state container is a type that can read & write some state via respective adoption of
+/// the `StateSource` and `StateReveiver` protocols.
+public protocol StateContainer : StateSource, StateReceiver {
+    /// The underlying state value of this source; so named because it is an
+    /// anonymous parameter, analagous to a closure's anonymous $0, $1, etc. parameters
+    var $: Element { get nonmutating set }
+}
+
 /// A PropertySource can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
 /// The output type is a tuple of (old: T, new: T), where old is the previous value and new is the new value
-public final class PropertySource<T>: StateSink, StateSource {
+public final class PropertySource<T>: StateContainer {
     public typealias State = StatePulse<T>
-    private let receivers = ReceiverList<State>()
+    private let receivers = ReceiverQueue<State>()
 
-    public var value: T {
+    public var $: T {
         didSet(old) {
-            receivers.receive(StatePulse(old: old, new: value))
+            receivers.receive(StatePulse(old: old, new: $))
         }
     }
-    
-    public init(_ value: T) { self.value = value }
-    public func put(x: T) { value = x }
+
+    public init(_ value: T) { self.$ = value }
+
+    /// Initializer for RawRepresentable
+    public init(rawValue: T) {
+        self.$ = rawValue
+    }
+
+    public func receive(x: T) { $ = x }
 
     @warn_unused_result public func channelZState() -> Channel<PropertySource<T>, State> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
-            rcvr(State(old: Optional<T>.None, new: self.value))
+            rcvr(State(old: Optional<T>.None, new: self.$))
             return self.receivers.addReceipt(rcvr)
         }
     }
 }
 
-public protocol Sink {
-    associatedtype Element
-    func put(value: Element)
-}
-
-/// Equivalent to SinkOf
-public struct SinkTo<Element> : Sink {
-    public let op: Element -> Void
-
-    public init(_ op: Element -> Void) {
-        self.op = op
-    }
-
-    public func put(value: Element) {
-        self.op(value)
-    }
-}
-
-public extension StreamType {
-
-    /// Adds a receiver that will forward all values to the target `Sink`
-    ///
-    /// - Parameter sink: the sink that will accept all the pulses from the Channel
-    ///
-    /// - Returns: A `Receipt` for the pipe
-    public func pipe<S2: Sink where S2.Element == Element>(sink: S2) -> Receipt {
-        return receive { sink.put($0) }
-    }
-}
-
-/// Simple protocol that permits accessing the underlying source type
-public protocol StateSink : Sink {
-    var value: Element { get }
-    func put(value: Element)
-}
-
 /// A type-erased wrapper around some state source whose value changes will emit a `StatePulse`
-public struct AnyState<T>: Sink, StateSource {
+public struct AnyState<T> : StateContainer {
     private let valueget: Void -> T
     private let valueset: T -> Void
     private let channler: Void -> Channel<Void, StatePulse<T>>
 
-    public var value: T {
+    public var $: T {
         get { return valueget() }
-        nonmutating set { put(newValue) }
+        nonmutating set { receive(newValue) }
     }
 
-    public init<S where S: StateSink, S: StateSource, S.Element == T>(_ source: S) {
-        valueget = { source.value }
-        valueset = { source.value = $0 }
+    public init<S where S: StateContainer, S.Element == T>(_ source: S) {
+        valueget = { source.$ }
+        valueset = { source.$ = $0 }
         channler = { source.channelZState().desource() }
     }
 
@@ -124,7 +143,7 @@ public struct AnyState<T>: Sink, StateSource {
         channler = channeler
     }
 
-    public func put(x: T) {
+    public func receive(x: T) {
         valueset(x)
     }
 
@@ -160,18 +179,18 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
 
 /// Experimental: creates a channel for a type that is formed of 2 elements
 @warn_unused_result public func channelZDecomposedState<T, T1, T2>(constructor: (T1, T2) -> T, values: (T1, T2)) -> Channel<(Channel<AnyState<T1>, T1>, Channel<AnyState<T2>, T2>), T> {
-    let channel = channelZProperty(constructor(
+    let channel = channelZPropertyValue(constructor(
         values.0,
         values.1
         )
     )
     let source = (
-        channelZProperty(values.0).anyState(),
-        channelZProperty(values.1).anyState()
+        channelZPropertyValue(values.0).anyState(),
+        channelZPropertyValue(values.1).anyState()
     )
-    func update(x: Any) { channel.value = constructor(
-        source.0.value,
-        source.1.value
+    func update(x: Any) { channel.$ = constructor(
+        source.0.$,
+        source.1.$
         )
     }
     source.0.receive(update)
@@ -182,21 +201,21 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
 
 /// Experimental: creates a channel for a type that is formed of 3 elements
 @warn_unused_result public func channelZDecomposedState<T, T1, T2, T3>(constructor: (T1, T2, T3) -> T, values: (T1, T2, T3)) -> Channel<(Channel<AnyState<T1>, T1>, Channel<AnyState<T2>, T2>, Channel<AnyState<T3>, T3>), T> {
-    let channel = channelZProperty(constructor(
+    let channel = channelZPropertyValue(constructor(
         values.0,
         values.1,
         values.2
         )
     )
     let source = (
-        channelZProperty(values.0).anyState(),
-        channelZProperty(values.1).anyState(),
-        channelZProperty(values.2).anyState()
+        channelZPropertyValue(values.0).anyState(),
+        channelZPropertyValue(values.1).anyState(),
+        channelZPropertyValue(values.2).anyState()
     )
-    func update(x: Any) { channel.value = constructor(
-        source.0.value,
-        source.1.value,
-        source.2.value
+    func update(x: Any) { channel.$ = constructor(
+        source.0.$,
+        source.1.$,
+        source.2.$
         )
     }
     source.0.receive(update)
@@ -208,7 +227,7 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
 
 /// Experimental: creates a channel for a type that is formed of 3 elements
 @warn_unused_result public func channelZDecomposedState<T, T1, T2, T3, T4>(constructor: (T1, T2, T3, T4) -> T, values: (T1, T2, T3, T4)) -> Channel<(Channel<AnyState<T1>, T1>, Channel<AnyState<T2>, T2>, Channel<AnyState<T3>, T3>, Channel<AnyState<T4>, T4>), T> {
-    let channel = channelZProperty(constructor(
+    let channel = channelZPropertyValue(constructor(
         values.0,
         values.1,
         values.2,
@@ -216,16 +235,16 @@ func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ 
         )
     )
     let source = (
-        channelZProperty(values.0).anyState(),
-        channelZProperty(values.1).anyState(),
-        channelZProperty(values.2).anyState(),
-        channelZProperty(values.3).anyState()
+        channelZPropertyValue(values.0).anyState(),
+        channelZPropertyValue(values.1).anyState(),
+        channelZPropertyValue(values.2).anyState(),
+        channelZPropertyValue(values.3).anyState()
     )
-    func update(x: Any) { channel.value = constructor(
-        source.0.value,
-        source.1.value,
-        source.2.value,
-        source.3.value
+    func update(x: Any) { channel.$ = constructor(
+        source.0.$,
+        source.1.$,
+        source.2.$,
+        source.3.$
         )
     }
     source.0.receive(update)
@@ -246,8 +265,8 @@ public extension ChannelType {
     /// - Returns: a state Channel that emits a tuple of an earlier and the current item
     ///
     /// - Note: this phase with retain the previous *two* pulse items
-    @warn_unused_result public func precedent() -> Channel<Source, StatePulse<Element>> {
-        return affect((old: Optional<Element>.None, new: Optional<Element>.None)) { (state, element) in (old: state.new, new: element) }.map { (state, element) in StatePulse(old: state.old, new: element) }
+    @warn_unused_result public func precedent() -> Channel<Source, StatePulse<Pulse>> {
+        return affect((old: Optional<Pulse>.None, new: Optional<Pulse>.None)) { (state, element) in (old: state.new, new: element) }.map { (state, element) in StatePulse(old: state.old, new: element) }
     }
 
     /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
@@ -263,7 +282,7 @@ public extension ChannelType {
     /// - Note: Since `sieve` uses `precedent`, the most recent value will be retained by
     ///   the Channel for as long as there are receivers.
     ///
-    @warn_unused_result public func precedentFilter(predicate: (previous: Element, current: Element) -> Bool) -> Channel<Source, StatePulse<Element>> {
+    @warn_unused_result public func presieve(predicate: (previous: Pulse, current: Pulse) -> Bool) -> Channel<Source, StatePulse<Pulse>> {
         return precedent().sieve(predicate)
     }
 
@@ -280,32 +299,32 @@ public extension ChannelType {
     /// - Note: Since `sieve` uses `precedent`, the most recent value will be retained by 
     ///   the Channel for as long as there are receivers.
     ///
-    @warn_unused_result public func changes(predicate: (previous: Element, current: Element) -> Bool) -> Channel<Source, Element> {
-        return precedentFilter(predicate).new()
+    @warn_unused_result public func changes(predicate: (previous: Pulse, current: Pulse) -> Bool) -> Channel<Source, Pulse> {
+        return presieve(predicate).new()
     }
 }
 
 public extension ChannelType {
 
     /// Adds an observer closure to a change in the given equatable property
-    public func watch<T>(getter: Element -> T, eq: (T, T) -> Bool, receiver: T -> Void) -> Receipt {
+    public func watch<T>(getter: Pulse -> T, eq: (T, T) -> Bool, receiver: T -> Void) -> Receipt {
         return changes({ eq(getter($0), getter($1)) }).map(getter).receive(receiver)
     }
 
     /// Adds an observer closure to a change in the given equatable property
-    public func observe<T: Equatable>(getter: Element -> T, receiver: T -> Void) -> Receipt {
+    public func observe<T: Equatable>(getter: Pulse -> T, receiver: T -> Void) -> Receipt {
         return watch(getter, eq: !=, receiver: receiver)
     }
 
     /// Adds an observer closure to a change in the given optional equatable property
-    public func observe<T: Equatable>(getter: Element -> Optional<T>, receiver: Optional<T> -> Void) -> Receipt {
+    public func observe<T: Equatable>(getter: Pulse -> Optional<T>, receiver: Optional<T> -> Void) -> Receipt {
         return watch(getter, eq: !=, receiver: receiver)
     }
 }
 
-public extension StreamType where Element : StatePulseType {
+public extension StreamType where Pulse : StatePulseType {
     /// Filters the channel for only changed instances of the underlying `StatePulse`
-    @warn_unused_result public func sieve(changed: (Element.T, Element.T) -> Bool) -> Self {
+    @warn_unused_result public func sieve(changed: (Pulse.T, Pulse.T) -> Bool) -> Self {
         return filter { state in
             // the initial state assignment is always fresh
             guard let old = state.old else { return true }
@@ -314,9 +333,9 @@ public extension StreamType where Element : StatePulseType {
     }
 }
 
-public extension ChannelType where Element : StatePulseType {
+public extension ChannelType where Pulse : StatePulseType {
     /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
-    /// recent emitted or passed item. This is an optimization of `Channel.precedentFilter` that uses the underlying
+    /// recent emitted or passed item. This is an optimization of `Channel.presieve` that uses the underlying
     /// `StatePulseType` rather than retaining the previous elements.
     ///
     /// For example, to create a filter for distinct equatable pulses, you would do: `changes(!=)`.
@@ -325,12 +344,12 @@ public extension ChannelType where Element : StatePulseType {
     /// - Parameter predicate: a function that evaluates the current item against the previous item
     ///
     /// - Returns: A stateless Channel that emits the the pulses that pass the predicate
-    @warn_unused_result public func stateFilter(predicate: (previous: Element.T, current: Element.T) -> Bool) -> Self {
+    @warn_unused_result public func stateFilter(predicate: (previous: Pulse.T, current: Pulse.T) -> Bool) -> Self {
         return sieve(predicate)
     }
 
     /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
-    /// recent emitted or passed item. This is an optimization of `Channel.precedentFilter` that uses the underlying
+    /// recent emitted or passed item. This is an optimization of `Channel.presieve` that uses the underlying
     /// `StatePulseType` rather than retaining the previous elements.
     ///
     /// For example, to create a filter for distinct equatable pulses, you would do: `changes(!=)`.
@@ -339,80 +358,87 @@ public extension ChannelType where Element : StatePulseType {
     /// - Parameter predicate: a function that evaluates the current item against the previous item
     ///
     /// - Returns: A stateless Channel that emits the the pulses that pass the predicate
-    @warn_unused_result public func changes(predicate: (previous: Element.T, current: Element.T) -> Bool) -> Channel<Source, Element.T> {
+    @warn_unused_result public func changes(predicate: (previous: Pulse.T, current: Pulse.T) -> Bool) -> Channel<Source, Pulse.T> {
         return stateFilter(predicate).new()
     }
 
 }
 
-public extension StreamType where Element : StatePulseType, Element.T : Equatable {
+public extension StreamType where Pulse : StatePulseType, Pulse.T : Equatable {
     /// Filters the channel for only changed instances of the underlying `StatePulse`
     @warn_unused_result public func sieve() -> Self {
         return sieve(!=)
     }
 }
 
-public extension StreamType where Element : StatePulseType, Element.T : _OptionalType, Element.T.Wrapped : Equatable {
+public extension StreamType where Pulse : StatePulseType, Pulse.T : _OptionalType, Pulse.T.Wrapped : Equatable {
     /// Filters the channel for only changed optional instances of the underlying `StatePulse`
     @warn_unused_result public func sieve() -> Self {
         return sieve(optionalTypeEqual)
     }
 }
 
-public extension ChannelType where Element : StatePulseType {
+public extension ChannelType where Pulse : ValuableType {
     /// Maps to the `new` value of the `StatePulse` element
-    @warn_unused_result public func new() -> Channel<Source, Element.T> {
-        return map({ $0.new })
+    @warn_unused_result public func value() -> Channel<Source, Pulse.T> {
+        return map({ $0.$ })
+    }
+}
+
+public extension ChannelType where Pulse : StatePulseType {
+    /// Maps to the `new` value of the `StatePulse` element
+    @warn_unused_result public func new() -> Channel<Source, Pulse.T> {
+        return value() // the value of a StatePulseType is the new() field
     }
 
     /// Maps to the `old` value of the `StatePulse` element
-    @warn_unused_result public func old() -> Channel<Source, Element.T?> {
+    @warn_unused_result public func old() -> Channel<Source, Pulse.T?> {
         return map({ $0.old })
     }
 
 }
 
-public extension ChannelType where Element : _OptionalType {
+public extension ChannelType where Pulse : _OptionalType {
     /// Adds phases that filter for `Optional.Some` pulses (i.e., drops `nil`s) and maps to their `flatMap`ped (i.e., unwrapped) values
-    @warn_unused_result public func some() -> Channel<Source, Element.Wrapped> {
+    @warn_unused_result public func some() -> Channel<Source, Pulse.Wrapped> {
         return map({ opt in opt.toOptional() }).filter({ $0 != nil }).map({ $0! })
     }
 }
 
 @noreturn func makeT<T>() -> T { fatalError() }
 
-public extension ChannelType where Source : StateSource {
+public extension ChannelType where Source : StateContainer {
     /// A Channel whose source is a `StateSource` can get and set its value directly without mutating the channel
-    public var value : Source.Element {
-        get { return source.value }
-        nonmutating set { source.value = newValue }
+    public var $ : Source.Element {
+        get { return source.$ }
+        nonmutating set { source.$ = newValue }
     }
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
-    public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, Element> {
-        return resource { source in AnyState(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.channelZState().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }) }
+    public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, Pulse> {
+        return resource { source in AnyState(get: { get(source.$) }, set: { source.$ = set($0) }, channeler: { source.channelZState().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }) }
     }
 }
 
-public extension ChannelType where Source : StateSource, Source : StateSink {
+public extension ChannelType where Source : StateContainer {
     /// Creates a type-erased `StateSource` with `AnyState` for this channel
-    public func anyState() -> Channel<AnyState<Source.Element>, Element> {
+    public func anyState() -> Channel<AnyState<Source.Element>, Pulse> {
         return resource(AnyState.init)
     }
 
 }
 
-public extension ChannelType where Source : StateSource, Source.Element == Element {
+public extension ChannelType where Source : StateContainer, Source.Element == Pulse {
     /// For a channel whose underlying state matches the pulse types, perform a `stateMap` and a `map` with the same `get` transform
     public func restate<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, X> {
         return stateMap(get: get, set: set).map(get)
     }
 }
 
-public extension ChannelType where Source : StateSource, Element: _OptionalType, Source.Element == Element, Element.Wrapped: Hashable {
-    public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Element, U?)>(mapping: S) -> Channel<AnyState<U?>, U?> {
-        var getMapping: [Element.Wrapped: U] = [:]
-        var setMapping: [U: Element] = [:]
+public extension ChannelType where Source : StateContainer, Pulse: _OptionalType, Source.Element == Pulse, Pulse.Wrapped: Hashable {
+    public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Pulse, U?)>(mapping: S) -> Channel<AnyState<U?>, U?> {
+        var getMapping: [Pulse.Wrapped: U] = [:]
+        var setMapping: [U: Pulse] = [:]
 
         for (key, value) in mapping {
             if let key = key.toOptional() {
@@ -423,8 +449,8 @@ public extension ChannelType where Source : StateSource, Element: _OptionalType,
             }
         }
 
-        let get: (Element -> U?) = { $0.flatMap({ getMapping[$0] }) ?? nil }
-        let set: (U? -> Element) = { $0.flatMap({ setMapping[$0] }) ?? nil }
+        let get: (Pulse -> U?) = { $0.flatMap({ getMapping[$0] }) ?? nil }
+        let set: (U? -> Pulse) = { $0.flatMap({ setMapping[$0] }) ?? nil }
 
         return restate(get: get, set: set)
     }
@@ -432,82 +458,83 @@ public extension ChannelType where Source : StateSource, Element: _OptionalType,
 
 
 public extension ChannelType {
-    /// Creates a one-way pipe betweek a `Channel`s whose source is a `Sink`, such that when the left
+    /// Creates a one-way pipe between a `Channel`s whose source is a `Sink`, such that when the left
     /// side is changed the right side is updated
-    public func conduct<T, S : Sink where S.Element == Self.Element>(to: Channel<S, T>) -> Receipt {
-        return self.pipe(to.source)
+    public func conduct<T, S : ReceiverType where S.Pulse == Self.Pulse>(to: Channel<S, T>) -> Receipt {
+        return self.receive(to.source)
     }
 
-    /// Creates a one-way pipe betweek a `Channel`s whose source is a `Sink`, such that when the left
-    /// side is changed the right side is updated
-    public func conduct<T, S : StateSource where S.Element == Self.Element>(to: Channel<S, T>, filter: (Element, Element) -> Bool) -> Receipt {
-        return self.filter({ value in filter(value, to.source.value) }).pipe(to.source)
-    }
 }
 
 
-public extension ChannelType where Source : Sink {
-    /// Creates a two-way conduit betweek two `Channel`s whose source is a `Sink`, such that when either side is
+public extension ChannelType where Source : ReceiverType {
+    /// Creates a two-way conduit between two `Channel`s whose source is a `Sink`, such that when either side is
     /// changed, the other side is updated
     ///
     /// - Note: the `to` channel will immediately receive a sync from the `self` channel, making `self` channel's state dominant
-    public func conduit<Source2 where Source2 : Sink, Source2.Element == Self.Element>(to: Channel<Source2, Source.Element>) -> Receipt {
+    public func conduit<Source2 where Source2 : ReceiverType, Source2.Pulse == Self.Pulse>(to: Channel<Source2, Self.Source.Pulse>) -> Receipt {
         // since self is the dominant channel, ignore any immediate pulses through the right channel
-        let rhs = to.subsequent().pipe(self.source)
-        let lhs = self.pipe(to.source)
+        let rhs = to.subsequent().receive(self.source)
+        let lhs = self.receive(to.source)
         return ReceiptOf(receipts: [lhs, rhs])
     }
 }
 
-public extension ChannelType where Source : StateSource {
-    /// Creates a two-way conduit betweek two `Channel`s whose source is a `StateSource`, such that when either side is
-    /// changed, the other side is updated provided the filter is satisifed
-    public func conjoin<Source2 where Source2 : StateSource, Source2.Element == Self.Element>(to: Channel<Source2, Self.Source.Element>, filterLeft: (Self.Element, Source2.Element) -> Bool, filterRight: (Self.Source.Element, Self.Source.Element) -> Bool) -> Receipt {
-        let filtered1 = self.filter({ filterLeft($0, to.source.value) })
-        let filtered2 = to.filter({ filterRight($0, self.source.value) })
-        return filtered1.conduit(filtered2)
+public extension ChannelType where Source : StateContainer {
+    /// Creates a two-way conduit between two `Channel`s whose source is a `StateContainer`,
+    /// such that when either side is changed the other side is updated provided the filter is satisifed
+    public func conjoin<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>, filterLeft: (Self.Pulse, Source2.Element) -> Bool, filterRight: (Self.Source.Element, Self.Source.Element) -> Bool) -> Receipt {
+        let filtered1 = self.filter({ filterLeft($0, to.source.$) })
+        let filtered2 = to.filter({ filterRight($0, self.source.$) })
+
+        // return filtered1.conduit(filtered2) // FIXME: compiler crash
+
+        let f1: Channel<AnyState<Self.Source.Element>, Self.Pulse> = filtered1.anyState()
+        let f2: Channel<AnyState<Self.Pulse>, Self.Source.Element> = filtered2.anyState()
+        return f1.conduit(f2)
     }
+
 }
 
-public extension ChannelType where Source : StateSource, Source.Element : Equatable, Element : Equatable {
-    /// Creates a two-way binding betweek two `Channel`s whose source is a `StateSource`, such that when either side is
+public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not equal
-    public func bind<Source2 where Source2 : StateSource, Source2.Element == Self.Element>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+    public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
         return conjoin(to, filterLeft: !=, filterRight: !=)
     }
 }
 
-public extension ChannelType where Source : StateSource, Source.Element : Equatable, Element : _OptionalType, Element.Wrapped : Equatable {
-    /// Creates a two-way binding betweek two `Channel`s whose source is a `StateSource`, such that when either side is
+public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : _OptionalType, Pulse.Wrapped : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
-    public func bind<Source2 where Source2 : StateSource, Source2.Element == Self.Element>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+    public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
         return conjoin(to, filterLeft: optionalTypeEqual, filterRight: !=)
     }
 }
 
-public extension ChannelType where Source : StateSource, Source.Element : _OptionalType, Source.Element.Wrapped : Equatable, Element : Equatable {
-    /// Creates a two-way binding betweek two `Channel`s whose source is a `StateSource`, such that when either side is
+public extension ChannelType where Source : StateContainer, Source.Element : _OptionalType, Source.Element.Wrapped : Equatable, Pulse : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
-    public func bind<Source2 where Source2 : StateSource, Source2.Element == Self.Element>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+    public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
         return conjoin(to, filterLeft: !=, filterRight: optionalTypeEqual)
     }
 }
 
-public extension ChannelType where Source : StateSource, Source.Element : _OptionalType, Source.Element.Wrapped : Equatable, Element : _OptionalType, Element.Wrapped : Equatable {
-    /// Creates a two-way binding betweek two `Channel`s whose source is a `StateSource`, such that when either side is
+public extension ChannelType where Source : StateContainer, Source.Element : _OptionalType, Source.Element.Wrapped : Equatable, Pulse : _OptionalType, Pulse.Wrapped : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
-    public func bind<Source2 where Source2 : StateSource, Source2.Element == Self.Element>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+    public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
         return conjoin(to, filterLeft: optionalTypeEqual, filterRight: optionalTypeEqual)
     }
 }
 
 // MARK: Utilities
 
-/// Creates a Channel sourced by a `SinkTo` that will be used to send elements to the receivers
-@warn_unused_result public func channelZSink<T>(type: T.Type) -> Channel<SinkTo<T>, T> {
-    let rcvrs = ReceiverList<T>()
-    let sink = SinkTo<T>({ rcvrs.receive($0) })
-    return Channel<SinkTo<T>, T>(source: sink) { rcvrs.addReceipt($0) }
+/// Creates a Channel sourced by a `AnyReceiver` that will be used to send elements to the receivers
+@warn_unused_result public func channelZSink<T>(type: T.Type) -> Channel<AnyReceiver<T>, T> {
+    let rcvrs = ReceiverQueue<T>()
+    let sink = AnyReceiver<T>({ rcvrs.receive($0) })
+    return Channel<AnyReceiver<T>, T>(source: sink) { rcvrs.addReceipt($0) }
 }
 
 extension SequenceType {
@@ -537,17 +564,18 @@ extension SequenceType {
 }
 
 /// Creates a Channel sourced by a Swift or Objective-C property
-@warn_unused_result public func channelZProperty<T>(initialValue: T) -> Channel<PropertySource<T>, T> {
+@warn_unused_result public func channelZPropertyValue<T>(initialValue: T) -> Channel<PropertySource<T>, T> {
     return ∞initialValue∞
 }
 
 /// Creates a Channel sourced by a Swift or Objective-C Equatable property
-@warn_unused_result public func channelZProperty<T: Equatable>(initialValue: T) -> Channel<PropertySource<T>, T> {
+@warn_unused_result public func channelZPropertyValue<T: Equatable>(initialValue: T) -> Channel<PropertySource<T>, T> {
     return ∞=initialValue=∞
 }
 
+/// Creates a `PropertySource` channel that emits a `StatePulse` with the values over time.
 @warn_unused_result public func channelZPropertyState<T>(initialValue: T) -> Channel<PropertySource<T>, StatePulse<T>> {
-    return PropertySource(initialValue).channelZState()
+    return PropertySource(rawValue: initialValue).channelZState()
 }
 
 
@@ -589,7 +617,7 @@ public struct Lens<A, B> : LensType {
     }
 }
 
-public protocol LensSourceType : StateSink, StateSource {
+public protocol LensSourceType : StateContainer {
     associatedtype Owner : ChannelType
 
     /// All lens channels have an owner that is itself a StateSource
@@ -597,42 +625,121 @@ public protocol LensSourceType : StateSink, StateSource {
 }
 
 /// A Lens on a state channel, which can be used create a property channel on a specific
-/// piece of the source state
-public struct LensSource<C: ChannelType, T where C.Source : StateSource, C.Element == StatePulse<C.Source.Element>>: LensSourceType {
+/// piece of the source state; a LensSource itself does not manage any receivers, but instead
+/// relies on the source of the underlying channel.
+public struct LensSource<C: ChannelType, T where C.Source : StateContainer, C.Pulse : StatePulseType, C.Pulse.T == C.Source.Element>: LensSourceType {
     public typealias Owner = C
     public let channel: C
     public let lens: Lens<C.Source.Element, T>
 
-    public func put(x: T) {
-        self.value = x
+    public func receive(x: T) {
+        self.$ = x
     }
 
-    public var value: T {
-        get { return lens.get(channel.value) }
-        nonmutating set { channel.value = lens.set(channel.value, newValue) }
+    public var $: T {
+        get { return lens.get(channel.$) }
+        nonmutating set { channel.$ = lens.set(channel.$, newValue) }
     }
 
     public func channelZState() -> Channel<LensSource, StatePulse<T>> {
-        return channel.map({ pulse in StatePulse(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new)) }).resource({ _ in self })
+        return channel.map({ pulse in
+            StatePulse(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new))
+        }).resource({ _ in self })
     }
 }
 
-public extension ChannelType where Source : StateSource, Element == StatePulse<Source.Element> {
+public extension ChannelType where Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
     /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
     /// channel can modify sub-elements of a complex data structure
     public func channelZLens<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, StatePulse<X>> {
         return LensSource(channel: self, lens: lens).channelZState()
     }
 
+    /// Constructs a Lens channel using a getter and an inout setter
     public func channelZLens<X>(get: Source.Element -> X, _ set: (inout Source.Element, X) -> ()) -> Channel<LensSource<Self, X>, StatePulse<X>> {
         return channelZLens(Lens(get, set))
     }
 
+    /// Constructs a Lens channel using a getter and a tranformation setter
+    public func channelZLens<X>(get: Source.Element -> X, _ set: (Source.Element, X) -> Source.Element) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+        return channelZLens(Lens(get: get, set: set))
+    }
 }
 
 public extension ChannelType where Source : LensSourceType, Source.Owner.Source : StateSource {
     /// A lens channel's owner is the value of the lens source itself
     public var owner: Source.Owner {
         get { return source.channel }
+    }
+}
+
+
+// MARK: Jacket Channel extensions for Lens/Prism/Optional access
+
+public extension ChannelType where Source.Element : _OptionalType, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
+    /// Converts an optional state channel into a non-optional one by replacing nil elements
+    /// with the result of the constructor function
+    public func option(template: () -> Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
+        return channelZLens({ $0.flatMap({ $0 }) ?? template() }, { (_, value) in Source.Element(value) })
+    }
+}
+
+public extension ChannelType where Source.Element : RangeReplaceableCollectionType, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
+
+    /// Creates a channel to the underlying collection type where the channel creates an optional
+    /// to a given index; setting to nil removes the index, and setting to a certain value
+    /// sets the index
+    ///
+    /// - Note: When setting the value of an index outside the current indices, any
+    ///         intervening gaps will be filled with the value
+    public func index(index: Source.Element.Index) -> Channel<LensSource<Self, Source.Element.Generator.Element?>, StatePulse<Source.Element.Generator.Element?>> {
+
+        let lens: Lens<Source.Element, Source.Element.Generator.Element?> = Lens(get: { target in
+            target.indices.contains(index) ? target[index] : nil
+        }) { (target, item) in
+            var target = target
+            if let item = item {
+                while !target.indices.contains(index) {
+                    // fill in the gaps
+                    target.append(item)
+                }
+                // set the target index item
+                target.replaceRange(index...index, with: [item])
+            } else {
+                if target.indices.contains(index) {
+                    target.removeAtIndex(index)
+                }
+            }
+            return target
+        }
+
+        return channelZLens(lens)
+    }
+}
+
+/// Bogus protocol since, unlike Array -> CollectionType, Dictionary doesn't have any protocol.
+/// Exists merely for the `ChannelType.at` prism.
+public protocol KeyIndexed {
+    associatedtype Key
+    associatedtype Value
+    subscript (key: Key) -> Value? { get set }
+}
+
+extension Dictionary : KeyIndexed {
+}
+
+public extension ChannelType where Source.Element : KeyIndexed, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
+    /// Creates a state channel to the given key in the underlying `KeyIndexed` dictionary
+    public func at(key: Source.Element.Key) -> Channel<LensSource<Self, Source.Element.Value?>, StatePulse<Source.Element.Value?>> {
+
+        let lens: Lens<Source.Element, Source.Element.Value?> = Lens(get: { target in
+            target[key]
+        }) { (target, item) in
+            var target = target
+            target[key] = item
+            return target
+        }
+
+        return channelZLens(lens)
     }
 }

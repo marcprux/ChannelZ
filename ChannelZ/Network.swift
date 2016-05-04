@@ -16,7 +16,7 @@ public extension NSInputStream {
     /// - Parameter bufferLength: The maximum size of the buffer that will be filled
     public func channelZStream(bufferLength: Int = 1024) -> Channel<ChannelStreamDelegate, InputStreamEvent> {
         precondition(bufferLength > 0, "buffer size must be greater than zero")
-        let receivers = ReceiverList<InputStreamEvent>()
+        let receivers = ReceiverQueue<InputStreamEvent>()
 
         let delegate = ChannelStreamDelegate(stream: self) { event in
             switch event.rawValue {

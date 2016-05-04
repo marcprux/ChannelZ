@@ -90,14 +90,14 @@ class FoundationTests : ChannelTestCase {
 //
 ////            nsob.reqnsstr = "a"
 ////            nsob.reqnsstr = "c"
-//            stringz.value = "a"
-//            stringz.value = "c"
+//            stringz.$ = "a"
+//            stringz.$ = "c"
 //            XCTAssertEqual(2, strs.count)
 //
-//            stringz.value = "d"
+//            stringz.$ = "d"
 //            XCTAssertEqual(3, strs.count)
 //
-//            stringz.value = "d"
+//            stringz.$ = "d"
 //            XCTAssertEqual(3, strs.count) // change to self shouldn't up the count
 //
 //            withExtendedLifetime(nsob) { }
@@ -130,7 +130,7 @@ class FoundationTests : ChannelTestCase {
         XCTAssertEqual(2, counts.1)
         XCTAssertEqual(2, counts.2)
 
-        prop.value = 456
+        prop.$ = 456
         XCTAssertEqual(3, counts.0)
         XCTAssertEqual(3, counts.1)
         XCTAssertEqual(3, counts.2)
@@ -250,7 +250,7 @@ class FoundationTests : ChannelTestCase {
     }
 
     func testMultipleSimpleChannels() {
-//        let intChannel = channelZProperty(0).sieve(!=)
+//        let intChannel = channelZPropertyValue(0).sieve(!=)
         let intChannel = ∞=0=∞
 
         var changeCount: Int = 0
@@ -265,21 +265,21 @@ class FoundationTests : ChannelTestCase {
         changeCount = 0 // clear any initial assignations
         XCTAssertEqual(0, changeCount)
 
-        intChannel.value += 1
+        intChannel.$ += 1
         XCTAssertEqual(2, changeCount)
 
-        intChannel.value = 1 // no change
+        intChannel.$ = 1 // no change
         XCTAssertEqual(2, changeCount)
 
-        intChannel.value += 1
+        intChannel.$ += 1
         XCTAssertEqual(4, changeCount)
 
         r1.cancel()
-        intChannel.value += 1
+        intChannel.$ += 1
         XCTAssertEqual(5, changeCount)
 
         r2.cancel()
-        intChannel.value += 1
+        intChannel.$ += 1
         XCTAssertEqual(5, changeCount)
     }
 
@@ -326,7 +326,7 @@ class FoundationTests : ChannelTestCase {
 
         var strlen = 0
 
-        let sv = channelZProperty("X")
+        let sv = channelZPropertyValue("X")
 
         let _ = sv.filter({ _ in true }).map({ $0.utf8.count })
         let _ = sv.filter({ _ in true }).map({ $0.utf8.count })
@@ -341,21 +341,21 @@ class FoundationTests : ChannelTestCase {
 
         XCTAssertEqual(3, strlen)
 
-        // TODO: need to re-implement .value for FieldChannels, etc.
-//        a ∞= (a.value + "ZZ")
+        // TODO: need to re-implement .$ for FieldChannels, etc.
+//        a ∞= (a.$ + "ZZ")
 //        XCTAssertEqual(5, strlen)
-//        XCTAssertEqual("AAAZZ", a.value)
+//        XCTAssertEqual("AAAZZ", a.$)
 //
-//        a ∞= (a.value + "A")
-//        XCTAssertEqual("AAAZZA", a.value)
+//        a ∞= (a.$ + "A")
+//        XCTAssertEqual("AAAZZA", a.$)
 //        XCTAssertEqual(5, strlen, "even-numbered increment should have been filtered")
 //
-//        a ∞= (a.value + "A")
-//        XCTAssertEqual("AAAZZAA", a.value)
+//        a ∞= (a.$ + "A")
+//        XCTAssertEqual("AAAZZAA", a.$)
 //        XCTAssertEqual(7, strlen)
 
 
-        let x = channelZProperty(1).subsequent().filter { $0 <= 10 }
+        let x = channelZPropertyValue(1).subsequent().filter { $0 <= 10 }
 
         var changeCount: Double = 0
         var changeLog: String = ""
@@ -369,15 +369,15 @@ class FoundationTests : ChannelTestCase {
 
 
         XCTAssertEqual(0, changeCount)
-        XCTAssertNotEqual(5, x.source.value)
+        XCTAssertNotEqual(5, x.source.$)
 
         x ∞= 5
-        XCTAssertEqual(5, x.source.value)
+        XCTAssertEqual(5, x.source.$)
         XCTAssertEqual(1, changeCount)
 
 
         x ∞= 5
-        XCTAssertEqual(5, x.source.value)
+        XCTAssertEqual(5, x.source.$)
         XCTAssertEqual(1, changeCount)
 
         x ∞= 6
@@ -482,7 +482,7 @@ class FoundationTests : ChannelTestCase {
         c.receive { _ in changes += 1 }
 
         XCTAssertEqual(1, changes)
-        assertChanges(changes, c ∞= c.source.value + 1)
+        assertChanges(changes, c ∞= c.source.$ + 1)
         assertChanges(changes, c ∞= 2)
         assertChanges(changes, c ∞= 2)
         assertChanges(changes, c ∞= 9)
@@ -501,7 +501,7 @@ class FoundationTests : ChannelTestCase {
         c.receive { _ in changes += 1 }
 
         XCTAssertEqual(1, changes)
-        assertChanges(changes, c ∞= c.source.value + 1)
+        assertChanges(changes, c ∞= c.source.$ + 1)
         assertRemains(changes, c ∞= 2)
         assertRemains(changes, c ∞= 2)
         assertChanges(changes, c ∞= 9)
@@ -670,16 +670,16 @@ class FoundationTests : ChannelTestCase {
     func testSinkObservables() {
         let channel = channelZSink(Int)
 
-        channel.source.put(1)
+        channel.source.receive(1)
         var changes = 0
         _ = channel.receive({ _ in changes += 1 })
 
         XCTAssertEqual(0, changes)
 
-        channel.source.put(1)
+        channel.source.receive(1)
         assertSingleChange(&changes)
 
-//        let sinkof = SinkTo(channel.source)
+//        let sinkof = AnyReceiver(channel.source)
 //        sinkof.put(2)
 //        assertSingleChange(&changes, "sink wrapper around observable should have passed elements through to subscriptions")
 //
@@ -787,15 +787,15 @@ class FoundationTests : ChannelTestCase {
         
 //        let qsb = qs1 <?∞?> qs2
 //
-//        qs1.value += "X"
+//        qs1.$ += "X"
 //        XCTAssertEqual("X", state.optstr ?? "<nil>")
 //
-//        qs1.value += "X"
+//        qs1.$ += "X"
 //        XCTAssertEqual("XX", state.optstr ?? "<nil>")
 //
 //        /// Test that disconnecting the binding actually removes the observers
 //        qsb.cancel()
-//        qs1.value += "XYZ"
+//        qs1.$ += "XYZ"
 //        XCTAssertEqual("XX", state.optstr ?? "<nil>")
     }
 
@@ -1182,7 +1182,7 @@ class FoundationTests : ChannelTestCase {
             // FIXME: crash!
 //            c.int8Field += 1
             XCTAssertEqual(s.int8Field∞?, c.numberField.charValue)
-//            s.numberField ∞= NSNumber(char: s.numberField.value.charValue + 1)
+//            s.numberField ∞= NSNumber(char: s.numberField.$.charValue + 1)
             XCTAssertEqual(s.int8Field∞?, c.numberField.charValue)
         }
 
