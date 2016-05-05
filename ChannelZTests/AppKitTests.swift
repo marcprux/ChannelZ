@@ -116,7 +116,7 @@ class AppKitTests : ChannelTestCase {
     func testButtonCommand() {
         let button = NSButton()
 
-        contentView.addSubview(button) /// seems to be needed or else the button won't get clicked
+        contentView.addSubview(button) // seems to be needed or else the button won't get clicked
         defer { button.removeFromSuperview() }
 
         var stateChanges = 0
@@ -157,7 +157,7 @@ class AppKitTests : ChannelTestCase {
     func testTextFieldProperties() {
         let textField = NSTextField()
 
-        contentView.addSubview(textField) /// seems to be needed or else the button won't get clicked
+        contentView.addSubview(textField) // seems to be needed or else the button won't get clicked
         defer { textField.removeFromSuperview() }
 
         var text = ""
@@ -207,7 +207,7 @@ class AppKitTests : ChannelTestCase {
 
         let stepper = NSStepper()
 
-        contentView.addSubview(stepper) /// seems to be needed or else the button won't get clicked
+        contentView.addSubview(stepper) // seems to be needed or else the button won't get clicked
         defer { stepper.removeFromSuperview() }
 
         stepper.maxValue = vm.amountMax
@@ -291,58 +291,130 @@ class AppKitTests : ChannelTestCase {
         XCTAssertEqual(2, changes.2)
     }
 
-    func testMultipleControllerListeners() {
+    func testChannelControllerBinding() {
         let stepper = NSStepper()
 
-        contentView.addSubview(stepper) /// seems to be needed or else the button won't get clicked
+        contentView.addSubview(stepper) // seems to be needed or else the button won't get clicked
         defer { stepper.removeFromSuperview() }
 
-        let channel = stepper.channelZBinding(controller: NSObjectController(content: 0))
+        do { // bind to double
+            let controller = stepper.channelZBinding(0.0)
 
-        stepper.minValue = 0
-        stepper.maxValue = 100
-        stepper.increment = 1
+            controller.$ = 3.2
+            XCTAssertEqual(3.2, stepper.doubleValue, "stepper should mirror controller binding")
 
-        XCTAssertEqual(0, stepper.integerValue)
-        XCTAssertEqual(0, channel.source.kvo.$ as? NSNumber)
+            stepper.performClick(nil) // decrement
+            XCTAssertEqual(2.2, controller.$, "stepper decrement should be seem in controller")
 
-        channel.source.kvo.$ = 50
+            stepper.unbind(NSValueBinding)
 
-        XCTAssertEqual(50, stepper.integerValue)
-        XCTAssertEqual(50, channel.source.kvo.$ as? NSNumber)
+            stepper.performClick(nil) // decrement
+            XCTAssertEqual(2.2, controller.$, "control should have been unbound")
+        }
 
-        stepper.performClick(nil) // undocumented, but this decrements the stepper
+        do { // bind to int
+            let controller = stepper.channelZBinding(3)
 
-        XCTAssertEqual(49, stepper.integerValue)
-        XCTAssertEqual(49, channel.source.kvo.$ as? NSNumber)
+            controller.$ = 4
+            XCTAssertEqual(4, stepper.integerValue, "stepper should mirror controller binding")
 
-        var changeCounts = (-1, -1, -1)
+            stepper.performClick(nil) // decrement
+            XCTAssertEqual(3, controller.$, "stepper decrement should be seem in controller")
 
-        channel.receive { x in changeCounts.0 += 1 }
-        channel.receive { x in changeCounts.1 += 1 }
-        channel.receive { x in changeCounts.2 += 1 }
+            stepper.unbind(NSValueBinding)
 
-        XCTAssertEqual(0, changeCounts.0)
-        XCTAssertEqual(0, changeCounts.1)
-        XCTAssertEqual(0, changeCounts.2)
+            stepper.performClick(nil) // decrement
+            XCTAssertEqual(3, controller.$, "control should have been unbound")
+        }
 
-        stepper.performClick(nil)
+        do { // bind to int?
+            let controller = stepper.channelZBinding(44 as Int?)
 
-        XCTAssertEqual(1, changeCounts.0)
-        XCTAssertEqual(1, changeCounts.1)
-        XCTAssertEqual(1, changeCounts.2)
-        XCTAssertEqual(48, channel.source.kvo.$ as? NSNumber)
-        XCTAssertEqual(48, stepper.integerValue)
+            stepper.maxValue = 88
+            controller.$ = 4
+            XCTAssertEqual(4, stepper.integerValue, "stepper should mirror controller binding")
 
-        stepper.performClick(nil)
+            controller.$ = nil
+            XCTAssertEqual(44, stepper.integerValue, "stepper should treat nil as NSNullPlaceholderBindingOption")
 
-        XCTAssertEqual(2, changeCounts.0)
-        XCTAssertEqual(2, changeCounts.1)
-        XCTAssertEqual(2, changeCounts.2)
-        XCTAssertEqual(47, channel.source.kvo.$ as? NSNumber)
-        XCTAssertEqual(47, stepper.integerValue)
+            controller.$ = 99
+            XCTAssertEqual(88, stepper.integerValue, "stepper should pin to max")
+            XCTAssertEqual(99, controller.$, "controller should hold set value")
 
-        withExtendedLifetime(stepper) { } // just so stepper is retained until the end
+            stepper.performClick(nil) // decrement
+            XCTAssertEqual(87, controller.$, "stepper decrement should be seem in controller")
+
+            stepper.unbind(NSValueBinding)
+
+            stepper.performClick(nil) // decrement
+            XCTAssertEqual(87, controller.$, "control should have been unbound")
+        }
+
+        do { // bind to string
+            let textField = NSTextField()
+
+            contentView.addSubview(textField)
+            defer { textField.removeFromSuperview() }
+
+            let controller = textField.channelZBinding("ABC" as String?)
+            let enabled = textField.channelZBinding(true, binding: NSEnabledBinding)
+            let hidden = textField.channelZBinding(false, binding: NSHiddenBinding)
+
+            controller.$ = "XYZ"
+            XCTAssertEqual("XYZ", textField.stringValue, "text field should mirror controller binding")
+            XCTAssertEqual("XYZ", textField.objectValue as? NSObject, "text field should show null binding")
+            XCTAssertEqual(nil, textField.placeholderString, "placeholder should not be set unless content is nil")
+
+            controller.$ = nil
+            XCTAssertEqual(nil, textField.objectValue as? NSObject)
+            XCTAssertEqual("", textField.stringValue)
+            XCTAssertEqual("ABC", textField.placeholderString, "placeholder should be set when content is nil")
+
+            XCTAssertEqual(true, textField.enabled)
+            enabled.$ = false
+            XCTAssertEqual(false, textField.enabled)
+            enabled.$ = true
+            XCTAssertEqual(true, textField.enabled)
+
+            XCTAssertEqual(false, textField.hidden)
+            hidden.$ = true
+            XCTAssertEqual(true, textField.hidden)
+            hidden.$ = false
+            XCTAssertEqual(false, textField.hidden)
+
+            // now make it so enabled and hidden are bound to opposite valies, so that
+            // when the control is disabled it is hidden and when the control is hidden it is disabled
+            enabled.channelZStateChanges().map(!).bind(hidden.channelZStateChanges().map(!))
+
+            enabled.$ = false
+            XCTAssertEqual(false, textField.enabled)
+            XCTAssertEqual(true, textField.hidden)
+
+            enabled.$ = true
+            XCTAssertEqual(true, textField.enabled)
+            XCTAssertEqual(false, textField.hidden)
+
+            hidden.$ = true
+            XCTAssertEqual(true, textField.hidden)
+            XCTAssertEqual(false, textField.enabled)
+
+            hidden.$ = false
+            XCTAssertEqual(false, textField.hidden)
+            XCTAssertEqual(true, textField.enabled)
+
+            // “If you change the value of an item in the user interface programmatically, for example sending an NSTextField a setStringValue: message, the model is not updated with the new value.”
+            // “This is the expected behavior. Instead you should change the model object using a key-value-observing compliant manner.”
+
+//            textField.stringValue = "ABC"
+//            XCTAssertEqual("ABC", controller.$, "text field should be seem in controller")
+
+
+//            stepper.unbind(NSValueBinding)
+//
+//            textField.stringValue = "000"
+//            XCTAssertEqual("ABC", controller.$, "text field should have been unbound")
+        }
+
     }
 
     override func tearDown() {

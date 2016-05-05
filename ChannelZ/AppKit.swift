@@ -14,11 +14,6 @@ import Foundation // workaround for compilation bug when compiling on iOS: «@ob
 #if os(OSX)
 import AppKit
 
-public protocol ChannelController: class, NSObjectProtocol, StateSource, StateReceiver {
-    associatedtype ContentType
-    var value: ContentType { get set }
-}
-
 public extension NSObjectProtocol where Self : NSController {
     /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
     /// change valus are not provided with KVO observation
@@ -41,6 +36,13 @@ public extension NSObjectProtocol where Self : NSController {
     }
 }
 
+
+//public protocol ChannelController: class, NSObjectProtocol, StateSource, StateReceiver {
+//    associatedtype ContentType
+//    var value: ContentType { get set }
+//}
+//
+//
 /// An NSObject controller that is compatible with a StateSource and StateReceiver for storing and retrieving `NSObject` values from bindings
 // FIXME: disabled because KVO is hopelessly broken on NSController subclasses
 //extension NSObjectController : ChannelController {
@@ -82,9 +84,15 @@ extension NSControl { // : KeyValueChannelSupplementing {
     }
 
     /// Creates a binding to an intermediate NSObjectController with the given options and returns the bound channel
-    public func channelZBinding<C: NSController where C: NSObjectProtocol>(binding: String = NSValueBinding, controller: C = C.init(), keyPath: String = "content", options: [String : AnyObject] = [:]) -> Channel<(kvo: KeyValueOptionalSource<AnyObject>, controller: C), StatePulse<AnyObject?>> {
-        bind(binding, toObject: controller, withKeyPath: keyPath, options: options)
-        return controller.channelZControllerPath(keyPath).resource({ ($0, controller) })
+    public func channelZBinding<T>(value: T, binding: String = NSValueBinding, keyPath: String = "content", options: [String : AnyObject] = [:]) -> ChannelController<T> {
+        var options = options
+        if let nullValue = value as? NSObject {
+            options[NSNullPlaceholderBindingOption] = nullValue
+        }
+
+        let controller = ChannelController(value: value)
+        bind(binding, toObject: controller, withKeyPath: controller.key, options: options)
+        return controller
     }
 
     public func supplementKeyValueChannel(forKeyPath: String, receiver: (AnyObject?) -> ()) -> (() -> ())? {

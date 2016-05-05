@@ -799,3 +799,185 @@ extension NSNumber : ConduitNumericCoercible {
     }
 
 }
+
+
+// MARK: ChannelController implementation
+
+/// A strongly-typed KVO-compatible type that contains a single value.
+///
+/// Cocoa Key-Value Observing is generally not compatible with Swift generics due to
+/// the inability to dynamicly subclass a generic type (observation messages will simply
+/// not be received), so the `ChannelController` overrides the KVO management routines
+/// in order to handle a strongly-typed values.
+public final class ChannelController<T> : NSObject, StateContainer {
+    public typealias State = StatePulse<T>
+    private let receivers = ReceiverQueue<State>()
+    // map of KVO observers
+    private var observers = Dictionary<ChannelControllerObserverKey, [Receipt]>()
+
+    public let key: String
+    public var $: T {
+        willSet {
+            willChangeValueForKey(key)
+        }
+
+        didSet(old) {
+            didChangeValueForKey(key)
+            receivers.receive(StatePulse(old: old, new: $))
+        }
+    }
+
+
+    public init(value: T, key: String = "value") {
+        self.$ = value
+        self.key = key
+    }
+
+    public convenience init(rawValue: T) {
+        self.init(value: rawValue)
+    }
+
+    public func receive(x: T) { $ = x }
+
+    @warn_unused_result public func channelZState() -> Channel<ChannelController<T>, State> {
+        return Channel(source: self) { rcvr in
+            // immediately issue the original value with no previous value
+            rcvr(State(old: Optional<T>.None, new: self.$))
+            return self.receivers.addReceipt(rcvr)
+        }
+    }
+
+    public override func addObserver(observer: NSObject, forKeyPath keyPath: String, options: NSKeyValueObservingOptions, context: UnsafeMutablePointer<Void>) {
+        if keyPath == self.key {
+            let receipt = channelZState().receive { [weak self] pulse in
+                var change: [String : AnyObject] = [:]
+                change[NSKeyValueChangeKindKey] = NSKeyValueChange.Setting.rawValue
+                change[NSKeyValueChangeNewKey] = pulse.new as? NSObject
+                change[NSKeyValueChangeOldKey] = pulse.old as? NSObject
+
+                observer.observeValueForKeyPath(keyPath, ofObject: self, change: change, context: context)
+            }
+
+            // remember the receivers for a given context pointer so we can cancel them later
+            let key = ChannelControllerObserverKey(context: context, observer: observer)
+            observers[key] = (observers[key] ?? []) + [receipt]
+        } else {
+            super.addObserver(observer, forKeyPath: keyPath, options: options, context: context)
+        }
+    }
+
+    public override func removeObserver(observer: NSObject, forKeyPath keyPath: String, context: UnsafeMutablePointer<Void>) {
+        if keyPath == self.key {
+            let key = ChannelControllerObserverKey(context: context, observer: observer)
+            for receipt in observers.removeValueForKey(key) ?? [] {
+                receipt.cancel()
+            }
+        } else {
+            super.removeObserver(observer, forKeyPath: keyPath, context: context)
+        }
+    }
+
+    public override func removeObserver(observer: NSObject, forKeyPath keyPath: String) {
+
+
+        // Manual unbinding on `unbind`:
+        // ChannelController.removeObserver(NSObject, forKeyPath : String) -> ()
+        // @objc ChannelController.removeObserver(NSObject, forKeyPath : String) -> () ()
+        // -[NSBinder _updateObservingRegistration:] ()
+        // -[NSBinder breakConnection] ()
+        // -[NSObject(NSKeyValueBindingCreation) unbind:] ()
+
+        // Automatic unbinding on `dealloc`:
+        // ChannelController.removeObserver(NSObject, forKeyPath : String) -> ()
+        // @objc ChannelController.removeObserver(NSObject, forKeyPath : String) -> () ()
+        // -[NSBinder _updateObservingRegistration:] ()
+        // -[NSBinder releaseConnectionWithSynchronizePeerBinders:] ()
+        // -[NSValueBinder releaseConnectionWithSynchronizePeerBinders:] ()
+        // -[NSObject(_NSBindingAdaptorAccess) _releaseBindingAdaptor] ()
+        // -[NSView _releaseBindingAdaptor] ()
+        // -[NSView _finalizeWithReferenceCounting] ()
+        // -[NSView dealloc] ()
+        // -[NSControl dealloc] ()
+        // -[NSTextField dealloc] ()
+
+
+        if keyPath == self.key {
+            // no context: need to manually iterate to remove the observer
+            for (key, receipts) in observers {
+                if key.observer === observer {
+                    for receipt in receipts {
+                        receipt.cancel()
+                    }
+                    observers.removeValueForKey(key)
+                }
+            }
+        } else {
+            super.removeObserver(observer, forKeyPath: keyPath)
+        }
+    }
+
+    public override func willChangeValueForKey(key: String) {
+        if key == self.key {
+
+        } else {
+            super.willChangeValueForKey(key)
+        }
+    }
+
+    public override func didChangeValueForKey(key: String) {
+        if key == self.key {
+
+        } else {
+            super.didChangeValueForKey(key)
+        }
+    }
+
+    public override func valueForKey(key: String) -> AnyObject? {
+        if key == self.key {
+            return self.$ as? NSObject
+        } else {
+            return super.valueForKey(key)
+        }
+    }
+
+    public override func valueForKeyPath(keyPath: String) -> AnyObject? {
+        if keyPath == self.key {
+            return self.$ as? NSObject
+        } else {
+            return super.valueForKeyPath(keyPath)
+        }
+    }
+
+    public override func setValue(value: AnyObject?, forKey key: String) {
+        if key == self.key {
+            if let value = value as? T {
+                self.$ = value
+            }
+        } else {
+            super.setValue(value, forKey: key)
+        }
+    }
+
+    public override func setValue(value: AnyObject?, forKeyPath keyPath: String) {
+        if keyPath == self.key {
+            if let value = value as? T {
+                self.$ = value
+            }
+        } else {
+            super.setValue(value, forKeyPath: keyPath)
+        }
+    }
+}
+
+/// Key for observer info in ChannelController (cannot nest in generic)
+private struct ChannelControllerObserverKey : Hashable {
+    var context: UnsafeMutablePointer<Void>
+    weak var observer: NSObject?
+
+    private var hashValue: Int { return context.hashValue }
+}
+
+private func ==(lhs: ChannelControllerObserverKey, rhs: ChannelControllerObserverKey) -> Bool {
+    return lhs.context == rhs.context && lhs.observer === rhs.observer
+}
+

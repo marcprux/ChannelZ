@@ -10,6 +10,7 @@ import XCTest
 import ChannelZ
 import CoreData
 
+
 func assertChanges<T where T: Equatable>(@autoclosure check: ()->T, @autoclosure _ code: ()->(Any), file: StaticString = #file, line: UInt = #line) {
     let start = check()
     code()

@@ -371,10 +371,36 @@ public extension StreamType where Pulse : StatePulseType, Pulse.T : Equatable {
     }
 }
 
+public extension ChannelType where Pulse : StatePulseType, Pulse.T : Equatable {
+    @warn_unused_result public func changes() -> Channel<Source, Pulse.T> {
+        return sieve().new()
+    }
+}
+
+public extension StateSource where Element : Equatable {
+    /// Creates a a channel to all changed values for equatable elements
+    @warn_unused_result func channelZStateChanges() -> Channel<Source, Element> {
+        return channelZState().changes()
+    }
+}
+
 public extension StreamType where Pulse : StatePulseType, Pulse.T : _OptionalType, Pulse.T.Wrapped : Equatable {
     /// Filters the channel for only changed optional instances of the underlying `StatePulse`
     @warn_unused_result public func sieve() -> Self {
         return sieve(optionalTypeEqual)
+    }
+}
+
+public extension ChannelType where Pulse : StatePulseType, Pulse.T : _OptionalType, Pulse.T.Wrapped : Equatable {
+    @warn_unused_result public func changes() -> Channel<Source, Pulse.T> {
+        return sieve().new()
+    }
+}
+
+public extension StateSource where Element : _OptionalType, Element.Wrapped : Equatable {
+    /// Creates a a channel to all changed values for optional equatable elements
+    @warn_unused_result func channelZStateChanges() -> Channel<Source, Element> {
+        return channelZState().changes()
     }
 }
 
@@ -598,9 +624,9 @@ public struct Lens<A, B> : LensType {
     private let getter: A -> B
     private let setter: (A, B) -> A
 
-    public init(get: A -> B, set: (A, B) -> A) {
+    public init(get: A -> B, create: (A, B) -> A) {
         self.getter = get
-        self.setter = set
+        self.setter = create
     }
 
     public init(_ get: A -> B, _ set: (inout A, B) -> ()) {
@@ -661,8 +687,8 @@ public extension ChannelType where Source : StateContainer, Pulse: StatePulseTyp
     }
 
     /// Constructs a Lens channel using a getter and a tranformation setter
-    public func channelZLens<X>(get: Source.Element -> X, _ set: (Source.Element, X) -> Source.Element) -> Channel<LensSource<Self, X>, StatePulse<X>> {
-        return channelZLens(Lens(get: get, set: set))
+    public func channelZLens<X>(get get: Source.Element -> X, create: (Source.Element, X) -> Source.Element) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+        return channelZLens(Lens(get: get, create: create))
     }
 }
 
@@ -679,8 +705,8 @@ public extension ChannelType where Source : LensSourceType, Source.Owner.Source 
 public extension ChannelType where Source.Element : _OptionalType, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the result of the constructor function
-    public func option(template: () -> Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
-        return channelZLens({ $0.flatMap({ $0 }) ?? template() }, { (_, value) in Source.Element(value) })
+    public func fill(template: () -> Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
+        return channelZLens(get: { $0.flatMap({ $0 }) ?? template() }, create: { (_, value) in Source.Element(value) })
     }
 }
 
@@ -696,7 +722,7 @@ public extension ChannelType where Source.Element : RangeReplaceableCollectionTy
 
         let lens: Lens<Source.Element, Source.Element.Generator.Element?> = Lens(get: { target in
             target.indices.contains(index) ? target[index] : nil
-        }) { (target, item) in
+            }, create: { (target, item) in
             var target = target
             if let item = item {
                 while !target.indices.contains(index) {
@@ -711,7 +737,7 @@ public extension ChannelType where Source.Element : RangeReplaceableCollectionTy
                 }
             }
             return target
-        }
+        })
 
         return channelZLens(lens)
     }
@@ -734,11 +760,11 @@ public extension ChannelType where Source.Element : KeyIndexed, Source : StateCo
 
         let lens: Lens<Source.Element, Source.Element.Value?> = Lens(get: { target in
             target[key]
-        }) { (target, item) in
+            }, create: { (target, item) in
             var target = target
             target[key] = item
             return target
-        }
+        })
 
         return channelZLens(lens)
     }

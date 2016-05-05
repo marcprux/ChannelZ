@@ -9,6 +9,26 @@
 import XCTest
 import ChannelZ
 
+class ChannelTestCase : XCTestCase {
+    override func invokeTest() {
+//        return invocation?.selector == #selector(AppKitTests.testChannelControllerBinding) ? super.invokeTest() : print("skipping test", name)
+        return super.invokeTest()
+    }
+
+
+    override internal func tearDown() {
+        super.tearDown()
+
+        // ensure that all the bindings and observers are properly cleaned up
+        #if DEBUG_CHANNELZ
+            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "unexpected reentrant receptions detected")
+            ChannelZ.ChannelZReentrantReceptions = 0
+        #else
+            XCTFail("Why are you running tests with debugging off?")
+        #endif
+    }
+}
+
 extension StreamType {
     /// Test method that receives to the observable and returns any elements that are immediately sent to fresh receivers
     func pullZ() -> [Pulse] {
@@ -60,26 +80,6 @@ private func feedX<T, U>(seq: [T], f: [T] -> U) -> U {
     return f(seq)
 }
 
-
-class ChannelTestCase : XCTestCase {
-    override func invokeTest() {
-//        return invocation?.selector == #selector(ChannelTests.testJacket) ? super.invokeTest() : print("skipping test", name)
-        return super.invokeTest()
-    }
-
-
-    override internal func tearDown() {
-        super.tearDown()
-
-        // ensure that all the bindings and observers are properly cleaned up
-        #if DEBUG_CHANNELZ
-            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "unexpected reentrant receptions detected")
-            ChannelZ.ChannelZReentrantReceptions = 0
-        #else
-            XCTFail("Why are you running tests with debugging off?")
-        #endif
-    }
-}
 
 class ChannelTests : ChannelTestCase {
     func testLensChannels() {
