@@ -11,7 +11,7 @@ import ChannelZ
 import Dispatch
 
 /// Creates an asynchronous trickle of events for the given generator
-func trickleZ<G: GeneratorType>(fromx: G, _ interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue())->Channel<G, G.Element> {
+func trickleZ<G: GeneratorType>(fromx: G, _ interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue()) -> Channel<G, G.Element> {
     var from = fromx
     var receivers = ReceiverQueue<G.Element>()
     let delay = Int64(interval * NSTimeInterval(NSEC_PER_SEC))
@@ -30,7 +30,53 @@ func trickleZ<G: GeneratorType>(fromx: G, _ interval: NSTimeInterval, queue: dis
     return Channel(source: from) { rcvr in receivers.addReceipt(rcvr) }
 }
 
+@warn_unused_result public func channelZSinkSingleReceiver<T>(type: T.Type) -> Channel<AnyReceiver<T>, T> {
+    var receive: T -> Void = { _ in }
+    let sink = AnyReceiver<T>({ receive($0) })
+    return Channel<AnyReceiver<T>, T>(source: sink) { receive = $0; return ReceiptOf(canceler: { _ in }) }
+}
+
 class DispatchTests : ChannelTestCase {
+
+    func testSyncReceive() {
+        let count = 999
+        var values = Set(0..<count)
+        let queue = dispatch_queue_create(#function, DISPATCH_QUEUE_SERIAL)
+
+        // FIXME: the receiverlist itself if not locked, so we can't use anything that uses the ReceiverQueue
+        // not sure how to fix this without resoring to RevceiverQueue depending on dispatch
+        let channel = channelZSinkSingleReceiver(Int)
+
+        channel.sync(queue).receive { i in
+            values.remove(i)
+        }
+
+//        for i in values {
+        dispatch_apply(count + 1, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)) { i in
+            channel.source.receive(i)
+        }
+
+        XCTAssertEqual(0, values.count)
+    }
+
+    func testSyncSource() {
+        let count = 999
+        var values = Set(0..<count)
+        let queue = dispatch_queue_create(#function, DISPATCH_QUEUE_SERIAL)
+        let channel = channelZPropertyValue(0).syncSource(queue)
+
+        channel.receive { i in
+            values.remove(i)
+        }
+
+//        for i in values {
+        dispatch_apply(count + 1, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)) { i in
+            channel.source.receive(i)
+        }
+
+        XCTAssertEqual(0, values.count)
+        
+    }
 
     func testTrickle() {
         var tricklets: [Int] = []
@@ -126,7 +172,7 @@ class DispatchTests : ChannelTestCase {
 
         XCTAssertEqual(fibcount * channelCount, fibs.count)
 
-        func dedupe<S: SequenceType, T: Equatable where T == S.Generator.Element>(seq: S)->Array<T> {
+        func dedupe<S: SequenceType, T: Equatable where T == S.Generator.Element>(seq: S) -> Array<T> {
             let reduced = seq.reduce(Array<T>()) { (array, item) in
                 return array + (item == array.last ? [] : [item])
             }
@@ -237,7 +283,7 @@ enum InputStreamError : ErrorType {
     case OpenError(POSIXError?, String)
 }
 
-func channelZFile(path: String, queue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false)->Channel<dispatch_io_t, InputStreamEvent> {
+func channelZFile(path: String, queue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false) -> Channel<dispatch_io_t, InputStreamEvent> {
     let receivers = ReceiverQueue<InputStreamEvent>()
 
     let dchan = path.withCString {

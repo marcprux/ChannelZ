@@ -41,15 +41,42 @@ public extension StreamType {
 
     /// Instructs the observable to synchronize on the specified `lockQueue` when emitting items
     ///
-    /// - Parameter lockQueue: The GDC queue to synchronize on; if nil, a queue named "io.glimpse.Channel.sync" 
-    ///   will be created and used
-    @warn_unused_result public func sync(lockQueue: dispatch_queue_t) -> Self {
+    /// - Parameter queue: The GDC queue to synchronize on
+    @warn_unused_result public func sync(queue: dispatch_queue_t) -> Self {
         return lifts { receive in
             { event in
-                dispatch_sync(lockQueue) {
+                dispatch_sync(queue) {
                     receive(event)
                 }
             }
         }
+    }
+}
+
+/// A source over a ReceiverType that synchonizes on a queue before receiving
+public struct DispatchSource<S: ReceiverType> : ReceiverType {
+    public let source: S
+    public let queue: dispatch_queue_t
+
+    public init(source: S, queue: dispatch_queue_t) {
+        self.source = source
+        self.queue = queue
+    }
+
+    public func receive(value: S.Pulse) {
+        dispatch_sync(queue) {
+            self.source.receive(value)
+        }
+    }
+}
+
+public extension ChannelType where Source : ReceiverType {
+
+    /// Instructs the observable to synchronize on the specified `lockQueue` when emitting items as well
+    /// as replacing the receiver source with a locked receiver source.
+    ///
+    /// - Parameter queue: The GDC queue to synchronize on
+    @warn_unused_result public func syncSource(queue: dispatch_queue_t) -> Channel<DispatchSource<Source>, Pulse> {
+        return resource({ DispatchSource(source: $0, queue: queue) })
     }
 }

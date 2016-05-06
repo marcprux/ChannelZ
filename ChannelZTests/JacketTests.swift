@@ -104,9 +104,9 @@ extension ChannelTests {
             ]
         )
 
-        dump(dir)
+//        dump(dir)
         dir.companies[0].employees[dir.companies[0].ceoID]?.workAddress?.line2 = "Suite #111"
-        dump(dir)
+//        dump(dir)
 
         // let dirZ = channelZPropertyState(dir)
 
@@ -154,8 +154,9 @@ extension ChannelTests {
             XCTAssertEqual("ZZZ", bebeZ.$.workAddress?.line1)
 
 
+            var lines: [String?] = []
             bebeZ.previousAddressesZ.index(1).line1Z.sieve().new().receive { line in
-                print("##### line1", line)
+                lines.append(line)
             }
 
             XCTAssertEqual(0, bebeZ.$.previousAddresses.count)
@@ -167,8 +168,11 @@ extension ChannelTests {
             XCTAssertEqual(["XYZ", "ABC", "XYZ"], bebeZ.$.previousAddresses.map({ $0.line1 }))
 
 
-            dirz.companiesZ.index(0).coalesce({ nil as Company! }).employeesZ.at("359414").value().some().receive {
-                print("emp #359414", $0)
+            XCTAssertEqual(["XYZ", "ABC"].flatMap({ $0 }), lines.flatMap({ $0 }))
+
+            var persons: [Person] = []
+            dirz.companiesZ.index(0).coalesce({ nil as Company! }).employeesZ.at("359414").value().some().receive { person in
+                persons.append(person)
             }
 
             let empnameZ = dirz.companiesZ.index(0).coalesce({ nil as Company! }).employeesZ.at("359414").coalesce({ nil as Person! }).firstNameZ

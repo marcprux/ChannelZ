@@ -11,7 +11,7 @@ import ChannelZ
 
 class ChannelTestCase : XCTestCase {
     override func invokeTest() {
-//        return invocation?.selector == #selector(ChannelTests.testThreading) ? super.invokeTest() : print("skipping test", name)
+//        return invocation?.selector == #selector(DispatchTests.testThreading) ? super.invokeTest() : print("skipping test", name)
         return super.invokeTest()
     }
 
@@ -131,8 +131,11 @@ class ChannelTests : ChannelTestCase {
         subc.owner.owner.$.str = "Baz"
 
         let compound = str.new() & subb.new()
-        dump(compound)
-        compound.receive { x in dump(x) }
+//        dump(compound)
+        compound.receive { str, int in
+            XCTAssertEqual("Baz", str)
+            XCTAssertEqual(7, int)
+        }
 
 //        dump(compound.$)
 //        let MVλ = 1
@@ -240,35 +243,6 @@ class ChannelTests : ChannelTestCase {
 
     }
 
-    func XXXtestThreading() {
-        // FIXME: dispatch locking doesn't work!
-
-        let prev = ChannelZReentrancyLimit
-        ChannelZReentrancyLimit = 999999
-        defer { ChannelZReentrancyLimit = prev }
-
-        let count = 999
-        var values = Set(0..<count)
-        let prop = channelZPropertyValue(0)
-
-        let queue = dispatch_queue_create(#function, DISPATCH_QUEUE_CONCURRENT)
-        prop.receive { i in
-            dispatch_barrier_sync(queue) {
-                values.remove(i)
-            }
-        }
-
-//        for i in values {
-        dispatch_apply(count + 1, dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE, 0)) { i in
-            dispatch_sync(queue) {
-                prop.$ = i
-            }
-        }
-
-        XCTAssertEqual(0, values.count)
-
-    }
-
     func testZipImplementations() {
         let z1 = channelZPropertyState(1).new()
         let z2 = channelZPropertyState("1").new()
@@ -279,7 +253,6 @@ class ChannelTests : ChannelTestCase {
         let zz = z1.zip(z2).zip(z3).zip(z4).enumerate()
 
         zz.receive {
-            dump($0.index)
             items.append($0)
         }
 
@@ -359,8 +332,8 @@ class ChannelTests : ChannelTestCase {
         var elements: [Item] = []
 
         XCTAssertEqual(0, elements.count)
-        enums.receive({ print("receive 1", $0) })
-        enums.receive({ print("receive 2", $0) })
+//        enums.receive({ print("receive 1", $0) })
+//        enums.receive({ print("receive 2", $0) })
         enums.receive({ elements.append($0) })
         XCTAssertEqual(2, elements.count)
 
