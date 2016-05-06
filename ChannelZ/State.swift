@@ -439,14 +439,14 @@ public extension ChannelType where Source : StateContainer {
     }
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
-    public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, Pulse> {
+    @warn_unused_result public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, Pulse> {
         return resource { source in AnyState(get: { get(source.$) }, set: { source.$ = set($0) }, channeler: { source.channelZState().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }) }
     }
 }
 
 public extension ChannelType where Source : StateContainer {
     /// Creates a type-erased `StateSource` with `AnyState` for this channel
-    public func anyState() -> Channel<AnyState<Source.Element>, Pulse> {
+    @warn_unused_result public func anyState() -> Channel<AnyState<Source.Element>, Pulse> {
         return resource(AnyState.init)
     }
 
@@ -454,13 +454,13 @@ public extension ChannelType where Source : StateContainer {
 
 public extension ChannelType where Source : StateContainer, Source.Element == Pulse {
     /// For a channel whose underlying state matches the pulse types, perform a `stateMap` and a `map` with the same `get` transform
-    public func restate<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, X> {
+    @warn_unused_result public func restate<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, X> {
         return stateMap(get: get, set: set).map(get)
     }
 }
 
 public extension ChannelType where Source : StateContainer, Pulse: _OptionalType, Source.Element == Pulse, Pulse.Wrapped: Hashable {
-    public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Pulse, U?)>(mapping: S) -> Channel<AnyState<U?>, U?> {
+    @warn_unused_result public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Pulse, U?)>(mapping: S) -> Channel<AnyState<U?>, U?> {
         var getMapping: [Pulse.Wrapped: U] = [:]
         var setMapping: [U: Pulse] = [:]
 
@@ -665,7 +665,7 @@ public struct LensSource<C: ChannelType, T where C.Source : StateContainer, C.Pu
         nonmutating set { channel.$ = lens.set(channel.$, newValue) }
     }
 
-    public func channelZState() -> Channel<LensSource, StatePulse<T>> {
+    @warn_unused_result public func channelZState() -> Channel<LensSource, StatePulse<T>> {
         return channel.map({ pulse in
             StatePulse(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new))
         }).resource({ _ in self })
@@ -675,27 +675,26 @@ public struct LensSource<C: ChannelType, T where C.Source : StateContainer, C.Pu
 public extension ChannelType where Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
     /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
     /// channel can modify sub-elements of a complex data structure
-    public func channelZLens<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+    @warn_unused_result public func channelZLens<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, StatePulse<X>> {
         return LensSource(channel: self, lens: lens).channelZState()
     }
 
     /// Constructs a Lens channel using a getter and an inout setter
-    public func channelZLens<X>(get: Source.Element -> X, _ set: (inout Source.Element, X) -> ()) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+    @warn_unused_result public func channelZLens<X>(get: Source.Element -> X, _ set: (inout Source.Element, X) -> ()) -> Channel<LensSource<Self, X>, StatePulse<X>> {
         return channelZLens(Lens(get, set))
     }
 
     /// Constructs a Lens channel using a getter and a tranformation setter
-    public func channelZLens<X>(get get: Source.Element -> X, create: (Source.Element, X) -> Source.Element) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+    @warn_unused_result public func channelZLens<X>(get get: Source.Element -> X, create: (Source.Element, X) -> Source.Element) -> Channel<LensSource<Self, X>, StatePulse<X>> {
         return channelZLens(Lens(get: get, create: create))
     }
 }
 
-public extension ChannelType where Source : LensSourceType, Source.Owner.Source : StateSource {
-    /// A lens channel's owner is the value of the lens source itself
-    public var owner: Source.Owner {
-        get { return source.channel }
-    }
+public extension ChannelType where Source : LensSourceType {
+    /// Simple alias for `source.channel.source`; useful for ascending a lens ownership hierarchy
+    public var owner: Source.Owner { return source.channel }
 }
+
 
 
 // MARK: Jacket Channel extensions for Lens/Prism/Optional access
@@ -704,10 +703,17 @@ public extension ChannelType where Source.Element : _OptionalType, Source : Stat
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the result of the constructor function
-    public func coalesce(template: () -> Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
-        return channelZLens(get: { $0.flatMap({ $0 }) ?? template() }, create: { (_, value) in Source.Element(value) })
+    @warn_unused_result public func coalesce(template: Self -> Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
+        return channelZLens(get: { $0.flatMap({ $0 }) ?? template(self) }, create: { (_, value) in Source.Element(value) })
+    }
+
+    /// Converts an optional state channel into a non-optional one by replacing nil elements
+    /// with the result of the value; alias for `coalesce`
+    @warn_unused_result public func coalesce(value: Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
+        return coalesce({ _ in value })
     }
 }
+
 
 public extension ChannelType where Source.Element : RangeReplaceableCollectionType, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
 
@@ -717,7 +723,7 @@ public extension ChannelType where Source.Element : RangeReplaceableCollectionTy
     ///
     /// - Note: When setting the value of an index outside the current indices, any
     ///         intervening gaps will be filled with the value
-    public func index(index: Source.Element.Index) -> Channel<LensSource<Self, Source.Element.Generator.Element?>, StatePulse<Source.Element.Generator.Element?>> {
+    @warn_unused_result public func index(index: Source.Element.Index) -> Channel<LensSource<Self, Source.Element.Generator.Element?>, StatePulse<Source.Element.Generator.Element?>> {
 
         let lens: Lens<Source.Element, Source.Element.Generator.Element?> = Lens(get: { target in
             target.indices.contains(index) ? target[index] : nil
@@ -755,7 +761,7 @@ extension Dictionary : KeyIndexed {
 
 public extension ChannelType where Source.Element : KeyIndexed, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
     /// Creates a state channel to the given key in the underlying `KeyIndexed` dictionary
-    public func at(key: Source.Element.Key) -> Channel<LensSource<Self, Source.Element.Value?>, StatePulse<Source.Element.Value?>> {
+    @warn_unused_result public func at(key: Source.Element.Key) -> Channel<LensSource<Self, Source.Element.Value?>, StatePulse<Source.Element.Value?>> {
 
         let lens: Lens<Source.Element, Source.Element.Value?> = Lens(get: { target in
             target[key]
