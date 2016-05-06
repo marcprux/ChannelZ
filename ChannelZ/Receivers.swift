@@ -6,7 +6,7 @@
 //  License: MIT (or whatever)
 //
 
-import Dispatch
+import Darwin // for OSAtomicIncrement64
 
 /// An `Receipt` is the result of `receive`ing to a Observable or Channel
 public protocol Receipt : class {
@@ -55,30 +55,6 @@ public class ReceiptOf: Receipt {
     }
 }
 
-///// A no-op receipt that warns that an attempt was made to receive to a deallocated weak target
-//struct DeallocatedTargetReceptor : Receptor {
-//    func cancel() { }
-//    func request() { }
-//}
-
-
-/// A simple GCD-based locking scheme
-struct QueueLock {
-    let lock: dispatch_queue_t
-
-    init(name: String) {
-        lock = dispatch_queue_create(name, nil)
-    }
-
-    func lock<T>(f: () -> T) -> T {
-        var value: T?
-        dispatch_sync(lock) {
-            value = f()
-        }
-        return value!
-    }
-}
-
 /// How many levels of re-entrancy are permitted when flowing state observations
 public var ChannelZReentrancyLimit: Int = 1
 
@@ -95,38 +71,21 @@ public final class ReceiverQueue<T> : ReceiverType {
     private var receivers: [(index: Int64, receptor: Receptor)] = []
     private var entrancy: Int64 = 0
     private var receptorIndex: Int64 = 0
-    private let lockQueue = dispatch_queue_create("io.Glimpse.ReceiverQueue.LockQueue", DISPATCH_QUEUE_CONCURRENT)
 
     public var count: Int { return receivers.count }
 
-    public init(maxdepth: Int = ChannelZReentrancyLimit) {
-        self.maxdepth = maxdepth
-    }
-
-//    private func synchronized<X>(lockObj: AnyObject, closure: () -> X) -> X {
-//        var retVal: X?
-//        dispatch_sync(lockQueue) {
-//            retVal = closure()
-//        }
-//        return retVal!
-//    }
-
-    private func synchronized<X>(lockObj: AnyObject, @noescape closure: () throws -> X) rethrows -> X {
-        objc_sync_enter(lockObj)
-        defer { objc_sync_exit(lockObj) }
-        return try closure()
+    public init(maxdepth: Int? = nil) {
+        self.maxdepth = maxdepth ?? ChannelZReentrancyLimit
     }
 
     public func receive(element: T) {
-        synchronized(self) {
-            let currentEntrancy = OSAtomicIncrement64(&entrancy)
-            defer { OSAtomicDecrement64(&entrancy) }
-            if currentEntrancy > maxdepth + 1 {
-                reentrantChannelReception(element)
-            } else {
-                for (_, receiver) in receivers {
-                    receiver(element)
-                }
+        let currentEntrancy = OSAtomicIncrement64(&entrancy)
+        defer { OSAtomicDecrement64(&entrancy) }
+        if currentEntrancy > maxdepth + 1 {
+            reentrantChannelReception(element)
+        } else {
+            for (_, receiver) in receivers {
+                receiver(element)
             }
         }
     }

@@ -328,7 +328,7 @@ class AppKitTests : ChannelTestCase {
         }
 
         do { // bind to int?
-            let controller = stepper.channelZBinding(44 as Int?)
+            let controller = stepper.channelZBinding(44)
 
             stepper.maxValue = 88
             controller.$ = 4
@@ -356,7 +356,7 @@ class AppKitTests : ChannelTestCase {
             contentView.addSubview(textField)
             defer { textField.removeFromSuperview() }
 
-            let controller = textField.channelZBinding("ABC" as String?)
+            let controller = textField.channelZBinding("ABC")
             let enabled = textField.channelZBinding(true, binding: NSEnabledBinding)
             let hidden = textField.channelZBinding(false, binding: NSHiddenBinding)
 
@@ -384,7 +384,8 @@ class AppKitTests : ChannelTestCase {
 
             // now make it so enabled and hidden are bound to opposite valies, so that
             // when the control is disabled it is hidden and when the control is hidden it is disabled
-            enabled.channelZStateChanges().map(!).bind(hidden.channelZStateChanges().map(!))
+//            enabled.channelZStateChanges().map(!).bind(hidden.channelZStateChanges().map(!))
+            enabled.channelZStateChanges().map({ $0.flatMap(!) }).bind(hidden.channelZStateChanges().map({ $0.flatMap(!) }))
 
             enabled.$ = false
             XCTAssertEqual(false, textField.enabled)
@@ -401,6 +402,7 @@ class AppKitTests : ChannelTestCase {
             hidden.$ = false
             XCTAssertEqual(false, textField.hidden)
             XCTAssertEqual(true, textField.enabled)
+
 
             // “If you change the value of an item in the user interface programmatically, for example sending an NSTextField a setStringValue: message, the model is not updated with the new value.”
             // “This is the expected behavior. Instead you should change the model object using a key-value-observing compliant manner.”

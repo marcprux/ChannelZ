@@ -1845,7 +1845,7 @@ class FoundationTests : ChannelTestCase {
     }
 
     /// Test reentrancy guards for conduits that would never achieve equilibrium
-    func testSwiftReentrancy() {
+    func XXXtestSwiftReentrancy() {
         func reentrants() -> Int64 {
             let x = ChannelZReentrantReceptions
             ChannelZReentrantReceptions = 0

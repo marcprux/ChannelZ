@@ -804,19 +804,23 @@ extension NSNumber : ConduitNumericCoercible {
 // MARK: ChannelController implementation
 
 /// A strongly-typed KVO-compatible type that contains a single value.
+/// 
+/// Values are always optional since Foundation always permits nil to exist in place of an object reference.
 ///
 /// Cocoa Key-Value Observing is generally not compatible with Swift generics due to
 /// the inability to dynamicly subclass a generic type (observation messages will simply
 /// not be received), so the `ChannelController` overrides the KVO management routines
 /// in order to handle a strongly-typed values.
 public final class ChannelController<T> : NSObject, StateContainer {
-    public typealias State = StatePulse<T>
+    public static var defaultKey: String { return "value" }
+
+    public typealias State = StatePulse<T?>
     private let receivers = ReceiverQueue<State>()
     // map of KVO observers
     private var observers = Dictionary<ChannelControllerObserverKey, [Receipt]>()
 
     public let key: String
-    public var $: T {
+    public var $: T? {
         willSet {
             willChangeValueForKey(key)
         }
@@ -828,7 +832,7 @@ public final class ChannelController<T> : NSObject, StateContainer {
     }
 
 
-    public init(value: T, key: String = "value") {
+    public init(value: T?, key: String = "value") {
         self.$ = value
         self.key = key
     }
@@ -837,7 +841,7 @@ public final class ChannelController<T> : NSObject, StateContainer {
         self.init(value: rawValue)
     }
 
-    public func receive(x: T) { $ = x }
+    public func receive(x: T?) { $ = x }
 
     @warn_unused_result public func channelZState() -> Channel<ChannelController<T>, State> {
         return Channel(source: self) { rcvr in
@@ -849,11 +853,24 @@ public final class ChannelController<T> : NSObject, StateContainer {
 
     public override func addObserver(observer: NSObject, forKeyPath keyPath: String, options: NSKeyValueObservingOptions, context: UnsafeMutablePointer<Void>) {
         if keyPath == self.key {
-            let receipt = channelZState().receive { [weak self] pulse in
-                var change: [String : AnyObject] = [:]
-                change[NSKeyValueChangeKindKey] = NSKeyValueChange.Setting.rawValue
-                change[NSKeyValueChangeNewKey] = pulse.new as? NSObject
-                change[NSKeyValueChangeOldKey] = pulse.old as? NSObject
+            var channel = channelZState()
+
+            if !options.contains(.Initial) {
+                // only send the initial values if we request it in the options
+                channel = channel.subsequent()
+            }
+
+            let receipt = channel.receive { [weak self] pulse in
+                var change: [String : AnyObject] = [
+                    NSKeyValueChangeKindKey: NSKeyValueChange.Setting.rawValue
+                ]
+
+                if options.contains(.New) {
+                    change[NSKeyValueChangeNewKey] = pulse.new as? NSObject
+                }
+                if options.contains(.Old) {
+                    change[NSKeyValueChangeOldKey] = pulse.old as? NSObject
+                }
 
                 observer.observeValueForKeyPath(keyPath, ofObject: self, change: change, context: context)
             }
@@ -918,7 +935,6 @@ public final class ChannelController<T> : NSObject, StateContainer {
 
     public override func willChangeValueForKey(key: String) {
         if key == self.key {
-
         } else {
             super.willChangeValueForKey(key)
         }
@@ -926,7 +942,6 @@ public final class ChannelController<T> : NSObject, StateContainer {
 
     public override func didChangeValueForKey(key: String) {
         if key == self.key {
-
         } else {
             super.didChangeValueForKey(key)
         }
@@ -952,6 +967,8 @@ public final class ChannelController<T> : NSObject, StateContainer {
         if key == self.key {
             if let value = value as? T {
                 self.$ = value
+            } else {
+                self.$ = nil
             }
         } else {
             super.setValue(value, forKey: key)
@@ -962,6 +979,8 @@ public final class ChannelController<T> : NSObject, StateContainer {
         if keyPath == self.key {
             if let value = value as? T {
                 self.$ = value
+            } else {
+                self.$ = nil
             }
         } else {
             super.setValue(value, forKeyPath: keyPath)

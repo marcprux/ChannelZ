@@ -267,35 +267,21 @@ public extension ChannelType {
         var state: [Int64: T] = [:] // the captured state, one pulse per receiver
         var stateIndex: Int64 = 0
 
-        let lock = QueueLock(name: "io.glimpse.ChannelZ.effectLock")
-
         return Channel(source: self.source) { receiver in
-            let index: Int64 = lock.lock {
-                stateIndex += 1
-                let index = stateIndex
-                state[index] = seed
-                return stateIndex
-            }
+            stateIndex += 1
+            let index = stateIndex
+            state[index] = seed
 
             let rcpt = self.receive { pulse in
-                let value: T? = lock.lock {
-                    if var stateValue = state[index] {
-                        stateValue = affector(stateValue, pulse)
-                        state[index] = stateValue
-                        return stateValue
-                    } else {
-                        return nil
-                    }
-                }
-                if let value = value {
-                    receiver(store: value, pulse: pulse)
+                if var stateValue = state[index] {
+                    stateValue = affector(stateValue, pulse)
+                    state[index] = stateValue
+                    receiver(store: stateValue, pulse: pulse)
                 }
             }
 
             return ReceiptOf {
-                lock.lock {
-                    state[index] = nil // drop the stored state
-                }
+                state[index] = nil // drop the stored state
                 rcpt.cancel()
             }
         }

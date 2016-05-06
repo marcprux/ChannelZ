@@ -6,8 +6,6 @@
 //  Copyright © 2016 glimpse.io. All rights reserved.
 //
 
-import Darwin
-
 /// A `ValuableType` simply encapsulates a value
 public protocol ValuableType {
     associatedtype T
@@ -703,9 +701,10 @@ public extension ChannelType where Source : LensSourceType, Source.Owner.Source 
 // MARK: Jacket Channel extensions for Lens/Prism/Optional access
 
 public extension ChannelType where Source.Element : _OptionalType, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
+
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the result of the constructor function
-    public func fill(template: () -> Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
+    public func coalesce(template: () -> Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
         return channelZLens(get: { $0.flatMap({ $0 }) ?? template() }, create: { (_, value) in Source.Element(value) })
     }
 }
