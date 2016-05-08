@@ -153,11 +153,23 @@ public struct AnyState<T> : StateContainer {
 /// A WrapperType is able to map itself through a wrapped optional
 /// This protocol is an artifact of the inability for a protocol extension to be constrained
 /// to a concrete generic type, so when we want to constrain a protocol to Optional types,
-/// we rely on its implementation of `flatMap`
-/// It needs to be public in order for protocols to conform
+/// we rely on its implementation of `flatMap`.
+///
+/// It needs to be public in order for external protocols to conform.
+///
+/// - See Also: `Optional.flatMap`
 public protocol _OptionalType : NilLiteralConvertible {
     associatedtype Wrapped
     init(_ some: Wrapped)
+
+    /// If `self == nil`, returns `nil`.  Otherwise, returns `f(self!)`.
+    /// - See Also: `Optional.map`
+    @warn_unused_result
+    func map<U>(@noescape f: (Wrapped) throws -> U) rethrows -> U?
+
+    /// Returns `nil` if `self` is `nil`, `f(self!)` otherwise.
+    /// - See Also: `Optional.flatMap`
+    @warn_unused_result
     func flatMap<U>(@noescape f: (Wrapped) throws -> U?) rethrows -> U?
 }
 
@@ -170,8 +182,13 @@ extension _OptionalType {
     }
 }
 
+///// Compares two optional types by comparing their underlying unwrapped optional values
+//func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ rhs: T) -> Bool {
+//    return lhs.toOptional() == rhs.toOptional()
+//}
+
 /// Compares two optional types by comparing their underlying unwrapped optional values
-func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ rhs: T) -> Bool {
+func optionalTypeNotEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ rhs: T) -> Bool {
     return lhs.toOptional() != rhs.toOptional()
 }
 
@@ -370,6 +387,9 @@ public extension StreamType where Pulse : StatePulseType, Pulse.T : Equatable {
 }
 
 public extension ChannelType where Pulse : StatePulseType, Pulse.T : Equatable {
+    /// Adds a channel phase that emits pulses only when the equatable pulses are not equal.
+    ///
+    /// - See Also: `changes(predicate:)`
     @warn_unused_result public func changes() -> Channel<Source, Pulse.T> {
         return sieve().new()
     }
@@ -385,11 +405,14 @@ public extension StateSource where Element : Equatable {
 public extension StreamType where Pulse : StatePulseType, Pulse.T : _OptionalType, Pulse.T.Wrapped : Equatable {
     /// Filters the channel for only changed optional instances of the underlying `StatePulse`
     @warn_unused_result public func sieve() -> Self {
-        return sieve(optionalTypeEqual)
+        return sieve(optionalTypeNotEqual)
     }
 }
 
 public extension ChannelType where Pulse : StatePulseType, Pulse.T : _OptionalType, Pulse.T.Wrapped : Equatable {
+    /// Adds a channel phase that emits pulses only when the optional equatable pulses are not equal.
+    ///
+    /// - See Also: `changes(predicate:)`
     @warn_unused_result public func changes() -> Channel<Source, Pulse.T> {
         return sieve().new()
     }
@@ -481,10 +504,10 @@ public extension ChannelType where Source : StateContainer, Pulse: _OptionalType
 }
 
 
-public extension ChannelType {
+public extension StreamType {
     /// Creates a one-way pipe between a `Channel`s whose source is a `Sink`, such that when the left
     /// side is changed the right side is updated
-    public func conduct<T, S : ReceiverType where S.Pulse == Self.Pulse>(to: Channel<S, T>) -> Receipt {
+    public func conduct<C2 : ChannelType, S : ReceiverType where S.Pulse == Self.Pulse, C2.Source == S>(to: C2) -> Receipt {
         return self.receive(to.source)
     }
 
@@ -532,7 +555,7 @@ public extension ChannelType where Source : StateContainer, Source.Element : Equ
     /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
     public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
-        return conjoin(to, filterLeft: optionalTypeEqual, filterRight: !=)
+        return conjoin(to, filterLeft: optionalTypeNotEqual, filterRight: !=)
     }
 }
 
@@ -540,7 +563,7 @@ public extension ChannelType where Source : StateContainer, Source.Element : _Op
     /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
     public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
-        return conjoin(to, filterLeft: !=, filterRight: optionalTypeEqual)
+        return conjoin(to, filterLeft: !=, filterRight: optionalTypeNotEqual)
     }
 }
 
@@ -548,7 +571,7 @@ public extension ChannelType where Source : StateContainer, Source.Element : _Op
     /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
     public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
-        return conjoin(to, filterLeft: optionalTypeEqual, filterRight: optionalTypeEqual)
+        return conjoin(to, filterLeft: optionalTypeNotEqual, filterRight: optionalTypeNotEqual)
     }
 }
 

@@ -120,3 +120,34 @@ public final class ReceiverQueue<T> : ReceiverType {
         receivers = []
     }
 }
+
+private protocol Lock {
+    func lock()
+    func unlock()
+    func withLock<T>(f: () throws -> T) rethrows -> T
+    func tryLock<T>(f: () throws -> T) rethrows -> T?
+}
+
+private final class SpinLock : Lock {
+    var spinLock: OSSpinLock = OS_SPINLOCK_INIT
+
+    func lock() {
+        OSSpinLockLock(&spinLock)
+    }
+
+    func unlock() {
+        OSSpinLockUnlock(&spinLock)
+    }
+
+    func withLock<T>(f: () throws -> T) rethrows -> T {
+        OSSpinLockLock(&spinLock)
+        defer { OSSpinLockUnlock(&spinLock) }
+        return try f()
+    }
+
+    func tryLock<T>(f: () throws -> T) rethrows -> T? {
+        if !OSSpinLockTry(&spinLock) { return nil }
+        defer { OSSpinLockUnlock(&spinLock) }
+        return try f()
+    }
+}
