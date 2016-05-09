@@ -211,7 +211,7 @@ public protocol KeyValueSourceType : class, StateContainer {
     var optional: Bool { get }
     var keyPath: String { get }
     var object: NSObject? { get }
-    var receivers: ReceiverQueue<StatePulse<Element>> { get }
+    var queue: ReceiverQueue<StatePulse<Element>> { get }
 
     func get() -> Element
     func createPulse(change: NSDictionary) -> StatePulse<Element>
@@ -257,7 +257,7 @@ public extension KeyValueSourceType {
             preconditionFailure("ChannelZ: cannot add receiver for deallocated instance (channels do not retain their targets)")
         }
 
-        let rcvrs = self.receivers
+        let rcvrs = self.queue
         TargetObserverRegister.get(target).addObserver(keyPath) { change in
             rcvrs.receive(self.createPulse(change))
         }
@@ -268,9 +268,9 @@ public extension KeyValueSourceType {
         receiver(StatePulse<Element>(old: Optional<Element>.None, new: get()))
 
         let kp = keyPath
-        let index = receivers.addReceiver(receiver)
+        let index = queue.addReceiver(receiver)
         return ReceiptOf(canceler: { [weak self] in
-            self?.receivers.removeReceptor(index)
+            self?.queue.removeReceptor(index)
             if let target = self?.object {
                 TargetObserverRegister.get(target).removeObserver(kp, identifier: index)
             }
@@ -283,17 +283,18 @@ public extension KeyValueSourceType {
 }
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueSource<T>: KeyValueSourceType {
+public final class KeyValueSource<T>: ReceiverQueueSource<StatePulse<T>>, KeyValueSourceType {
     public typealias Element = T
 
     public let keyPath: String
     public let optional = false
     public private(set) weak var object: NSObject?
-    public let receivers = ReceiverQueue<StatePulse<Element>>()
+    public var queue: ReceiverQueue<StatePulse<Element>> { return receivers }
 
     public init(target: KeyValueTarget<Element>) {
         self.object = target.target
         self.keyPath = target.keyPath
+        super.init()
         validateInitialValue(target.initialValue)
         registerObserver()
     }
@@ -308,20 +309,22 @@ public final class KeyValueSource<T>: KeyValueSourceType {
         let oldv: Element? = coerceFoundationType(change[NSKeyValueChangeOldKey]!)
         return StatePulse<Element>(old: oldv, new: newv!)
     }
+
 }
 
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueOptionalSource<T>: KeyValueSourceType {
+public final class KeyValueOptionalSource<T>: ReceiverQueueSource<StatePulse<T?>>, KeyValueSourceType {
     public typealias Element = T?
     public let keyPath: String
     public let optional = true
     public private(set) weak var object: NSObject?
-    public let receivers = ReceiverQueue<StatePulse<Element>>()
+    public var queue: ReceiverQueue<StatePulse<Element>> { return receivers }
 
     public init(target: KeyValueTarget<Element>) {
         self.object = target.target
         self.keyPath = target.keyPath
+        super.init()
         validateInitialValue(target.initialValue)
         registerObserver()
     }

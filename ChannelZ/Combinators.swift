@@ -6,19 +6,20 @@
 //  Copyright © 2016 glimpse.io. All rights reserved.
 //
 
+// Swift 3 TODO: Variadic Generics: https://github.com/apple/swift/blob/master/docs/GenericsManifesto.md#variadic-generics
 
 /// One of a set number of options
-public protocol OneOfN {
+public protocol ChooseN {
     /// Returns the number of choices
     var arity: Int { get }
 
-    /// The first type in thie OneOf
+    /// The first type in thie Choose
     associatedtype T1
     var first: T1? { get }
 }
 
 /// One of 2 options
-public enum OneOf2<T1, T2>: OneOfN {
+public enum Choose2<T1, T2>: ChooseN {
     public var arity: Int { return 2 }
 
     /// First of 2
@@ -30,7 +31,7 @@ public enum OneOf2<T1, T2>: OneOfN {
 }
 
 /// One of 3 options
-public enum OneOf3<T1, T2, T3>: OneOfN {
+public enum Choose3<T1, T2, T3>: ChooseN {
     public var arity: Int { return 3 }
 
     /// First of 3
@@ -42,8 +43,8 @@ public enum OneOf3<T1, T2, T3>: OneOfN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<T1, T2>, T3> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<T1, T2>, T3> {
         switch self {
         case .V1(let v): return .V1(.V1(v))
         case .V2(let v): return .V1(.V2(v))
@@ -53,7 +54,7 @@ public enum OneOf3<T1, T2, T3>: OneOfN {
 }
 
 /// One of 4 options
-public enum OneOf4<T1, T2, T3, T4>: OneOfN {
+public enum Choose4<T1, T2, T3, T4>: ChooseN {
     public var arity: Int { return 4 }
 
     /// First of 4
@@ -67,8 +68,8 @@ public enum OneOf4<T1, T2, T3, T4>: OneOfN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<T1, T2>, T3>, T4> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(v)))
         case .V2(let v): return .V1(.V1(.V2(v)))
@@ -79,7 +80,7 @@ public enum OneOf4<T1, T2, T3, T4>: OneOfN {
 }
 
 /// One of 5 options
-public enum OneOf5<T1, T2, T3, T4, T5>: OneOfN {
+public enum Choose5<T1, T2, T3, T4, T5>: ChooseN {
     public var arity: Int { return 5 }
 
     /// First of 5
@@ -95,8 +96,8 @@ public enum OneOf5<T1, T2, T3, T4, T5>: OneOfN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(v))))
         case .V2(let v): return .V1(.V1(.V1(.V2(v))))
@@ -108,7 +109,7 @@ public enum OneOf5<T1, T2, T3, T4, T5>: OneOfN {
 }
 
 /// One of 6 options
-public enum OneOf6<T1, T2, T3, T4, T5, T6>: OneOfN {
+public enum Choose6<T1, T2, T3, T4, T5, T6>: ChooseN {
     public var arity: Int { return 6 }
 
     /// First of 6
@@ -126,8 +127,8 @@ public enum OneOf6<T1, T2, T3, T4, T5, T6>: OneOfN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(v)))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V2(v)))))
@@ -140,7 +141,7 @@ public enum OneOf6<T1, T2, T3, T4, T5, T6>: OneOfN {
 }
 
 /// One of 7 options
-public enum OneOf7<T1, T2, T3, T4, T5, T6, T7>: OneOfN {
+public enum Choose7<T1, T2, T3, T4, T5, T6, T7>: ChooseN {
     public var arity: Int { return 7 }
 
     /// First of 7
@@ -160,8 +161,8 @@ public enum OneOf7<T1, T2, T3, T4, T5, T6, T7>: OneOfN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(v))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V2(v))))))
@@ -175,7 +176,7 @@ public enum OneOf7<T1, T2, T3, T4, T5, T6, T7>: OneOfN {
 }
 
 /// One of 8 options
-public enum OneOf8<T1, T2, T3, T4, T5, T6, T7, T8>: OneOfN {
+public enum Choose8<T1, T2, T3, T4, T5, T6, T7, T8>: ChooseN {
     public var arity: Int { return 8 }
 
     /// First of 8
@@ -197,8 +198,8 @@ public enum OneOf8<T1, T2, T3, T4, T5, T6, T7, T8>: OneOfN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(v)))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))
@@ -213,7 +214,7 @@ public enum OneOf8<T1, T2, T3, T4, T5, T6, T7, T8>: OneOfN {
 }
 
 /// One of 9 options
-public enum OneOf9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: OneOfN {
+public enum Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: ChooseN {
     public var arity: Int { return 9 }
 
     /// First of 9
@@ -237,8 +238,8 @@ public enum OneOf9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: OneOfN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))
@@ -254,7 +255,7 @@ public enum OneOf9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: OneOfN {
 }
 
 /// One of 10 options
-public enum OneOf10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: OneOfN {
+public enum Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: ChooseN {
     public var arity: Int { return 10 }
 
     /// First of 10
@@ -280,8 +281,8 @@ public enum OneOf10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: OneOfN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v)))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))
@@ -298,7 +299,7 @@ public enum OneOf10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: OneOfN {
 }
 
 /// One of 11 options
-public enum OneOf11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: OneOfN {
+public enum Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: ChooseN {
     public var arity: Int { return 11 }
 
     /// First of 11
@@ -326,8 +327,8 @@ public enum OneOf11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: OneOfN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v))))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))
@@ -346,7 +347,7 @@ public enum OneOf11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: OneOfN {
 
 
 /// One of 12 options
-public enum OneOf12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: OneOfN {
+public enum Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: ChooseN {
     public var arity: Int { return 12 }
 
     /// First of 12
@@ -376,8 +377,8 @@ public enum OneOf12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: OneOfN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v)))))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))
@@ -396,7 +397,7 @@ public enum OneOf12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: OneOfN {
 }
 
 /// One of 13 options
-public enum OneOf13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: OneOfN {
+public enum Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: ChooseN {
     public var arity: Int { return 13 }
 
     /// First of 13
@@ -428,8 +429,8 @@ public enum OneOf13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: One
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v))))))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))
@@ -449,7 +450,7 @@ public enum OneOf13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: One
 }
 
 /// One of 14 options
-public enum OneOf14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>: OneOfN {
+public enum Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>: ChooseN {
     public var arity: Int { return 14 }
 
     /// First of 14
@@ -483,8 +484,8 @@ public enum OneOf14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v)))))))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))
@@ -505,7 +506,7 @@ public enum OneOf14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>
 }
 
 /// One of 15 options
-public enum OneOf15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>: OneOfN {
+public enum Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>: ChooseN {
     public var arity: Int { return 15 }
 
     /// First of 15
@@ -541,8 +542,8 @@ public enum OneOf15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v))))))))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))))
@@ -564,7 +565,7 @@ public enum OneOf15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 }
 
 /// One of 16 options
-public enum OneOf16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>: OneOfN {
+public enum Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>: ChooseN {
     public var arity: Int { return 16 }
 
     /// First of 16
@@ -602,8 +603,8 @@ public enum OneOf16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v)))))))))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))))
@@ -626,7 +627,7 @@ public enum OneOf16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 }
 
 /// One of 17 options
-public enum OneOf17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>: OneOfN {
+public enum Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>: ChooseN {
     public var arity: Int { return 17 }
 
     /// First of 17
@@ -666,8 +667,8 @@ public enum OneOf17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v))))))))))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))))))
@@ -692,7 +693,7 @@ public enum OneOf17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
 
 /// One of 18 options
-public enum OneOf18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>: OneOfN {
+public enum Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>: ChooseN {
     public var arity: Int { return 18 }
 
     /// First of 18
@@ -734,8 +735,8 @@ public enum OneOf18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v)))))))))))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))))))
@@ -761,7 +762,7 @@ public enum OneOf18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
 
 /// One of 19 options
-public enum OneOf19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>: OneOfN {
+public enum Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>: ChooseN {
     public var arity: Int { return 19 }
 
     /// First of 19
@@ -805,8 +806,8 @@ public enum OneOf19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18>, T19> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18>, T19> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v))))))))))))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v))))))))))))))))))
@@ -833,7 +834,7 @@ public enum OneOf19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
 
 /// One of 20 options
-public enum OneOf20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>: OneOfN {
+public enum Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>: ChooseN {
     public var arity: Int { return 20 }
 
     /// First of 20
@@ -879,8 +880,8 @@ public enum OneOf20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
-    /// Split the tuple into nested OneOf2 instances
-    public func split() -> OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<OneOf2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18>, T19>, T20> {
+    /// Split the tuple into nested Choose2 instances
+    public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18>, T19>, T20> {
         switch self {
         case .V1(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(v)))))))))))))))))))
         case .V2(let v): return .V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V1(.V2(v)))))))))))))))))))
@@ -909,14 +910,14 @@ public enum OneOf20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14,
 // MARK - Channel either with flatten operation: |
 
 /// Channel either & flattening operation
-public func |<S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>) -> Channel<(S1, S2), OneOf2<T1, T2>> {
+public func |<S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>) -> Channel<(S1, S2), Choose2<T1, T2>> {
     return lhs.either(rhs)
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), OneOf2<T1, T2>>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), OneOf3<T1, T2, T3>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), Choose2<T1, T2>>, rhs: Channel<S3, T3>)->Channel<(S1, S2, S3), Choose3<T1, T2, T3>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V2(let x): return .V3(x)
@@ -925,9 +926,9 @@ public func |<S1, S2, S3, T1, T2, T3>(lhs: Channel<(S1, S2), OneOf2<T1, T2>>, rh
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, T1, T2, T3, T4>(lhs: Channel<(S1, S2, S3), OneOf3<T1, T2, T3>>, rhs: Channel<S4, T4>)->Channel<(S1, S2, S3, S4), OneOf4<T1, T2, T3, T4>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, T1, T2, T3, T4>(lhs: Channel<(S1, S2, S3), Choose3<T1, T2, T3>>, rhs: Channel<S4, T4>)->Channel<(S1, S2, S3, S4), Choose4<T1, T2, T3, T4>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -937,9 +938,9 @@ public func |<S1, S2, S3, S4, T1, T2, T3, T4>(lhs: Channel<(S1, S2, S3), OneOf3<
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, T1, T2, T3, T4, T5>(lhs: Channel<(S1, S2, S3, S4), OneOf4<T1, T2, T3, T4>>, rhs: Channel<S5, T5>)->Channel<(S1, S2, S3, S4, S5), OneOf5<T1, T2, T3, T4, T5>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, T1, T2, T3, T4, T5>(lhs: Channel<(S1, S2, S3, S4), Choose4<T1, T2, T3, T4>>, rhs: Channel<S5, T5>)->Channel<(S1, S2, S3, S4, S5), Choose5<T1, T2, T3, T4, T5>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -950,9 +951,9 @@ public func |<S1, S2, S3, S4, S5, T1, T2, T3, T4, T5>(lhs: Channel<(S1, S2, S3, 
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, T1, T2, T3, T4, T5, T6>(lhs: Channel<(S1, S2, S3, S4, S5), OneOf5<T1, T2, T3, T4, T5>>, rhs: Channel<S6, T6>)->Channel<(S1, S2, S3, S4, S5, S6), OneOf6<T1, T2, T3, T4, T5, T6>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, T1, T2, T3, T4, T5, T6>(lhs: Channel<(S1, S2, S3, S4, S5), Choose5<T1, T2, T3, T4, T5>>, rhs: Channel<S6, T6>)->Channel<(S1, S2, S3, S4, S5, S6), Choose6<T1, T2, T3, T4, T5, T6>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -964,9 +965,9 @@ public func |<S1, S2, S3, S4, S5, S6, T1, T2, T3, T4, T5, T6>(lhs: Channel<(S1, 
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, T1, T2, T3, T4, T5, T6, T7>(lhs: Channel<(S1, S2, S3, S4, S5, S6), OneOf6<T1, T2, T3, T4, T5, T6>>, rhs: Channel<S7, T7>)->Channel<(S1, S2, S3, S4, S5, S6, S7), OneOf7<T1, T2, T3, T4, T5, T6, T7>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, T1, T2, T3, T4, T5, T6, T7>(lhs: Channel<(S1, S2, S3, S4, S5, S6), Choose6<T1, T2, T3, T4, T5, T6>>, rhs: Channel<S7, T7>)->Channel<(S1, S2, S3, S4, S5, S6, S7), Choose7<T1, T2, T3, T4, T5, T6, T7>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -979,9 +980,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, T1, T2, T3, T4, T5, T6, T7>(lhs: Chann
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, T1, T2, T3, T4, T5, T6, T7, T8>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7), OneOf7<T1, T2, T3, T4, T5, T6, T7>>, rhs: Channel<S8, T8>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8), OneOf8<T1, T2, T3, T4, T5, T6, T7, T8>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, T1, T2, T3, T4, T5, T6, T7, T8>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7), Choose7<T1, T2, T3, T4, T5, T6, T7>>, rhs: Channel<S8, T8>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8), Choose8<T1, T2, T3, T4, T5, T6, T7, T8>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -995,9 +996,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, T1, T2, T3, T4, T5, T6, T7, T8>(lh
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, T1, T2, T3, T4, T5, T6, T7, T8, T9>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8), OneOf8<T1, T2, T3, T4, T5, T6, T7, T8>>, rhs: Channel<S9, T9>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), OneOf9<T1, T2, T3, T4, T5, T6, T7, T8, T9>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, T1, T2, T3, T4, T5, T6, T7, T8, T9>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8), Choose8<T1, T2, T3, T4, T5, T6, T7, T8>>, rhs: Channel<S9, T9>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1012,9 +1013,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, T1, T2, T3, T4, T5, T6, T7, T8
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), OneOf9<T1, T2, T3, T4, T5, T6, T7, T8, T9>>, rhs: Channel<S10, T10>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), OneOf10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9), Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>>, rhs: Channel<S10, T10>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1030,9 +1031,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, T1, T2, T3, T4, T5, T6, T
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), OneOf10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>>, rhs: Channel<S11, T11>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), OneOf11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10), Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>>, rhs: Channel<S11, T11>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1049,9 +1050,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, T1, T2, T3, T4, T5, 
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), OneOf11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>>, rhs: Channel<S12, T12>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), OneOf12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11), Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>>, rhs: Channel<S12, T12>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1069,9 +1070,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, T1, T2, T3, T4,
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), OneOf12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>>, rhs: Channel<S13, T13>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), OneOf13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12), Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>>, rhs: Channel<S13, T13>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1090,9 +1091,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, T1, T2, T3
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), OneOf13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>>, rhs: Channel<S14, T14>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), OneOf14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13), Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>>, rhs: Channel<S14, T14>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1112,9 +1113,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, T1, T
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), OneOf14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>>, rhs: Channel<S15, T15>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), OneOf15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14), Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>>, rhs: Channel<S15, T15>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1135,9 +1136,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, 
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), OneOf15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>>, rhs: Channel<S16, T16>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), OneOf16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15), Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>>, rhs: Channel<S16, T16>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1159,9 +1160,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, 
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), OneOf16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>>, rhs: Channel<S17, T17>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), OneOf17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16), Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>>, rhs: Channel<S17, T17>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1184,9 +1185,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, 
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), OneOf17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>>, rhs: Channel<S18, T18>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), OneOf18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17), Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>>, rhs: Channel<S18, T18>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1210,9 +1211,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, 
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), OneOf18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>>, rhs: Channel<S19, T19>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), OneOf19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18), Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>>, rhs: Channel<S19, T19>)->Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)
@@ -1237,9 +1238,9 @@ public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, 
 }
 
 /// Channel combination & flattening operation
-public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), OneOf19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>>, rhs: Channel<S20, T20>) -> Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), OneOf20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>> {
-    return combineSources(lhs.either(rhs)).map { oneof in
-        switch oneof {
+public func |<S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>(lhs: Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19), Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>>, rhs: Channel<S20, T20>) -> Channel<(S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S18, S19, S20), Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>> {
+    return combineSources(lhs.either(rhs)).map { choice in
+        switch choice {
         case .V1(.V1(let x)): return .V1(x)
         case .V1(.V2(let x)): return .V2(x)
         case .V1(.V3(let x)): return .V3(x)

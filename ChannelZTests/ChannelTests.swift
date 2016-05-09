@@ -11,7 +11,7 @@ import ChannelZ
 
 class ChannelTestCase : XCTestCase {
     override func invokeTest() {
-//        return invocation?.selector == #selector(DispatchTests.testThreading) ? super.invokeTest() : print("skipping test", name)
+//        return invocation?.selector == #selector(DispatchTests.testThreadsafeReception) ? super.invokeTest() : print("skipping test", name)
         return super.invokeTest()
     }
 
@@ -325,7 +325,7 @@ class ChannelTests : ChannelTestCase {
     func testEnumerations() {
         let z1 = channelZPropertyState(true).new()
         let z2 = channelZPropertyState(1).new()
-        typealias Item = (index: Int, pulse: (index: Int, pulse: (index: Int, pulse: OneOf2<Bool, Int>)))
+        typealias Item = (index: Int, pulse: (index: Int, pulse: (index: Int, pulse: Choose2<Bool, Int>)))
 
         let enums = z1.either(z2).enumerate().enumerate().enumerate()
 //        let enums = enumberate(enumberate(enumberate(z1.either(z2))))
@@ -875,10 +875,10 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(8, sizeof(Int64))
         XCTAssertEqual(16, sizeof(TwoBigInts))
 
-        XCTAssertEqual(sizeof(Int8) + 1, sizeof(OneOf2<Int8, Int8>))
-        XCTAssertEqual(sizeof(Int32) + 1, sizeof(OneOf2<Int16, Int32>))
-        XCTAssertEqual(sizeof(Int16) + 1, sizeof(OneOf3<Int16, Int8, Int8>))
-        XCTAssertEqual(sizeof(TwoBigInts) + 1, sizeof(OneOf3<TwoBigInts, Int8, Int8>))
+        XCTAssertEqual(sizeof(Int8) + 1, sizeof(Choose2<Int8, Int8>))
+        XCTAssertEqual(sizeof(Int32) + 1, sizeof(Choose2<Int16, Int32>))
+        XCTAssertEqual(sizeof(Int16) + 1, sizeof(Choose3<Int16, Int8, Int8>))
+        XCTAssertEqual(sizeof(TwoBigInts) + 1, sizeof(Choose3<TwoBigInts, Int8, Int8>))
     }
 
     func testPropertyChannel() {
@@ -1054,7 +1054,7 @@ class ChannelTests : ChannelTestCase {
         _ = (a | b)
         _ = (a | b | c)
 
-        let combo2: (Channel<(PropertySource<Float>, PropertySource<UInt>, PropertySource<Bool>), OneOf3<Float, UInt, String>>) = (a | b | d)
+        let combo2: (Channel<(PropertySource<Float>, PropertySource<UInt>, PropertySource<Bool>), Choose3<Float, UInt, String>>) = (a | b | d)
 
         combo2.receive { val in
             switch val {
@@ -1178,7 +1178,7 @@ class ChannelTests : ChannelTestCase {
         let s1 = channelZSequence(1...3)
         let s2 = channelZSequence(["a", "b", "c", "d"])
         let channel = s1.either(s2)
-        var values = (Array<OneOf2<Int, String>>(), Array<OneOf2<Int, String>>(), Array<OneOf2<Int, String>>())
+        var values = (Array<Choose2<Int, String>>(), Array<Choose2<Int, String>>(), Array<Choose2<Int, String>>())
         channel.receive({ values.0.append($0) })
         channel.receive({ values.1.append($0) })
         channel.receive({ values.2.append($0) })
@@ -1217,11 +1217,11 @@ class ChannelTests : ChannelTestCase {
 //        var andx = 0
 //        and.receive({ _ in andx += 1 })
 //
-//        let or: Channel<Void, OneOf4<Int, Int, Int, Int>> = (a | a | a | a).desource()
+//        let or: Channel<Void, Choose4<Int, Int, Int, Int>> = (a | a | a | a).desource()
 //        var orx = 0
 //        or.receive({ _ in orx += 1 })
 //
-//        let andor: Channel<Void, OneOf4<(Int, Int), (Int, Int), (Int, Int), Int>> = (a ^ a | a ^ a | a ^ a | a).desource() // typed due to slow compile
+//        let andor: Channel<Void, Choose4<(Int, Int), (Int, Int), (Int, Int), Int>> = (a ^ a | a ^ a | a ^ a | a).desource() // typed due to slow compile
 //
 //        let o1 = a
 //        let o2 = o1 | a
@@ -1245,10 +1245,10 @@ class ChannelTests : ChannelTestCase {
 //        let o20 = o19 | a
 //
 //        // statically check the type
-//        let _: Channel<Void, OneOf20<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>> = o20.desource()
+//        let _: Channel<Void, Choose20<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>> = o20.desource()
 //
 //        // too complex
-//        // let _: Channel<Void, OneOf20<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>> = (a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a).desource()
+//        // let _: Channel<Void, Choose20<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>> = (a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a | a).desource()
 //
 //        var andorx = 0
 //        andor.receive({ _ in andorx += 1 })

@@ -73,19 +73,23 @@ public final class ReceiverQueue<T> : ReceiverType {
     private var receptorIndex: Int64 = 0
 
     public var count: Int { return receivers.count }
+    private let lock: Lock
 
-    public init(maxdepth: Int? = nil) {
+    public init(maxdepth: Int? = nil, lock: Lock = ReentrantLock()) {
         self.maxdepth = maxdepth ?? ChannelZReentrancyLimit
+        self.lock = lock
     }
 
     public func receive(element: T) {
-        let currentEntrancy = OSAtomicIncrement64(&entrancy)
-        defer { OSAtomicDecrement64(&entrancy) }
-        if currentEntrancy > maxdepth + 1 {
-            reentrantChannelReception(element)
-        } else {
-            for (_, receiver) in receivers {
-                receiver(element)
+        lock.withLock {
+            let currentEntrancy = OSAtomicIncrement64(&entrancy)
+            defer { OSAtomicDecrement64(&entrancy) }
+            if currentEntrancy > maxdepth + 1 {
+                reentrantChannelReception(element)
+            } else {
+                for (_, receiver) in receivers {
+                    receiver(element)
+                }
             }
         }
     }
@@ -121,33 +125,82 @@ public final class ReceiverQueue<T> : ReceiverType {
     }
 }
 
-private protocol Lock {
-    func lock()
-    func unlock()
-    func withLock<T>(f: () throws -> T) rethrows -> T
-    func tryLock<T>(f: () throws -> T) rethrows -> T?
+public class ReceiverQueueSource<T> {
+    let receivers = ReceiverQueue<T>()
 }
 
-private final class SpinLock : Lock {
+/// A Lock used for synchronizing access to the receiver queue
+public protocol Lock {
+    func lock()
+    func unlock()
+    func withLock<T>(@noescape f: () throws -> T) rethrows -> T
+}
+
+/// A no-op `Lock` implementation
+public final class NoLock : Lock {
+    public func lock() {
+    }
+
+    public func unlock() {
+    }
+
+    public func withLock<T>(@noescape f: () throws -> T) rethrows -> T {
+        return try f()
+    }
+}
+
+/// A `Lock` implementation that uses an `OSSpinLock`
+public final class SpinLock : Lock {
     var spinLock: OSSpinLock = OS_SPINLOCK_INIT
 
-    func lock() {
+    public func lock() {
         OSSpinLockLock(&spinLock)
     }
 
-    func unlock() {
+    public func unlock() {
         OSSpinLockUnlock(&spinLock)
     }
 
-    func withLock<T>(f: () throws -> T) rethrows -> T {
+    public func withLock<T>(@noescape f: () throws -> T) rethrows -> T {
         OSSpinLockLock(&spinLock)
         defer { OSSpinLockUnlock(&spinLock) }
         return try f()
     }
 
-    func tryLock<T>(f: () throws -> T) rethrows -> T? {
+    public func tryLock<T>(@noescape f: () throws -> T) rethrows -> T? {
         if !OSSpinLockTry(&spinLock) { return nil }
         defer { OSSpinLockUnlock(&spinLock) }
+        return try f()
+    }
+}
+
+/// A `Lock` implementation that uses a `pthread_mutex_t`
+public final class ReentrantLock : Lock {
+    private var mutex = pthread_mutex_t()
+    private var mutexAttr = pthread_mutexattr_t()
+
+    public init(attr: Int32 = PTHREAD_MUTEX_RECURSIVE) {
+        pthread_mutexattr_init(&mutexAttr)
+        pthread_mutexattr_settype(&mutexAttr, Int32(attr))
+        pthread_mutex_init(&mutex, &mutexAttr)
+    }
+
+    deinit {
+        pthread_mutex_destroy(&mutex)
+        pthread_mutexattr_destroy(&mutexAttr)
+    }
+
+    public func lock() {
+        pthread_mutex_lock(&self.mutex)
+    }
+
+    public func unlock() {
+        pthread_mutex_unlock(&self.mutex)
+    }
+
+    public func withLock<T>(@noescape f: () throws -> T) rethrows -> T {
+        pthread_mutex_lock(&self.mutex)
+        defer { pthread_mutex_unlock(&self.mutex) }
         return try f()
     }
 }

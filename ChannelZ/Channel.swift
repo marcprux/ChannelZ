@@ -125,8 +125,8 @@ public extension ChannelType {
     /// - Parameter other: the Channel to either with
     ///
     /// - Returns: A stateless Channel that emits the item of either `self` or `other`.
-    @warn_unused_result public func either<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), OneOf2<Pulse, C2.Pulse>> {
-        return Channel<(Source, C2.Source), OneOf2<Pulse, C2.Pulse>>(source: (self.source, other.source)) { (rcvr: (OneOf2<Pulse, C2.Pulse> -> Void)) in
+    @warn_unused_result public func either<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), Choose2<Pulse, C2.Pulse>> {
+        return Channel<(Source, C2.Source), Choose2<Pulse, C2.Pulse>>(source: (self.source, other.source)) { (rcvr: (Choose2<Pulse, C2.Pulse> -> Void)) in
             let rcpt1 = self.receive { rcvr(.V1($0)) }
             let rcpt2 = other.receive { rcvr(.V2($0)) }
             return ReceiptOf(receipts: [rcpt1, rcpt2])

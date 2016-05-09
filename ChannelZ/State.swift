@@ -90,9 +90,8 @@ public protocol StateContainer : StateSource, StateReceiver {
 
 /// A PropertySource can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
 /// The output type is a tuple of (old: T, new: T), where old is the previous value and new is the new value
-public final class PropertySource<T>: StateContainer {
+public final class PropertySource<T>: ReceiverQueueSource<StatePulse<T>>, StateContainer {
     public typealias State = StatePulse<T>
-    private let receivers = ReceiverQueue<State>()
 
     public var $: T {
         didSet(old) {
@@ -150,15 +149,15 @@ public struct AnyState<T> : StateContainer {
     }
 }
 
-/// A WrapperType is able to map itself through a wrapped optional
-/// This protocol is an artifact of the inability for a protocol extension to be constrained
+/// A WrapperType wraps something; is able to map itself through a wrapped optional.
+/// This protocol is mostly an artifact of the inability for a protocol extension to be constrained
 /// to a concrete generic type, so when we want to constrain a protocol to Optional types,
 /// we rely on its implementation of `flatMap`.
 ///
 /// It needs to be public in order for external protocols to conform.
 ///
 /// - See Also: `Optional.flatMap`
-public protocol _OptionalType : NilLiteralConvertible {
+public protocol _WrapperType {
     associatedtype Wrapped
     init(_ some: Wrapped)
 
@@ -173,22 +172,63 @@ public protocol _OptionalType : NilLiteralConvertible {
     func flatMap<U>(@noescape f: (Wrapped) throws -> U?) rethrows -> U?
 }
 
+public protocol _OptionalType : _WrapperType, NilLiteralConvertible {
+}
+
 extension Optional : _OptionalType { }
 
-extension _OptionalType {
+extension _WrapperType {
     /// Convert this type to an optional; shorthand for `flatMap({ $0 })`
     func toOptional() -> Wrapped? {
         return self.flatMap({ $0 })
     }
 }
 
+// Cute but pointless, and introduces potential confusion by making Bool conform to NilLiteralConvertible
+//extension Bool : _OptionalType {
+//    public typealias Wrapped = Void
+//
+//    public init(_ wrapped: Wrapped) {
+//        self.init(true: Void())
+//    }
+//
+//    public init(nilLiteral: ()) {
+//        self.init(false: Void())
+//    }
+//
+//    public init(true: Void) {
+//        self = true
+//    }
+//
+//    public init(false: Void) {
+//        self = false
+//    }
+//
+//    /// If `self` is `ErrorType`, returns `nil`.  Otherwise, returns `f(self!)`.
+//    /// - See Also: `Optional.map`
+//    @warn_unused_result
+//    public func map<U>(@noescape f: (Wrapped) throws -> U) rethrows -> U? {
+//        if self == false { return nil }
+//        return try f()
+//    }
+//
+//    /// Returns `nil` if `self` is `ErrorType`, `f(self!)` otherwise.
+//    /// - See Also: `Optional.flatMap`
+//    @warn_unused_result
+//    public func flatMap<U>(@noescape f: (Wrapped) throws -> U?) rethrows -> U? {
+//        if self == false { return nil }
+//        return try f()
+//    }
+//    
+//}
+
 ///// Compares two optional types by comparing their underlying unwrapped optional values
-//func optionalTypeEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ rhs: T) -> Bool {
+//func optionalTypeEqual<T : _WrapperType where T.Wrapped : Equatable>(lhs: T, _ rhs: T) -> Bool {
 //    return lhs.toOptional() == rhs.toOptional()
 //}
 
 /// Compares two optional types by comparing their underlying unwrapped optional values
-func optionalTypeNotEqual<T : _OptionalType where T.Wrapped : Equatable>(lhs: T, _ rhs: T) -> Bool {
+func optionalTypeNotEqual<T : _WrapperType where T.Wrapped : Equatable>(lhs: T, _ rhs: T) -> Bool {
     return lhs.toOptional() != rhs.toOptional()
 }
 
@@ -402,14 +442,14 @@ public extension StateSource where Element : Equatable {
     }
 }
 
-public extension StreamType where Pulse : StatePulseType, Pulse.T : _OptionalType, Pulse.T.Wrapped : Equatable {
+public extension StreamType where Pulse : StatePulseType, Pulse.T : _WrapperType, Pulse.T.Wrapped : Equatable {
     /// Filters the channel for only changed optional instances of the underlying `StatePulse`
     @warn_unused_result public func sieve() -> Self {
         return sieve(optionalTypeNotEqual)
     }
 }
 
-public extension ChannelType where Pulse : StatePulseType, Pulse.T : _OptionalType, Pulse.T.Wrapped : Equatable {
+public extension ChannelType where Pulse : StatePulseType, Pulse.T : _WrapperType, Pulse.T.Wrapped : Equatable {
     /// Adds a channel phase that emits pulses only when the optional equatable pulses are not equal.
     ///
     /// - See Also: `changes(predicate:)`
@@ -418,7 +458,7 @@ public extension ChannelType where Pulse : StatePulseType, Pulse.T : _OptionalTy
     }
 }
 
-public extension StateSource where Element : _OptionalType, Element.Wrapped : Equatable {
+public extension StateSource where Element : _WrapperType, Element.Wrapped : Equatable {
     /// Creates a a channel to all changed values for optional equatable elements
     @warn_unused_result func channelZStateChanges() -> Channel<Source, Element> {
         return channelZState().changes()
@@ -445,7 +485,7 @@ public extension ChannelType where Pulse : StatePulseType {
 
 }
 
-public extension ChannelType where Pulse : _OptionalType {
+public extension ChannelType where Pulse : _WrapperType {
     /// Adds phases that filter for `Optional.Some` pulses (i.e., drops `nil`s) and maps to their `flatMap`ped (i.e., unwrapped) values
     @warn_unused_result public func some() -> Channel<Source, Pulse.Wrapped> {
         return map({ opt in opt.toOptional() }).filter({ $0 != nil }).map({ $0! })
@@ -551,7 +591,7 @@ public extension ChannelType where Source : StateContainer, Source.Element : Equ
     }
 }
 
-public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : _OptionalType, Pulse.Wrapped : Equatable {
+public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
     public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
@@ -559,7 +599,7 @@ public extension ChannelType where Source : StateContainer, Source.Element : Equ
     }
 }
 
-public extension ChannelType where Source : StateContainer, Source.Element : _OptionalType, Source.Element.Wrapped : Equatable, Pulse : Equatable {
+public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
     public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
@@ -567,7 +607,7 @@ public extension ChannelType where Source : StateContainer, Source.Element : _Op
     }
 }
 
-public extension ChannelType where Source : StateContainer, Source.Element : _OptionalType, Source.Element.Wrapped : Equatable, Pulse : _OptionalType, Pulse.Wrapped : Equatable {
+public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
     public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
@@ -722,7 +762,7 @@ public extension ChannelType where Source : LensSourceType {
 
 // MARK: Jacket Channel extensions for Lens/Prism/Optional access
 
-public extension ChannelType where Source.Element : _OptionalType, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
+public extension ChannelType where Source.Element : _WrapperType, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the result of the constructor function

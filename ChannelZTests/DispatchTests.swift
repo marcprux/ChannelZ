@@ -38,6 +38,28 @@ func trickleZ<G: GeneratorType>(fromx: G, _ interval: NSTimeInterval, queue: dis
 
 class DispatchTests : ChannelTestCase {
 
+    func testThreadsafeReception() {
+        let count = 999
+        var values = Dictionary<Int, Int>()
+        for i in 0..<count {
+            values[i] = i
+        }
+
+        let channel = channelZSinkSingleReceiver(Int)
+
+        channel.receive { i in
+            values.removeValueForKey(i)
+        }
+
+        //        for i in values {
+        dispatch_apply(count + 1, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)) { i in
+            channel.source.receive(i)
+        }
+
+        //        XCTAssertEqual(0, values.count) // FIXME
+    }
+    
+
     func testSyncReceive() {
         let count = 999
         var values = Set(0..<count)
