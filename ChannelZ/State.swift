@@ -559,34 +559,34 @@ public extension ChannelType where Source : ReceiverType {
     /// changed, the other side is updated
     ///
     /// - Note: the `to` channel will immediately receive a sync from the `self` channel, making `self` channel's state dominant
-    public func conduit<Source2 where Source2 : ReceiverType, Source2.Pulse == Self.Pulse>(to: Channel<Source2, Self.Source.Pulse>) -> Receipt {
+    public func conduit<C2: ChannelType where C2.Source : ReceiverType, C2.Source.Pulse == Self.Pulse, C2.Pulse == Self.Source.Pulse>(to: C2) -> Receipt {
         // since self is the dominant channel, ignore any immediate pulses through the right channel
         let rhs = to.subsequent().receive(self.source)
         let lhs = self.receive(to.source)
         return ReceiptOf(receipts: [lhs, rhs])
     }
+
 }
 
 public extension ChannelType where Source : StateContainer {
     /// Creates a two-way conduit between two `Channel`s whose source is a `StateContainer`,
     /// such that when either side is changed the other side is updated provided the filter is satisifed
-    public func conjoin<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>, filterLeft: (Self.Pulse, Source2.Element) -> Bool, filterRight: (Self.Source.Element, Self.Source.Element) -> Bool) -> Receipt {
+    public func conjoin<C2: ChannelType where C2.Pulse == Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2, filterLeft: (Self.Pulse, C2.Source.Element) -> Bool, filterRight: (Self.Source.Element, Self.Source.Element) -> Bool) -> Receipt {
         let filtered1 = self.filter({ filterLeft($0, to.source.$) })
         let filtered2 = to.filter({ filterRight($0, self.source.$) })
 
-        // return filtered1.conduit(filtered2) // FIXME: compiler crash
-
-        let f1: Channel<AnyState<Self.Source.Element>, Self.Pulse> = filtered1.anyState()
-        let f2: Channel<AnyState<Self.Pulse>, Self.Source.Element> = filtered2.anyState()
-        return f1.conduit(f2)
+        // return filtered1.conduit(filtered2) // FIXME: types don't line up for some reason
+        return filtered1.anyState().conduit(filtered2.anyState()) // need to erase state to get them to line up
     }
 
 }
 
+// MARK: Binding variants with raw output
+
 public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not equal
-    public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+    public func bind<C2: ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
         return conjoin(to, filterLeft: !=, filterRight: !=)
     }
 }
@@ -594,7 +594,7 @@ public extension ChannelType where Source : StateContainer, Source.Element : Equ
 public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
-    public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+    public func bind<C2 : ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
         return conjoin(to, filterLeft: optionalTypeNotEqual, filterRight: !=)
     }
 }
@@ -602,7 +602,7 @@ public extension ChannelType where Source : StateContainer, Source.Element : Equ
 public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
-    public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+    public func bind<C2 : ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
         return conjoin(to, filterLeft: !=, filterRight: optionalTypeNotEqual)
     }
 }
@@ -610,10 +610,54 @@ public extension ChannelType where Source : StateContainer, Source.Element : _Wr
 public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal
-    public func bind<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse>(to: Channel<Source2, Self.Source.Element>) -> Receipt {
+    public func bind<C2: ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
         return conjoin(to, filterLeft: optionalTypeNotEqual, filterRight: optionalTypeNotEqual)
     }
 }
+
+
+// MARK: Binding variants with StatePulse output
+
+public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : StatePulseType, Pulse.T : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
+    /// changed, the other side is updated when they are not equal
+    public func link<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse.T>(to: Channel<Source2, StatePulse<Self.Source.Element>>) -> Receipt {
+        return self.changes(!=).conjoin(to.changes(!=), filterLeft: !=, filterRight: !=)
+    }
+}
+
+public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : StatePulseType, Pulse.T : _WrapperType, Pulse.T.Wrapped : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal
+    public func link<C2 where C2 : ChannelType, C2.Source : StateContainer, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
+        return self.changes().conjoin(to.changes(!=), filterLeft: optionalTypeNotEqual, filterRight: !=)
+    }
+}
+
+public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : StatePulseType, Pulse.T : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal
+    public func link<C2 where C2 : ChannelType, C2.Source : StateContainer, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
+        return self.changes(!=).conjoin(to.changes(), filterLeft: !=, filterRight: optionalTypeNotEqual)
+    }
+}
+
+//public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : StatePulseType, Pulse.T : _WrapperType, Pulse.T.Wrapped : Equatable {
+//    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
+//    /// changed, the other side is updated when they are not optionally equal
+//    public func link<C2: ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
+//        return conjoin(to, filterLeft: { _ in false }, filterRight: { _ in false })
+//    }
+//}
+
+
+//public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : StatePulseType, Pulse.T : _WrapperType, Pulse.T.Wrapped : Equatable {
+//    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
+//    /// changed, the other side is updated when they are not optionally equal
+//    public func link<C2 where C2 : ChannelType, C2.Source : StateContainer, C2.Source.Element : _WrapperType, C2.Source.Element.Wrapped == Self.Pulse.T.Wrapped, C2.Pulse : StatePulseType, C2.Pulse.T : _WrapperType, C2.Pulse.T.Wrapped == Self.Source.Element.Wrapped>(to: C2) -> Receipt {
+//        return self.changes().conjoin(to.changes(), filterLeft: optionalTypeNotEqual, filterRight: optionalTypeNotEqual)
+//    }
+//}
 
 // MARK: Utilities
 
