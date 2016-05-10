@@ -680,7 +680,12 @@ public protocol LensType {
 
 }
 
-/// A lens provides the ability to access and modify a sub-element of an immutable data structure
+/// A lens provides the ability to access and modify a sub-element of an immutable data structure.
+/// Optics composition in Swift is somewhat limited due to the lack of Higher Kinded Types, but
+/// they can be used to great effect with a state channel in order to provide owner access and
+/// conditional creation for complex immutable state structures.
+///
+/// See Also: https://github.com/apple/swift/blob/master/docs/GenericsManifesto.md#higher-kinded-types
 public struct Lens<A, B> : LensType {
     private let getter: A -> B
     private let setter: (A, B) -> A
