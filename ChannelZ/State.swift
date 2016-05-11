@@ -812,7 +812,7 @@ public struct Lens<A, B> : LensType {
 public protocol LensSourceType : StateTransceiver {
     associatedtype Owner : ChannelType
 
-    /// All lens channels have an owner that is itself a StateTransmitter
+    /// All lens channels have an owner that is itself a StateTransceiver
     var channel: Owner { get }
 }
 
@@ -847,18 +847,18 @@ public struct LensSource<C: ChannelType, T where C.Source : StateTransceiver, C.
 public extension ChannelType where Source : StateTransceiver, Pulse: StatePulseType, Pulse.T == Source.Element {
     /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
     /// channel can modify sub-elements of a complex data structure
-    @warn_unused_result public func channelZLens<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+    @warn_unused_result public func focus<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, StatePulse<X>> {
         return LensSource(channel: self, lens: lens).transceive()
     }
 
     /// Constructs a Lens channel using a getter and an inout setter
-    @warn_unused_result public func channelZLens<X>(get: Source.Element -> X, _ set: (inout Source.Element, X) -> ()) -> Channel<LensSource<Self, X>, StatePulse<X>> {
-        return channelZLens(Lens(get, set))
+    @warn_unused_result public func focus<X>(get: Source.Element -> X, _ set: (inout Source.Element, X) -> ()) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+        return focus(Lens(get, set))
     }
 
     /// Constructs a Lens channel using a getter and a tranformation setter
-    @warn_unused_result public func channelZLens<X>(get get: Source.Element -> X, create: (Source.Element, X) -> Source.Element) -> Channel<LensSource<Self, X>, StatePulse<X>> {
-        return channelZLens(Lens(get: get, create: create))
+    @warn_unused_result public func focus<X>(get get: Source.Element -> X, create: (Source.Element, X) -> Source.Element) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+        return focus(Lens(get: get, create: create))
     }
 }
 
@@ -876,7 +876,7 @@ public extension ChannelType where Source.Element : _WrapperType, Source : State
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the result of the constructor function
     @warn_unused_result public func coalesce(template: Self -> Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
-        return channelZLens(get: { $0.flatMap({ $0 }) ?? template(self) }, create: { (_, value) in Source.Element(value) })
+        return focus(get: { $0.flatMap({ $0 }) ?? template(self) }, create: { (_, value) in Source.Element(value) })
     }
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
@@ -916,7 +916,7 @@ public extension ChannelType where Source.Element : RangeReplaceableCollectionTy
             return target
         })
 
-        return channelZLens(lens)
+        return focus(lens)
     }
 }
 
@@ -943,6 +943,6 @@ public extension ChannelType where Source.Element : KeyIndexed, Source : StateTr
             return target
         })
 
-        return channelZLens(lens)
+        return focus(lens)
     }
 }

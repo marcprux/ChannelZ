@@ -85,13 +85,13 @@ class ChannelTests : ChannelTestCase {
     func testLensChannels() {
         let prop = channelZPropertyState((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
 
-        let str = prop.channelZLens({ $0.str }, { $0.str = $1 })
-        let int = prop.channelZLens({ $0.int }, { $0.int = $1 })
-        let dbl = prop.channelZLens({ $0.dbl }, { $0.dbl = $1 })
-        let sub = prop.channelZLens({ $0.sub }, { $0.sub = $1 })
-        let suba = sub.channelZLens({ $0.a }, { $0.a = $1 })
-        let subb = sub.channelZLens({ $0.b }, { $0.b = $1 })
-        let subc = sub.channelZLens({ $0.c }, { $0.c = $1 })
+        let str = prop.focus({ $0.str }, { $0.str = $1 })
+        let int = prop.focus({ $0.int }, { $0.int = $1 })
+        let dbl = prop.focus({ $0.dbl }, { $0.dbl = $1 })
+        let sub = prop.focus({ $0.sub }, { $0.sub = $1 })
+        let suba = sub.focus({ $0.a }, { $0.a = $1 })
+        let subb = sub.focus({ $0.b }, { $0.b = $1 })
+        let subc = sub.focus({ $0.c }, { $0.c = $1 })
 
         // subc = Channel<LensSource<Channel<LensSource<Channel<PropertySource<X>, StatePulse<X>>, Y>, StatePulse<Y>>, String>, StatePulse<String>>
 

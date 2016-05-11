@@ -88,7 +88,7 @@ extension Focusable {
     }
 
     static func focus<X, Source : StateTransmitter where Source.Element == Self>(channel: Channel<Source, StatePulse<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
-        return channel.channelZLens
+        return channel.focus
     }
 }
 
@@ -109,13 +109,13 @@ public extension ChannelType where Source : StateTransmitter, Element == StatePu
 
 //extension ChannelType where Element : StatePulseType, Element.T : Focusable {
 //    func focus<B>(lens: Lens<Element.T, B>) {
-//        channelZLens
+//        focus
 //    }
 //}
 
 let artist = channelZPropertyState(library.artists[0])
-artist.channelZLens(Artist.nameλ).value = "Foo"
-//artist.channelZLens(Artist.labelλ).channelZLens(<#T##lens: Lens<Company?, X>##Lens<Company?, X>#>)
+artist.focus(Artist.nameλ).value = "Foo"
+//artist.focus(Artist.labelλ).focus(<#T##lens: Lens<Company?, X>##Lens<Company?, X>#>)
 
 //struct ArtistLens<B> {
 //    let lens: Lens<Artist, B>
@@ -147,7 +147,7 @@ artist.channelZLens(Artist.nameλ).value = "Foo"
 //    }
 //
 //    static func focus<X, Source : StateTransmitter where Source.Element == Self>(channel: Channel<Source, StatePulse<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
-//        return channel.channelZLens
+//        return channel.focus
 //    }
 //}
 //
@@ -155,7 +155,7 @@ artist.channelZLens(Artist.nameλ).value = "Foo"
 //
 //extension PrismType {
 //    static func lensZ<X, Source : StateTransmitter where Source.Element == Focus>(lens: Lens<Focus, X>) -> Channel<Source, StatePulse<Source.Element>> -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
-//        return { channel in channel.channelZLens(lens) }
+//        return { channel in channel.focus(lens) }
 //    }
 //}
 //
@@ -265,4 +265,6 @@ artist.channelZLens(Artist.nameλ).value = "Foo"
 //song.title
 
 
-//let prop = channelZPropertyState((int: 1, dbl: 2.2, str: "Foo"
+//let prop = channelZPropertyState((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
+
+
