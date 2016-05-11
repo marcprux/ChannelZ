@@ -1014,6 +1014,68 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(UInt(2), b∞?)
     }
 
+    /// Explicitly checks the signatures of the `bind` variants.
+    func testChannelBindSignatures() {
+        do {
+            let c1: Channel<PropertySource<String>, Int> = channelZPropertyState("X").map({ _ in 1 })
+            let c2: Channel<PropertySource<Int>, String> = channelZPropertyState(1).map({ _ in "X" })
+            c1.bind(c2)
+            c1.bindPulseToPulse(c2)
+        }
+
+        do {
+            let c1: Channel<PropertySource<String>, Int?> = channelZPropertyState("X").map({ _ in 2 as Int? })
+            let c2: Channel<PropertySource<Int?>, String> = channelZPropertyState(1 as Int?).map({ _ in "X" })
+            c1.bind(c2)
+            c1.bindPulseToOptionalPulse(c2)
+        }
+
+        do {
+            let c1: Channel<PropertySource<String?>, Int> = channelZPropertyState("X" as String?).map({ _ in 2 })
+            let c2: Channel<PropertySource<Int>, String?> = channelZPropertyState(1).map({ _ in "X" as String? })
+            c1.bind(c2)
+            c1.bindOptionalPulseToPulse(c2)
+        }
+
+        do {
+            let c1: Channel<PropertySource<String?>, Int?> = channelZPropertyState("X" as String?).map({ _ in 2 as Int? })
+            let c2: Channel<PropertySource<Int?>, String?> = channelZPropertyState(1 as Int?).map({ _ in "X" })
+            c1.bind(c2)
+            c1.bindOptionalPulseToOptionalPulse(c2)
+        }
+    }
+
+    /// Explicitly checks the signatures of the `link` variants.
+    func testChannelLinkSignatures() {
+        do {
+            let c1: Channel<PropertySource<String>, StatePulse<Int>> = channelZPropertyState("X").map({ _ in StatePulse(old: 1, new: 2) })
+            let c2: Channel<PropertySource<Int>, StatePulse<String>> = channelZPropertyState(1).map({ _ in StatePulse(old: "", new: "X") })
+            c1.link(c2)
+            c1.linkStateToState(c2)
+        }
+
+        do {
+            let c1: Channel<PropertySource<String>, StatePulse<Int?>> = channelZPropertyState("X").map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
+            let c2: Channel<PropertySource<Int?>, StatePulse<String>> = channelZPropertyState(1 as Int?).map({ _ in StatePulse(old: "", new: "X") })
+            c1.link(c2)
+            c1.linkStateToOptionalState(c2)
+        }
+
+        do {
+            let c1: Channel<PropertySource<String?>, StatePulse<Int>> = channelZPropertyState("X" as String?).map({ _ in StatePulse(old: 1, new: 2) })
+            let c2: Channel<PropertySource<Int>, StatePulse<String?>> = channelZPropertyState(1).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
+            c1.link(c2)
+            c1.linkOptionalStateToState(c2)
+        }
+
+        do {
+            let c1: Channel<PropertySource<String?>, StatePulse<Int?>> = channelZPropertyState("X" as String?).map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
+            let c2: Channel<PropertySource<Int?>, StatePulse<String?>> = channelZPropertyState(1 as Int?).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
+            c1.link(c2)
+            c1.linkOptionalStateToOptionalState(c2)
+        }
+    }
+
     func testUnstableConduit() {
         // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
         defer { ChannelZ.ChannelZReentrantReceptions = 0 }

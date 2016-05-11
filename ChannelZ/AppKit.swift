@@ -37,13 +37,13 @@ public extension NSObjectProtocol where Self : NSController {
 }
 
 
-//public protocol ChannelController: class, NSObjectProtocol, StateSource, StateReceiver {
+//public protocol ChannelController: class, NSObjectProtocol, StateTransmitter, StateReceiver {
 //    associatedtype ContentType
 //    var value: ContentType { get set }
 //}
 //
 //
-/// An NSObject controller that is compatible with a StateSource and StateReceiver for storing and retrieving `NSObject` values from bindings
+/// An NSObject controller that is compatible with a StateTransmitter and StateReceiver for storing and retrieving `NSObject` values from bindings
 // FIXME: disabled because KVO is hopelessly broken on NSController subclasses
 //extension NSObjectController : ChannelController {
 //    public typealias ContentType = AnyObject? // it would be nice if this were generic, but @objc forbids it

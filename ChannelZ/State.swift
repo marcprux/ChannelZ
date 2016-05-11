@@ -45,7 +45,7 @@ public struct StatePulse<T> : StatePulseType {
 
 /// Abstraction of a source that can create a channel that emits a tuple of old & new state values,
 /// and provides readable access to the "current" underlying state.
-public protocol StateSource : RawRepresentable {
+public protocol StateTransmitter : RawRepresentable {
     associatedtype Element
     associatedtype Source
 
@@ -57,7 +57,7 @@ public protocol StateSource : RawRepresentable {
     @warn_unused_result func channelZState() -> Channel<Source, StatePulse<Element>>
 }
 
-public extension StateSource {
+public extension StateTransmitter {
     /// The default RawRepresentable implentation does not permit construction;
     /// concrete implementations may choose to permit initialization
     ///
@@ -75,14 +75,14 @@ public extension StateSource {
 /// since changing the value is nonmutating.
 public protocol StateReceiver : ReceiverType {
     // ideally we would have value be set-only, and read/write state would be marked by combining
-    // StateSource and StateReceiver; however, we aren't allowed to declare a protocol has having
+    // StateTransmitter and StateReceiver; however, we aren't allowed to declare a protocol has having
     // a set-only property
     var $: Pulse { get set }
 }
 
-/// A state container is a type that can read & write some state via respective adoption of
-/// the `StateSource` and `StateReveiver` protocols.
-public protocol StateContainer : StateSource, StateReceiver {
+/// A state transceiver is a type that can transmit & receive some `StatePulse` pulses via respective
+/// adoption of the `StateTransmitter` and `StateReveiver` protocols.
+public protocol StateTransceiver : StateTransmitter, StateReceiver {
     /// The underlying state value of this source; so named because it is an
     /// anonymous parameter, analagous to a closure's anonymous $0, $1, etc. parameters
     var $: Element { get nonmutating set }
@@ -90,7 +90,7 @@ public protocol StateContainer : StateSource, StateReceiver {
 
 /// A PropertySource can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
 /// The output type is a tuple of (old: T, new: T), where old is the previous value and new is the new value
-public final class PropertySource<T>: ReceiverQueueSource<StatePulse<T>>, StateContainer {
+public final class PropertySource<T>: ReceiverQueueSource<StatePulse<T>>, StateTransceiver {
     public typealias State = StatePulse<T>
 
     public var $: T {
@@ -118,7 +118,7 @@ public final class PropertySource<T>: ReceiverQueueSource<StatePulse<T>>, StateC
 }
 
 /// A type-erased wrapper around some state source whose value changes will emit a `StatePulse`
-public struct AnyState<T> : StateContainer {
+public struct AnyState<T> : StateTransceiver {
     private let valueget: Void -> T
     private let valueset: T -> Void
     private let channler: Void -> Channel<Void, StatePulse<T>>
@@ -128,7 +128,7 @@ public struct AnyState<T> : StateContainer {
         nonmutating set { receive(newValue) }
     }
 
-    public init<S where S: StateContainer, S.Element == T>(_ source: S) {
+    public init<S where S: StateTransceiver, S.Element == T>(_ source: S) {
         valueget = { source.$ }
         valueset = { source.$ = $0 }
         channler = { source.channelZState().desource() }
@@ -435,7 +435,7 @@ public extension ChannelType where Pulse : StatePulseType, Pulse.T : Equatable {
     }
 }
 
-public extension StateSource where Element : Equatable {
+public extension StateTransmitter where Element : Equatable {
     /// Creates a a channel to all changed values for equatable elements
     @warn_unused_result func channelZStateChanges() -> Channel<Source, Element> {
         return channelZState().changes()
@@ -458,7 +458,7 @@ public extension ChannelType where Pulse : StatePulseType, Pulse.T : _WrapperTyp
     }
 }
 
-public extension StateSource where Element : _WrapperType, Element.Wrapped : Equatable {
+public extension StateTransmitter where Element : _WrapperType, Element.Wrapped : Equatable {
     /// Creates a a channel to all changed values for optional equatable elements
     @warn_unused_result func channelZStateChanges() -> Channel<Source, Element> {
         return channelZState().changes()
@@ -494,8 +494,8 @@ public extension ChannelType where Pulse : _WrapperType {
 
 @noreturn func makeT<T>() -> T { fatalError() }
 
-public extension ChannelType where Source : StateContainer {
-    /// A Channel whose source is a `StateSource` can get and set its value directly without mutating the channel
+public extension ChannelType where Source : StateTransceiver {
+    /// A Channel whose source is a `StateTransmitter` can get and set its value directly without mutating the channel
     public var $ : Source.Element {
         get { return source.$ }
         nonmutating set { source.$ = newValue }
@@ -507,22 +507,22 @@ public extension ChannelType where Source : StateContainer {
     }
 }
 
-public extension ChannelType where Source : StateContainer {
-    /// Creates a type-erased `StateSource` with `AnyState` for this channel
+public extension ChannelType where Source : StateTransceiver {
+    /// Creates a type-erased `StateTransmitter` with `AnyState` for this channel
     @warn_unused_result public func anyState() -> Channel<AnyState<Source.Element>, Pulse> {
         return resource(AnyState.init)
     }
 
 }
 
-public extension ChannelType where Source : StateContainer, Source.Element == Pulse {
+public extension ChannelType where Source : StateTransceiver, Source.Element == Pulse {
     /// For a channel whose underlying state matches the pulse types, perform a `stateMap` and a `map` with the same `get` transform
     @warn_unused_result public func restate<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, X> {
         return stateMap(get: get, set: set).map(get)
     }
 }
 
-public extension ChannelType where Source : StateContainer, Pulse: _OptionalType, Source.Element == Pulse, Pulse.Wrapped: Hashable {
+public extension ChannelType where Source : StateTransceiver, Pulse: _OptionalType, Source.Element == Pulse, Pulse.Wrapped: Hashable {
     @warn_unused_result public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Pulse, U?)>(mapping: S) -> Channel<AnyState<U?>, U?> {
         var getMapping: [Pulse.Wrapped: U] = [:]
         var setMapping: [U: Pulse] = [:]
@@ -568,10 +568,10 @@ public extension ChannelType where Source : ReceiverType {
 
 }
 
-public extension ChannelType where Source : StateContainer {
-    /// Creates a two-way conduit between two `Channel`s whose source is a `StateContainer`,
+public extension ChannelType where Source : StateTransceiver {
+    /// Creates a two-way conduit between two `Channel`s whose source is a `StateTransceiver`,
     /// such that when either side is changed the other side is updated provided the filter is satisifed
-    public func conjoin<C2: ChannelType where C2.Pulse == Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2, filterLeft: (Self.Pulse, C2.Source.Element) -> Bool, filterRight: (Self.Source.Element, Self.Source.Element) -> Bool) -> Receipt {
+    public func conjoin<C2: ChannelType where C2.Pulse == Source.Element, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse>(to: C2, filterLeft: (Self.Pulse, C2.Source.Element) -> Bool, filterRight: (Self.Source.Element, Self.Source.Element) -> Bool) -> Receipt {
         let filtered1 = self.filter({ filterLeft($0, to.source.$) })
         let filtered2 = to.filter({ filterRight($0, self.source.$) })
 
@@ -581,83 +581,139 @@ public extension ChannelType where Source : StateContainer {
 
 }
 
-// MARK: Binding variants with raw output
+// MARK: Binding variants with pulse output
 
-public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : Equatable {
-    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
-    /// changed, the other side is updated when they are not equal
-    public func bind<C2: ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
+public extension ChannelType where Source : StateTransceiver, Source.Element : Equatable, Pulse : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not equal.
+    public func bindPulseToPulse<C2: ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
         return conjoin(to, filterLeft: !=, filterRight: !=)
     }
+
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not equal.
+    ///
+    /// See Also: `bindPulseToPulse`
+    public func bind<C2: ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
+        return bindPulseToPulse(to)
+    }
 }
 
-public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
-    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
-    /// changed, the other side is updated when they are not optionally equal
-    public func bind<C2 : ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
+public extension ChannelType where Source : StateTransceiver, Source.Element : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    public func bindPulseToOptionalPulse<C2 : ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
         return conjoin(to, filterLeft: optionalTypeNotEqual, filterRight: !=)
     }
+
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    ///
+    /// See Also: `bindPulseToOptionalPulse`
+    public func bind<C2 : ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
+        return bindPulseToOptionalPulse(to)
+    }
+
 }
 
-public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : Equatable {
-    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
-    /// changed, the other side is updated when they are not optionally equal
-    public func bind<C2 : ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
+public extension ChannelType where Source : StateTransceiver, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    public func bindOptionalPulseToPulse<C2 : ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
         return conjoin(to, filterLeft: !=, filterRight: optionalTypeNotEqual)
+    }
+
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    ///
+    /// See Also: `bindOptionalPulseToPulse`
+    public func bind<C2 : ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
+        return bindOptionalPulseToPulse(to)
     }
 }
 
-public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
-    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
-    /// changed, the other side is updated when they are not optionally equal
-    public func bind<C2: ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
+public extension ChannelType where Source : StateTransceiver, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    public func bindOptionalPulseToOptionalPulse<C2 : ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
         return conjoin(to, filterLeft: optionalTypeNotEqual, filterRight: optionalTypeNotEqual)
+    }
+
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    ///
+    /// See Also: `bindOptionalPulseToOptionalPulse`
+    public func bind<C2 : ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
+        return bindOptionalPulseToOptionalPulse(to)
     }
 }
 
 
 // MARK: Binding variants with StatePulse output
 
-public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : StatePulseType, Pulse.T : Equatable {
-    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
-    /// changed, the other side is updated when they are not equal
-    public func link<Source2 where Source2 : StateContainer, Source2.Element == Self.Pulse.T>(to: Channel<Source2, StatePulse<Self.Source.Element>>) -> Receipt {
+public extension ChannelType where Source : StateTransceiver, Source.Element : Equatable, Pulse : StatePulseType, Pulse.T : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not equal.
+    public func linkStateToState<C2 where C2 : ChannelType, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
         return self.changes(!=).conjoin(to.changes(!=), filterLeft: !=, filterRight: !=)
     }
+
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not equal.
+    ///
+    /// See Also: `linkStateToState`
+    public func link<C2 where C2 : ChannelType, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
+        return linkStateToState(to)
+    }
 }
 
-public extension ChannelType where Source : StateContainer, Source.Element : Equatable, Pulse : StatePulseType, Pulse.T : _WrapperType, Pulse.T.Wrapped : Equatable {
-    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
-    /// changed, the other side is updated when they are not optionally equal
-    public func link<C2 where C2 : ChannelType, C2.Source : StateContainer, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
+public extension ChannelType where Source : StateTransceiver, Source.Element : Equatable, Pulse : StatePulseType, Pulse.T : _WrapperType, Pulse.T.Wrapped : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    public func linkStateToOptionalState<C2 where C2 : ChannelType, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
         return self.changes().conjoin(to.changes(!=), filterLeft: optionalTypeNotEqual, filterRight: !=)
     }
-}
 
-public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : StatePulseType, Pulse.T : Equatable {
-    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
-    /// changed, the other side is updated when they are not optionally equal
-    public func link<C2 where C2 : ChannelType, C2.Source : StateContainer, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
-        return self.changes(!=).conjoin(to.changes(), filterLeft: !=, filterRight: optionalTypeNotEqual)
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    ///
+    /// See Also: `linkStateToOptionalState`
+    public func link<C2 where C2 : ChannelType, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
+        return linkStateToOptionalState(to)
     }
 }
 
-//public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : StatePulseType, Pulse.T : _WrapperType, Pulse.T.Wrapped : Equatable {
-//    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
-//    /// changed, the other side is updated when they are not optionally equal
-//    public func link<C2: ChannelType where C2.Pulse == Self.Source.Element, C2.Source : StateContainer, C2.Source.Element == Self.Pulse>(to: C2) -> Receipt {
-//        return conjoin(to, filterLeft: { _ in false }, filterRight: { _ in false })
-//    }
-//}
+public extension ChannelType where Source : StateTransceiver, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : StatePulseType, Pulse.T : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    public func linkOptionalStateToState<C2 where C2 : ChannelType, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
+        return self.changes(!=).conjoin(to.changes(), filterLeft: !=, filterRight: optionalTypeNotEqual)
+    }
 
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    /// 
+    /// See Also: `linkOptionalStateToState`
+    public func link<C2 where C2 : ChannelType, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
+        return linkOptionalStateToState(to)
+    }
+}
 
-//public extension ChannelType where Source : StateContainer, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : StatePulseType, Pulse.T : _WrapperType, Pulse.T.Wrapped : Equatable {
-//    /// Creates a two-way binding between two `Channel`s whose source is a `StateSource`, such that when either side is
-//    /// changed, the other side is updated when they are not optionally equal
-//    public func link<C2 where C2 : ChannelType, C2.Source : StateContainer, C2.Source.Element : _WrapperType, C2.Source.Element.Wrapped == Self.Pulse.T.Wrapped, C2.Pulse : StatePulseType, C2.Pulse.T : _WrapperType, C2.Pulse.T.Wrapped == Self.Source.Element.Wrapped>(to: C2) -> Receipt {
-//        return self.changes().conjoin(to.changes(), filterLeft: optionalTypeNotEqual, filterRight: optionalTypeNotEqual)
-//    }
-//}
+public extension ChannelType where Source : StateTransceiver, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : StatePulseType, Pulse.T : _WrapperType, Pulse.T.Wrapped : Equatable {
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    public func linkOptionalStateToOptionalState<C2 where C2 : ChannelType, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
+        return self.changes().conjoin(to.changes(), filterLeft: optionalTypeNotEqual, filterRight: optionalTypeNotEqual)
+    }
+
+    /// Creates a two-way binding between two `Channel`s whose source is a `StateTransmitter`, such that when either side is
+    /// changed, the other side is updated when they are not optionally equal.
+    ///
+    /// See Also: `linkOptionalStateToOptionalState`
+    public func link<C2 where C2 : ChannelType, C2.Source : StateTransceiver, C2.Source.Element == Self.Pulse.T, C2.Pulse : StatePulseType, C2.Pulse.T == Self.Source.Element>(to: C2) -> Receipt {
+        return linkOptionalStateToOptionalState(to)
+    }
+}
 
 // MARK: Utilities
 
@@ -753,17 +809,17 @@ public struct Lens<A, B> : LensType {
     }
 }
 
-public protocol LensSourceType : StateContainer {
+public protocol LensSourceType : StateTransceiver {
     associatedtype Owner : ChannelType
 
-    /// All lens channels have an owner that is itself a StateSource
+    /// All lens channels have an owner that is itself a StateTransmitter
     var channel: Owner { get }
 }
 
 /// A Lens on a state channel, which can be used create a property channel on a specific
 /// piece of the source state; a LensSource itself does not manage any receivers, but instead
 /// relies on the source of the underlying channel.
-public struct LensSource<C: ChannelType, T where C.Source : StateContainer, C.Pulse : StatePulseType, C.Pulse.T == C.Source.Element>: LensSourceType {
+public struct LensSource<C: ChannelType, T where C.Source : StateTransceiver, C.Pulse : StatePulseType, C.Pulse.T == C.Source.Element>: LensSourceType {
     public typealias Owner = C
     public let channel: C
     public let lens: Lens<C.Source.Element, T>
@@ -784,7 +840,7 @@ public struct LensSource<C: ChannelType, T where C.Source : StateContainer, C.Pu
     }
 }
 
-public extension ChannelType where Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
+public extension ChannelType where Source : StateTransceiver, Pulse: StatePulseType, Pulse.T == Source.Element {
     /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
     /// channel can modify sub-elements of a complex data structure
     @warn_unused_result public func channelZLens<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, StatePulse<X>> {
@@ -811,7 +867,7 @@ public extension ChannelType where Source : LensSourceType {
 
 // MARK: Jacket Channel extensions for Lens/Prism/Optional access
 
-public extension ChannelType where Source.Element : _WrapperType, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
+public extension ChannelType where Source.Element : _WrapperType, Source : StateTransceiver, Pulse: StatePulseType, Pulse.T == Source.Element {
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the result of the constructor function
@@ -827,7 +883,7 @@ public extension ChannelType where Source.Element : _WrapperType, Source : State
 }
 
 
-public extension ChannelType where Source.Element : RangeReplaceableCollectionType, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
+public extension ChannelType where Source.Element : RangeReplaceableCollectionType, Source : StateTransceiver, Pulse: StatePulseType, Pulse.T == Source.Element {
 
     /// Creates a channel to the underlying collection type where the channel creates an optional
     /// to a given index; setting to nil removes the index, and setting to a certain value
@@ -871,7 +927,7 @@ public protocol KeyIndexed {
 extension Dictionary : KeyIndexed {
 }
 
-public extension ChannelType where Source.Element : KeyIndexed, Source : StateContainer, Pulse: StatePulseType, Pulse.T == Source.Element {
+public extension ChannelType where Source.Element : KeyIndexed, Source : StateTransceiver, Pulse: StatePulseType, Pulse.T == Source.Element {
     /// Creates a state channel to the given key in the underlying `KeyIndexed` dictionary
     @warn_unused_result public func at(key: Source.Element.Key) -> Channel<LensSource<Self, Source.Element.Value?>, StatePulse<Source.Element.Value?>> {
 

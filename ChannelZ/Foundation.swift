@@ -207,7 +207,7 @@ public extension KeyValueTarget {
 }
 
 
-public protocol KeyValueSourceType : class, StateContainer {
+public protocol KeyValueSourceType : class, StateTransceiver {
     var optional: Bool { get }
     var keyPath: String { get }
     var object: NSObject? { get }
@@ -814,7 +814,7 @@ extension NSNumber : ConduitNumericCoercible {
 /// the inability to dynamicly subclass a generic type (observation messages will simply
 /// not be received), so the `ChannelController` overrides the KVO management routines
 /// in order to handle a strongly-typed values.
-public final class ChannelController<T> : NSObject, StateContainer {
+public final class ChannelController<T> : NSObject, StateTransceiver {
     public static var defaultKey: String { return "value" }
 
     public typealias State = StatePulse<T?>

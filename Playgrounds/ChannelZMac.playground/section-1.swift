@@ -83,11 +83,11 @@ extension Focusable {
         return lens
     }
 
-    static func lensZ<X, Source : StateSource where Source.Element == Self>(lens: Lens<Self, X>) -> Channel<Source, StatePulse<Source.Element>> -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
+    static func lensZ<X, Source : StateTransmitter where Source.Element == Self>(lens: Lens<Self, X>) -> Channel<Source, StatePulse<Source.Element>> -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
         return { channel in focus(channel)(lens) }
     }
 
-    static func focus<X, Source : StateSource where Source.Element == Self>(channel: Channel<Source, StatePulse<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
+    static func focus<X, Source : StateTransmitter where Source.Element == Self>(channel: Channel<Source, StatePulse<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
         return channel.channelZLens
     }
 }
@@ -104,7 +104,7 @@ extension Company : Focusable {
 
 //public extension ChannelType where Element : StatePulseType {
 
-public extension ChannelType where Source : StateSource, Element == StatePulse<Source.Element> {
+public extension ChannelType where Source : StateTransmitter, Element == StatePulse<Source.Element> {
 }
 
 //extension ChannelType where Element : StatePulseType, Element.T : Focusable {
@@ -142,19 +142,19 @@ artist.channelZLens(Artist.nameλ).value = "Foo"
 //}
 //
 //extension Focusable {
-//    static func lensZ<X, Source : StateSource where Source.Element == Self>(lens: Lens<Self, X>) -> Channel<Source, StatePulse<Source.Element>> -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
+//    static func lensZ<X, Source : StateTransmitter where Source.Element == Self>(lens: Lens<Self, X>) -> Channel<Source, StatePulse<Source.Element>> -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
 //        return { channel in focus(channel)(lens) }
 //    }
 //
-//    static func focus<X, Source : StateSource where Source.Element == Self>(channel: Channel<Source, StatePulse<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
+//    static func focus<X, Source : StateTransmitter where Source.Element == Self>(channel: Channel<Source, StatePulse<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
 //        return channel.channelZLens
 //    }
 //}
 //
-////public extension ChannelType where Source : StateSource, Element == StatePulse<Source.Element> {
+////public extension ChannelType where Source : StateTransmitter, Element == StatePulse<Source.Element> {
 //
 //extension PrismType {
-//    static func lensZ<X, Source : StateSource where Source.Element == Focus>(lens: Lens<Focus, X>) -> Channel<Source, StatePulse<Source.Element>> -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
+//    static func lensZ<X, Source : StateTransmitter where Source.Element == Focus>(lens: Lens<Focus, X>) -> Channel<Source, StatePulse<Source.Element>> -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
 //        return { channel in channel.channelZLens(lens) }
 //    }
 //}
@@ -265,6 +265,4 @@ artist.channelZLens(Artist.nameλ).value = "Foo"
 //song.title
 
 
-//let prop = channelZPropertyState((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
-
-
+//let prop = channelZPropertyState((int: 1, dbl: 2.2, str: "Foo"

@@ -44,19 +44,19 @@ struct Address {
 }
 
 
-extension ChannelType where Source.Element == Directory, Source : StateContainer, Pulse : StatePulseType, Pulse.T == Source.Element {
+extension ChannelType where Source.Element == Directory, Source : StateTransceiver, Pulse : StatePulseType, Pulse.T == Source.Element {
     var author𝚭: Channel<LensSource<Self, Person>, StatePulse<Person>> { return channelZLens({ $0.author }, { $0.author = $1 }) }
     var companies𝚭: Channel<LensSource<Self, [Company]>, StatePulse<[Company]>> { return channelZLens({ $0.companies }, { $0.companies = $1 }) }
 }
 
-extension ChannelType where Source.Element == Company, Source : StateContainer, Pulse : StatePulseType, Pulse.T == Source.Element {
+extension ChannelType where Source.Element == Company, Source : StateTransceiver, Pulse : StatePulseType, Pulse.T == Source.Element {
     var address𝚭: Channel<LensSource<Self, Address>, StatePulse<Address>> { return channelZLens({ $0.address }, { $0.address = $1 }) }
     var employees𝚭: Channel<LensSource<Self, [PersonID: Person]>, StatePulse<[PersonID: Person]>> { return channelZLens({ $0.employees }, { $0.employees = $1 }) }
     var ceoID𝚭: Channel<LensSource<Self, PersonID>, StatePulse<PersonID>> { return channelZLens({ $0.ceoID }, { $0.ceoID = $1 }) }
     var ctoID𝚭: Channel<LensSource<Self, PersonID?>, StatePulse<PersonID?>> { return channelZLens({ $0.ctoID }, { $0.ctoID = $1 }) }
 }
 
-extension ChannelType where Source.Element == Person, Source : StateContainer, Pulse : StatePulseType, Pulse.T == Source.Element {
+extension ChannelType where Source.Element == Person, Source : StateTransceiver, Pulse : StatePulseType, Pulse.T == Source.Element {
     var firstName𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return channelZLens({ $0.firstName }, { $0.firstName = $1 }) }
     var lastName𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return channelZLens({ $0.lastName }, { $0.lastName = $1 }) }
     var gender𝚭: Channel<LensSource<Self, Person.Gender>, StatePulse<Person.Gender>> { return channelZLens({ $0.gender }, { $0.gender = $1 }) }
@@ -65,13 +65,13 @@ extension ChannelType where Source.Element == Person, Source : StateContainer, P
     var previousAddresses𝚭: Channel<LensSource<Self, [Address]>, StatePulse<[Address]>> { return channelZLens({ $0.previousAddresses }, { $0.previousAddresses = $1 }) }
 }
 
-extension ChannelType where Source.Element == Address, Source : StateContainer, Pulse : StatePulseType, Pulse.T == Source.Element {
+extension ChannelType where Source.Element == Address, Source : StateTransceiver, Pulse : StatePulseType, Pulse.T == Source.Element {
     var line1𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return channelZLens({ $0.line1 }, { $0.line1 = $1 }) }
     var line2𝚭: Channel<LensSource<Self, String?>, StatePulse<String?>> { return channelZLens({ $0.line2 }, { $0.line2 = $1 }) }
     var postalCode𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return channelZLens({ $0.postalCode }, { $0.postalCode = $1 }) }
 }
 
-extension ChannelType where Source.Element == Address?, Source : StateContainer, Pulse : StatePulseType, Pulse.T == Source.Element {
+extension ChannelType where Source.Element == Address?, Source : StateTransceiver, Pulse : StatePulseType, Pulse.T == Source.Element {
     var line1𝚭: Channel<LensSource<Self, String?>, StatePulse<String?>> { return channelZLens({ $0?.line1 }, { if let value = $1 { $0?.line1 = value }  }) }
     var line2𝚭: Channel<LensSource<Self, String??>, StatePulse<String??>> { return channelZLens({ $0?.line2 }, { if let value = $1 { $0?.line2 = value }  }) }
     var postalCode𝚭: Channel<LensSource<Self, String?>, StatePulse<String?>> { return channelZLens({ $0?.postalCode }, { if let value = $1 { $0?.postalCode = value }  }) }
