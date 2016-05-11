@@ -20,7 +20,7 @@ extension NSObject {
     ///
     /// - Returns a channel backed by the KVO property that will receive state transition operations
     public func channelZKeyState<T>(@autoclosure accessor: () -> T, keyPath: String? = nil) -> Channel<KeyValueSource<T>, StatePulse<T>> {
-        return KeyValueSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).channelZState()
+        return KeyValueSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).transceive()
     }
 
     /// Creates a channel for all state operations for the given key-value-coding property that will emit
@@ -31,7 +31,7 @@ extension NSObject {
     ///
     /// - Returns a channel backed by the KVO property that will receive state transition operations
     public func channelZKeyState<T>(@autoclosure accessor: () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalSource<T>, StatePulse<T?>> {
-        return KeyValueOptionalSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).channelZState()
+        return KeyValueOptionalSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).transceive()
     }
 
     /// Creates a channel for all state operations for the given key-value-coding compliant non-optional property
@@ -277,7 +277,7 @@ public extension KeyValueSourceType {
         })
     }
 
-    public func channelZState()->Channel<Self, StatePulse<Element>> {
+    public func transceive() -> Channel<Self, StatePulse<Element>> {
         return Channel(source: self, reception: addReceiver)
     }
 }
@@ -846,7 +846,7 @@ public final class ChannelController<T> : NSObject, StateTransceiver {
 
     public func receive(x: T?) { $ = x }
 
-    @warn_unused_result public func channelZState() -> Channel<ChannelController<T>, State> {
+    @warn_unused_result public func transceive() -> Channel<ChannelController<T>, State> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
             rcvr(State(old: Optional<T>.None, new: self.$))
@@ -856,7 +856,7 @@ public final class ChannelController<T> : NSObject, StateTransceiver {
 
     public override func addObserver(observer: NSObject, forKeyPath keyPath: String, options: NSKeyValueObservingOptions, context: UnsafeMutablePointer<Void>) {
         if keyPath == self.key {
-            var channel = channelZState()
+            var channel = transceive()
 
             if !options.contains(.Initial) {
                 // only send the initial values if we request it in the options

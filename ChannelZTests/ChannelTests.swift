@@ -1333,7 +1333,7 @@ class ChannelTests : ChannelTestCase {
 //    }
 
     func testPropertyChannelSieve() {
-        let stringz = PropertySource("").channelZState().sieve().new().subsequent()
+        let stringz = PropertySource("").transceive().sieve().new().subsequent()
         var strs: [String] = []
 
         stringz.receive({ strs.append($0) })
@@ -1350,7 +1350,7 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testMultipleReceiversOnPropertyChannel() {
-        let prop = PropertySource(111).channelZState()
+        let prop = PropertySource(111).transceive()
 
         var counts = (0, 0, 0)
         prop.receive { _ in counts.0 += 1 }
@@ -1371,8 +1371,8 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testMultipleReceiversOnSievedPropertyChannel() {
-        let prop = PropertySource(111).channelZState().sieve() // also works
-//        let prop = PropertySource(111).channelZState().sieve(!=).new()
+        let prop = PropertySource(111).transceive().sieve() // also works
+//        let prop = PropertySource(111).transceive().sieve(!=).new()
 
         var counts = (0, 0, 0)
         prop.receive { _ in counts.0 += 1 }

@@ -384,8 +384,8 @@ class AppKitTests : ChannelTestCase {
 
             // now make it so enabled and hidden are bound to opposite valies, so that
             // when the control is disabled it is hidden and when the control is hidden it is disabled
-//            enabled.channelZStateChanges().map(!).bind(hidden.channelZStateChanges().map(!))
-            enabled.channelZStateChanges().map({ $0.flatMap(!) }).bind(hidden.channelZStateChanges().map({ $0.flatMap(!) }))
+//            enabled.transceiveChanges().map(!).bind(hidden.transceiveChanges().map(!))
+            enabled.transceiveChanges().map({ $0.flatMap(!) }).bind(hidden.transceiveChanges().map({ $0.flatMap(!) }))
 
             enabled.$ = false
             XCTAssertEqual(false, textField.enabled)

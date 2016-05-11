@@ -63,7 +63,7 @@ public extension NSObjectProtocol where Self : NSController {
 //        self.content = value
 //    }
 //
-//    public func channelZState() -> Channel<NSObjectController, State> {
+//    public func transceive() -> Channel<NSObjectController, State> {
 //        return channelZControllerPath("content") // "content" is the default key for controllers
 //    }
 //}

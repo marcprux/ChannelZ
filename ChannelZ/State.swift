@@ -54,7 +54,7 @@ public protocol StateTransmitter : RawRepresentable {
     var $: Element { get }
 
     /// Creates a Channel from this source that will emit tuples of the old & and state values whenever a state operation occurs
-    @warn_unused_result func channelZState() -> Channel<Source, StatePulse<Element>>
+    @warn_unused_result func transceive() -> Channel<Source, StatePulse<Element>>
 }
 
 public extension StateTransmitter {
@@ -108,7 +108,7 @@ public final class PropertySource<T>: ReceiverQueueSource<StatePulse<T>>, StateT
 
     public func receive(x: T) { $ = x }
 
-    @warn_unused_result public func channelZState() -> Channel<PropertySource<T>, State> {
+    @warn_unused_result public func transceive() -> Channel<PropertySource<T>, State> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
             rcvr(State(old: Optional<T>.None, new: self.$))
@@ -131,7 +131,7 @@ public struct AnyState<T> : StateTransceiver {
     public init<S where S: StateTransceiver, S.Element == T>(_ source: S) {
         valueget = { source.$ }
         valueset = { source.$ = $0 }
-        channler = { source.channelZState().desource() }
+        channler = { source.transceive().desource() }
     }
 
     public init(get: Void -> T, set: T -> Void, channeler: Void -> Channel<Void, StatePulse<T>>) {
@@ -144,7 +144,7 @@ public struct AnyState<T> : StateTransceiver {
         valueset(x)
     }
 
-    @warn_unused_result public func channelZState() -> Channel<AnyState<T>, StatePulse<T>> {
+    @warn_unused_result public func transceive() -> Channel<AnyState<T>, StatePulse<T>> {
         return channler().resource({ _ in self })
     }
 }
@@ -437,8 +437,8 @@ public extension ChannelType where Pulse : StatePulseType, Pulse.T : Equatable {
 
 public extension StateTransmitter where Element : Equatable {
     /// Creates a a channel to all changed values for equatable elements
-    @warn_unused_result func channelZStateChanges() -> Channel<Source, Element> {
-        return channelZState().changes()
+    @warn_unused_result func transceiveChanges() -> Channel<Source, Element> {
+        return transceive().changes()
     }
 }
 
@@ -460,8 +460,8 @@ public extension ChannelType where Pulse : StatePulseType, Pulse.T : _WrapperTyp
 
 public extension StateTransmitter where Element : _WrapperType, Element.Wrapped : Equatable {
     /// Creates a a channel to all changed values for optional equatable elements
-    @warn_unused_result func channelZStateChanges() -> Channel<Source, Element> {
-        return channelZState().changes()
+    @warn_unused_result func transceiveChanges() -> Channel<Source, Element> {
+        return transceive().changes()
     }
 }
 
@@ -503,7 +503,7 @@ public extension ChannelType where Source : StateTransceiver {
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
     @warn_unused_result public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, Pulse> {
-        return resource { source in AnyState(get: { get(source.$) }, set: { source.$ = set($0) }, channeler: { source.channelZState().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }) }
+        return resource { source in AnyState(get: { get(source.$) }, set: { source.$ = set($0) }, channeler: { source.transceive().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }) }
     }
 }
 
@@ -762,7 +762,7 @@ extension SequenceType {
 
 /// Creates a `PropertySource` channel that emits a `StatePulse` with the values over time.
 @warn_unused_result public func channelZPropertyState<T>(initialValue: T) -> Channel<PropertySource<T>, StatePulse<T>> {
-    return PropertySource(rawValue: initialValue).channelZState()
+    return PropertySource(rawValue: initialValue).transceive()
 }
 
 
@@ -816,6 +816,10 @@ public protocol LensSourceType : StateTransceiver {
     var channel: Owner { get }
 }
 
+public extension LensSourceType {
+
+}
+
 /// A Lens on a state channel, which can be used create a property channel on a specific
 /// piece of the source state; a LensSource itself does not manage any receivers, but instead
 /// relies on the source of the underlying channel.
@@ -833,7 +837,7 @@ public struct LensSource<C: ChannelType, T where C.Source : StateTransceiver, C.
         nonmutating set { channel.$ = lens.set(channel.$, newValue) }
     }
 
-    @warn_unused_result public func channelZState() -> Channel<LensSource, StatePulse<T>> {
+    @warn_unused_result public func transceive() -> Channel<LensSource, StatePulse<T>> {
         return channel.map({ pulse in
             StatePulse(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new))
         }).resource({ _ in self })
@@ -844,7 +848,7 @@ public extension ChannelType where Source : StateTransceiver, Pulse: StatePulseT
     /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
     /// channel can modify sub-elements of a complex data structure
     @warn_unused_result public func channelZLens<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, StatePulse<X>> {
-        return LensSource(channel: self, lens: lens).channelZState()
+        return LensSource(channel: self, lens: lens).transceive()
     }
 
     /// Constructs a Lens channel using a getter and an inout setter
