@@ -113,7 +113,7 @@ public extension ChannelType where Source : StateTransmitter, Element == StatePu
 //    }
 //}
 
-let artist = channelZPropertyState(library.artists[0])
+let artist = transceiveZ(library.artists[0])
 artist.focus(Artist.nameλ).value = "Foo"
 //artist.focus(Artist.labelλ).focus(<#T##lens: Lens<Company?, X>##Lens<Company?, X>#>)
 
@@ -160,7 +160,7 @@ artist.focus(Artist.nameλ).value = "Foo"
 //}
 //
 //extension Song : Focusable {
-//    var prop: () -> Channel<PropertySource<Song>, StatePulse<Song>> { return { channelZPropertyState(self) } }
+//    var prop: () -> Channel<ValueTransceiver<Song>, StatePulse<Song>> { return { transceiveZ(self) } }
 //
 //    struct Prism : PrismType {
 //        typealias Focus = Song
@@ -190,7 +190,7 @@ artist.focus(Artist.nameλ).value = "Foo"
 //
 //    }
 //
-////    static let nameZ = Artist.lensZ(Lens({ $0.name }, { $0.name = $1 }))(channelZPropertyState(Artist(name: "", songs: [])))
+////    static let nameZ = Artist.lensZ(Lens({ $0.name }, { $0.name = $1 }))(transceiveZ(Artist(name: "", songs: [])))
 //
 //    struct Prism : PrismType {
 //        typealias Focus = Artist
@@ -229,7 +229,7 @@ artist.focus(Artist.nameλ).value = "Foo"
 //// Prism=Λ, Lens=λ
 //var prince = library.artists[0]
 //
-//let artistZ = channelZPropertyState(prince)
+//let artistZ = transceiveZ(prince)
 //artistZ.value.name
 //
 //
@@ -265,6 +265,6 @@ artist.focus(Artist.nameλ).value = "Foo"
 //song.title
 
 
-//let prop = channelZPropertyState((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
+//let prop = transceiveZ((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
 
 

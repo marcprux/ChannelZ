@@ -19,8 +19,8 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive state transition operations
-    public func channelZKeyState<T>(@autoclosure accessor: () -> T, keyPath: String? = nil) -> Channel<KeyValueSource<T>, StatePulse<T>> {
-        return KeyValueSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).transceive()
+    public func channelZKeyState<T>(@autoclosure accessor: () -> T, keyPath: String? = nil) -> Channel<KeyValueTransceiver<T>, StatePulse<T>> {
+        return KeyValueTransceiver(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).transceive()
     }
 
     /// Creates a channel for all state operations for the given key-value-coding property that will emit
@@ -30,8 +30,8 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive state transition operations
-    public func channelZKeyState<T>(@autoclosure accessor: () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalSource<T>, StatePulse<T?>> {
-        return KeyValueOptionalSource(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).transceive()
+    public func channelZKeyState<T>(@autoclosure accessor: () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalTransceiver<T>, StatePulse<T?>> {
+        return KeyValueOptionalTransceiver(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).transceive()
     }
 
     /// Creates a channel for all state operations for the given key-value-coding compliant non-optional property
@@ -40,7 +40,7 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     /// 
     /// - Returns a channel backed by the KVO property that will receive items for every time the state is assigned
-    public func channelZKey<T>(@autoclosure accessor: () -> T, keyPath: String? = nil) -> Channel<KeyValueSource<T>, T> {
+    public func channelZKey<T>(@autoclosure accessor: () -> T, keyPath: String? = nil) -> Channel<KeyValueTransceiver<T>, T> {
         return channelZKeyState(accessor, keyPath: keyPath).new()
     }
 
@@ -50,7 +50,7 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive items for every time the state is assigned
-    public func channelZKey<T>(@autoclosure accessor: () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalSource<T>, T?> {
+    public func channelZKey<T>(@autoclosure accessor: () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
         return channelZKeyState(accessor, keyPath: keyPath).new()
     }
 
@@ -207,7 +207,7 @@ public extension KeyValueTarget {
 }
 
 
-public protocol KeyValueSourceType : class, StateTransceiver {
+public protocol KeyValueTransceiverType : class, StateTransceiver {
     var optional: Bool { get }
     var keyPath: String { get }
     var object: NSObject? { get }
@@ -217,7 +217,7 @@ public protocol KeyValueSourceType : class, StateTransceiver {
     func createPulse(change: NSDictionary) -> StatePulse<Element>
 }
 
-public extension KeyValueSourceType {
+public extension KeyValueTransceiverType {
     public func set(value: Element) -> Bool {
         if let target = self.object {
             setValueForKeyPath(target, keyPath: keyPath, nullable: optional, value: value)
@@ -283,7 +283,7 @@ public extension KeyValueSourceType {
 }
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueSource<T>: ReceiverQueueSource<StatePulse<T>>, KeyValueSourceType {
+public final class KeyValueTransceiver<T>: ReceiverQueueSource<StatePulse<T>>, KeyValueTransceiverType {
     public typealias Element = T
 
     public let keyPath: String
@@ -314,7 +314,7 @@ public final class KeyValueSource<T>: ReceiverQueueSource<StatePulse<T>>, KeyVal
 
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueOptionalSource<T>: ReceiverQueueSource<StatePulse<T?>>, KeyValueSourceType {
+public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<StatePulse<T?>>, KeyValueTransceiverType {
     public typealias Element = T?
     public let keyPath: String
     public let optional = true

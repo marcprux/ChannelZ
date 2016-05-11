@@ -51,7 +51,7 @@ extension StreamType {
 // TODO make a spec with each of https://github.com/ReactiveX/RxScala/blob/0.x/examples/src/test/scala/rx/lang/scala/examples/RxScalaDemo.scala
 
 
-private func feedZ<T, U, S>(input: [T], setup: Channel<PropertySource<T>, T> -> Channel<S, U>) -> [U] {
+private func feedZ<T, U, S>(input: [T], setup: Channel<ValueTransceiver<T>, T> -> Channel<S, U>) -> [U] {
     let channel = channelZPropertyValue(input[0])
     let transformed = setup(channel)
 
@@ -83,7 +83,7 @@ private func feedX<T, U>(seq: [T], f: [T] -> U) -> U {
 
 class ChannelTests : ChannelTestCase {
     func testLensChannels() {
-        let prop = channelZPropertyState((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
+        let prop = transceiveZ((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
 
         let str = prop.focus({ $0.str }, { $0.str = $1 })
         let int = prop.focus({ $0.int }, { $0.int = $1 })
@@ -93,7 +93,7 @@ class ChannelTests : ChannelTestCase {
         let subb = sub.focus({ $0.b }, { $0.b = $1 })
         let subc = sub.focus({ $0.c }, { $0.c = $1 })
 
-        // subc = Channel<LensSource<Channel<LensSource<Channel<PropertySource<X>, StatePulse<X>>, Y>, StatePulse<Y>>, String>, StatePulse<String>>
+        // subc = Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<X>, StatePulse<X>>, Y>, StatePulse<Y>>, String>, StatePulse<String>>
 
         str.$ = "Bar"
         int.$ = 2
@@ -244,10 +244,10 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testZipImplementations() {
-        let z1 = channelZPropertyState(1).new()
-        let z2 = channelZPropertyState("1").new()
-        let z3 = channelZPropertyState(true).new()
-        let z4 = channelZPropertyState().new()
+        let z1 = transceiveZ(1).new()
+        let z2 = transceiveZ("1").new()
+        let z3 = transceiveZ(true).new()
+        let z4 = transceiveZ().new()
 
         var items: [(index: Int, pulse: (((Int, String), Bool), Void))] = []
         let zz = z1.zip(z2).zip(z3).zip(z4).enumerate()
@@ -293,8 +293,8 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testEnumerateCount() {
-        let z1 = channelZPropertyState(1).new()
-        let z2 = channelZPropertyState("1").new()
+        let z1 = transceiveZ(1).new()
+        let z2 = transceiveZ("1").new()
         let zz = z1.either(z2)
         var counts = (-1, 0, 0, 0)
 
@@ -323,8 +323,8 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testEnumerations() {
-        let z1 = channelZPropertyState(true).new()
-        let z2 = channelZPropertyState(1).new()
+        let z1 = transceiveZ(true).new()
+        let z2 = transceiveZ(1).new()
         typealias Item = (index: Int, pulse: (index: Int, pulse: (index: Int, pulse: Choose2<Bool, Int>)))
 
         let enums = z1.either(z2).enumerate().enumerate().enumerate()
@@ -568,7 +568,7 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testReduceMultiple() {
-        let numberz = channelZPropertyState(0).new()
+        let numberz = transceiveZ(0).new()
 
         let sum = numberz.reduce(0, combine: +)
 
@@ -599,7 +599,7 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testEnumerateWithMultipleReceivers() {
-        let prop = channelZPropertyState("")
+        let prop = transceiveZ("")
         let enumerated = prop.enumerate()
 
         var counts = (Array<Int>(), Array<Int>(), Array<Int>())
@@ -756,9 +756,9 @@ class ChannelTests : ChannelTestCase {
 //        XCTAssertEqual([0, 1, 2, 3], levels)
     }
 
-    func testPropertySources() {
-        let propa = PropertySource("A")
-        let propb = PropertySource("B")
+    func testValueTransceivers() {
+        let propa = ValueTransceiver("A")
+        let propb = ValueTransceiver("B")
 
         let rcpt = ∞propa <=∞=> ∞propb
 
@@ -808,9 +808,9 @@ class ChannelTests : ChannelTestCase {
         // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
         defer { ChannelZ.ChannelZReentrantReceptions = 0 }
 
-        let _: PropertySource<Int> = 0∞ // just to show the postfix signature
-        let propa: Channel<PropertySource<Int>, Int> = ∞0∞
-        let propb: Channel<PropertySource<Int>, Int> = ∞0∞
+        let _: ValueTransceiver<Int> = 0∞ // just to show the postfix signature
+        let propa: Channel<ValueTransceiver<Int>, Int> = ∞0∞
+        let propb: Channel<ValueTransceiver<Int>, Int> = ∞0∞
 
         let rcpt = propb.map({ $0 + 1 }) <=∞=> propa
 
@@ -1017,29 +1017,29 @@ class ChannelTests : ChannelTestCase {
     /// Explicitly checks the signatures of the `bind` variants.
     func testChannelBindSignatures() {
         do {
-            let c1: Channel<PropertySource<String>, Int> = channelZPropertyState("X").map({ _ in 1 })
-            let c2: Channel<PropertySource<Int>, String> = channelZPropertyState(1).map({ _ in "X" })
+            let c1: Channel<ValueTransceiver<String>, Int> = transceiveZ("X").map({ _ in 1 })
+            let c2: Channel<ValueTransceiver<Int>, String> = transceiveZ(1).map({ _ in "X" })
             c1.bind(c2)
             c1.bindPulseToPulse(c2)
         }
 
         do {
-            let c1: Channel<PropertySource<String>, Int?> = channelZPropertyState("X").map({ _ in 2 as Int? })
-            let c2: Channel<PropertySource<Int?>, String> = channelZPropertyState(1 as Int?).map({ _ in "X" })
+            let c1: Channel<ValueTransceiver<String>, Int?> = transceiveZ("X").map({ _ in 2 as Int? })
+            let c2: Channel<ValueTransceiver<Int?>, String> = transceiveZ(1 as Int?).map({ _ in "X" })
             c1.bind(c2)
             c1.bindPulseToOptionalPulse(c2)
         }
 
         do {
-            let c1: Channel<PropertySource<String?>, Int> = channelZPropertyState("X" as String?).map({ _ in 2 })
-            let c2: Channel<PropertySource<Int>, String?> = channelZPropertyState(1).map({ _ in "X" as String? })
+            let c1: Channel<ValueTransceiver<String?>, Int> = transceiveZ("X" as String?).map({ _ in 2 })
+            let c2: Channel<ValueTransceiver<Int>, String?> = transceiveZ(1).map({ _ in "X" as String? })
             c1.bind(c2)
             c1.bindOptionalPulseToPulse(c2)
         }
 
         do {
-            let c1: Channel<PropertySource<String?>, Int?> = channelZPropertyState("X" as String?).map({ _ in 2 as Int? })
-            let c2: Channel<PropertySource<Int?>, String?> = channelZPropertyState(1 as Int?).map({ _ in "X" })
+            let c1: Channel<ValueTransceiver<String?>, Int?> = transceiveZ("X" as String?).map({ _ in 2 as Int? })
+            let c2: Channel<ValueTransceiver<Int?>, String?> = transceiveZ(1 as Int?).map({ _ in "X" })
             c1.bind(c2)
             c1.bindOptionalPulseToOptionalPulse(c2)
         }
@@ -1048,29 +1048,29 @@ class ChannelTests : ChannelTestCase {
     /// Explicitly checks the signatures of the `link` variants.
     func testChannelLinkSignatures() {
         do {
-            let c1: Channel<PropertySource<String>, StatePulse<Int>> = channelZPropertyState("X").map({ _ in StatePulse(old: 1, new: 2) })
-            let c2: Channel<PropertySource<Int>, StatePulse<String>> = channelZPropertyState(1).map({ _ in StatePulse(old: "", new: "X") })
+            let c1: Channel<ValueTransceiver<String>, StatePulse<Int>> = transceiveZ("X").map({ _ in StatePulse(old: 1, new: 2) })
+            let c2: Channel<ValueTransceiver<Int>, StatePulse<String>> = transceiveZ(1).map({ _ in StatePulse(old: "", new: "X") })
             c1.link(c2)
             c1.linkStateToState(c2)
         }
 
         do {
-            let c1: Channel<PropertySource<String>, StatePulse<Int?>> = channelZPropertyState("X").map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
-            let c2: Channel<PropertySource<Int?>, StatePulse<String>> = channelZPropertyState(1 as Int?).map({ _ in StatePulse(old: "", new: "X") })
+            let c1: Channel<ValueTransceiver<String>, StatePulse<Int?>> = transceiveZ("X").map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
+            let c2: Channel<ValueTransceiver<Int?>, StatePulse<String>> = transceiveZ(1 as Int?).map({ _ in StatePulse(old: "", new: "X") })
             c1.link(c2)
             c1.linkStateToOptionalState(c2)
         }
 
         do {
-            let c1: Channel<PropertySource<String?>, StatePulse<Int>> = channelZPropertyState("X" as String?).map({ _ in StatePulse(old: 1, new: 2) })
-            let c2: Channel<PropertySource<Int>, StatePulse<String?>> = channelZPropertyState(1).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
+            let c1: Channel<ValueTransceiver<String?>, StatePulse<Int>> = transceiveZ("X" as String?).map({ _ in StatePulse(old: 1, new: 2) })
+            let c2: Channel<ValueTransceiver<Int>, StatePulse<String?>> = transceiveZ(1).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
             c1.link(c2)
             c1.linkOptionalStateToState(c2)
         }
 
         do {
-            let c1: Channel<PropertySource<String?>, StatePulse<Int?>> = channelZPropertyState("X" as String?).map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
-            let c2: Channel<PropertySource<Int?>, StatePulse<String?>> = channelZPropertyState(1 as Int?).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
+            let c1: Channel<ValueTransceiver<String?>, StatePulse<Int?>> = transceiveZ("X" as String?).map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
+            let c2: Channel<ValueTransceiver<Int?>, StatePulse<String?>> = transceiveZ(1 as Int?).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
             c1.link(c2)
             c1.linkOptionalStateToOptionalState(c2)
         }
@@ -1116,7 +1116,7 @@ class ChannelTests : ChannelTestCase {
         _ = (a | b)
         _ = (a | b | c)
 
-        let combo2: (Channel<(PropertySource<Float>, PropertySource<UInt>, PropertySource<Bool>), Choose3<Float, UInt, String>>) = (a | b | d)
+        let combo2: (Channel<(ValueTransceiver<Float>, ValueTransceiver<UInt>, ValueTransceiver<Bool>), Choose3<Float, UInt, String>>) = (a | b | d)
 
         combo2.receive { val in
             switch val {
@@ -1185,7 +1185,7 @@ class ChannelTests : ChannelTestCase {
         let zip1 = (a ^ b)
         zip1 ∞> { (floatChange: Float, uintChange: UInt) in }
 
-        let zip2: (Channel<(PropertySource<Float>, PropertySource<UInt>, PropertySource<Bool>), (Float, UInt, String)>) = (a ^ b ^ d)
+        let zip2: (Channel<(ValueTransceiver<Float>, ValueTransceiver<UInt>, ValueTransceiver<Bool>), (Float, UInt, String)>) = (a ^ b ^ d)
 
         var changes = 0
 
@@ -1333,7 +1333,7 @@ class ChannelTests : ChannelTestCase {
 //    }
 
     func testPropertyChannelSieve() {
-        let stringz = PropertySource("").transceive().sieve().new().subsequent()
+        let stringz = ValueTransceiver("").transceive().sieve().new().subsequent()
         var strs: [String] = []
 
         stringz.receive({ strs.append($0) })
@@ -1350,7 +1350,7 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testMultipleReceiversOnPropertyChannel() {
-        let prop = PropertySource(111).transceive()
+        let prop = ValueTransceiver(111).transceive()
 
         var counts = (0, 0, 0)
         prop.receive { _ in counts.0 += 1 }
@@ -1371,8 +1371,8 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testMultipleReceiversOnSievedPropertyChannel() {
-        let prop = PropertySource(111).transceive().sieve() // also works
-//        let prop = PropertySource(111).transceive().sieve(!=).new()
+        let prop = ValueTransceiver(111).transceive().sieve() // also works
+//        let prop = ValueTransceiver(111).transceive().sieve(!=).new()
 
         var counts = (0, 0, 0)
         prop.receive { _ in counts.0 += 1 }
@@ -1401,7 +1401,7 @@ class ChannelTests : ChannelTestCase {
     }
 
     func XXXtestDropWithMultipleReceivers() {
-        let prop: Channel<PropertySource<Int>, Int> = channelZPropertyValue(0)
+        let prop: Channel<ValueTransceiver<Int>, Int> = channelZPropertyValue(0)
         XCTAssertEqual(24, sizeofValue(prop))
         let dropped = prop.dropFirst(3)
         XCTAssertEqual(24, sizeofValue(dropped))

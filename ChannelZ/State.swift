@@ -61,7 +61,7 @@ public extension StateTransmitter {
     /// The default RawRepresentable implentation does not permit construction;
     /// concrete implementations may choose to permit initialization
     ///
-    /// - See Also: `PropertySource`
+    /// - See Also: `ValueTransceiver`
     public init?(rawValue: Element) {
         return nil
     }
@@ -88,9 +88,9 @@ public protocol StateTransceiver : StateTransmitter, StateReceiver {
     var $: Element { get nonmutating set }
 }
 
-/// A PropertySource can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
+/// A ValueTransceiver can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
 /// The output type is a tuple of (old: T, new: T), where old is the previous value and new is the new value
-public final class PropertySource<T>: ReceiverQueueSource<StatePulse<T>>, StateTransceiver {
+public final class ValueTransceiver<T>: ReceiverQueueSource<StatePulse<T>>, StateTransceiver {
     public typealias State = StatePulse<T>
 
     public var $: T {
@@ -108,7 +108,7 @@ public final class PropertySource<T>: ReceiverQueueSource<StatePulse<T>>, StateT
 
     public func receive(x: T) { $ = x }
 
-    @warn_unused_result public func transceive() -> Channel<PropertySource<T>, State> {
+    @warn_unused_result public func transceive() -> Channel<ValueTransceiver<T>, State> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
             rcvr(State(old: Optional<T>.None, new: self.$))
@@ -118,7 +118,7 @@ public final class PropertySource<T>: ReceiverQueueSource<StatePulse<T>>, StateT
 }
 
 /// A type-erased wrapper around some state source whose value changes will emit a `StatePulse`
-public struct AnyState<T> : StateTransceiver {
+public struct AnyTransceiver<T> : StateTransceiver {
     private let valueget: Void -> T
     private let valueset: T -> Void
     private let channler: Void -> Channel<Void, StatePulse<T>>
@@ -144,7 +144,7 @@ public struct AnyState<T> : StateTransceiver {
         valueset(x)
     }
 
-    @warn_unused_result public func transceive() -> Channel<AnyState<T>, StatePulse<T>> {
+    @warn_unused_result public func transceive() -> Channel<AnyTransceiver<T>, StatePulse<T>> {
         return channler().resource({ _ in self })
     }
 }
@@ -233,15 +233,15 @@ func optionalTypeNotEqual<T : _WrapperType where T.Wrapped : Equatable>(lhs: T, 
 }
 
 /// Experimental: creates a channel for a type that is formed of 2 elements
-@warn_unused_result public func channelZDecomposedState<T, T1, T2>(constructor: (T1, T2) -> T, values: (T1, T2)) -> Channel<(Channel<AnyState<T1>, T1>, Channel<AnyState<T2>, T2>), T> {
+@warn_unused_result public func channelZDecomposedState<T, T1, T2>(constructor: (T1, T2) -> T, values: (T1, T2)) -> Channel<(Channel<AnyTransceiver<T1>, T1>, Channel<AnyTransceiver<T2>, T2>), T> {
     let channel = channelZPropertyValue(constructor(
         values.0,
         values.1
         )
     )
     let source = (
-        channelZPropertyValue(values.0).anyState(),
-        channelZPropertyValue(values.1).anyState()
+        channelZPropertyValue(values.0).anyTransceiver(),
+        channelZPropertyValue(values.1).anyTransceiver()
     )
     func update(x: Any) { channel.$ = constructor(
         source.0.$,
@@ -255,7 +255,7 @@ func optionalTypeNotEqual<T : _WrapperType where T.Wrapped : Equatable>(lhs: T, 
 }
 
 /// Experimental: creates a channel for a type that is formed of 3 elements
-@warn_unused_result public func channelZDecomposedState<T, T1, T2, T3>(constructor: (T1, T2, T3) -> T, values: (T1, T2, T3)) -> Channel<(Channel<AnyState<T1>, T1>, Channel<AnyState<T2>, T2>, Channel<AnyState<T3>, T3>), T> {
+@warn_unused_result public func channelZDecomposedState<T, T1, T2, T3>(constructor: (T1, T2, T3) -> T, values: (T1, T2, T3)) -> Channel<(Channel<AnyTransceiver<T1>, T1>, Channel<AnyTransceiver<T2>, T2>, Channel<AnyTransceiver<T3>, T3>), T> {
     let channel = channelZPropertyValue(constructor(
         values.0,
         values.1,
@@ -263,9 +263,9 @@ func optionalTypeNotEqual<T : _WrapperType where T.Wrapped : Equatable>(lhs: T, 
         )
     )
     let source = (
-        channelZPropertyValue(values.0).anyState(),
-        channelZPropertyValue(values.1).anyState(),
-        channelZPropertyValue(values.2).anyState()
+        channelZPropertyValue(values.0).anyTransceiver(),
+        channelZPropertyValue(values.1).anyTransceiver(),
+        channelZPropertyValue(values.2).anyTransceiver()
     )
     func update(x: Any) { channel.$ = constructor(
         source.0.$,
@@ -281,7 +281,7 @@ func optionalTypeNotEqual<T : _WrapperType where T.Wrapped : Equatable>(lhs: T, 
 }
 
 /// Experimental: creates a channel for a type that is formed of 3 elements
-@warn_unused_result public func channelZDecomposedState<T, T1, T2, T3, T4>(constructor: (T1, T2, T3, T4) -> T, values: (T1, T2, T3, T4)) -> Channel<(Channel<AnyState<T1>, T1>, Channel<AnyState<T2>, T2>, Channel<AnyState<T3>, T3>, Channel<AnyState<T4>, T4>), T> {
+@warn_unused_result public func channelZDecomposedState<T, T1, T2, T3, T4>(constructor: (T1, T2, T3, T4) -> T, values: (T1, T2, T3, T4)) -> Channel<(Channel<AnyTransceiver<T1>, T1>, Channel<AnyTransceiver<T2>, T2>, Channel<AnyTransceiver<T3>, T3>, Channel<AnyTransceiver<T4>, T4>), T> {
     let channel = channelZPropertyValue(constructor(
         values.0,
         values.1,
@@ -290,10 +290,10 @@ func optionalTypeNotEqual<T : _WrapperType where T.Wrapped : Equatable>(lhs: T, 
         )
     )
     let source = (
-        channelZPropertyValue(values.0).anyState(),
-        channelZPropertyValue(values.1).anyState(),
-        channelZPropertyValue(values.2).anyState(),
-        channelZPropertyValue(values.3).anyState()
+        channelZPropertyValue(values.0).anyTransceiver(),
+        channelZPropertyValue(values.1).anyTransceiver(),
+        channelZPropertyValue(values.2).anyTransceiver(),
+        channelZPropertyValue(values.3).anyTransceiver()
     )
     func update(x: Any) { channel.$ = constructor(
         source.0.$,
@@ -502,28 +502,28 @@ public extension ChannelType where Source : StateTransceiver {
     }
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
-    @warn_unused_result public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, Pulse> {
-        return resource { source in AnyState(get: { get(source.$) }, set: { source.$ = set($0) }, channeler: { source.transceive().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }) }
+    @warn_unused_result public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyTransceiver<X>, Pulse> {
+        return resource { source in AnyTransceiver(get: { get(source.$) }, set: { source.$ = set($0) }, channeler: { source.transceive().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }) }
     }
 }
 
 public extension ChannelType where Source : StateTransceiver {
-    /// Creates a type-erased `StateTransmitter` with `AnyState` for this channel
-    @warn_unused_result public func anyState() -> Channel<AnyState<Source.Element>, Pulse> {
-        return resource(AnyState.init)
+    /// Creates a type-erased `StateTransmitter` with `AnyTransceiver` for this channel
+    @warn_unused_result public func anyTransceiver() -> Channel<AnyTransceiver<Source.Element>, Pulse> {
+        return resource(AnyTransceiver.init)
     }
 
 }
 
 public extension ChannelType where Source : StateTransceiver, Source.Element == Pulse {
     /// For a channel whose underlying state matches the pulse types, perform a `stateMap` and a `map` with the same `get` transform
-    @warn_unused_result public func restate<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyState<X>, X> {
+    @warn_unused_result public func restate<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyTransceiver<X>, X> {
         return stateMap(get: get, set: set).map(get)
     }
 }
 
 public extension ChannelType where Source : StateTransceiver, Pulse: _OptionalType, Source.Element == Pulse, Pulse.Wrapped: Hashable {
-    @warn_unused_result public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Pulse, U?)>(mapping: S) -> Channel<AnyState<U?>, U?> {
+    @warn_unused_result public func restateMapping<U: Hashable, S: SequenceType where S.Generator.Element == (Pulse, U?)>(mapping: S) -> Channel<AnyTransceiver<U?>, U?> {
         var getMapping: [Pulse.Wrapped: U] = [:]
         var setMapping: [U: Pulse] = [:]
 
@@ -576,7 +576,7 @@ public extension ChannelType where Source : StateTransceiver {
         let filtered2 = to.filter({ filterRight($0, self.source.$) })
 
         // return filtered1.conduit(filtered2) // FIXME: types don't line up for some reason
-        return filtered1.anyState().conduit(filtered2.anyState()) // need to erase state to get them to line up
+        return filtered1.anyTransceiver().conduit(filtered2.anyTransceiver()) // need to erase state to get them to line up
     }
 
 }
@@ -717,6 +717,29 @@ public extension ChannelType where Source : StateTransceiver, Source.Element : _
 
 // MARK: Utilities
 
+
+/// Creates a state transceiver with the underlying initial value.
+///
+/// A state transceiver is a channel that can both receive values (thereby setting the underlying state)
+/// and transmit changes to the state via the `StatePulse` pulse type. State transceivers can
+/// also be bound to other state transceivers using the `link` function.
+///
+/// - See Also: `ValueTransceiver`
+/// - See Also: `link`
+@warn_unused_result public func transceiveZ<T>(initialValue: T) -> Channel<ValueTransceiver<T>, StatePulse<T>> {
+    return ValueTransceiver(rawValue: initialValue).transceive()
+}
+
+/// Creates a Channel sourced by a Swift or Objective-C property
+@warn_unused_result public func channelZPropertyValue<T>(initialValue: T) -> Channel<ValueTransceiver<T>, T> {
+    return ∞initialValue∞
+}
+
+/// Creates a Channel sourced by a Swift or Objective-C Equatable property
+@warn_unused_result public func channelZPropertyValue<T: Equatable>(initialValue: T) -> Channel<ValueTransceiver<T>, T> {
+    return ∞=initialValue=∞
+}
+
 /// Creates a Channel sourced by a `AnyReceiver` that will be used to send elements to the receivers
 @warn_unused_result public func channelZSink<T>(type: T.Type) -> Channel<AnyReceiver<T>, T> {
     let rcvrs = ReceiverQueue<T>()
@@ -749,22 +772,6 @@ extension SequenceType {
         return ReceiptOf() // cancelled receipt since it will never receive more pulses
     }
 }
-
-/// Creates a Channel sourced by a Swift or Objective-C property
-@warn_unused_result public func channelZPropertyValue<T>(initialValue: T) -> Channel<PropertySource<T>, T> {
-    return ∞initialValue∞
-}
-
-/// Creates a Channel sourced by a Swift or Objective-C Equatable property
-@warn_unused_result public func channelZPropertyValue<T: Equatable>(initialValue: T) -> Channel<PropertySource<T>, T> {
-    return ∞=initialValue=∞
-}
-
-/// Creates a `PropertySource` channel that emits a `StatePulse` with the values over time.
-@warn_unused_result public func channelZPropertyState<T>(initialValue: T) -> Channel<PropertySource<T>, StatePulse<T>> {
-    return PropertySource(rawValue: initialValue).transceive()
-}
-
 
 // MARK: Lens Support
 

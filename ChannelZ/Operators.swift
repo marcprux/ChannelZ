@@ -79,20 +79,20 @@ prefix func ∞?=<S: StateTransmitter, T: Equatable where S.Element: _OptionalTy
     return changedState
 }
 
-/// Creates a distinct sieved channel from the given Equatable Optional PropertySource
-public prefix func ∞= <T: Equatable>(source: PropertySource<T?>) -> Channel<PropertySource<T?>, T?> { return ∞?=source }
+/// Creates a distinct sieved channel from the given Equatable Optional ValueTransceiver
+public prefix func ∞= <T: Equatable>(source: ValueTransceiver<T?>) -> Channel<ValueTransceiver<T?>, T?> { return ∞?=source }
 
 
 // MARK: Postfix operators
 
 /// Creates a source for the given property that will emit state operations
-public postfix func ∞ <T>(value: T) -> PropertySource<T> { return PropertySource(value) }
+public postfix func ∞ <T>(value: T) -> ValueTransceiver<T> { return ValueTransceiver(value) }
 
 /// Creates a source for the given property that will emit state operations
-public postfix func =∞ <T: Equatable>(value: T) -> PropertySource<T> { return PropertySource(value) }
+public postfix func =∞ <T: Equatable>(value: T) -> ValueTransceiver<T> { return ValueTransceiver(value) }
 
 /// Creates a source for the given property that will emit state operations
-public postfix func =∞ <T: Equatable>(value: T?) -> PropertySource<T?> { return value∞ }
+public postfix func =∞ <T: Equatable>(value: T?) -> ValueTransceiver<T?> { return value∞ }
 
 
 // MARK: Infix operators
@@ -155,27 +155,27 @@ public func <~∞~> <S1, S2, T1, T2 where S1: ReceiverType, S2: ReceiverType, S1
 
 // MARK: KVO Operators
 
-/// Creates a distinct sieved channel from the given Optional Equatable PropertySource (cover for ∞?=)
-public prefix func ∞= <T: Equatable>(source: KeyValueOptionalSource<T>) -> Channel<KeyValueOptionalSource<T>, T?> { return ∞?=source }
+/// Creates a distinct sieved channel from the given Optional Equatable ValueTransceiver (cover for ∞?=)
+public prefix func ∞= <T: Equatable>(source: KeyValueOptionalTransceiver<T>) -> Channel<KeyValueOptionalTransceiver<T>, T?> { return ∞?=source }
 
 /// Creates a source for the given property that will emit state operations
-public postfix func ∞ <T>(kvt: KeyValueTarget<T>) -> KeyValueSource<T> {
-    return KeyValueSource(target: kvt)
+public postfix func ∞ <T>(kvt: KeyValueTarget<T>) -> KeyValueTransceiver<T> {
+    return KeyValueTransceiver(target: kvt)
 }
 
 /// Creates a source for the given equatable property that will emit state operations
-public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T>) -> KeyValueSource<T> {
-    return KeyValueSource(target: kvt)
+public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T>) -> KeyValueTransceiver<T> {
+    return KeyValueTransceiver(target: kvt)
 }
 
 /// Creates a source for the given optional property that will emit state operations
-public postfix func ∞ <T>(kvt: KeyValueTarget<T?>) -> KeyValueOptionalSource<T> {
-    return KeyValueOptionalSource(target: kvt)
+public postfix func ∞ <T>(kvt: KeyValueTarget<T?>) -> KeyValueOptionalTransceiver<T> {
+    return KeyValueOptionalTransceiver(target: kvt)
 }
 
 /// Creates a source for the given equatable & optional property that will emit state operations
-public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T?>) -> KeyValueOptionalSource<T> {
-    return KeyValueOptionalSource(target: kvt)
+public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T?>) -> KeyValueOptionalTransceiver<T> {
+    return KeyValueOptionalTransceiver(target: kvt)
 }
 
 
@@ -196,44 +196,44 @@ infix operator § { precedence 255 }
 
 
 /// Operation to create a channel from an object's keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, @autoclosure getter: () -> T) -> Channel<KeyValueSource<T>, T> {
+public func ∞ <T>(object: NSObject, @autoclosure getter: () -> T) -> Channel<KeyValueTransceiver<T>, T> {
     return ∞(object§getter)∞
 }
 
 /// Operation to create a channel from an object's equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, @autoclosure getter: () -> T) -> Channel<KeyValueSource<T>, T> {
+public func ∞ <T: Equatable>(object: NSObject, @autoclosure getter: () -> T) -> Channel<KeyValueTransceiver<T>, T> {
     return ∞=(object§getter)=∞
 }
 
 /// Operation to create a channel from an object's optional keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, @autoclosure getter: () -> T?) -> Channel<KeyValueOptionalSource<T>, T?> {
+public func ∞ <T>(object: NSObject, @autoclosure getter: () -> T?) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
     return ∞(object§getter)∞
 }
 
 /// Operation to create a channel from an object's optional equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, @autoclosure getter: () -> T?) -> Channel<KeyValueOptionalSource<T>, T?> {
+public func ∞ <T: Equatable>(object: NSObject, @autoclosure getter: () -> T?) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
     return ∞=(object§getter)=∞
 }
 
 
 
 /// Operation to create a channel from an object's keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getpath: (value: T, keyPath: String)) -> Channel<KeyValueSource<T>, T> {
+public func ∞ <T>(object: NSObject, getpath: (value: T, keyPath: String)) -> Channel<KeyValueTransceiver<T>, T> {
     return ∞(object§getpath)∞
 }
 
 /// Operation to create a channel from an object's equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T, keyPath: String)) -> Channel<KeyValueSource<T>, T> {
+public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T, keyPath: String)) -> Channel<KeyValueTransceiver<T>, T> {
     return ∞=(object§getpath)=∞
 }
 
 /// Operation to create a channel from an object's optional keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getpath: (value: T?, keyPath: String)) -> Channel<KeyValueOptionalSource<T>, T?> {
+public func ∞ <T>(object: NSObject, getpath: (value: T?, keyPath: String)) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
     return ∞(object§getpath)∞
 }
 
 /// Operation to create a channel from an object's optional equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T?, keyPath: String)) -> Channel<KeyValueOptionalSource<T>, T?> {
+public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T?, keyPath: String)) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
     return ∞=(object§getpath)=∞
 }
 

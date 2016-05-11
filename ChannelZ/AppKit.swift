@@ -17,7 +17,7 @@ import AppKit
 public extension NSObjectProtocol where Self : NSController {
     /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
     /// change valus are not provided with KVO observation
-    public func channelZControllerPath(keyPath: String) -> Channel<KeyValueOptionalSource<AnyObject>, StatePulse<AnyObject?>> {
+    public func channelZControllerPath(keyPath: String) -> Channel<KeyValueOptionalTransceiver<AnyObject>, StatePulse<AnyObject?>> {
         let channel = channelZKeyState(valueForKeyPath(keyPath), keyPath: keyPath)
 
         // KVO on an object controller drops the value: 

@@ -108,10 +108,10 @@ extension ChannelTests {
         dir.companies[0].employees[dir.companies[0].ceoID]?.workAddress?.line2 = "Suite #111"
 //        dump(dir)
 
-        // let dir𝚭 = channelZPropertyState(dir)
+        // let dir𝚭 = transceiveZ(dir)
 
         do {
-            let dir𝚭 = channelZPropertyState(dir)
+            let dir𝚭 = transceiveZ(dir)
 
             let bebe𝚭 = dir𝚭.author𝚭
 

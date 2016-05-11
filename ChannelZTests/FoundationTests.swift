@@ -474,8 +474,8 @@ class FoundationTests : ChannelTestCase {
         let xs: Int = 1
 
         // operator examples
-        let csource: PropertySource<Int> = xs∞
-        let _: Channel<PropertySource<Int>, Int> = ∞csource
+        let csource: ValueTransceiver<Int> = xs∞
+        let _: Channel<ValueTransceiver<Int>, Int> = ∞csource
 
         let c = ∞xs∞
 
@@ -493,8 +493,8 @@ class FoundationTests : ChannelTestCase {
         let xs: Int = 1
 
         // operator examples
-        let csource: PropertySource<Int> = xs=∞
-        let _: Channel<PropertySource<Int>, Int> = ∞=csource
+        let csource: ValueTransceiver<Int> = xs=∞
+        let _: Channel<ValueTransceiver<Int>, Int> = ∞=csource
 
         let c = ∞=xs=∞
 
@@ -512,8 +512,8 @@ class FoundationTests : ChannelTestCase {
         let xs: Int? = nil
 
         // operator examples
-        let csource: PropertySource<Optional<Int>> = xs=∞
-        let _: Channel<PropertySource<Optional<Int>>, Optional<Int>> = ∞=csource
+        let csource: ValueTransceiver<Optional<Int>> = xs=∞
+        let _: Channel<ValueTransceiver<Optional<Int>>, Optional<Int>> = ∞=csource
 
         let c = ∞=xs=∞
 
@@ -532,11 +532,11 @@ class FoundationTests : ChannelTestCase {
     func testKeyValueSieve() {
         let state = StatefulObject()
         let ckey: KeyValueTarget<String> = state§state.reqstr
-        let csource: KeyValueSource<String> = ckey=∞
-        let channel: Channel<KeyValueSource<String>, String> = ∞=csource
+        let csource: KeyValueTransceiver<String> = ckey=∞
+        let channel: Channel<KeyValueTransceiver<String>, String> = ∞=csource
 
-        let _: Channel<KeyValueSource<String>, String> = ∞(state§state.reqstr)∞
-        let c2: Channel<KeyValueSource<String>, String> = ∞=(state§state.reqstr)=∞
+        let _: Channel<KeyValueTransceiver<String>, String> = ∞(state§state.reqstr)∞
+        let c2: Channel<KeyValueTransceiver<String>, String> = ∞=(state§state.reqstr)=∞
 
 
         let c = c2
@@ -571,8 +571,8 @@ class FoundationTests : ChannelTestCase {
 
     func testOptionalNSKeyValueSieve() {
         let state = StatefulObject()
-//        var c: Channel<KeyValueOptionalSource<NSString>, NSString?> = ∞=(state§state.optnsstr)=∞
-//        var c: Channel<KeyValueOptionalSource<NSString>, NSString?> = state∞state.optnsstr
+//        var c: Channel<KeyValueOptionalTransceiver<NSString>, NSString?> = ∞=(state§state.optnsstr)=∞
+//        var c: Channel<KeyValueOptionalTransceiver<NSString>, NSString?> = state∞state.optnsstr
         let c = state∞state.optnsstr
 
         var seq: [NSString?] = []
@@ -2206,7 +2206,7 @@ class NumericHolderClass : NSObject {
     dynamic var int8Field: Int8 = 0
     dynamic var boolField: Bool = false
 
-//    var numberFieldZ: Channel<KeyValueSource<NSNumber>, NSNumber> { return channelZKey(numberField) }
+//    var numberFieldZ: Channel<KeyValueTransceiver<NSNumber>, NSNumber> { return channelZKey(numberField) }
 //    lazy var decimalNumberFieldZ: NSDecimalNumber = 0
 //    lazy var doubleFieldZ: Double = 0
 //    lazy var floatFieldZ: Float = 0

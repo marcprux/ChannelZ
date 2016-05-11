@@ -48,7 +48,7 @@ class AppKitTests : ChannelTestCase {
         state2.num3 = 0
         state2.bind("num3", toObject: state1, withKeyPath: "num3", options: nil)
 
-        let channel2: Channel<KeyValueSource<NSNumber>, NSNumber> = state2∞(state2.num3, "num3")
+        let channel2: Channel<KeyValueTransceiver<NSNumber>, NSNumber> = state2∞(state2.num3, "num3")
         let _ = channel2 ∞> { num in
             // println("changing number to: \(num)")
         }
