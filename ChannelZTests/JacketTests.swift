@@ -78,7 +78,6 @@ extension ChannelType where Source.Element == Address?, Source : StateTransceive
 }
 
 
-
 extension ChannelTests {
     func testJacket() {
 
@@ -104,11 +103,7 @@ extension ChannelTests {
             ]
         )
 
-//        dump(dir)
         dir.companies[0].employees[dir.companies[0].ceoID]?.workAddress?.line2 = "Suite #111"
-//        dump(dir)
-
-        // let dir𝚭 = transceiveZ(dir)
 
         do {
             let dir𝚭 = transceiveZ(dir)
@@ -153,33 +148,169 @@ extension ChannelTests {
             XCTAssertEqual("ZZZ", bebe𝚭.$.homeAddress.line1)
             XCTAssertEqual("ZZZ", bebe𝚭.$.workAddress?.line1)
 
+            let prevZ = bebe𝚭.previousAddresses𝚭
 
             var lines: [String?] = []
-            bebe𝚭.previousAddresses𝚭.index(1).line1𝚭.sieve().new().receive { line in
+            prevZ.index(1).line1𝚭.sieve().new().receive { line in
                 lines.append(line)
             }
 
             XCTAssertEqual(0, bebe𝚭.$.previousAddresses.count)
-            bebe𝚭.previousAddresses𝚭.index(2).coalesce({ _ in defaddr }).line1𝚭.$ = "XYZ"
+            prevZ.index(2).coalesce({ _ in defaddr }).line1𝚭.$ = "XYZ"
             XCTAssertEqual(3, bebe𝚭.$.previousAddresses.count)
             XCTAssertEqual(["XYZ", "XYZ", "XYZ"], bebe𝚭.$.previousAddresses.map({ $0.line1 }))
 
-            bebe𝚭.previousAddresses𝚭.index(1).coalesce({ _ in defaddr }).line1𝚭.$ = "ABC"
+            prevZ.index(1).coalesce({ _ in defaddr }).line1𝚭.$ = "ABC"
             XCTAssertEqual(["XYZ", "ABC", "XYZ"], bebe𝚭.$.previousAddresses.map({ $0.line1 }))
 
 
             XCTAssertEqual(["XYZ", "ABC"].flatMap({ $0 }), lines.flatMap({ $0 }))
 
+            // create an accessor for the prism
+            let line1Lens = Lens<Address, String>({ $0.line1 }, { $0.line1 = $1 })
+//            let line2Lens = Lens<Address, String?>({ $0.line2 }, { $0.line2 = $1 })
+
+            let line1sZ = prevZ.prism(line1Lens)
+
+            XCTAssertEqual(["XYZ", "ABC", "XYZ"], line1sZ.$)
+
+            line1sZ.$ = ["123", "123", "123"]
+            XCTAssertEqual(["123", "123", "123"], line1sZ.$)
+
+            line1sZ.$ = ["QQQ"] // a prism set to a subset will only apply to the subset
+            XCTAssertEqual(["QQQ", "123", "123"], line1sZ.$)
+
+
+            // sets the last two elements of the lensed collection, ignoring any trail-offs
+            prevZ.range(1...2).prism(line1Lens).$ = ["PRQ", "PRQ", "PRQ", "PRQ"]
+            XCTAssertEqual(["QQQ", "PRQ", "PRQ"], line1sZ.$)
+
+
+            // check non-contiguous index access
+            prevZ.indices([2, 0, 1]).prism(line1Lens).$ = ["Z", "X", "Y"]
+            XCTAssertEqual(["X", "Y", "Z"], line1sZ.$)
+
+            // creates a "select" combination of collection and index channels
+            let indexChannel = transceiveZ([0])
+            let selectZ = prevZ.select(indexChannel).prism(line1Lens)
+
+            XCTAssertEqual(["X"], selectZ.$)
+
+            // changing the index changes the underlying prism
+            indexChannel.$ = [2, 0]
+            XCTAssertEqual(["Z", "X"], selectZ.$)
+
+
+            // changing the values changes the underlying prism
+            line1sZ.$ = ["A", "B", "C"]
+            XCTAssertEqual(["C", "A"], selectZ.$)
+            XCTAssertEqual(["A", "B", "C"], line1sZ.$)
+
+            selectZ.$ = ["Q", "T"]
+            XCTAssertEqual(["Q", "T"], selectZ.$)
+            XCTAssertEqual(["T", "B", "Q"], line1sZ.$)
+
+            // invalidating an index drops the last selection
+            prevZ.$.removeLast()
+            XCTAssertEqual(["T"], selectZ.$)
+
+            indexChannel.$ = Array((0...999).reverse()) // go outside the bounds
+            XCTAssertEqual(["B", "T"], selectZ.$)
+            XCTAssertEqual(["T", "B"], line1sZ.$)
+
+            selectZ.$ = [ "Y", "X" ] // does nothing, since 999 & 998 are outside the range
+            XCTAssertEqual(["T", "B"], line1sZ.$)
+
+            indexChannel.$ = Array((0...999)) // go outside the bounds
+            selectZ.$ = [ "Y", "X" ] // does nothing, since 999 & 998 are outside the range
+            XCTAssertEqual(["Y", "X"], line1sZ.$)
+
+            selectZ.$ = Array(count: 2, repeatedValue: "T")
+            XCTAssertEqual(["T", "T"], line1sZ.$)
+
             var persons: [Person] = []
-            dir𝚭.companies𝚭.index(0).coalesce({ _ in nil as Company! }).employees𝚭.at("359414").value().some().receive { person in
+            let company = dir𝚭.companies𝚭.index(0).coalesce({ _ in nil as Company! })
+
+            company.employees𝚭.at("359414").value().some().receive { person in
                 persons.append(person)
             }
 
-            let empname𝚭 = dir𝚭.companies𝚭.index(0).coalesce({ _ in nil as Company! }).employees𝚭.at("359414").coalesce({ _ in nil as Person! }).firstName𝚭
+            let empname𝚭 = company.employees𝚭.at("359414").coalesce({ _ in nil as Person! }).firstName𝚭
             empname𝚭.$ = "Marcus"
 
             XCTAssertEqual("Marcus", dir𝚭.$.companies.first?.employees["359414"]?.firstName)
+
+            // now add two more employees and edit mutliple aspects of them
+
+            let doeHome = Address(line1: "123 Doe Lane", line2: nil, postalCode: "44556")
+
+            company.employees𝚭.$["888888"] = Person(firstName: "John", lastName: "Doe", gender: .Male, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+            company.employees𝚭.$["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .Female, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+
+            XCTAssertEqual(dir𝚭.$.companies.flatMap({ $0.employees.values }).count, 3)
+
+            // TODO: generalize select() to work on collections and dictionaries
+
         }
 
+    }
+
+    func testLensChannels() {
+        let prop = transceiveZ((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
+
+        let str = prop.focus({ $0.str }, { $0.str = $1 })
+        let int = prop.focus({ $0.int }, { $0.int = $1 })
+        let dbl = prop.focus({ $0.dbl }, { $0.dbl = $1 })
+        let sub = prop.focus({ $0.sub }, { $0.sub = $1 })
+        let suba = sub.focus({ $0.a }, { $0.a = $1 })
+        let subb = sub.focus({ $0.b }, { $0.b = $1 })
+        let subc = sub.focus({ $0.c }, { $0.c = $1 })
+
+        // subc = Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<X>, StatePulse<X>>, Y>, StatePulse<Y>>, String>, StatePulse<String>>
+
+        str.$ = "Bar"
+        int.$ = 2
+        dbl.$ = 5.5
+
+        suba.$ = false
+        subb.$ = 999
+        subc.$ = "x"
+
+        XCTAssertEqual(prop.$.str, "Bar")
+        XCTAssertEqual(prop.$.int, 2)
+        XCTAssertEqual(prop.$.dbl, 5.5)
+
+        XCTAssertEqual(prop.$.sub.a, false)
+        XCTAssertEqual(prop.$.sub.b, 999)
+        XCTAssertEqual(prop.$.sub.c, "x")
+
+        // children can affect parent values and it will update state and fire receivers
+        var strUpdates = 0
+        var strChanges = 0
+        str.subsequent().receive({ _ in strUpdates += 1 })
+        str.subsequent().sieve(!=).receive({ _ in strChanges += 1 })
+        XCTAssertEqual(0, strChanges)
+
+        subc.owner.owner.$.str = "Baz"
+        XCTAssertEqual(prop.$.str, "Baz")
+        XCTAssertEqual(1, strUpdates)
+        XCTAssertEqual(1, strChanges)
+
+        subc.owner.$.b = 7
+        XCTAssertEqual(prop.$.sub.b, 7)
+        XCTAssertEqual(2, strUpdates) // note that str changes even when a different property changed
+        XCTAssertEqual(1, strChanges) // so we sieve for changes
+
+        subc.owner.owner.$.str = "Baz"
+
+        let compound = str.new() & subb.new()
+//        dump(compound)
+        compound.receive { str, int in
+            XCTAssertEqual("Baz", str)
+            XCTAssertEqual(7, int)
+        }
+
+//        dump(compound.$)
+//        let MVλ = 1
     }
 }

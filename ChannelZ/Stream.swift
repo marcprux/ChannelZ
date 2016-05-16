@@ -125,8 +125,8 @@ public class TrapReceipt<C where C: StreamType>: Receipt {
     public func cancel() { receipt?.cancel() }
 
     public func receive(value: C.Pulse) {
-        while values.count >= capacity {
-            values.removeAtIndex(0)
+        if values.count >= capacity {
+            values.removeFirst(values.count - capacity + 1)
         }
         
         values.append(value)

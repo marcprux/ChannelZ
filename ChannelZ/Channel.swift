@@ -299,7 +299,7 @@ public extension ChannelType {
 
     /// Adds a channel phase that emits a tuples of pairs (*n*, *x*),
     /// where *n*\ s are consecutive `Int`\ s starting at zero,
-    /// and *x*\ s are the pulses/
+    /// and *x*\ s are the pulses.
     ///
     /// Analogous to `SequenceType.enumerate` and `EnumerateGenerator`
     ///

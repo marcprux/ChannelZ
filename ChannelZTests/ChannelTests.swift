@@ -11,7 +11,7 @@ import ChannelZ
 
 class ChannelTestCase : XCTestCase {
     override func invokeTest() {
-//        return invocation?.selector == #selector(DispatchTests.testThreadsafeReception) ? super.invokeTest() : print("skipping test", name)
+//        return invocation?.selector == #selector(ChannelTests.testJacket) ? super.invokeTest() : print("skipping test", name)
         return super.invokeTest()
     }
 
@@ -82,65 +82,6 @@ private func feedX<T, U>(seq: [T], f: [T] -> U) -> U {
 
 
 class ChannelTests : ChannelTestCase {
-    func testLensChannels() {
-        let prop = transceiveZ((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
-
-        let str = prop.focus({ $0.str }, { $0.str = $1 })
-        let int = prop.focus({ $0.int }, { $0.int = $1 })
-        let dbl = prop.focus({ $0.dbl }, { $0.dbl = $1 })
-        let sub = prop.focus({ $0.sub }, { $0.sub = $1 })
-        let suba = sub.focus({ $0.a }, { $0.a = $1 })
-        let subb = sub.focus({ $0.b }, { $0.b = $1 })
-        let subc = sub.focus({ $0.c }, { $0.c = $1 })
-
-        // subc = Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<X>, StatePulse<X>>, Y>, StatePulse<Y>>, String>, StatePulse<String>>
-
-        str.$ = "Bar"
-        int.$ = 2
-        dbl.$ = 5.5
-
-        suba.$ = false
-        subb.$ = 999
-        subc.$ = "x"
-
-        XCTAssertEqual(prop.$.str, "Bar")
-        XCTAssertEqual(prop.$.int, 2)
-        XCTAssertEqual(prop.$.dbl, 5.5)
-
-        XCTAssertEqual(prop.$.sub.a, false)
-        XCTAssertEqual(prop.$.sub.b, 999)
-        XCTAssertEqual(prop.$.sub.c, "x")
-
-        // children can affect parent values and it will update state and fire receivers
-        var strUpdates = 0
-        var strChanges = 0
-        str.subsequent().receive({ _ in strUpdates += 1 })
-        str.subsequent().sieve(!=).receive({ _ in strChanges += 1 })
-        XCTAssertEqual(0, strChanges)
-
-        subc.owner.owner.$.str = "Baz"
-        XCTAssertEqual(prop.$.str, "Baz")
-        XCTAssertEqual(1, strUpdates)
-        XCTAssertEqual(1, strChanges)
-
-        subc.owner.$.b = 7
-        XCTAssertEqual(prop.$.sub.b, 7)
-        XCTAssertEqual(2, strUpdates) // note that str changes even when a different property changed
-        XCTAssertEqual(1, strChanges) // so we sieve for changes
-
-        subc.owner.owner.$.str = "Baz"
-
-        let compound = str.new() & subb.new()
-//        dump(compound)
-        compound.receive { str, int in
-            XCTAssertEqual("Baz", str)
-            XCTAssertEqual(7, int)
-        }
-
-//        dump(compound.$)
-//        let MVλ = 1
-    }
-
     /// Verifies that asyncronous Channels and syncronous Sequences behave the same way
     func testAnalogousSequenceFunctions() {
         let nums = [1, 2, 3, 3, 2, -1] // the test set

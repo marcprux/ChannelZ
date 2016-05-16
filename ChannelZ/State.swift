@@ -823,10 +823,6 @@ public protocol LensSourceType : StateTransceiver {
     var channel: Owner { get }
 }
 
-public extension LensSourceType {
-
-}
-
 /// A Lens on a state channel, which can be used create a property channel on a specific
 /// piece of the source state; a LensSource itself does not manage any receivers, but instead
 /// relies on the source of the underlying channel.
@@ -844,7 +840,35 @@ public struct LensSource<C: ChannelType, T where C.Source : StateTransceiver, C.
         nonmutating set { channel.$ = lens.set(channel.$, newValue) }
     }
 
+    /// Creates a state tranceiver to the focus of this lens, allowing the access and modification
+    /// of a subset of a product type.
     @warn_unused_result public func transceive() -> Channel<LensSource, StatePulse<T>> {
+        return channel.map({ pulse in
+            StatePulse(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new))
+        }).resource({ _ in self })
+    }
+}
+
+/// A Prism on a state channel, which can be used create a property channel on a specific
+/// piece of the source state; a LensSource itself does not manage any receivers, but instead
+/// relies on the source of the underlying channel.
+public struct PrismSource<C: ChannelType, T where C.Source : StateTransceiver, C.Pulse : StatePulseType, C.Pulse.T == C.Source.Element>: LensSourceType {
+    public typealias Owner = C
+    public let channel: C
+    public let lens: Lens<C.Source.Element, T>
+
+    public func receive(x: T) {
+        self.$ = x
+    }
+
+    public var $: T {
+        get { return lens.get(channel.$) }
+        nonmutating set { channel.$ = lens.set(channel.$, newValue) }
+    }
+
+    /// Creates a state tranceiver to the focus of this lens, allowing the access and modification
+    /// of a subset of a product type.
+    @warn_unused_result public func transceive() -> Channel<PrismSource, StatePulse<T>> {
         return channel.map({ pulse in
             StatePulse(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new))
         }).resource({ _ in self })
@@ -925,6 +949,103 @@ public extension ChannelType where Source.Element : RangeReplaceableCollectionTy
 
         return focus(lens)
     }
+
+    /// Creates a prism lens channel, allowing access to a collection's mapped lens
+    @warn_unused_result public func prism<T>(lens: Lens<Source.Element.Generator.Element, T>) -> Channel<LensSource<Self, [T]>, StatePulse<[T]>> {
+        let prismLens = Lens<Source.Element, [T]>({ $0.map(lens.get) }) {
+            (elements, values) in
+            var vals = values.generate()
+            for i in elements.startIndex..<elements.endIndex {
+                if let val = vals.next() {
+                    elements.replaceRange(i...i, with: [lens.set(elements[i], val)])
+                }
+            }
+        }
+        return focus(prismLens)
+    }
+
+    /// Returns an accessor to the collection's indices of elements
+    @warn_unused_result public func indices(indices: [Source.Element.Index]) -> Channel<LensSource<Self, Source.Element>, StatePulse<Source.Element>> {
+        let rangeLens = Lens<Source.Element, Source.Element>({
+            var values = Source.Element()
+            for index in indices {
+                values.append($0[index])
+            }
+            return values
+        }) {
+            (elements, values) in
+            for (index, value) in Swift.zip(indices, values) {
+                elements.replaceRange(index...index, with: [value])
+            }
+        }
+        return focus(rangeLens)
+    }
+
+    /// Combines this collection state source with a channel of indices and combines them into a prism
+    /// where the subselection will be issued whenever a change in either the selection or the underlying
+    /// elements occurs; indices that are invalid or become invalid will be silently ignored.
+    @warn_unused_result public func select<C: ChannelType where C.Source : StateTransceiver, C.Source.Element : SequenceType, C.Source.Element.Generator.Element == Source.Element.Index, C.Pulse : StatePulseType, C.Pulse.T == C.Source.Element>(indices: C) -> Channel<LensSource<Channel<Self.Source, StatePulse<Source.Element>>, Source.Element>, StatePulse<Source.Element>> {
+
+        func indexed(collection: Source.Element, indices: C.Source.Element) -> Source.Element {
+            var elements = Source.Element()
+            for index in indices {
+                if collection.indices.contains(index) {
+                    elements.append(collection[index])
+                }
+            }
+            return elements
+        }
+
+        // the selection lens value is a prism over the current selecton and the current elements
+        let selectionLens = Lens<Source.Element, Source.Element>({ elements in
+            indexed(elements, indices: indices.$)
+        }) {
+            (elements, values) in
+            for (index, value) in Swift.zip(indices.$, values) {
+                if elements.indices.contains(index) {
+                    elements.replaceRange(index...index, with: [value])
+                }
+            }
+        }
+
+        // when either the elements or indices change, issue a pulse that re-selects the indices from the elements
+        let which: Channel<(Self.Source, C.Source), StatePulse<Self.Pulse.T>> = either(indices).map {
+            switch $0 {
+            case .V1(let v):
+                return StatePulse(old: v.old.flatMap({ indexed($0, indices: indices.$) }), new: indexed(v.new, indices: indices.$))
+            case .V2(let i):
+                return StatePulse(old: i.old.flatMap({ indexed(self.$, indices: $0) }), new: indexed(self.$, indices: i.new))
+            }
+        }
+
+        let sources = which.resource({ _ in self.source })
+        let focused: Channel<LensSource<Channel<Self.Source, StatePulse<Source.Element>>, Source.Element>, StatePulse<Source.Element>> = sources.focus(selectionLens)
+        return focused
+    }
+
+}
+
+public extension ChannelType where Source.Element : RangeReplaceableCollectionType, Source : StateTransceiver, Pulse: StatePulseType, Pulse.T == Source.Element, Source.Element.SubSequence.Generator.Element == Source.Element.Generator.Element {
+
+    /// Returns an accessor to the collection's range of elements
+    @warn_unused_result public func range(range: Range<Source.Element.Index>) -> Channel<LensSource<Self, Source.Element.SubSequence>, StatePulse<Source.Element.SubSequence>> {
+        let rangeLens = Lens<Source.Element, Source.Element.SubSequence>({ $0[range] }) {
+            (elements, values) in
+            elements.replaceRange(range, with: Array(values))
+        }
+        return focus(rangeLens)
+    }
+
+//    @warn_unused_result public func prefix(maxLength: Int) -> Channel<LensSource<Self, Source.Element.SubSequence>, StatePulse<Source.Element.SubSequence>> {
+//        let rangeLens = Lens<Source.Element, Source.Element.SubSequence>({ $0.prefix(maxLength) }) {
+//            (elements, values) in
+//            let sub = elements.prefix(maxLength)
+//            sub.startIndex.advancedBy(maxLength)
+//            elements.replaceRange(sub.startIndex..<sub.endIndex, with: Array(values))
+//        }
+//        return focus(rangeLens)
+//    }
+
 }
 
 /// Bogus protocol since, unlike Array -> CollectionType, Dictionary doesn't have any protocol.
