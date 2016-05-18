@@ -30,7 +30,7 @@ infix operator ∞= { }
 
 
 /// Reads the value from the given channel's source that is sourced by an Sink implementation
-public postfix func ∞? <T, S: StateTransmitter>(c: Channel<S, T>)->S.Element { return c.source.$ }
+public postfix func ∞? <T, S: StateEmitterType>(c: Channel<S, T>)->S.Element { return c.source.$ }
 postfix operator ∞? { }
 
 
@@ -53,29 +53,29 @@ postfix operator ∞ { }
 // MARK: Prefix operators 
 
 /// Creates a channel from the given state source such that emits items for every state operation
-public prefix func ∞ <S: StateTransmitter, T where S.Element == T>(source: S)->Channel<S.Source, T> {
+public prefix func ∞ <S: StateEmitterType, T where S.Element == T>(source: S)->Channel<S, T> {
     return source.transceive().new()
 }
 
 /// Creates a distinct sieved channel from the given Equatable state source such that only state changes are emitted
 ///
 /// - See: `Channel.changes`
-public prefix func ∞= <S: StateTransmitter, T: Equatable where S.Element == T>(source: S) -> Channel<S.Source, T> {
+public prefix func ∞= <S: StateEmitterType, T: Equatable where S.Element == T>(source: S) -> Channel<S, T> {
     return source.transceive().sieve().new()
 }
 
-prefix func ∞?=<S: StateTransmitter, T: Equatable where S.Element: _OptionalType, S.Element.Wrapped: Equatable, T == S.Element.Wrapped>(source: S) -> Channel<S.Source, T?> {
+prefix func ∞?=<S: StateEmitterType, T: Equatable where S.Element: _OptionalType, S.Element.Wrapped: Equatable, T == S.Element.Wrapped>(source: S) -> Channel<S, T?> {
 
-    let wrappedState: Channel<S.Source, StatePulse<S.Element>> = source.transceive()
+    let wrappedState: Channel<S, StatePulse<S.Element>> = source.transceive()
 
     // each of the three following statements should be equivalent, but they return subtly different results! Only the first is correct.
-    let unwrappedState: Channel<S.Source, StatePulse<T?>> = wrappedState.map({ pair in StatePulse(old: pair.old?.toOptional(), new: pair.new.toOptional()) })
-//    let unwrappedState: Channel<S.Source, (old: T??, new: T?)> = wrappedState.map({ pair in (pair.old?.map({$0}), pair.new.map({$0})) })
+    let unwrappedState: Channel<S, StatePulse<T?>> = wrappedState.map({ pair in StatePulse(old: pair.old?.toOptional(), new: pair.new.toOptional()) })
+//    let unwrappedState: Channel<S, (old: T??, new: T?)> = wrappedState.map({ pair in (pair.old?.map({$0}), pair.new.map({$0})) })
 //    func unwrap(pair: (S.Element?, S.Element)) -> (old: T??, new: T?) { return (pair.old?.unwrap, pair.new.unwrap) }
-//    let unwrappedState: Channel<S.Source, (old: T??, new: T?)> = wrappedState.map({ pair in unwrap(pair) })
+//    let unwrappedState: Channel<S, (old: T??, new: T?)> = wrappedState.map({ pair in unwrap(pair) })
 
-    let notEqual: Channel<S.Source, StatePulse<T?>> = unwrappedState.filter({ pair in pair.old == nil || pair.old! != pair.new })
-    let changedState: Channel<S.Source, T?> = notEqual.map({ pair in pair.new })
+    let notEqual: Channel<S, StatePulse<T?>> = unwrappedState.filter({ pair in pair.old == nil || pair.old! != pair.new })
+    let changedState: Channel<S, T?> = notEqual.map({ pair in pair.new })
     return changedState
 }
 
@@ -115,7 +115,7 @@ infix operator ∞=> { }
 /// Creates a two-way binding betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is
 /// changed, the other side is updated
 /// This is the operator form of `bind`
-public func <=∞=> <S1, S2, T1, T2 where S1: StateTransceiver, S2: StateTransceiver, S1.Element == T2, S2.Element == T1, S1.Element: Equatable, S2.Element: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return r1.bind(r2) }
+public func <=∞=> <S1, S2, T1, T2 where S1: TransceiverType, S2: TransceiverType, S1.Element == T2, S2.Element == T1, S1.Element: Equatable, S2.Element: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return r1.bind(r2) }
 infix operator <=∞=> { }
 
 /// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is

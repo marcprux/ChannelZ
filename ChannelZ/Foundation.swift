@@ -207,7 +207,7 @@ public extension KeyValueTarget {
 }
 
 
-public protocol KeyValueTransceiverType : class, StateTransceiver {
+public protocol KeyTransceiverType : class, TransceiverType {
     var optional: Bool { get }
     var keyPath: String { get }
     var object: NSObject? { get }
@@ -217,7 +217,7 @@ public protocol KeyValueTransceiverType : class, StateTransceiver {
     func createPulse(change: NSDictionary) -> StatePulse<Element>
 }
 
-public extension KeyValueTransceiverType {
+public extension KeyTransceiverType {
     public func set(value: Element) -> Bool {
         if let target = self.object {
             setValueForKeyPath(target, keyPath: keyPath, nullable: optional, value: value)
@@ -283,7 +283,7 @@ public extension KeyValueTransceiverType {
 }
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueTransceiver<T>: ReceiverQueueSource<StatePulse<T>>, KeyValueTransceiverType {
+public final class KeyValueTransceiver<T>: ReceiverQueueSource<StatePulse<T>>, KeyTransceiverType {
     public typealias Element = T
 
     public let keyPath: String
@@ -314,7 +314,7 @@ public final class KeyValueTransceiver<T>: ReceiverQueueSource<StatePulse<T>>, K
 
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<StatePulse<T?>>, KeyValueTransceiverType {
+public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<StatePulse<T?>>, KeyTransceiverType {
     public typealias Element = T?
     public let keyPath: String
     public let optional = true
@@ -814,7 +814,7 @@ extension NSNumber : ConduitNumericCoercible {
 /// the inability to dynamicly subclass a generic type (observation messages will simply
 /// not be received), so the `ChannelController` overrides the KVO management routines
 /// in order to handle a strongly-typed values.
-public final class ChannelController<T> : NSObject, StateTransceiver {
+public final class ChannelController<T> : NSObject, TransceiverType {
     public static var defaultKey: String { return "value" }
 
     public typealias State = StatePulse<T?>

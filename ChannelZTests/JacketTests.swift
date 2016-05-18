@@ -44,19 +44,19 @@ struct Address {
 }
 
 
-extension ChannelType where Source.Element == Directory, Source : StateTransceiver, Pulse : StatePulseType, Pulse.T == Source.Element {
+extension ChannelType where Source.Element == Directory, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
     var author𝚭: Channel<LensSource<Self, Person>, StatePulse<Person>> { return focus({ $0.author }, { $0.author = $1 }) }
     var companies𝚭: Channel<LensSource<Self, [Company]>, StatePulse<[Company]>> { return focus({ $0.companies }, { $0.companies = $1 }) }
 }
 
-extension ChannelType where Source.Element == Company, Source : StateTransceiver, Pulse : StatePulseType, Pulse.T == Source.Element {
+extension ChannelType where Source.Element == Company, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
     var address𝚭: Channel<LensSource<Self, Address>, StatePulse<Address>> { return focus({ $0.address }, { $0.address = $1 }) }
     var employees𝚭: Channel<LensSource<Self, [PersonID: Person]>, StatePulse<[PersonID: Person]>> { return focus({ $0.employees }, { $0.employees = $1 }) }
     var ceoID𝚭: Channel<LensSource<Self, PersonID>, StatePulse<PersonID>> { return focus({ $0.ceoID }, { $0.ceoID = $1 }) }
     var ctoID𝚭: Channel<LensSource<Self, PersonID?>, StatePulse<PersonID?>> { return focus({ $0.ctoID }, { $0.ctoID = $1 }) }
 }
 
-extension ChannelType where Source.Element == Person, Source : StateTransceiver, Pulse : StatePulseType, Pulse.T == Source.Element {
+extension ChannelType where Source.Element == Person, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
     var firstName𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.firstName }, { $0.firstName = $1 }) }
     var lastName𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.lastName }, { $0.lastName = $1 }) }
     var gender𝚭: Channel<LensSource<Self, Person.Gender>, StatePulse<Person.Gender>> { return focus({ $0.gender }, { $0.gender = $1 }) }
@@ -65,13 +65,13 @@ extension ChannelType where Source.Element == Person, Source : StateTransceiver,
     var previousAddresses𝚭: Channel<LensSource<Self, [Address]>, StatePulse<[Address]>> { return focus({ $0.previousAddresses }, { $0.previousAddresses = $1 }) }
 }
 
-extension ChannelType where Source.Element == Address, Source : StateTransceiver, Pulse : StatePulseType, Pulse.T == Source.Element {
+extension ChannelType where Source.Element == Address, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
     var line1𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.line1 }, { $0.line1 = $1 }) }
     var line2𝚭: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0.line2 }, { $0.line2 = $1 }) }
     var postalCode𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.postalCode }, { $0.postalCode = $1 }) }
 }
 
-extension ChannelType where Source.Element == Address?, Source : StateTransceiver, Pulse : StatePulseType, Pulse.T == Source.Element {
+extension ChannelType where Source.Element == Address?, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
     var line1𝚭: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0?.line1 }, { if let value = $1 { $0?.line1 = value }  }) }
     var line2𝚭: Channel<LensSource<Self, String??>, StatePulse<String??>> { return focus({ $0?.line2 }, { if let value = $1 { $0?.line2 = value }  }) }
     var postalCode𝚭: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0?.postalCode }, { if let value = $1 { $0?.postalCode = value }  }) }
@@ -102,6 +102,9 @@ extension ChannelTests {
                                     address: Address(line1: "1 NaN Loop", line2: nil, postalCode: "99999"))
             ]
         )
+
+//        let firstNameLens = Lens<Person, String>({ $0.firstName }, { $0.firstName = $1 })
+        let lastNameLens = Lens<Person, String>({ $0.lastName }, { $0.lastName = $1 })
 
         dir.companies[0].employees[dir.companies[0].ceoID]?.workAddress?.line2 = "Suite #111"
 
@@ -192,27 +195,35 @@ extension ChannelTests {
 
             // creates a "select" combination of collection and index channels
             let indexChannel = transceiveZ([0])
-            let selectZ = prevZ.select(indexChannel).prism(line1Lens)
+            let selectZ = prevZ.indexed(indexChannel).prism(line1Lens)
 
+            let seltrap = selectZ.trap(Int.max)
+            
             XCTAssertEqual(["X"], selectZ.$)
+
+            XCTAssertEqual(2, seltrap.caught.count)
 
             // changing the index changes the underlying prism
             indexChannel.$ = [2, 0]
             XCTAssertEqual(["Z", "X"], selectZ.$)
+            XCTAssertEqual(3, seltrap.caught.count)
 
 
             // changing the values changes the underlying prism
             line1sZ.$ = ["A", "B", "C"]
             XCTAssertEqual(["C", "A"], selectZ.$)
             XCTAssertEqual(["A", "B", "C"], line1sZ.$)
+            XCTAssertEqual(4, seltrap.caught.count)
 
             selectZ.$ = ["Q", "T"]
             XCTAssertEqual(["Q", "T"], selectZ.$)
             XCTAssertEqual(["T", "B", "Q"], line1sZ.$)
+            XCTAssertEqual(5, seltrap.caught.count)
 
             // invalidating an index drops the last selection
             prevZ.$.removeLast()
             XCTAssertEqual(["T"], selectZ.$)
+            XCTAssertEqual(6, seltrap.caught.count)
 
             indexChannel.$ = Array((0...999).reverse()) // go outside the bounds
             XCTAssertEqual(["B", "T"], selectZ.$)
@@ -250,7 +261,57 @@ extension ChannelTests {
             XCTAssertEqual(dir𝚭.$.companies.flatMap({ $0.employees.values }).count, 3)
 
             // TODO: generalize select() to work on collections and dictionaries
+            let keysChannel = transceiveZ(["888888"])
+            let keyedZ: Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<Directory>, StatePulse<Directory>>, [Company]>, StatePulse<[Company]>>, Company?>, StatePulse<Company?>>, Company>, StatePulse<Company>>, [PersonID : Person]>, StatePulse<[PersonID : Person]>>, [Person?]>, StatePulse<[Person?]>> = company.employees𝚭.keyed(keysChannel)
 
+            let empselZ = keyedZ.prism(lastNameLens.prism)
+            let empseltrap = empselZ.trap(Int.max)
+
+            XCTAssertEqual(3, company.employees𝚭.$.count)
+
+            XCTAssertEqual(2, empseltrap.caught.count)
+            XCTAssertEqual(["Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
+
+            keysChannel.$ += ["NaN", "999999"]
+            XCTAssertEqual(3, empseltrap.caught.count)
+            XCTAssertEqual(["Doe", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
+
+            empselZ.$ = ["A", "B"] // missing key won't be updated
+            XCTAssertEqual(4, empseltrap.caught.count)
+            XCTAssertEqual(3, company.employees𝚭.$.count)
+
+            XCTAssertEqual(["A", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
+
+            empselZ.$ = ["X", "Y", "Z"]
+            XCTAssertEqual(5, empseltrap.caught.count)
+            XCTAssertEqual(3, company.employees𝚭.$.count)
+            XCTAssertEqual("X", empseltrap.value?.new[0])
+            XCTAssertEqual(nil, empseltrap.value?.new[1])
+            XCTAssertEqual("Z", empseltrap.value?.new[2])
+
+            empselZ.$ = [nil, nil, nil] // no effect since lastName is non-nullable
+            XCTAssertEqual(6, empseltrap.caught.count)
+            XCTAssertEqual(3, company.employees𝚭.$.count)
+            XCTAssertEqual(3, empseltrap.value?.new.count)
+            if empseltrap.value?.new.count == 3 {
+                XCTAssertEqual("X", empseltrap.value?.new[0])
+                XCTAssertEqual(nil, empseltrap.value?.new[1])
+                XCTAssertEqual("Z", empseltrap.value?.new[2])
+            }
+
+            // include duplicates in the channel
+            keysChannel.$ = ["999999", "888888", "999999", "888888", "999999"]
+            empselZ.$ = ["A", "B", "C", "D", "E"]
+            XCTAssertEqual(5, empseltrap.value?.new.count)
+            if empseltrap.value?.new.count == 5 {
+                XCTAssertEqual("E", empseltrap.value?.new[0])
+                XCTAssertEqual("D", empseltrap.value?.new[1])
+                XCTAssertEqual("E", empseltrap.value?.new[2])
+                XCTAssertEqual("D", empseltrap.value?.new[3])
+                XCTAssertEqual("E", empseltrap.value?.new[4])
+            }
+            XCTAssertEqual(company.employees𝚭.$["888888"]?.lastName, "D")
+            XCTAssertEqual(company.employees𝚭.$["999999"]?.lastName, "E")
         }
 
     }

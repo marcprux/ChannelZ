@@ -307,19 +307,19 @@ class ChannelTests : ChannelTestCase {
         // test that sending capacity distinct values will store those values
         let send = [true, false, true, false, true, false, true, false, true, false]
         for x in send { bools.stream.$ = x }
-        XCTAssertEqual(send, bools.values)
+        XCTAssertEqual(send, bools.caught)
 
         // test that sending some mixed values will sieve and constrain to the capacity
         let mixed = [false, true, true, true, false, true, false, true, false, true, true, false, true, true, false, false, false]
         for x in mixed { bools.stream.$ = x }
-        XCTAssertEqual(send, bools.values)
+        XCTAssertEqual(send, bools.caught)
     }
 
 //    func testChannelTraps() {
 //        let seq = [1, 2, 3, 4, 5]
 //        let seqz = channelZSequence(seq).precedent()
 //        let trapz = seqz.trap(10)
-//        let values = trapz.values.map({ $0.old != nil ? [$0.old!.item, $0.new.item] : [$0.new.item] })
+//        let values = trapz.caught.map({ $0.old != nil ? [$0.old!.item, $0.new.item] : [$0.new.item] })
 //        XCTAssertEqual(values, [[1], [1, 2], [2, 3], [3, 4], [4, 5]])
 //    }
 
@@ -328,24 +328,24 @@ class ChannelTests : ChannelTestCase {
 
 //        let gfun1 = Channel(from: GeneratorOf(seq.generate())) // GeneratorChannel with generator
 //        let trap1 = gfun1.trap(3)
-//        XCTAssertEqual(seq[2...4], trap1.values[0...2], "trap should contain the last 3 elements of the sequence generator")
+//        XCTAssertEqual(seq[2...4], trap1.caught[0...2], "trap should contain the last 3 elements of the sequence generator")
 
         let gfun2 = channelZSequence(seq) // GeneratorChannel with sequence
         let trap2 = gfun2.trap(3)
-        XCTAssertEqual(seq[2...4], trap2.values[0...2], "trap should contain the last 3 elements of the sequence generator")
+        XCTAssertEqual(seq[2...4], trap2.caught[0...2], "trap should contain the last 3 elements of the sequence generator")
 
         let trapped = (channelZSequence(1...5) ^ channelZSequence(6...10)).trap(1000)
         
-        XCTAssertEqual(trapped.values.map({ [$0, $1] }), [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]]) // tupes aren't equatable
+        XCTAssertEqual(trapped.caught.map({ [$0, $1] }), [[1, 6], [2, 7], [3, 8], [4, 9], [5, 10]]) // tupes aren't equatable
 
         // observable concatenation
         // the equivalent of ReactiveX's Range
         let merged = (channelZSequence(1...3) + channelZSequence(3...5) + channelZSequence(2...6)).trap(1000)
-        XCTAssertEqual(merged.values, [1, 2, 3, 3, 4, 5, 2, 3, 4, 5, 6])
+        XCTAssertEqual(merged.caught, [1, 2, 3, 3, 4, 5, 2, 3, 4, 5, 6])
 
         // the equivalent of ReactiveX's Repeat
-        XCTAssertEqual(channelZSequence(Repeat(count: 10, repeatedValue: "A")).trap(4).values, ["A", "A", "A", "A"])
-        XCTAssertEqual(channelZSequence(Repeat(count: 10, repeatedValue: "A")).subsequent().trap(4).values, [])
+        XCTAssertEqual(channelZSequence(Repeat(count: 10, repeatedValue: "A")).trap(4).caught, ["A", "A", "A", "A"])
+        XCTAssertEqual(channelZSequence(Repeat(count: 10, repeatedValue: "A")).subsequent().trap(4).caught, [])
     }
 
     func testMergedUnreceive() {
@@ -622,7 +622,7 @@ class ChannelTests : ChannelTestCase {
 //
 //    }
 
-    func channelResults<S: StateReceiver, T>(channel: Channel<S, T>, items: [S.Pulse]) -> [T] {
+    func channelResults<S: StateReceiverType, T>(channel: Channel<S, T>, items: [S.Pulse]) -> [T] {
         var results: [T] = []
         let _ = channel.receive({ results.append($0) })
         for item in items {

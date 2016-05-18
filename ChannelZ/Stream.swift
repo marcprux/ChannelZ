@@ -95,15 +95,15 @@ public extension StreamType {
 }
 
 /// A TrapReceipt is a receptor to a stream that retains a number of values (default 1) when they are sent by the source
-public class TrapReceipt<C where C: StreamType>: Receipt {
+public final class TrapReceipt<C where C: StreamType>: Receipt {
     public var cancelled: Bool = false
     public let stream: C
 
     /// Returns the last value to be added to this trap
-    public var value: C.Pulse? { return values.last }
+    public var value: C.Pulse? { return caught.last }
 
     /// All the values currently held in the trap
-    public var values: [C.Pulse]
+    public var caught: [C.Pulse]
 
     public let capacity: Int
 
@@ -111,9 +111,8 @@ public class TrapReceipt<C where C: StreamType>: Receipt {
 
     public init(stream: C, capacity: Int) {
         self.stream = stream
-        self.values = []
+        self.caught = []
         self.capacity = capacity
-        self.values.reserveCapacity(capacity)
 
         let receipt = stream.receive({ [weak self] (value) -> Void in
             let _ = self?.receive(value)
@@ -125,11 +124,11 @@ public class TrapReceipt<C where C: StreamType>: Receipt {
     public func cancel() { receipt?.cancel() }
 
     public func receive(value: C.Pulse) {
-        if values.count >= capacity {
-            values.removeFirst(values.count - capacity + 1)
+        if caught.count >= capacity {
+            caught.removeFirst(caught.count - capacity + 1)
         }
         
-        values.append(value)
+        caught.append(value)
     }
 }
 
