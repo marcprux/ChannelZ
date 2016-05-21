@@ -185,10 +185,10 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testZipImplementations() {
-        let z1 = transceiveZ(1).new()
-        let z2 = transceiveZ("1").new()
-        let z3 = transceiveZ(true).new()
-        let z4 = transceiveZ().new()
+        let z1 = transceive(1).new()
+        let z2 = transceive("1").new()
+        let z3 = transceive(true).new()
+        let z4 = transceive().new()
 
         var items: [(index: Int, pulse: (((Int, String), Bool), Void))] = []
         let zz = z1.zip(z2).zip(z3).zip(z4).enumerate()
@@ -234,8 +234,8 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testEnumerateCount() {
-        let z1 = transceiveZ(1).new()
-        let z2 = transceiveZ("1").new()
+        let z1 = transceive(1).new()
+        let z2 = transceive("1").new()
         let zz = z1.either(z2)
         var counts = (-1, 0, 0, 0)
 
@@ -264,8 +264,8 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testEnumerations() {
-        let z1 = transceiveZ(true).new()
-        let z2 = transceiveZ(1).new()
+        let z1 = transceive(true).new()
+        let z2 = transceive(1).new()
         typealias Item = (index: Int, pulse: (index: Int, pulse: (index: Int, pulse: Choose2<Bool, Int>)))
 
         let enums = z1.either(z2).enumerate().enumerate().enumerate()
@@ -509,7 +509,7 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testReduceMultiple() {
-        let numberz = transceiveZ(0).new()
+        let numberz = transceive(0).new()
 
         let sum = numberz.reduce(0, combine: +)
 
@@ -540,7 +540,7 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testEnumerateWithMultipleReceivers() {
-        let prop = transceiveZ("")
+        let prop = transceive("")
         let enumerated = prop.enumerate()
 
         var counts = (Array<Int>(), Array<Int>(), Array<Int>())
@@ -958,29 +958,29 @@ class ChannelTests : ChannelTestCase {
     /// Explicitly checks the signatures of the `bind` variants.
     func testChannelBindSignatures() {
         do {
-            let c1: Channel<ValueTransceiver<String>, Int> = transceiveZ("X").map({ _ in 1 })
-            let c2: Channel<ValueTransceiver<Int>, String> = transceiveZ(1).map({ _ in "X" })
+            let c1: Channel<ValueTransceiver<String>, Int> = transceive("X").map({ _ in 1 })
+            let c2: Channel<ValueTransceiver<Int>, String> = transceive(1).map({ _ in "X" })
             c1.bind(c2)
             c1.bindPulseToPulse(c2)
         }
 
         do {
-            let c1: Channel<ValueTransceiver<String>, Int?> = transceiveZ("X").map({ _ in 2 as Int? })
-            let c2: Channel<ValueTransceiver<Int?>, String> = transceiveZ(1 as Int?).map({ _ in "X" })
+            let c1: Channel<ValueTransceiver<String>, Int?> = transceive("X").map({ _ in 2 as Int? })
+            let c2: Channel<ValueTransceiver<Int?>, String> = transceive(1 as Int?).map({ _ in "X" })
             c1.bind(c2)
             c1.bindPulseToOptionalPulse(c2)
         }
 
         do {
-            let c1: Channel<ValueTransceiver<String?>, Int> = transceiveZ("X" as String?).map({ _ in 2 })
-            let c2: Channel<ValueTransceiver<Int>, String?> = transceiveZ(1).map({ _ in "X" as String? })
+            let c1: Channel<ValueTransceiver<String?>, Int> = transceive("X" as String?).map({ _ in 2 })
+            let c2: Channel<ValueTransceiver<Int>, String?> = transceive(1).map({ _ in "X" as String? })
             c1.bind(c2)
             c1.bindOptionalPulseToPulse(c2)
         }
 
         do {
-            let c1: Channel<ValueTransceiver<String?>, Int?> = transceiveZ("X" as String?).map({ _ in 2 as Int? })
-            let c2: Channel<ValueTransceiver<Int?>, String?> = transceiveZ(1 as Int?).map({ _ in "X" })
+            let c1: Channel<ValueTransceiver<String?>, Int?> = transceive("X" as String?).map({ _ in 2 as Int? })
+            let c2: Channel<ValueTransceiver<Int?>, String?> = transceive(1 as Int?).map({ _ in "X" })
             c1.bind(c2)
             c1.bindOptionalPulseToOptionalPulse(c2)
         }
@@ -989,29 +989,29 @@ class ChannelTests : ChannelTestCase {
     /// Explicitly checks the signatures of the `link` variants.
     func testChannelLinkSignatures() {
         do {
-            let c1: Channel<ValueTransceiver<String>, StatePulse<Int>> = transceiveZ("X").map({ _ in StatePulse(old: 1, new: 2) })
-            let c2: Channel<ValueTransceiver<Int>, StatePulse<String>> = transceiveZ(1).map({ _ in StatePulse(old: "", new: "X") })
+            let c1: Channel<ValueTransceiver<String>, StatePulse<Int>> = transceive("X").map({ _ in StatePulse(old: 1, new: 2) })
+            let c2: Channel<ValueTransceiver<Int>, StatePulse<String>> = transceive(1).map({ _ in StatePulse(old: "", new: "X") })
             c1.link(c2)
             c1.linkStateToState(c2)
         }
 
         do {
-            let c1: Channel<ValueTransceiver<String>, StatePulse<Int?>> = transceiveZ("X").map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
-            let c2: Channel<ValueTransceiver<Int?>, StatePulse<String>> = transceiveZ(1 as Int?).map({ _ in StatePulse(old: "", new: "X") })
+            let c1: Channel<ValueTransceiver<String>, StatePulse<Int?>> = transceive("X").map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
+            let c2: Channel<ValueTransceiver<Int?>, StatePulse<String>> = transceive(1 as Int?).map({ _ in StatePulse(old: "", new: "X") })
             c1.link(c2)
             c1.linkStateToOptionalState(c2)
         }
 
         do {
-            let c1: Channel<ValueTransceiver<String?>, StatePulse<Int>> = transceiveZ("X" as String?).map({ _ in StatePulse(old: 1, new: 2) })
-            let c2: Channel<ValueTransceiver<Int>, StatePulse<String?>> = transceiveZ(1).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
+            let c1: Channel<ValueTransceiver<String?>, StatePulse<Int>> = transceive("X" as String?).map({ _ in StatePulse(old: 1, new: 2) })
+            let c2: Channel<ValueTransceiver<Int>, StatePulse<String?>> = transceive(1).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
             c1.link(c2)
             c1.linkOptionalStateToState(c2)
         }
 
         do {
-            let c1: Channel<ValueTransceiver<String?>, StatePulse<Int?>> = transceiveZ("X" as String?).map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
-            let c2: Channel<ValueTransceiver<Int?>, StatePulse<String?>> = transceiveZ(1 as Int?).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
+            let c1: Channel<ValueTransceiver<String?>, StatePulse<Int?>> = transceive("X" as String?).map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
+            let c2: Channel<ValueTransceiver<Int?>, StatePulse<String?>> = transceive(1 as Int?).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
             c1.link(c2)
             c1.linkOptionalStateToOptionalState(c2)
         }

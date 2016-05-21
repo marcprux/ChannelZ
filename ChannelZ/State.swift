@@ -729,7 +729,7 @@ public extension ChannelType where Source : TransceiverType, Source.Element : _W
 ///
 /// - See Also: `ValueTransceiver`
 /// - See Also: `link`
-@warn_unused_result public func transceiveZ<T>(initialValue: T) -> Channel<ValueTransceiver<T>, StatePulse<T>> {
+@warn_unused_result public func transceive<T>(initialValue: T) -> Channel<ValueTransceiver<T>, StatePulse<T>> {
     return ValueTransceiver(rawValue: initialValue).transceive()
 }
 
@@ -1080,7 +1080,7 @@ public extension ChannelType where Source.Element : RangeReplaceableCollectionTy
 
     /// Returns an accessor to the collection's static indices of elements
     @warn_unused_result public func indices(indices: [Source.Element.Index]) -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, StatePulse<[Self.Pulse.Element.Generator.Element]>> {
-        return indexed(transceiveZ(indices))
+        return indexed(transceive(indices))
     }
 
     /// Creates a channel to the underlying collection type where the channel creates an optional

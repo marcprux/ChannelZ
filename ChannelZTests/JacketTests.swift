@@ -109,7 +109,7 @@ extension ChannelTests {
         dir.companies[0].employees[dir.companies[0].ceoID]?.workAddress?.line2 = "Suite #111"
 
         do {
-            let dir𝚭 = transceiveZ(dir)
+            let dir𝚭 = transceive(dir)
 
             let bebe𝚭 = dir𝚭.author𝚭
 
@@ -194,7 +194,7 @@ extension ChannelTests {
             XCTAssertEqual(["X", "Y", "Z"], line1sZ.$)
 
             // creates a "select" combination of collection and index channels
-            let indexChannel = transceiveZ([0])
+            let indexChannel = transceive([0])
             let selectZ = prevZ.indexed(indexChannel).prism(line1Lens)
 
             let seltrap = selectZ.trap(Int.max)
@@ -261,7 +261,7 @@ extension ChannelTests {
             XCTAssertEqual(dir𝚭.$.companies.flatMap({ $0.employees.values }).count, 3)
 
             // TODO: generalize select() to work on collections and dictionaries
-            let keysChannel = transceiveZ(["888888"])
+            let keysChannel = transceive(["888888"])
             let keyedZ: Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<Directory>, StatePulse<Directory>>, [Company]>, StatePulse<[Company]>>, Company?>, StatePulse<Company?>>, Company>, StatePulse<Company>>, [PersonID : Person]>, StatePulse<[PersonID : Person]>>, [Person?]>, StatePulse<[Person?]>> = company.employees𝚭.keyed(keysChannel)
 
             let empselZ = keyedZ.prism(lastNameLens.prism)
@@ -317,7 +317,7 @@ extension ChannelTests {
     }
 
     func testLensChannels() {
-        let prop = transceiveZ((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
+        let prop = transceive((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
 
         let str = prop.focus({ $0.str }, { $0.str = $1 })
         let int = prop.focus({ $0.int }, { $0.int = $1 })
