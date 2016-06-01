@@ -31,14 +31,38 @@ public enum Result<Wrapped> : _WrapperType {
     }
 }
 
-extension Result : ChooseN {
+extension Result : Choose2Type {
 
     /// Returns the number of choices
     public var arity: Int { return 2 }
 
     /// The first type in thie OneOf if the `Wrapped` value
-    public var first: Wrapped? {
-        return flatMap({ $0 })
+    public var v1: Wrapped? {
+        get {
+            return flatMap({ $0 })
+        }
+
+        set(x) {
+            if let x = x {
+                self = .Success(x)
+            }
+        }
+    }
+
+    /// The first type in thie OneOf if the `Error` value
+    public var v2: ErrorType? {
+        get {
+            switch self {
+            case .Failure(let x): return x
+            case .Success: return nil
+            }
+        }
+
+        set(x) {
+            if let x = x {
+                self = .Failure(x)
+            }
+        }
     }
 }
 

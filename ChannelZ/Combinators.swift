@@ -9,17 +9,113 @@
 // Swift 3 TODO: Variadic Generics: https://github.com/apple/swift/blob/master/docs/GenericsManifesto.md#variadic-generics
 
 /// One of a set number of options
-public protocol ChooseN {
+public protocol Choose1Type {
     /// Returns the number of choices
     var arity: Int { get }
 
     /// The first type in thie Choose
     associatedtype T1
-    var first: T1? { get }
+    var v1: T1? { get set }
 }
 
+public protocol Choose2Type : Choose1Type {
+    associatedtype T2
+    var v2: T2? { get set }
+}
+
+public protocol Choose3Type : Choose2Type {
+    associatedtype T3
+    var v3: T3? { get set }
+}
+
+public protocol Choose4Type : Choose3Type {
+    associatedtype T4
+    var v4: T4? { get set }
+}
+
+public protocol Choose5Type : Choose4Type {
+    associatedtype T5
+    var v5: T5? { get set }
+}
+
+public protocol Choose6Type : Choose5Type {
+    associatedtype T6
+    var v6: T6? { get set }
+}
+
+public protocol Choose7Type : Choose6Type {
+    associatedtype T7
+    var v7: T7? { get set }
+}
+
+public protocol Choose8Type : Choose7Type {
+    associatedtype T8
+    var v8: T8? { get set }
+}
+
+public protocol Choose9Type : Choose8Type {
+    associatedtype T9
+    var v9: T9? { get set }
+}
+
+public protocol Choose10Type : Choose9Type {
+    associatedtype T10
+    var v10: T10? { get set }
+}
+
+public protocol Choose11Type : Choose10Type {
+    associatedtype T11
+    var v11: T11? { get set }
+}
+
+public protocol Choose12Type : Choose11Type {
+    associatedtype T12
+    var v12: T12? { get set }
+}
+
+public protocol Choose13Type : Choose12Type {
+    associatedtype T13
+    var v13: T13? { get set }
+}
+
+public protocol Choose14Type : Choose13Type {
+    associatedtype T14
+    var v14: T14? { get set }
+}
+
+public protocol Choose15Type : Choose14Type {
+    associatedtype T15
+    var v15: T15? { get set }
+}
+
+public protocol Choose16Type : Choose15Type {
+    associatedtype T16
+    var v16: T16? { get set }
+}
+
+public protocol Choose17Type : Choose16Type {
+    associatedtype T17
+    var v17: T17? { get set }
+}
+
+public protocol Choose18Type : Choose17Type {
+    associatedtype T18
+    var v18: T18? { get set }
+}
+
+public protocol Choose19Type : Choose18Type {
+    associatedtype T19
+    var v19: T19? { get set }
+}
+
+public protocol Choose20Type : Choose19Type {
+    associatedtype T20
+    var v20: T20? { get set }
+}
+
+
 /// One of 2 options
-public enum Choose2<T1, T2>: ChooseN {
+public enum Choose2<T1, T2>: Choose2Type {
     public var arity: Int { return 2 }
 
     /// First of 2
@@ -28,10 +124,21 @@ public enum Choose2<T1, T2>: ChooseN {
     case V2(T2)
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
+
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
 }
 
 /// One of 3 options
-public enum Choose3<T1, T2, T3>: ChooseN {
+public enum Choose3<T1, T2, T3>: Choose3Type {
     public var arity: Int { return 3 }
 
     /// First of 3
@@ -42,6 +149,21 @@ public enum Choose3<T1, T2, T3>: ChooseN {
     case V3(T3)
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
+
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
 
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<T1, T2>, T3> {
@@ -54,7 +176,7 @@ public enum Choose3<T1, T2, T3>: ChooseN {
 }
 
 /// One of 4 options
-public enum Choose4<T1, T2, T3, T4>: ChooseN {
+public enum Choose4<T1, T2, T3, T4>: Choose4Type {
     public var arity: Int { return 4 }
 
     /// First of 4
@@ -68,6 +190,26 @@ public enum Choose4<T1, T2, T3, T4>: ChooseN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<T1, T2>, T3>, T4> {
         switch self {
@@ -80,7 +222,7 @@ public enum Choose4<T1, T2, T3, T4>: ChooseN {
 }
 
 /// One of 5 options
-public enum Choose5<T1, T2, T3, T4, T5>: ChooseN {
+public enum Choose5<T1, T2, T3, T4, T5>: Choose5Type {
     public var arity: Int { return 5 }
 
     /// First of 5
@@ -96,6 +238,31 @@ public enum Choose5<T1, T2, T3, T4, T5>: ChooseN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5> {
         switch self {
@@ -109,7 +276,7 @@ public enum Choose5<T1, T2, T3, T4, T5>: ChooseN {
 }
 
 /// One of 6 options
-public enum Choose6<T1, T2, T3, T4, T5, T6>: ChooseN {
+public enum Choose6<T1, T2, T3, T4, T5, T6>: Choose6Type {
     public var arity: Int { return 6 }
 
     /// First of 6
@@ -127,6 +294,36 @@ public enum Choose6<T1, T2, T3, T4, T5, T6>: ChooseN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6> {
         switch self {
@@ -141,7 +338,7 @@ public enum Choose6<T1, T2, T3, T4, T5, T6>: ChooseN {
 }
 
 /// One of 7 options
-public enum Choose7<T1, T2, T3, T4, T5, T6, T7>: ChooseN {
+public enum Choose7<T1, T2, T3, T4, T5, T6, T7>: Choose7Type {
     public var arity: Int { return 7 }
 
     /// First of 7
@@ -161,6 +358,41 @@ public enum Choose7<T1, T2, T3, T4, T5, T6, T7>: ChooseN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7> {
         switch self {
@@ -176,7 +408,7 @@ public enum Choose7<T1, T2, T3, T4, T5, T6, T7>: ChooseN {
 }
 
 /// One of 8 options
-public enum Choose8<T1, T2, T3, T4, T5, T6, T7, T8>: ChooseN {
+public enum Choose8<T1, T2, T3, T4, T5, T6, T7, T8>: Choose8Type {
     public var arity: Int { return 8 }
 
     /// First of 8
@@ -198,6 +430,46 @@ public enum Choose8<T1, T2, T3, T4, T5, T6, T7, T8>: ChooseN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8> {
         switch self {
@@ -214,7 +486,7 @@ public enum Choose8<T1, T2, T3, T4, T5, T6, T7, T8>: ChooseN {
 }
 
 /// One of 9 options
-public enum Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: ChooseN {
+public enum Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: Choose9Type {
     public var arity: Int { return 9 }
 
     /// First of 9
@@ -238,6 +510,51 @@ public enum Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: ChooseN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9> {
         switch self {
@@ -255,7 +572,7 @@ public enum Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: ChooseN {
 }
 
 /// One of 10 options
-public enum Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: ChooseN {
+public enum Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: Choose10Type {
     public var arity: Int { return 10 }
 
     /// First of 10
@@ -281,6 +598,56 @@ public enum Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: ChooseN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10> {
         switch self {
@@ -299,7 +666,7 @@ public enum Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: ChooseN {
 }
 
 /// One of 11 options
-public enum Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: ChooseN {
+public enum Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: Choose11Type {
     public var arity: Int { return 11 }
 
     /// First of 11
@@ -327,6 +694,61 @@ public enum Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: ChooseN {
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
+    public var v11: T11? {
+        get { if case .V11(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V11(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11> {
         switch self {
@@ -347,7 +769,7 @@ public enum Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: ChooseN {
 
 
 /// One of 12 options
-public enum Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: ChooseN {
+public enum Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: Choose12Type {
     public var arity: Int { return 12 }
 
     /// First of 12
@@ -377,6 +799,66 @@ public enum Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: ChooseN
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
+    public var v11: T11? {
+        get { if case .V11(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V11(x) } }
+    }
+
+    public var v12: T12? {
+        get { if case .V12(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V12(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12> {
         switch self {
@@ -397,7 +879,7 @@ public enum Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: ChooseN
 }
 
 /// One of 13 options
-public enum Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: ChooseN {
+public enum Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: Choose13Type {
     public var arity: Int { return 13 }
 
     /// First of 13
@@ -429,6 +911,71 @@ public enum Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: Ch
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
+    public var v11: T11? {
+        get { if case .V11(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V11(x) } }
+    }
+
+    public var v12: T12? {
+        get { if case .V12(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V12(x) } }
+    }
+
+    public var v13: T13? {
+        get { if case .V13(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V13(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13> {
         switch self {
@@ -450,7 +997,7 @@ public enum Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: Ch
 }
 
 /// One of 14 options
-public enum Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>: ChooseN {
+public enum Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>: Choose14Type {
     public var arity: Int { return 14 }
 
     /// First of 14
@@ -484,6 +1031,76 @@ public enum Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
+    public var v11: T11? {
+        get { if case .V11(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V11(x) } }
+    }
+
+    public var v12: T12? {
+        get { if case .V12(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V12(x) } }
+    }
+
+    public var v13: T13? {
+        get { if case .V13(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V13(x) } }
+    }
+
+    public var v14: T14? {
+        get { if case .V14(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V14(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14> {
         switch self {
@@ -506,7 +1123,7 @@ public enum Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 }
 
 /// One of 15 options
-public enum Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>: ChooseN {
+public enum Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>: Choose15Type {
     public var arity: Int { return 15 }
 
     /// First of 15
@@ -542,6 +1159,81 @@ public enum Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
+    public var v11: T11? {
+        get { if case .V11(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V11(x) } }
+    }
+
+    public var v12: T12? {
+        get { if case .V12(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V12(x) } }
+    }
+
+    public var v13: T13? {
+        get { if case .V13(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V13(x) } }
+    }
+
+    public var v14: T14? {
+        get { if case .V14(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V14(x) } }
+    }
+
+    public var v15: T15? {
+        get { if case .V15(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V15(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15> {
         switch self {
@@ -565,7 +1257,7 @@ public enum Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 }
 
 /// One of 16 options
-public enum Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>: ChooseN {
+public enum Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>: Choose16Type {
     public var arity: Int { return 16 }
 
     /// First of 16
@@ -603,6 +1295,86 @@ public enum Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
+    public var v11: T11? {
+        get { if case .V11(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V11(x) } }
+    }
+
+    public var v12: T12? {
+        get { if case .V12(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V12(x) } }
+    }
+
+    public var v13: T13? {
+        get { if case .V13(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V13(x) } }
+    }
+
+    public var v14: T14? {
+        get { if case .V14(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V14(x) } }
+    }
+
+    public var v15: T15? {
+        get { if case .V15(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V15(x) } }
+    }
+
+    public var v16: T16? {
+        get { if case .V16(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V16(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16> {
         switch self {
@@ -627,7 +1399,7 @@ public enum Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 }
 
 /// One of 17 options
-public enum Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>: ChooseN {
+public enum Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>: Choose17Type {
     public var arity: Int { return 17 }
 
     /// First of 17
@@ -667,6 +1439,91 @@ public enum Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
+    public var v11: T11? {
+        get { if case .V11(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V11(x) } }
+    }
+
+    public var v12: T12? {
+        get { if case .V12(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V12(x) } }
+    }
+
+    public var v13: T13? {
+        get { if case .V13(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V13(x) } }
+    }
+
+    public var v14: T14? {
+        get { if case .V14(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V14(x) } }
+    }
+
+    public var v15: T15? {
+        get { if case .V15(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V15(x) } }
+    }
+
+    public var v16: T16? {
+        get { if case .V16(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V16(x) } }
+    }
+
+    public var v17: T17? {
+        get { if case .V17(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V17(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17> {
         switch self {
@@ -693,7 +1550,7 @@ public enum Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 
 
 /// One of 18 options
-public enum Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>: ChooseN {
+public enum Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>: Choose18Type {
     public var arity: Int { return 18 }
 
     /// First of 18
@@ -735,6 +1592,96 @@ public enum Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
+    public var v11: T11? {
+        get { if case .V11(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V11(x) } }
+    }
+
+    public var v12: T12? {
+        get { if case .V12(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V12(x) } }
+    }
+
+    public var v13: T13? {
+        get { if case .V13(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V13(x) } }
+    }
+
+    public var v14: T14? {
+        get { if case .V14(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V14(x) } }
+    }
+
+    public var v15: T15? {
+        get { if case .V15(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V15(x) } }
+    }
+
+    public var v16: T16? {
+        get { if case .V16(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V16(x) } }
+    }
+
+    public var v17: T17? {
+        get { if case .V17(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V17(x) } }
+    }
+
+    public var v18: T18? {
+        get { if case .V18(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V18(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18> {
         switch self {
@@ -762,7 +1709,7 @@ public enum Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 
 
 /// One of 19 options
-public enum Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>: ChooseN {
+public enum Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>: Choose19Type {
     public var arity: Int { return 19 }
 
     /// First of 19
@@ -806,6 +1753,101 @@ public enum Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
 
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
+    public var v11: T11? {
+        get { if case .V11(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V11(x) } }
+    }
+
+    public var v12: T12? {
+        get { if case .V12(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V12(x) } }
+    }
+
+    public var v13: T13? {
+        get { if case .V13(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V13(x) } }
+    }
+
+    public var v14: T14? {
+        get { if case .V14(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V14(x) } }
+    }
+
+    public var v15: T15? {
+        get { if case .V15(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V15(x) } }
+    }
+
+    public var v16: T16? {
+        get { if case .V16(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V16(x) } }
+    }
+
+    public var v17: T17? {
+        get { if case .V17(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V17(x) } }
+    }
+
+    public var v18: T18? {
+        get { if case .V18(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V18(x) } }
+    }
+
+    public var v19: T19? {
+        get { if case .V19(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V19(x) } }
+    }
+
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18>, T19> {
         switch self {
@@ -834,7 +1876,7 @@ public enum Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 
 
 /// One of 20 options
-public enum Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>: ChooseN {
+public enum Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>: Choose20Type {
     public var arity: Int { return 20 }
 
     /// First of 20
@@ -879,6 +1921,106 @@ public enum Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     case V20(T20)
 
     public var first: T1? { if case .V1(let x) = self { return x } else { return nil } }
+
+    public var v1: T1? {
+        get { if case .V1(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V1(x) } }
+    }
+
+    public var v2: T2? {
+        get { if case .V2(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V2(x) } }
+    }
+
+    public var v3: T3? {
+        get { if case .V3(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V3(x) } }
+    }
+
+    public var v4: T4? {
+        get { if case .V4(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V4(x) } }
+    }
+
+    public var v5: T5? {
+        get { if case .V5(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V5(x) } }
+    }
+
+    public var v6: T6? {
+        get { if case .V6(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V6(x) } }
+    }
+
+    public var v7: T7? {
+        get { if case .V7(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V7(x) } }
+    }
+
+    public var v8: T8? {
+        get { if case .V8(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V8(x) } }
+    }
+
+    public var v9: T9? {
+        get { if case .V9(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V9(x) } }
+    }
+
+    public var v10: T10? {
+        get { if case .V10(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V10(x) } }
+    }
+
+    public var v11: T11? {
+        get { if case .V11(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V11(x) } }
+    }
+
+    public var v12: T12? {
+        get { if case .V12(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V12(x) } }
+    }
+
+    public var v13: T13? {
+        get { if case .V13(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V13(x) } }
+    }
+
+    public var v14: T14? {
+        get { if case .V14(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V14(x) } }
+    }
+
+    public var v15: T15? {
+        get { if case .V15(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V15(x) } }
+    }
+
+    public var v16: T16? {
+        get { if case .V16(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V16(x) } }
+    }
+
+    public var v17: T17? {
+        get { if case .V17(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V17(x) } }
+    }
+
+    public var v18: T18? {
+        get { if case .V18(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V18(x) } }
+    }
+
+    public var v19: T19? {
+        get { if case .V19(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V19(x) } }
+    }
+
+    public var v20: T20? {
+        get { if case .V20(let x) = self { return x } else { return nil } }
+        set(x) { if let x = x { self = .V20(x) } }
+    }
 
     /// Split the tuple into nested Choose2 instances
     public func split() -> Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<Choose2<T1, T2>, T3>, T4>, T5>, T6>, T7>, T8>, T9>, T10>, T11>, T12>, T13>, T14>, T15>, T16>, T17>, T18>, T19>, T20> {

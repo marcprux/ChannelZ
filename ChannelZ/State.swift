@@ -1183,3 +1183,103 @@ public extension ChannelType where Source.Element : KeyIndexed, Source : Transce
         return focus(lens)
     }
 }
+
+public extension ChannelType where Source.Element : Choose1Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the first option of N choices
+    public var v1Z: Channel<LensSource<Self, Optional<Source.Element.T1>>, StatePulse<Optional<Source.Element.T1>>> { return focus({ $0.v1 }, { $0.v1 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose2Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the second option of N choices
+    public var v2Z: Channel<LensSource<Self, Optional<Source.Element.T2>>, StatePulse<Optional<Source.Element.T2>>> { return focus({ $0.v2 }, { $0.v2 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose3Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the third option of N choices
+    public var v3Z: Channel<LensSource<Self, Optional<Source.Element.T3>>, StatePulse<Optional<Source.Element.T3>>> { return focus({ $0.v3 }, { $0.v3 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose4Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the fourth option of N choices
+    public var v4Z: Channel<LensSource<Self, Optional<Source.Element.T4>>, StatePulse<Optional<Source.Element.T4>>> { return focus({ $0.v4 }, { $0.v4 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose5Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the fifth option of N choices
+    public var v5Z: Channel<LensSource<Self, Optional<Source.Element.T5>>, StatePulse<Optional<Source.Element.T5>>> { return focus({ $0.v5 }, { $0.v5 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose6Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the sixth option of N choices
+    public var v6Z: Channel<LensSource<Self, Optional<Source.Element.T6>>, StatePulse<Optional<Source.Element.T6>>> { return focus({ $0.v6 }, { $0.v6 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose7Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the seventh option of N choices
+    public var v7Z: Channel<LensSource<Self, Optional<Source.Element.T7>>, StatePulse<Optional<Source.Element.T7>>> { return focus({ $0.v7 }, { $0.v7 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose8Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the eighth option of N choices
+    public var v8Z: Channel<LensSource<Self, Optional<Source.Element.T8>>, StatePulse<Optional<Source.Element.T8>>> { return focus({ $0.v8 }, { $0.v8 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose9Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the ninth option of N choices
+    public var v9Z: Channel<LensSource<Self, Optional<Source.Element.T9>>, StatePulse<Optional<Source.Element.T9>>> { return focus({ $0.v9 }, { $0.v9 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose10Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the tenth option of N choices
+    public var v10Z: Channel<LensSource<Self, Optional<Source.Element.T10>>, StatePulse<Optional<Source.Element.T10>>> { return focus({ $0.v10 }, { $0.v10 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose11Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the eleventh option of N choices
+    public var v11Z: Channel<LensSource<Self, Optional<Source.Element.T11>>, StatePulse<Optional<Source.Element.T11>>> { return focus({ $0.v11 }, { $0.v11 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose12Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the twelfth option of N choices
+    public var v12Z: Channel<LensSource<Self, Optional<Source.Element.T12>>, StatePulse<Optional<Source.Element.T12>>> { return focus({ $0.v12 }, { $0.v12 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose13Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the thirteenth option of N choices
+    public var v13Z: Channel<LensSource<Self, Optional<Source.Element.T13>>, StatePulse<Optional<Source.Element.T13>>> { return focus({ $0.v13 }, { $0.v13 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose14Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the fourteenth option of N choices
+    public var v14Z: Channel<LensSource<Self, Optional<Source.Element.T14>>, StatePulse<Optional<Source.Element.T14>>> { return focus({ $0.v14 }, { $0.v14 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose15Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the fifteenth option of N choices
+    public var v15Z: Channel<LensSource<Self, Optional<Source.Element.T15>>, StatePulse<Optional<Source.Element.T15>>> { return focus({ $0.v15 }, { $0.v15 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose16Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the sixteenth option of N choices
+    public var v16Z: Channel<LensSource<Self, Optional<Source.Element.T16>>, StatePulse<Optional<Source.Element.T16>>> { return focus({ $0.v16 }, { $0.v16 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose17Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the seventeenth option of N choices
+    public var v17Z: Channel<LensSource<Self, Optional<Source.Element.T17>>, StatePulse<Optional<Source.Element.T17>>> { return focus({ $0.v17 }, { $0.v17 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose18Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the eighteenth option of N choices
+    public var v18Z: Channel<LensSource<Self, Optional<Source.Element.T18>>, StatePulse<Optional<Source.Element.T18>>> { return focus({ $0.v18 }, { $0.v18 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose19Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the nineteenth option of N choices
+    public var v19Z: Channel<LensSource<Self, Optional<Source.Element.T19>>, StatePulse<Optional<Source.Element.T19>>> { return focus({ $0.v19 }, { $0.v19 = $1 }) }
+}
+
+public extension ChannelType where Source.Element : Choose20Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+    /// Channel for the twentieth option of N choices
+    public var v20Z: Channel<LensSource<Self, Optional<Source.Element.T20>>, StatePulse<Optional<Source.Element.T20>>> { return focus({ $0.v20 }, { $0.v20 = $1 }) }
+}
