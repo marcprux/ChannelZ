@@ -932,7 +932,7 @@ public extension ChannelType where Source.Element : _WrapperType, Source : Trans
     }
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
-    /// with the result of the value; alias for `coalesce`
+    /// with the constant of the value; alias for `coalesce`
     @warn_unused_result public func coalesce(value: Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
         return coalesce({ _ in value })
     }
