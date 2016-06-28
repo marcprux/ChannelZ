@@ -43,38 +43,40 @@ struct Address {
     var postalCode: String
 }
 
+public extension ChannelType where Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+}
 
 extension ChannelType where Source.Element == Directory, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
-    var author𝚭: Channel<LensSource<Self, Person>, StatePulse<Person>> { return focus({ $0.author }, { $0.author = $1 }) }
-    var companies𝚭: Channel<LensSource<Self, [Company]>, StatePulse<[Company]>> { return focus({ $0.companies }, { $0.companies = $1 }) }
+    var authorZ: Channel<LensSource<Self, Person>, StatePulse<Person>> { return focus({ $0.author }, { $0.author = $1 }) }
+    var companiesZ: Channel<LensSource<Self, [Company]>, StatePulse<[Company]>> { return focus({ $0.companies }, { $0.companies = $1 }) }
 }
 
 extension ChannelType where Source.Element == Company, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
-    var address𝚭: Channel<LensSource<Self, Address>, StatePulse<Address>> { return focus({ $0.address }, { $0.address = $1 }) }
-    var employees𝚭: Channel<LensSource<Self, [PersonID: Person]>, StatePulse<[PersonID: Person]>> { return focus({ $0.employees }, { $0.employees = $1 }) }
-    var ceoID𝚭: Channel<LensSource<Self, PersonID>, StatePulse<PersonID>> { return focus({ $0.ceoID }, { $0.ceoID = $1 }) }
-    var ctoID𝚭: Channel<LensSource<Self, PersonID?>, StatePulse<PersonID?>> { return focus({ $0.ctoID }, { $0.ctoID = $1 }) }
+    var addressZ: Channel<LensSource<Self, Address>, StatePulse<Address>> { return focus({ $0.address }, { $0.address = $1 }) }
+    var employeesZ: Channel<LensSource<Self, [PersonID: Person]>, StatePulse<[PersonID: Person]>> { return focus({ $0.employees }, { $0.employees = $1 }) }
+    var ceoIDZ: Channel<LensSource<Self, PersonID>, StatePulse<PersonID>> { return focus({ $0.ceoID }, { $0.ceoID = $1 }) }
+    var ctoIDZ: Channel<LensSource<Self, PersonID?>, StatePulse<PersonID?>> { return focus({ $0.ctoID }, { $0.ctoID = $1 }) }
 }
 
 extension ChannelType where Source.Element == Person, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
-    var firstName𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.firstName }, { $0.firstName = $1 }) }
-    var lastName𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.lastName }, { $0.lastName = $1 }) }
-    var gender𝚭: Channel<LensSource<Self, Person.Gender>, StatePulse<Person.Gender>> { return focus({ $0.gender }, { $0.gender = $1 }) }
-    var homeAddress𝚭: Channel<LensSource<Self, Address>, StatePulse<Address>> { return focus({ $0.homeAddress }, { $0.homeAddress = $1 }) }
-    var workAddress𝚭: Channel<LensSource<Self, Address?>, StatePulse<Address?>> { return focus({ $0.workAddress }, { $0.workAddress = $1 }) }
-    var previousAddresses𝚭: Channel<LensSource<Self, [Address]>, StatePulse<[Address]>> { return focus({ $0.previousAddresses }, { $0.previousAddresses = $1 }) }
+    var firstNameZ: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.firstName }, { $0.firstName = $1 }) }
+    var lastNameZ: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.lastName }, { $0.lastName = $1 }) }
+    var genderZ: Channel<LensSource<Self, Person.Gender>, StatePulse<Person.Gender>> { return focus({ $0.gender }, { $0.gender = $1 }) }
+    var homeAddressZ: Channel<LensSource<Self, Address>, StatePulse<Address>> { return focus({ $0.homeAddress }, { $0.homeAddress = $1 }) }
+    var workAddressZ: Channel<LensSource<Self, Address?>, StatePulse<Address?>> { return focus({ $0.workAddress }, { $0.workAddress = $1 }) }
+    var previousAddressesZ: Channel<LensSource<Self, [Address]>, StatePulse<[Address]>> { return focus({ $0.previousAddresses }, { $0.previousAddresses = $1 }) }
 }
 
 extension ChannelType where Source.Element == Address, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
-    var line1𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.line1 }, { $0.line1 = $1 }) }
-    var line2𝚭: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0.line2 }, { $0.line2 = $1 }) }
-    var postalCode𝚭: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.postalCode }, { $0.postalCode = $1 }) }
+    var line1Z: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.line1 }, { $0.line1 = $1 }) }
+    var line2Z: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0.line2 }, { $0.line2 = $1 }) }
+    var postalCodeZ: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.postalCode }, { $0.postalCode = $1 }) }
 }
 
 extension ChannelType where Source.Element == Address?, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
-    var line1𝚭: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0?.line1 }, { if let value = $1 { $0?.line1 = value }  }) }
-    var line2𝚭: Channel<LensSource<Self, String??>, StatePulse<String??>> { return focus({ $0?.line2 }, { if let value = $1 { $0?.line2 = value }  }) }
-    var postalCode𝚭: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0?.postalCode }, { if let value = $1 { $0?.postalCode = value }  }) }
+    var line1Z: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0?.line1 }, { if let value = $1 { $0?.line1 = value }  }) }
+    var line2Z: Channel<LensSource<Self, String??>, StatePulse<String??>> { return focus({ $0?.line2 }, { if let value = $1 { $0?.line2 = value }  }) }
+    var postalCodeZ: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0?.postalCode }, { if let value = $1 { $0?.postalCode = value }  }) }
 }
 
 
@@ -109,62 +111,62 @@ extension ChannelTests {
         dir.companies[0].employees[dir.companies[0].ceoID]?.workAddress?.line2 = "Suite #111"
 
         do {
-            let dir𝚭 = transceive(dir)
+            let dirZ = transceive(dir)
 
-            let bebe𝚭 = dir𝚭.author𝚭
+            let bebeZ = dirZ.authorZ
 
-            bebe𝚭.homeAddress𝚭.line1𝚭.$ = "Foo"
-            bebe𝚭.homeAddress𝚭.line2𝚭.$ = "Bar"
-            XCTAssertEqual("Foo", bebe𝚭.$.homeAddress.line1)
-            XCTAssertEqual("Bar", bebe𝚭.$.homeAddress.line2)
+            bebeZ.homeAddressZ.line1Z.$ = "Foo"
+            bebeZ.homeAddressZ.line2Z.$ = "Bar"
+            XCTAssertEqual("Foo", bebeZ.$.homeAddress.line1)
+            XCTAssertEqual("Bar", bebeZ.$.homeAddress.line2)
 
-            XCTAssertEqual(nil, bebe𝚭.$.workAddress?.line1)
+            XCTAssertEqual(nil, bebeZ.$.workAddress?.line1)
 
-            XCTAssertEqual(nil, bebe𝚭.$.workAddress?.line1)
-            XCTAssertEqual(nil, bebe𝚭.$.workAddress?.line2)
+            XCTAssertEqual(nil, bebeZ.$.workAddress?.line1)
+            XCTAssertEqual(nil, bebeZ.$.workAddress?.line2)
 
             let defaddr = Address(line1: "", line2: nil, postalCode: "")
-            bebe𝚭.workAddress𝚭.coalesce({ _ in defaddr }).line1𝚭.$ = "AAA"
-            bebe𝚭.workAddress𝚭.coalesce({ _ in defaddr }).line2𝚭.$ = "BBB"
+            bebeZ.workAddressZ.coalesce({ _ in defaddr }).line1Z.$ = "AAA"
+            bebeZ.workAddressZ.coalesce({ _ in defaddr }).line2Z.$ = "BBB"
 
-            XCTAssertEqual("AAA", bebe𝚭.$.workAddress?.line1)
-            XCTAssertEqual("BBB", bebe𝚭.$.workAddress?.line2)
+            XCTAssertEqual("AAA", bebeZ.$.workAddress?.line1)
+            XCTAssertEqual("BBB", bebeZ.$.workAddress?.line2)
 
-            let a1 = bebe𝚭.homeAddress𝚭.line1𝚭.sieve(!=).new()
-            let a2 = bebe𝚭.workAddress𝚭.coalesce({ _ in defaddr }).line1𝚭.sieve(!=).new()
+            let a1 = bebeZ.homeAddressZ.line1Z.sieve(!=).new()
+            let a2 = bebeZ.workAddressZ.coalesce({ _ in defaddr }).line1Z.sieve(!=).new()
 
-            let b1 = bebe𝚭.homeAddress𝚭.line2𝚭.sieve(!=).new()
-            let b2 = bebe𝚭.workAddress𝚭.coalesce({ _ in defaddr }).line2𝚭.sieve(!=).new()
+            let b1 = bebeZ.homeAddressZ.line2Z.sieve(!=).new()
+            let b2 = bebeZ.workAddressZ.coalesce({ _ in defaddr }).line2Z.sieve(!=).new()
 
             a1.bind(a2) // works from home
             b1.bind(b2) // works from home
 
-            bebe𝚭.$.workAddress?.line1 = "XXX"
-            XCTAssertEqual("XXX", bebe𝚭.$.homeAddress.line1)
-            XCTAssertEqual("XXX", bebe𝚭.$.workAddress?.line1)
+            bebeZ.$.workAddress?.line1 = "XXX"
+            XCTAssertEqual("XXX", bebeZ.$.homeAddress.line1)
+            XCTAssertEqual("XXX", bebeZ.$.workAddress?.line1)
 
-            bebe𝚭.homeAddress𝚭.line1𝚭.$ = "YYY"
-            XCTAssertEqual("YYY", bebe𝚭.$.homeAddress.line1)
-            XCTAssertEqual("YYY", bebe𝚭.$.workAddress?.line1)
+            bebeZ.homeAddressZ.line1Z.$ = "YYY"
+            XCTAssertEqual("YYY", bebeZ.$.homeAddress.line1)
+            XCTAssertEqual("YYY", bebeZ.$.workAddress?.line1)
 
-            bebe𝚭.workAddress𝚭.coalesce({ _ in defaddr }).line1𝚭.$ = "ZZZ"
-            XCTAssertEqual("ZZZ", bebe𝚭.$.homeAddress.line1)
-            XCTAssertEqual("ZZZ", bebe𝚭.$.workAddress?.line1)
+            bebeZ.workAddressZ.coalesce({ _ in defaddr }).line1Z.$ = "ZZZ"
+            XCTAssertEqual("ZZZ", bebeZ.$.homeAddress.line1)
+            XCTAssertEqual("ZZZ", bebeZ.$.workAddress?.line1)
 
-            let prevZ = bebe𝚭.previousAddresses𝚭
+            let prevZ = bebeZ.previousAddressesZ
 
             var lines: [String?] = []
-            prevZ.index(1).line1𝚭.sieve().new().receive { line in
+            prevZ.index(1).line1Z.sieve().new().receive { line in
                 lines.append(line)
             }
 
-            XCTAssertEqual(0, bebe𝚭.$.previousAddresses.count)
-            prevZ.index(2).coalesce({ _ in defaddr }).line1𝚭.$ = "XYZ"
-            XCTAssertEqual(3, bebe𝚭.$.previousAddresses.count)
-            XCTAssertEqual(["XYZ", "XYZ", "XYZ"], bebe𝚭.$.previousAddresses.map({ $0.line1 }))
+            XCTAssertEqual(0, bebeZ.$.previousAddresses.count)
+            prevZ.index(2).coalesce({ _ in defaddr }).line1Z.$ = "XYZ"
+            XCTAssertEqual(3, bebeZ.$.previousAddresses.count)
+            XCTAssertEqual(["XYZ", "XYZ", "XYZ"], bebeZ.$.previousAddresses.map({ $0.line1 }))
 
-            prevZ.index(1).coalesce({ _ in defaddr }).line1𝚭.$ = "ABC"
-            XCTAssertEqual(["XYZ", "ABC", "XYZ"], bebe𝚭.$.previousAddresses.map({ $0.line1 }))
+            prevZ.index(1).coalesce({ _ in defaddr }).line1Z.$ = "ABC"
+            XCTAssertEqual(["XYZ", "ABC", "XYZ"], bebeZ.$.previousAddresses.map({ $0.line1 }))
 
 
             XCTAssertEqual(["XYZ", "ABC"].flatMap({ $0 }), lines.flatMap({ $0 }))
@@ -240,34 +242,34 @@ extension ChannelTests {
             XCTAssertEqual(["T", "T"], line1sZ.$)
 
             var persons: [Person] = []
-            let company = dir𝚭.companies𝚭.index(0).coalesce({ _ in nil as Company! })
+            let company = dirZ.companiesZ.index(0).coalesce({ _ in nil as Company! })
 
-            company.employees𝚭.at("359414").value().some().receive { person in
+            company.employeesZ.at("359414").value().some().receive { person in
                 persons.append(person)
             }
 
-            let empname𝚭 = company.employees𝚭.at("359414").coalesce({ _ in nil as Person! }).firstName𝚭
-            empname𝚭.$ = "Marcus"
+            let empnameZ = company.employeesZ.at("359414").coalesce({ _ in nil as Person! }).firstNameZ
+            empnameZ.$ = "Marcus"
 
-            XCTAssertEqual("Marcus", dir𝚭.$.companies.first?.employees["359414"]?.firstName)
+            XCTAssertEqual("Marcus", dirZ.$.companies.first?.employees["359414"]?.firstName)
 
             // now add two more employees and edit mutliple aspects of them
 
             let doeHome = Address(line1: "123 Doe Lane", line2: nil, postalCode: "44556")
 
-            company.employees𝚭.$["888888"] = Person(firstName: "John", lastName: "Doe", gender: .Male, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
-            company.employees𝚭.$["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .Female, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+            company.employeesZ.$["888888"] = Person(firstName: "John", lastName: "Doe", gender: .Male, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+            company.employeesZ.$["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .Female, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
 
-            XCTAssertEqual(dir𝚭.$.companies.flatMap({ $0.employees.values }).count, 3)
+            XCTAssertEqual(dirZ.$.companies.flatMap({ $0.employees.values }).count, 3)
 
             // TODO: generalize select() to work on collections and dictionaries
             let keysChannel = transceive(["888888"])
-            let keyedZ: Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<Directory>, StatePulse<Directory>>, [Company]>, StatePulse<[Company]>>, Company?>, StatePulse<Company?>>, Company>, StatePulse<Company>>, [PersonID : Person]>, StatePulse<[PersonID : Person]>>, [Person?]>, StatePulse<[Person?]>> = company.employees𝚭.keyed(keysChannel)
+            let keyedZ: Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<Directory>, StatePulse<Directory>>, [Company]>, StatePulse<[Company]>>, Company?>, StatePulse<Company?>>, Company>, StatePulse<Company>>, [PersonID : Person]>, StatePulse<[PersonID : Person]>>, [Person?]>, StatePulse<[Person?]>> = company.employeesZ.keyed(keysChannel)
 
             let empselZ = keyedZ.prism(lastNameLens.prism)
             let empseltrap = empselZ.trap(Int.max)
 
-            XCTAssertEqual(3, company.employees𝚭.$.count)
+            XCTAssertEqual(3, company.employeesZ.$.count)
 
             XCTAssertEqual(2, empseltrap.caught.count)
             XCTAssertEqual(["Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
@@ -278,20 +280,20 @@ extension ChannelTests {
 
             empselZ.$ = ["A", "B"] // missing key won't be updated
             XCTAssertEqual(4, empseltrap.caught.count)
-            XCTAssertEqual(3, company.employees𝚭.$.count)
+            XCTAssertEqual(3, company.employeesZ.$.count)
 
             XCTAssertEqual(["A", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
 
             empselZ.$ = ["X", "Y", "Z"]
             XCTAssertEqual(5, empseltrap.caught.count)
-            XCTAssertEqual(3, company.employees𝚭.$.count)
+            XCTAssertEqual(3, company.employeesZ.$.count)
             XCTAssertEqual("X", empseltrap.value?.new[0])
             XCTAssertEqual(nil, empseltrap.value?.new[1])
             XCTAssertEqual("Z", empseltrap.value?.new[2])
 
             empselZ.$ = [nil, nil, nil] // no effect since lastName is non-nullable
             XCTAssertEqual(6, empseltrap.caught.count)
-            XCTAssertEqual(3, company.employees𝚭.$.count)
+            XCTAssertEqual(3, company.employeesZ.$.count)
             XCTAssertEqual(3, empseltrap.value?.new.count)
             if empseltrap.value?.new.count == 3 {
                 XCTAssertEqual("X", empseltrap.value?.new[0])
@@ -310,10 +312,9 @@ extension ChannelTests {
                 XCTAssertEqual("D", empseltrap.value?.new[3])
                 XCTAssertEqual("E", empseltrap.value?.new[4])
             }
-            XCTAssertEqual(company.employees𝚭.$["888888"]?.lastName, "D")
-            XCTAssertEqual(company.employees𝚭.$["999999"]?.lastName, "E")
+            XCTAssertEqual(company.employeesZ.$["888888"]?.lastName, "D")
+            XCTAssertEqual(company.employeesZ.$["999999"]?.lastName, "E")
         }
-
     }
 
     func testLensChannels() {

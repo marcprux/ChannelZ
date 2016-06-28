@@ -944,7 +944,7 @@ public extension ChannelType where Source : TransceiverType, Pulse: StatePulseTy
     /// a `Transceiver` channel that provides access to the underlying merged elements.
     @warn_unused_result public func join<T, Join: ChannelType where Join.Source : StateEmitterType, Join.Pulse : StatePulseType, Join.Pulse.Element == Join.Source.Element>(locator: Join, finder: (Self.Source.Element, Join.Source.Element) -> T, updater: ((Self.Source.Element, Join.Source.Element), T) -> (Self.Source.Element, Join.Source.Element)) -> Channel<LensSource<Self, T>, StatePulse<T>> {
 
-        // the selection lens value is a prism over the current selecton and the current elements
+        // the selection lens value is a prism over the current selection and the current elements
         let lens = Lens<Pulse.Element, T>(get: { elements in
             finder(elements, locator.source.$)
         }) { (elements, values) in
@@ -1038,7 +1038,7 @@ public extension ChannelType where Source.Element : KeyIndexed, Source.Element.K
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be represented by nil in the
-    /// puled collection; nulling out individual members of existant keys will have no effect.
+    /// pulsed collection; nulling out individual members of existant keys will have no effect.
     @warn_unused_result public func keyed<Join: ChannelType where Join.Source : StateEmitterType, Join.Source.Element : SequenceType, Join.Source.Element.Generator.Element == Source.Element.Key, Join.Pulse : StatePulseType, Join.Pulse.Element == Join.Source.Element>(indices: Join) -> Channel<LensSource<Self, [Self.Pulse.Element.Value?]>, StatePulse<[Self.Pulse.Element.Value?]>> {
 
         func find(dict: Pulse.Element, keys: Join.Pulse.Element) -> [Pulse.Element.Value?] {
