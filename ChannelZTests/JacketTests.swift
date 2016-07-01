@@ -43,40 +43,40 @@ struct Address {
     var postalCode: String
 }
 
-public extension ChannelType where Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
 }
 
-extension ChannelType where Source.Element == Directory, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
-    var authorZ: Channel<LensSource<Self, Person>, StatePulse<Person>> { return focus({ $0.author }, { $0.author = $1 }) }
-    var companiesZ: Channel<LensSource<Self, [Company]>, StatePulse<[Company]>> { return focus({ $0.companies }, { $0.companies = $1 }) }
+extension ChannelType where Source.Element == Directory, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
+    var authorZ: Channel<LensSource<Self, Person>, Mutation<Person>> { return focus({ $0.author }, { $0.author = $1 }) }
+    var companiesZ: Channel<LensSource<Self, [Company]>, Mutation<[Company]>> { return focus({ $0.companies }, { $0.companies = $1 }) }
 }
 
-extension ChannelType where Source.Element == Company, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
-    var addressZ: Channel<LensSource<Self, Address>, StatePulse<Address>> { return focus({ $0.address }, { $0.address = $1 }) }
-    var employeesZ: Channel<LensSource<Self, [PersonID: Person]>, StatePulse<[PersonID: Person]>> { return focus({ $0.employees }, { $0.employees = $1 }) }
-    var ceoIDZ: Channel<LensSource<Self, PersonID>, StatePulse<PersonID>> { return focus({ $0.ceoID }, { $0.ceoID = $1 }) }
-    var ctoIDZ: Channel<LensSource<Self, PersonID?>, StatePulse<PersonID?>> { return focus({ $0.ctoID }, { $0.ctoID = $1 }) }
+extension ChannelType where Source.Element == Company, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
+    var addressZ: Channel<LensSource<Self, Address>, Mutation<Address>> { return focus({ $0.address }, { $0.address = $1 }) }
+    var employeesZ: Channel<LensSource<Self, [PersonID: Person]>, Mutation<[PersonID: Person]>> { return focus({ $0.employees }, { $0.employees = $1 }) }
+    var ceoIDZ: Channel<LensSource<Self, PersonID>, Mutation<PersonID>> { return focus({ $0.ceoID }, { $0.ceoID = $1 }) }
+    var ctoIDZ: Channel<LensSource<Self, PersonID?>, Mutation<PersonID?>> { return focus({ $0.ctoID }, { $0.ctoID = $1 }) }
 }
 
-extension ChannelType where Source.Element == Person, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
-    var firstNameZ: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.firstName }, { $0.firstName = $1 }) }
-    var lastNameZ: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.lastName }, { $0.lastName = $1 }) }
-    var genderZ: Channel<LensSource<Self, Person.Gender>, StatePulse<Person.Gender>> { return focus({ $0.gender }, { $0.gender = $1 }) }
-    var homeAddressZ: Channel<LensSource<Self, Address>, StatePulse<Address>> { return focus({ $0.homeAddress }, { $0.homeAddress = $1 }) }
-    var workAddressZ: Channel<LensSource<Self, Address?>, StatePulse<Address?>> { return focus({ $0.workAddress }, { $0.workAddress = $1 }) }
-    var previousAddressesZ: Channel<LensSource<Self, [Address]>, StatePulse<[Address]>> { return focus({ $0.previousAddresses }, { $0.previousAddresses = $1 }) }
+extension ChannelType where Source.Element == Person, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
+    var firstNameZ: Channel<LensSource<Self, String>, Mutation<String>> { return focus({ $0.firstName }, { $0.firstName = $1 }) }
+    var lastNameZ: Channel<LensSource<Self, String>, Mutation<String>> { return focus({ $0.lastName }, { $0.lastName = $1 }) }
+    var genderZ: Channel<LensSource<Self, Person.Gender>, Mutation<Person.Gender>> { return focus({ $0.gender }, { $0.gender = $1 }) }
+    var homeAddressZ: Channel<LensSource<Self, Address>, Mutation<Address>> { return focus({ $0.homeAddress }, { $0.homeAddress = $1 }) }
+    var workAddressZ: Channel<LensSource<Self, Address?>, Mutation<Address?>> { return focus({ $0.workAddress }, { $0.workAddress = $1 }) }
+    var previousAddressesZ: Channel<LensSource<Self, [Address]>, Mutation<[Address]>> { return focus({ $0.previousAddresses }, { $0.previousAddresses = $1 }) }
 }
 
-extension ChannelType where Source.Element == Address, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
-    var line1Z: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.line1 }, { $0.line1 = $1 }) }
-    var line2Z: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0.line2 }, { $0.line2 = $1 }) }
-    var postalCodeZ: Channel<LensSource<Self, String>, StatePulse<String>> { return focus({ $0.postalCode }, { $0.postalCode = $1 }) }
+extension ChannelType where Source.Element == Address, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
+    var line1Z: Channel<LensSource<Self, String>, Mutation<String>> { return focus({ $0.line1 }, { $0.line1 = $1 }) }
+    var line2Z: Channel<LensSource<Self, String?>, Mutation<String?>> { return focus({ $0.line2 }, { $0.line2 = $1 }) }
+    var postalCodeZ: Channel<LensSource<Self, String>, Mutation<String>> { return focus({ $0.postalCode }, { $0.postalCode = $1 }) }
 }
 
-extension ChannelType where Source.Element == Address?, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
-    var line1Z: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0?.line1 }, { if let value = $1 { $0?.line1 = value }  }) }
-    var line2Z: Channel<LensSource<Self, String??>, StatePulse<String??>> { return focus({ $0?.line2 }, { if let value = $1 { $0?.line2 = value }  }) }
-    var postalCodeZ: Channel<LensSource<Self, String?>, StatePulse<String?>> { return focus({ $0?.postalCode }, { if let value = $1 { $0?.postalCode = value }  }) }
+extension ChannelType where Source.Element == Address?, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
+    var line1Z: Channel<LensSource<Self, String?>, Mutation<String?>> { return focus({ $0?.line1 }, { if let value = $1 { $0?.line1 = value }  }) }
+    var line2Z: Channel<LensSource<Self, String??>, Mutation<String??>> { return focus({ $0?.line2 }, { if let value = $1 { $0?.line2 = value }  }) }
+    var postalCodeZ: Channel<LensSource<Self, String?>, Mutation<String?>> { return focus({ $0?.postalCode }, { if let value = $1 { $0?.postalCode = value }  }) }
 }
 
 
@@ -264,7 +264,7 @@ extension ChannelTests {
 
             // TODO: generalize select() to work on collections and dictionaries
             let keysChannel = transceive(["888888"])
-            let keyedZ: Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<Directory>, StatePulse<Directory>>, [Company]>, StatePulse<[Company]>>, Company?>, StatePulse<Company?>>, Company>, StatePulse<Company>>, [PersonID : Person]>, StatePulse<[PersonID : Person]>>, [Person?]>, StatePulse<[Person?]>> = company.employeesZ.keyed(keysChannel)
+            let keyedZ: Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<Directory>, Mutation<Directory>>, [Company]>, Mutation<[Company]>>, Company?>, Mutation<Company?>>, Company>, Mutation<Company>>, [PersonID : Person]>, Mutation<[PersonID : Person]>>, [Person?]>, Mutation<[Person?]>> = company.employeesZ.keyed(keysChannel)
 
             let empselZ = keyedZ.prism(lastNameLens.prism)
             let empseltrap = empselZ.trap(Int.max)
@@ -328,7 +328,7 @@ extension ChannelTests {
         let subb = sub.focus({ $0.b }, { $0.b = $1 })
         let subc = sub.focus({ $0.c }, { $0.c = $1 })
 
-        // subc = Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<X>, StatePulse<X>>, Y>, StatePulse<Y>>, String>, StatePulse<String>>
+        // subc = Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<X>, Mutation<X>>, Y>, Mutation<Y>>, String>, Mutation<String>>
 
         str.$ = "Bar"
         int.$ = 2

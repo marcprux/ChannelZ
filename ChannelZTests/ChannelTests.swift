@@ -989,29 +989,29 @@ class ChannelTests : ChannelTestCase {
     /// Explicitly checks the signatures of the `link` variants.
     func testChannelLinkSignatures() {
         do {
-            let c1: Channel<ValueTransceiver<String>, StatePulse<Int>> = transceive("X").map({ _ in StatePulse(old: 1, new: 2) })
-            let c2: Channel<ValueTransceiver<Int>, StatePulse<String>> = transceive(1).map({ _ in StatePulse(old: "", new: "X") })
+            let c1: Channel<ValueTransceiver<String>, Mutation<Int>> = transceive("X").map({ _ in Mutation(old: 1, new: 2) })
+            let c2: Channel<ValueTransceiver<Int>, Mutation<String>> = transceive(1).map({ _ in Mutation(old: "", new: "X") })
             c1.link(c2)
             c1.linkStateToState(c2)
         }
 
         do {
-            let c1: Channel<ValueTransceiver<String>, StatePulse<Int?>> = transceive("X").map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
-            let c2: Channel<ValueTransceiver<Int?>, StatePulse<String>> = transceive(1 as Int?).map({ _ in StatePulse(old: "", new: "X") })
+            let c1: Channel<ValueTransceiver<String>, Mutation<Int?>> = transceive("X").map({ _ in Mutation(old: 1 as Int??, new: 2 as Int?) })
+            let c2: Channel<ValueTransceiver<Int?>, Mutation<String>> = transceive(1 as Int?).map({ _ in Mutation(old: "", new: "X") })
             c1.link(c2)
             c1.linkStateToOptionalState(c2)
         }
 
         do {
-            let c1: Channel<ValueTransceiver<String?>, StatePulse<Int>> = transceive("X" as String?).map({ _ in StatePulse(old: 1, new: 2) })
-            let c2: Channel<ValueTransceiver<Int>, StatePulse<String?>> = transceive(1).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
+            let c1: Channel<ValueTransceiver<String?>, Mutation<Int>> = transceive("X" as String?).map({ _ in Mutation(old: 1, new: 2) })
+            let c2: Channel<ValueTransceiver<Int>, Mutation<String?>> = transceive(1).map({ _ in Mutation(old: "" as String??, new: "X" as String?) })
             c1.link(c2)
             c1.linkOptionalStateToState(c2)
         }
 
         do {
-            let c1: Channel<ValueTransceiver<String?>, StatePulse<Int?>> = transceive("X" as String?).map({ _ in StatePulse(old: 1 as Int??, new: 2 as Int?) })
-            let c2: Channel<ValueTransceiver<Int?>, StatePulse<String?>> = transceive(1 as Int?).map({ _ in StatePulse(old: "" as String??, new: "X" as String?) })
+            let c1: Channel<ValueTransceiver<String?>, Mutation<Int?>> = transceive("X" as String?).map({ _ in Mutation(old: 1 as Int??, new: 2 as Int?) })
+            let c2: Channel<ValueTransceiver<Int?>, Mutation<String?>> = transceive(1 as Int?).map({ _ in Mutation(old: "" as String??, new: "X" as String?) })
             c1.link(c2)
             c1.linkOptionalStateToOptionalState(c2)
         }

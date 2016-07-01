@@ -83,11 +83,11 @@ extension Focusable {
         return lens
     }
 
-    static func lensZ<X, Source : StateEmitterType where Source.Element == Self>(lens: Lens<Self, X>) -> Channel<Source, StatePulse<Source.Element>> -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
+    static func lensZ<X, Source : StateEmitterType where Source.Element == Self>(lens: Lens<Self, X>) -> Channel<Source, Mutation<Source.Element>> -> Channel<LensSource<Channel<Source, Mutation<Source.Element>>, X>, Mutation<X>> {
         return { channel in focus(channel)(lens) }
     }
 
-    static func focus<X, Source : StateEmitterType where Source.Element == Self>(channel: Channel<Source, StatePulse<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
+    static func focus<X, Source : StateEmitterType where Source.Element == Self>(channel: Channel<Source, Mutation<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, Mutation<Source.Element>>, X>, Mutation<X>> {
         return channel.focus
     }
 }
@@ -102,12 +102,12 @@ extension Company : Focusable {
     static let nameλ = Company.lens(Lens({ $0.name }, { $0.name = $1 }))
 }
 
-//public extension ChannelType where Element : StatePulseType {
+//public extension ChannelType where Element : MutationType {
 
-public extension ChannelType where Source : StateEmitterType, Element == StatePulse<Source.Element> {
+public extension ChannelType where Source : StateEmitterType, Element == Mutation<Source.Element> {
 }
 
-//extension ChannelType where Element : StatePulseType, Element.T : Focusable {
+//extension ChannelType where Element : MutationType, Element.T : Focusable {
 //    func focus<B>(lens: Lens<Element.T, B>) {
 //        focus
 //    }
@@ -142,25 +142,25 @@ artist.focus(Artist.nameλ).value = "Foo"
 //}
 //
 //extension Focusable {
-//    static func lensZ<X, Source : StateEmitterType where Source.Element == Self>(lens: Lens<Self, X>) -> Channel<Source, StatePulse<Source.Element>> -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
+//    static func lensZ<X, Source : StateEmitterType where Source.Element == Self>(lens: Lens<Self, X>) -> Channel<Source, Mutation<Source.Element>> -> Channel<LensSource<Channel<Source, Mutation<Source.Element>>, X>, Mutation<X>> {
 //        return { channel in focus(channel)(lens) }
 //    }
 //
-//    static func focus<X, Source : StateEmitterType where Source.Element == Self>(channel: Channel<Source, StatePulse<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
+//    static func focus<X, Source : StateEmitterType where Source.Element == Self>(channel: Channel<Source, Mutation<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, Mutation<Source.Element>>, X>, Mutation<X>> {
 //        return channel.focus
 //    }
 //}
 //
-////public extension ChannelType where Source : StateEmitterType, Element == StatePulse<Source.Element> {
+////public extension ChannelType where Source : StateEmitterType, Element == Mutation<Source.Element> {
 //
 //extension PrismType {
-//    static func lensZ<X, Source : StateEmitterType where Source.Element == Focus>(lens: Lens<Focus, X>) -> Channel<Source, StatePulse<Source.Element>> -> Channel<LensSource<Channel<Source, StatePulse<Source.Element>>, X>, StatePulse<X>> {
+//    static func lensZ<X, Source : StateEmitterType where Source.Element == Focus>(lens: Lens<Focus, X>) -> Channel<Source, Mutation<Source.Element>> -> Channel<LensSource<Channel<Source, Mutation<Source.Element>>, X>, Mutation<X>> {
 //        return { channel in channel.focus(lens) }
 //    }
 //}
 //
 //extension Song : Focusable {
-//    var prop: () -> Channel<ValueTransceiver<Song>, StatePulse<Song>> { return { transceive(self) } }
+//    var prop: () -> Channel<ValueTransceiver<Song>, Mutation<Song>> { return { transceive(self) } }
 //
 //    struct Prism : PrismType {
 //        typealias Focus = Song
@@ -170,7 +170,7 @@ artist.focus(Artist.nameλ).value = "Foo"
 //
 //protocol Prasm {
 //    associatedtype Focus
-////    var channel: Channel<T, StatePulse<T>> { get }
+////    var channel: Channel<T, Mutation<T>> { get }
 //}
 //
 //class BasePrasm<T, B> : Prasm {

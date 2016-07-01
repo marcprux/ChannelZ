@@ -12,29 +12,29 @@ public protocol ValuableType {
     var $: Element { get }
 }
 
-/// A StatePulseType is an encapsulation of state over time, such that a pulse has
+/// A MutationType is an encapsulation of state over time, such that a pulse has
 /// an `old` value (optionally none for the initial state pulse) and a `new` value,
 /// which is the current value of the state at the time of emission.
 ///
-/// Note that the issuance of a StatePulse does not imply that the state has changed,
+/// Note that the issuance of a Mutation does not imply that the state has changed,
 /// since there is no equatability requirement for the underlying type.
 ///
 /// - See Also: `Channel.sieve`
-public protocol StatePulseType : ValuableType {
+public protocol MutationType : ValuableType {
     associatedtype Element
-    /// The previous value of the state; can be `nil` when it is the initial pulse to be emitted
+    /// The previous value of the state; can be `.None` when there is no previous state (e.g., when it is the initial pulse being emitted)
     var old: Element? { get }
     /// The new value of the state
     var new: Element { get }
 }
 
-public extension StatePulseType {
+public extension MutationType {
     public var $: Element { return new }
 }
 
-/// A StatePulse encapsulates a state change from an old value to a new value
-public struct StatePulse<Element> : StatePulseType {
-    /// The previous value of the state; can be `nil` when it is the initial pulse to be emitted
+/// A Mutation encapsulates a state change from an old value to a new value
+public struct Mutation<Element> : MutationType {
+    /// The previous value of the state; can be `.None` when there is no previous state (e.g., when it is the initial pulse being emitted)
     public let old: Element?
     /// The new value of the state
     public let new: Element
@@ -50,7 +50,7 @@ public struct StatePulse<Element> : StatePulseType {
 public protocol StateEmitterType : ValuableType, RawRepresentable {
 
     /// Creates a Channel from this source that will emit tuples of the old & and state values whenever a state operation occurs
-    @warn_unused_result func transceive() -> Channel<Self, StatePulse<Element>>
+    @warn_unused_result func transceive() -> Channel<Self, Mutation<Element>>
 }
 
 public extension StateEmitterType {
@@ -76,7 +76,7 @@ public protocol StateReceiverType : ReceiverType {
     //var $: Pulse { set }
 }
 
-/// A transceiver is a type that can transmit & receive some `StatePulse` pulses via respective
+/// A transceiver is a type that can transmit & receive some `Mutation` pulses via respective
 /// adoption of the `StateEmitterType` and `StateReveiver` protocols.
 public protocol TransceiverType : StateEmitterType, StateReceiverType {
     /// The underlying state value of this source; so named because it is an
@@ -86,13 +86,13 @@ public protocol TransceiverType : StateEmitterType, StateReceiverType {
 
 /// A ValueTransceiver can be used to wrap any Swift or Objective-C type to make it act as a `Channel`
 /// The output type is a tuple of (old: T, new: T), where old is the previous value and new is the new value
-public final class ValueTransceiver<T>: ReceiverQueueSource<StatePulse<T>>, TransceiverType {
-    public typealias State = StatePulse<T>
+public final class ValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, TransceiverType {
+    public typealias State = Mutation<T>
 
     /// The underlying value for this tranceiver
     public var $: T {
         didSet(old) {
-            receivers.receive(StatePulse(old: old, new: $))
+            receivers.receive(Mutation(old: old, new: $))
         }
     }
 
@@ -112,11 +112,11 @@ public final class ValueTransceiver<T>: ReceiverQueueSource<StatePulse<T>>, Tran
     }
 }
 
-/// A type-erased wrapper around some state source whose value changes will emit a `StatePulse`
+/// A type-erased wrapper around some state source whose value changes will emit a `Mutation`
 public struct AnyTransceiver<T> : TransceiverType {
     private let valueget: Void -> T
     private let valueset: T -> Void
-    private let channler: Void -> Channel<Void, StatePulse<T>>
+    private let channler: Void -> Channel<Void, Mutation<T>>
 
     public var $: T {
         get { return valueget() }
@@ -129,7 +129,7 @@ public struct AnyTransceiver<T> : TransceiverType {
         channler = { source.transceive().desource() }
     }
 
-    public init(get: Void -> T, set: T -> Void, channeler: Void -> Channel<Void, StatePulse<T>>) {
+    public init(get: Void -> T, set: T -> Void, channeler: Void -> Channel<Void, Mutation<T>>) {
         valueget = get
         valueset = set
         channler = channeler
@@ -139,7 +139,7 @@ public struct AnyTransceiver<T> : TransceiverType {
         valueset(x)
     }
 
-    @warn_unused_result public func transceive() -> Channel<AnyTransceiver<T>, StatePulse<T>> {
+    @warn_unused_result public func transceive() -> Channel<AnyTransceiver<T>, Mutation<T>> {
         return channler().resource({ _ in self })
     }
 }
@@ -309,21 +309,21 @@ public extension ChannelType {
 
     /// Adds a channel phase that retains a previous item and sends it along with 
     /// the current value as an optional tuple element.
-    /// This mechanism allows for the simualation of a state Channel that emits a `StatePulse` 
+    /// This mechanism allows for the simualation of a state Channel that emits a `Mutation` 
     /// even when the underlying value change mechanics are unavailable.
     ///
     /// - Returns: a state Channel that emits a tuple of an earlier and the current item
     ///
     /// - Note: this phase with retain the previous *two* pulse items
-    @warn_unused_result public func precedent() -> Channel<Source, StatePulse<Pulse>> {
-        return affect((old: Optional<Pulse>.None, new: Optional<Pulse>.None)) { (state, element) in (old: state.new, new: element) }.map { (state, element) in StatePulse(old: state.old, new: element) }
+    @warn_unused_result public func precedent() -> Channel<Source, Mutation<Pulse>> {
+        return affect((old: Optional<Pulse>.None, new: Optional<Pulse>.None)) { (state, element) in (old: state.new, new: element) }.map { (state, element) in Mutation(old: state.old, new: element) }
     }
 
     /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
     /// recent emitted or passed item.
     ///
     /// For example, to create a filter for distinct equatable pulses, you would do: `changes(!=)`.
-    /// For channels that already emit `StatePulse` types, use `Channel.sieve`.
+    /// For channels that already emit `Mutation` types, use `Channel.sieve`.
     ///
     /// - Parameter predicate: a function that evaluates the current item against the previous item
     ///
@@ -332,7 +332,7 @@ public extension ChannelType {
     /// - Note: Since `sieve` uses `precedent`, the most recent value will be retained by
     ///   the Channel for as long as there are receivers.
     ///
-    @warn_unused_result public func presieve(predicate: (previous: Pulse, current: Pulse) -> Bool) -> Channel<Source, StatePulse<Pulse>> {
+    @warn_unused_result public func presieve(predicate: (previous: Pulse, current: Pulse) -> Bool) -> Channel<Source, Mutation<Pulse>> {
         return precedent().sieve(predicate)
     }
 
@@ -340,7 +340,7 @@ public extension ChannelType {
     /// recent emitted or passed item.
     ///
     /// For example, to create a filter for distinct equatable pulses, you would do: `changes(!=)`.
-    /// For channels that already emit `StatePulse` types, use `Channel.sieve`.
+    /// For channels that already emit `Mutation` types, use `Channel.sieve`.
     ///
     /// - Parameter predicate: a function that evaluates the current item against the previous item
     ///
@@ -372,8 +372,8 @@ public extension ChannelType {
     }
 }
 
-public extension StreamType where Pulse : StatePulseType {
-    /// Filters the channel for only changed instances of the underlying `StatePulse`
+public extension StreamType where Pulse : MutationType {
+    /// Filters the channel for only changed instances of the underlying `Mutation`
     @warn_unused_result public func sieve(changed: (Pulse.Element, Pulse.Element) -> Bool) -> Self {
         return filter { state in
             // the initial state assignment is always fresh
@@ -383,13 +383,13 @@ public extension StreamType where Pulse : StatePulseType {
     }
 }
 
-public extension ChannelType where Pulse : StatePulseType {
+public extension ChannelType where Pulse : MutationType {
     /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
     /// recent emitted or passed item. This is an optimization of `Channel.presieve` that uses the underlying
-    /// `StatePulseType` rather than retaining the previous elements.
+    /// `MutationType` rather than retaining the previous elements.
     ///
     /// For example, to create a filter for distinct equatable pulses, you would do: `changes(!=)`.
-    /// For channels that already emit `StatePulse` types, use `Channel.sieve`.
+    /// For channels that already emit `Mutation` types, use `Channel.sieve`.
     ///
     /// - Parameter predicate: a function that evaluates the current item against the previous item
     ///
@@ -400,10 +400,10 @@ public extension ChannelType where Pulse : StatePulseType {
 
     /// Adds a channel phase that emits pulses only when the pulses pass the filter predicate against the most
     /// recent emitted or passed item. This is an optimization of `Channel.presieve` that uses the underlying
-    /// `StatePulseType` rather than retaining the previous elements.
+    /// `MutationType` rather than retaining the previous elements.
     ///
     /// For example, to create a filter for distinct equatable pulses, you would do: `changes(!=)`.
-    /// For channels that already emit `StatePulse` types, use `Channel.sieve`.
+    /// For channels that already emit `Mutation` types, use `Channel.sieve`.
     ///
     /// - Parameter predicate: a function that evaluates the current item against the previous item
     ///
@@ -414,14 +414,14 @@ public extension ChannelType where Pulse : StatePulseType {
 
 }
 
-public extension StreamType where Pulse : StatePulseType, Pulse.Element : Equatable {
-    /// Filters the channel for only changed instances of the underlying `StatePulse`
+public extension StreamType where Pulse : MutationType, Pulse.Element : Equatable {
+    /// Filters the channel for only changed instances of the underlying `Mutation`
     @warn_unused_result public func sieve() -> Self {
         return sieve(!=)
     }
 }
 
-public extension ChannelType where Pulse : StatePulseType, Pulse.Element : Equatable {
+public extension ChannelType where Pulse : MutationType, Pulse.Element : Equatable {
     /// Adds a channel phase that emits pulses only when the equatable pulses are not equal.
     ///
     /// - See Also: `changes(predicate:)`
@@ -437,14 +437,14 @@ public extension StateEmitterType where Element : Equatable {
     }
 }
 
-public extension StreamType where Pulse : StatePulseType, Pulse.Element : _WrapperType, Pulse.Element.Wrapped : Equatable {
-    /// Filters the channel for only changed optional instances of the underlying `StatePulse`
+public extension StreamType where Pulse : MutationType, Pulse.Element : _WrapperType, Pulse.Element.Wrapped : Equatable {
+    /// Filters the channel for only changed optional instances of the underlying `Mutation`
     @warn_unused_result public func sieve() -> Self {
         return sieve(optionalTypeNotEqual)
     }
 }
 
-public extension ChannelType where Pulse : StatePulseType, Pulse.Element : _WrapperType, Pulse.Element.Wrapped : Equatable {
+public extension ChannelType where Pulse : MutationType, Pulse.Element : _WrapperType, Pulse.Element.Wrapped : Equatable {
     /// Adds a channel phase that emits pulses only when the optional equatable pulses are not equal.
     ///
     /// - See Also: `changes(predicate:)`
@@ -461,19 +461,19 @@ public extension StateEmitterType where Element : _WrapperType, Element.Wrapped 
 }
 
 public extension ChannelType where Pulse : ValuableType {
-    /// Maps to the `new` value of the `StatePulse` element
+    /// Maps to the `new` value of the `Mutation` element
     @warn_unused_result public func value() -> Channel<Source, Pulse.Element> {
         return map({ $0.$ })
     }
 }
 
-public extension ChannelType where Pulse : StatePulseType {
-    /// Maps to the `new` value of the `StatePulse` element
+public extension ChannelType where Pulse : MutationType {
+    /// Maps to the `new` value of the `Mutation` element
     @warn_unused_result public func new() -> Channel<Source, Pulse.Element> {
-        return value() // the value of a StatePulseType is the new() field
+        return value() // the value of a MutationType is the new() field
     }
 
-    /// Maps to the `old` value of the `StatePulse` element
+    /// Maps to the `old` value of the `Mutation` element
     @warn_unused_result public func old() -> Channel<Source, Pulse.Element?> {
         return map({ $0.old })
     }
@@ -506,7 +506,7 @@ public extension ChannelType where Source : TransceiverType {
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
     @warn_unused_result public func stateMap<X>(get get: Source.Element -> X, set: X -> Source.Element) -> Channel<AnyTransceiver<X>, Pulse> {
-        return resource { source in AnyTransceiver(get: { get(source.$) }, set: { source.$ = set($0) }, channeler: { source.transceive().desource().map { state in StatePulse(old: state.old.flatMap(get), new: get(state.new)) } }) }
+        return resource { source in AnyTransceiver(get: { get(source.$) }, set: { source.$ = set($0) }, channeler: { source.transceive().desource().map { state in Mutation(old: state.old.flatMap(get), new: get(state.new)) } }) }
     }
 }
 
@@ -652,12 +652,12 @@ public extension ChannelType where Source : TransceiverType, Source.Element : _W
 }
 
 
-// MARK: Binding variants with StatePulse output
+// MARK: Binding variants with Mutation output
 
-public extension ChannelType where Source : TransceiverType, Source.Element : Equatable, Pulse : StatePulseType, Pulse.Element : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.Element : Equatable, Pulse : MutationType, Pulse.Element : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not equal.
-    public func linkStateToState<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : StatePulseType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
+    public func linkStateToState<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : MutationType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
         return self.changes(!=).conjoin(to.changes(!=), filterLeft: !=, filterRight: !=)
     }
 
@@ -665,15 +665,15 @@ public extension ChannelType where Source : TransceiverType, Source.Element : Eq
     /// changed, the other side is updated when they are not equal.
     ///
     /// See Also: `linkStateToState`
-    public func link<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : StatePulseType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
+    public func link<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : MutationType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
         return linkStateToState(to)
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Element : Equatable, Pulse : StatePulseType, Pulse.Element : _WrapperType, Pulse.Element.Wrapped : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.Element : Equatable, Pulse : MutationType, Pulse.Element : _WrapperType, Pulse.Element.Wrapped : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal.
-    public func linkStateToOptionalState<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : StatePulseType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
+    public func linkStateToOptionalState<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : MutationType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
         return self.changes().conjoin(to.changes(!=), filterLeft: optionalTypeNotEqual, filterRight: !=)
     }
 
@@ -681,15 +681,15 @@ public extension ChannelType where Source : TransceiverType, Source.Element : Eq
     /// changed, the other side is updated when they are not optionally equal.
     ///
     /// See Also: `linkStateToOptionalState`
-    public func link<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : StatePulseType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
+    public func link<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : MutationType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
         return linkStateToOptionalState(to)
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : StatePulseType, Pulse.Element : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : MutationType, Pulse.Element : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal.
-    public func linkOptionalStateToState<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : StatePulseType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
+    public func linkOptionalStateToState<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : MutationType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
         return self.changes(!=).conjoin(to.changes(), filterLeft: !=, filterRight: optionalTypeNotEqual)
     }
 
@@ -697,15 +697,15 @@ public extension ChannelType where Source : TransceiverType, Source.Element : _W
     /// changed, the other side is updated when they are not optionally equal.
     /// 
     /// See Also: `linkOptionalStateToState`
-    public func link<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : StatePulseType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
+    public func link<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : MutationType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
         return linkOptionalStateToState(to)
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : StatePulseType, Pulse.Element : _WrapperType, Pulse.Element.Wrapped : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.Element : _WrapperType, Source.Element.Wrapped : Equatable, Pulse : MutationType, Pulse.Element : _WrapperType, Pulse.Element.Wrapped : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal.
-    public func linkOptionalStateToOptionalState<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : StatePulseType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
+    public func linkOptionalStateToOptionalState<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : MutationType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
         return self.changes().conjoin(to.changes(), filterLeft: optionalTypeNotEqual, filterRight: optionalTypeNotEqual)
     }
 
@@ -713,7 +713,7 @@ public extension ChannelType where Source : TransceiverType, Source.Element : _W
     /// changed, the other side is updated when they are not optionally equal.
     ///
     /// See Also: `linkOptionalStateToOptionalState`
-    public func link<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : StatePulseType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
+    public func link<C2 where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse.Element, C2.Pulse : MutationType, C2.Pulse.Element == Self.Source.Element>(to: C2) -> Receipt {
         return linkOptionalStateToOptionalState(to)
     }
 }
@@ -724,12 +724,12 @@ public extension ChannelType where Source : TransceiverType, Source.Element : _W
 /// Creates a state transceiver with the underlying initial value.
 ///
 /// A state transceiver is a channel that can both receive values (thereby setting the underlying state)
-/// and emit changes to the state via the `StatePulse` pulse type. State transceivers can
+/// and emit changes to the state via the `Mutation` pulse type. State transceivers can
 /// also be bound to other state transceivers using the `link` function.
 ///
 /// - See Also: `ValueTransceiver`
 /// - See Also: `link`
-@warn_unused_result public func transceive<T>(initialValue: T) -> Channel<ValueTransceiver<T>, StatePulse<T>> {
+@warn_unused_result public func transceive<T>(initialValue: T) -> Channel<ValueTransceiver<T>, Mutation<T>> {
     return ValueTransceiver(rawValue: initialValue).transceive()
 }
 
@@ -847,7 +847,7 @@ public protocol LensSourceType : TransceiverType {
 /// 
 /// The associated lens is used both for getting/setting the source state directly as well
 /// as modifying the old/new state pulse values. A lens can be thought of as a 2-way `map` for state values.
-public struct LensSource<C: ChannelType, T where C.Source : TransceiverType, C.Pulse : StatePulseType, C.Pulse.Element == C.Source.Element>: LensSourceType {
+public struct LensSource<C: ChannelType, T where C.Source : TransceiverType, C.Pulse : MutationType, C.Pulse.Element == C.Source.Element>: LensSourceType {
     public typealias Owner = C
     public let channel: C
     public let lens: Lens<C.Source.Element, T>
@@ -863,9 +863,9 @@ public struct LensSource<C: ChannelType, T where C.Source : TransceiverType, C.P
 
     /// Creates a state tranceiver to the focus of this lens, allowing the access and modification
     /// of a subset of a product type.
-    @warn_unused_result public func transceive() -> Channel<LensSource, StatePulse<T>> {
+    @warn_unused_result public func transceive() -> Channel<LensSource, Mutation<T>> {
         return channel.map({ pulse in
-            StatePulse(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new))
+            Mutation(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new))
         }).resource({ _ in self })
     }
 }
@@ -873,7 +873,7 @@ public struct LensSource<C: ChannelType, T where C.Source : TransceiverType, C.P
 ///// A Prism on a state channel, which can be used create a property channel on a specific
 ///// piece of the source state; a LensSource itself does not manage any receivers, but instead
 ///// relies on the source of the underlying channel.
-//public struct PrismSource<C: ChannelType, T where C.Source : TransceiverType, C.Pulse : StatePulseType, C.Pulse.Element == C.Source.Element>: LensSourceType {
+//public struct PrismSource<C: ChannelType, T where C.Source : TransceiverType, C.Pulse : MutationType, C.Pulse.Element == C.Source.Element>: LensSourceType {
 //    public typealias Owner = C
 //    public let channel: C
 //    public let lens: Lens<C.Source.Element, T>
@@ -889,27 +889,27 @@ public struct LensSource<C: ChannelType, T where C.Source : TransceiverType, C.P
 //
 //    /// Creates a state tranceiver to the focus of this lens, allowing the access and modification
 //    /// of a subset of a product type.
-//    @warn_unused_result public func transceive() -> Channel<PrismSource, StatePulse<T>> {
+//    @warn_unused_result public func transceive() -> Channel<PrismSource, Mutation<T>> {
 //        return channel.map({ pulse in
-//            StatePulse(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new))
+//            Mutation(old: pulse.old.flatMap(self.lens.get), new: self.lens.get(pulse.new))
 //        }).resource({ _ in self })
 //    }
 //}
 
-public extension ChannelType where Source : TransceiverType, Pulse: StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
     /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
     /// channel can modify sub-elements of a complex data structure
-    @warn_unused_result public func focus<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+    @warn_unused_result public func focus<X>(lens: Lens<Source.Element, X>) -> Channel<LensSource<Self, X>, Mutation<X>> {
         return LensSource(channel: self, lens: lens).transceive()
     }
 
     /// Constructs a Lens channel using a getter and an inout setter
-    @warn_unused_result public func focus<X>(get: Source.Element -> X, _ set: (inout Source.Element, X) -> ()) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+    @warn_unused_result public func focus<X>(get: Source.Element -> X, _ set: (inout Source.Element, X) -> ()) -> Channel<LensSource<Self, X>, Mutation<X>> {
         return focus(Lens(get, set))
     }
 
     /// Constructs a Lens channel using a getter and a tranformation setter
-    @warn_unused_result public func focus<X>(get get: Source.Element -> X, create: (Source.Element, X) -> Source.Element) -> Channel<LensSource<Self, X>, StatePulse<X>> {
+    @warn_unused_result public func focus<X>(get get: Source.Element -> X, create: (Source.Element, X) -> Source.Element) -> Channel<LensSource<Self, X>, Mutation<X>> {
         return focus(Lens(get: get, create: create))
     }
 }
@@ -923,26 +923,26 @@ public extension ChannelType where Source : LensSourceType {
 
 // MARK: Jacket Channel extensions for Lens/Prism/Optional access
 
-public extension ChannelType where Source.Element : _WrapperType, Source : TransceiverType, Pulse: StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : _WrapperType, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the result of the constructor function
-    @warn_unused_result public func coalesce(template: Self -> Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
+    @warn_unused_result public func coalesce(template: Self -> Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, Mutation<Source.Element.Wrapped>> {
         return focus(get: { $0.flatMap({ $0 }) ?? template(self) }, create: { (_, value) in Source.Element(value) })
     }
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the constant of the value; alias for `coalesce`
-    @warn_unused_result public func coalesce(value: Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, StatePulse<Source.Element.Wrapped>> {
+    @warn_unused_result public func coalesce(value: Source.Element.Wrapped) -> Channel<LensSource<Self, Source.Element.Wrapped>, Mutation<Source.Element.Wrapped>> {
         return coalesce({ _ in value })
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Pulse: StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
 
     /// Given two channels that can find and update values based on the specified getters & updaters, create
     /// a `Transceiver` channel that provides access to the underlying merged elements.
-    @warn_unused_result public func join<T, Join: ChannelType where Join.Source : StateEmitterType, Join.Pulse : StatePulseType, Join.Pulse.Element == Join.Source.Element>(locator: Join, finder: (Self.Source.Element, Join.Source.Element) -> T, updater: ((Self.Source.Element, Join.Source.Element), T) -> (Self.Source.Element, Join.Source.Element)) -> Channel<LensSource<Self, T>, StatePulse<T>> {
+    @warn_unused_result public func join<T, Join: ChannelType where Join.Source : StateEmitterType, Join.Pulse : MutationType, Join.Pulse.Element == Join.Source.Element>(locator: Join, finder: (Self.Source.Element, Join.Source.Element) -> T, updater: ((Self.Source.Element, Join.Source.Element), T) -> (Self.Source.Element, Join.Source.Element)) -> Channel<LensSource<Self, T>, Mutation<T>> {
 
         // the selection lens value is a prism over the current selection and the current elements
         let lens = Lens<Pulse.Element, T>(get: { elements in
@@ -951,25 +951,25 @@ public extension ChannelType where Source : TransceiverType, Pulse: StatePulseTy
             updater((elements, locator.source.$), values).0
         }
 
-        let sel: Channel<LensSource<Self, T>, StatePulse<T>> = focus(lens)
+        let sel: Channel<LensSource<Self, T>, Mutation<T>> = focus(lens)
 
         return sel.either(locator).resource({ $0.0 }).map {
             switch $0 {
             case .V1(let v): // change in elements
                 return v // the raw values are already resolved by the lens
             case .V2(let i): // change in locator; need to perform another lookup
-                return StatePulse(old: i.old.flatMap({ finder(self.source.$, $0) }), new: finder(self.source.$, i.new))
+                return Mutation(old: i.old.flatMap({ finder(self.source.$, $0) }), new: finder(self.source.$, i.new))
             }
         }
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Element == Pulse.Element, Pulse: StatePulseType, Pulse.Element : SequenceType, Pulse.Element : Indexable {
+public extension ChannelType where Source : TransceiverType, Source.Element == Pulse.Element, Pulse: MutationType, Pulse.Element : SequenceType, Pulse.Element : Indexable {
 
     /// Combines this sequence state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be silently ignored.
-    @warn_unused_result public func match<Join: ChannelType where Join.Source : StateEmitterType, Join.Source.Element : SequenceType, Join.Pulse.Element.Generator.Element == Source.Element.Index, Join.Pulse : StatePulseType, Join.Pulse.Element == Join.Source.Element>(locator: Join, setter: (Source.Element, Source.Element.Index, Source.Element.Generator.Element?) -> Source.Element, getter: (Pulse.Element, Pulse.Element.Index) -> Pulse.Element.Generator.Element?) -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, StatePulse<[Self.Pulse.Element.Generator.Element]>> {
+    @warn_unused_result public func match<Join: ChannelType where Join.Source : StateEmitterType, Join.Source.Element : SequenceType, Join.Pulse.Element.Generator.Element == Source.Element.Index, Join.Pulse : MutationType, Join.Pulse.Element == Join.Source.Element>(locator: Join, setter: (Source.Element, Source.Element.Index, Source.Element.Generator.Element?) -> Source.Element, getter: (Pulse.Element, Pulse.Element.Index) -> Pulse.Element.Generator.Element?) -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, Mutation<[Self.Pulse.Element.Generator.Element]>> {
 
         typealias Output = [Source.Element.Generator.Element]
         typealias Query = (input: Source.Element, indices: Join.Source.Element)
@@ -999,12 +999,12 @@ public extension ChannelType where Source : TransceiverType, Source.Element == P
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Element == Pulse.Element, Pulse: StatePulseType, Pulse.Element : CollectionType {
+public extension ChannelType where Source : TransceiverType, Source.Element == Pulse.Element, Pulse: MutationType, Pulse.Element : CollectionType {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be silently ignored.
-    @warn_unused_result public func find<C: ChannelType where C.Source : StateEmitterType, C.Source.Element : SequenceType, C.Pulse.Element.Generator.Element == Source.Element.Index, C.Pulse : StatePulseType, C.Pulse.Element == C.Source.Element>(locator: C, setter: (Source.Element, Source.Element.Index, Source.Element.Generator.Element?) -> Source.Element)  -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, StatePulse<[Self.Pulse.Element.Generator.Element]>> {
+    @warn_unused_result public func find<C: ChannelType where C.Source : StateEmitterType, C.Source.Element : SequenceType, C.Pulse.Element.Generator.Element == Source.Element.Index, C.Pulse : MutationType, C.Pulse.Element == C.Source.Element>(locator: C, setter: (Source.Element, Source.Element.Index, Source.Element.Generator.Element?) -> Source.Element)  -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, Mutation<[Self.Pulse.Element.Generator.Element]>> {
 
         return match(locator, setter: setter) { collection, index in
             if collection.indices.contains(index) {
@@ -1016,13 +1016,13 @@ public extension ChannelType where Source : TransceiverType, Source.Element == P
     }
 }
 
-public extension ChannelType where Source.Element : MutableCollectionType, Source : TransceiverType, Pulse: StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : MutableCollectionType, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be silently ignored.
     /// Array elements cannot be removed, so updated with a mismatched number of indices will be ignored.
-    @warn_unused_result public func fixed<C: ChannelType where C.Source : StateEmitterType, C.Source.Element : SequenceType, C.Source.Element.Generator.Element == Source.Element.Index, C.Pulse : StatePulseType, C.Pulse.Element == C.Source.Element>(indices: C) -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, StatePulse<[Self.Pulse.Element.Generator.Element]>> {
+    @warn_unused_result public func fixed<C: ChannelType where C.Source : StateEmitterType, C.Source.Element : SequenceType, C.Source.Element.Generator.Element == Source.Element.Index, C.Pulse : MutationType, C.Pulse.Element == C.Source.Element>(indices: C) -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, Mutation<[Self.Pulse.Element.Generator.Element]>> {
         return find(indices) { (seq, idx, val) in
             var seq = seq
             if let val = val where seq.indices.contains(idx) {
@@ -1033,13 +1033,13 @@ public extension ChannelType where Source.Element : MutableCollectionType, Sourc
     }
 }
 
-public extension ChannelType where Source.Element : KeyIndexed, Source.Element.Key : Hashable, Source.Element : CollectionType, Source.Element.Index : KeyIndexedIndexType, Source.Element.Key == Source.Element.Index.Key, Source.Element.Value == Source.Element.Index.Value, Source : TransceiverType, Pulse: StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : KeyIndexed, Source.Element.Key : Hashable, Source.Element : CollectionType, Source.Element.Index : KeyIndexedIndexType, Source.Element.Key == Source.Element.Index.Key, Source.Element.Value == Source.Element.Index.Value, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be represented by nil in the
     /// pulsed collection; nulling out individual members of existant keys will have no effect.
-    @warn_unused_result public func keyed<Join: ChannelType where Join.Source : StateEmitterType, Join.Source.Element : SequenceType, Join.Source.Element.Generator.Element == Source.Element.Key, Join.Pulse : StatePulseType, Join.Pulse.Element == Join.Source.Element>(indices: Join) -> Channel<LensSource<Self, [Self.Pulse.Element.Value?]>, StatePulse<[Self.Pulse.Element.Value?]>> {
+    @warn_unused_result public func keyed<Join: ChannelType where Join.Source : StateEmitterType, Join.Source.Element : SequenceType, Join.Source.Element.Generator.Element == Source.Element.Key, Join.Pulse : MutationType, Join.Pulse.Element == Join.Source.Element>(indices: Join) -> Channel<LensSource<Self, [Self.Pulse.Element.Value?]>, Mutation<[Self.Pulse.Element.Value?]>> {
 
         func find(dict: Pulse.Element, keys: Join.Pulse.Element) -> [Pulse.Element.Value?] {
 
@@ -1062,12 +1062,12 @@ public extension ChannelType where Source.Element : KeyIndexed, Source.Element.K
     }
 }
 
-public extension ChannelType where Source.Element : RangeReplaceableCollectionType, Source : TransceiverType, Pulse: StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : RangeReplaceableCollectionType, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be silently ignored.
-    @warn_unused_result public func indexed<C: ChannelType where C.Source : StateEmitterType, C.Source.Element : SequenceType, C.Source.Element.Generator.Element == Source.Element.Index, C.Pulse : StatePulseType, C.Pulse.Element == C.Source.Element>(indices: C) -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, StatePulse<[Self.Pulse.Element.Generator.Element]>> {
+    @warn_unused_result public func indexed<C: ChannelType where C.Source : StateEmitterType, C.Source.Element : SequenceType, C.Source.Element.Generator.Element == Source.Element.Index, C.Pulse : MutationType, C.Pulse.Element == C.Source.Element>(indices: C) -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, Mutation<[Self.Pulse.Element.Generator.Element]>> {
         return find(indices) { (seq, idx, val) in
             var seq = seq
             if seq.indices.contains(idx) {
@@ -1079,7 +1079,7 @@ public extension ChannelType where Source.Element : RangeReplaceableCollectionTy
 
 
     /// Returns an accessor to the collection's static indices of elements
-    @warn_unused_result public func indices(indices: [Source.Element.Index]) -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, StatePulse<[Self.Pulse.Element.Generator.Element]>> {
+    @warn_unused_result public func indices(indices: [Source.Element.Index]) -> Channel<LensSource<Self, [Self.Pulse.Element.Generator.Element]>, Mutation<[Self.Pulse.Element.Generator.Element]>> {
         return indexed(transceive(indices))
     }
 
@@ -1089,7 +1089,7 @@ public extension ChannelType where Source.Element : RangeReplaceableCollectionTy
     ///
     /// - Note: When setting the value of an index outside the current indices, any
     ///         intervening gaps will be filled with the value
-    @warn_unused_result public func index(index: Source.Element.Index) -> Channel<LensSource<Self, Source.Element.Generator.Element?>, StatePulse<Source.Element.Generator.Element?>> {
+    @warn_unused_result public func index(index: Source.Element.Index) -> Channel<LensSource<Self, Source.Element.Generator.Element?>, Mutation<Source.Element.Generator.Element?>> {
 
         let lens: Lens<Source.Element, Source.Element.Generator.Element?> = Lens(get: { target in
             target.indices.contains(index) ? target[index] : nil
@@ -1114,7 +1114,7 @@ public extension ChannelType where Source.Element : RangeReplaceableCollectionTy
     }
 
     /// Creates a prism lens channel, allowing access to a collection's mapped lens
-    @warn_unused_result public func prism<T>(lens: Lens<Source.Element.Generator.Element, T>) -> Channel<LensSource<Self, [T]>, StatePulse<[T]>> {
+    @warn_unused_result public func prism<T>(lens: Lens<Source.Element.Generator.Element, T>) -> Channel<LensSource<Self, [T]>, Mutation<[T]>> {
         let prismLens = Lens<Source.Element, [T]>({ $0.map(lens.get) }) {
             (elements, values) in
             var vals = values.generate()
@@ -1128,10 +1128,10 @@ public extension ChannelType where Source.Element : RangeReplaceableCollectionTy
     }
 }
 
-public extension ChannelType where Source.Element : RangeReplaceableCollectionType, Source : TransceiverType, Pulse: StatePulseType, Pulse.Element == Source.Element, Source.Element.SubSequence.Generator.Element == Source.Element.Generator.Element {
+public extension ChannelType where Source.Element : RangeReplaceableCollectionType, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element, Source.Element.SubSequence.Generator.Element == Source.Element.Generator.Element {
 
     /// Returns an accessor to the collection's range of elements
-    @warn_unused_result public func range(range: Range<Source.Element.Index>) -> Channel<LensSource<Self, Source.Element.SubSequence>, StatePulse<Source.Element.SubSequence>> {
+    @warn_unused_result public func range(range: Range<Source.Element.Index>) -> Channel<LensSource<Self, Source.Element.SubSequence>, Mutation<Source.Element.SubSequence>> {
         let rangeLens = Lens<Source.Element, Source.Element.SubSequence>({ $0[range] }) {
             (elements, values) in
             elements.replaceRange(range, with: Array(values))
@@ -1168,9 +1168,9 @@ extension DictionaryIndex : KeyIndexedIndexType {
 
 }
 
-public extension ChannelType where Source.Element : KeyIndexed, Source : TransceiverType, Pulse: StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : KeyIndexed, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
     /// Creates a state channel to the given key in the underlying `KeyIndexed` dictionary
-    @warn_unused_result public func at(key: Source.Element.Key) -> Channel<LensSource<Self, Source.Element.Value?>, StatePulse<Source.Element.Value?>> {
+    @warn_unused_result public func at(key: Source.Element.Key) -> Channel<LensSource<Self, Source.Element.Value?>, Mutation<Source.Element.Value?>> {
 
         let lens: Lens<Source.Element, Source.Element.Value?> = Lens(get: { target in
             target[key]
@@ -1184,102 +1184,102 @@ public extension ChannelType where Source.Element : KeyIndexed, Source : Transce
     }
 }
 
-public extension ChannelType where Source.Element : Choose1Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose1Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the first option of N choices
-    public var v1Z: Channel<LensSource<Self, Optional<Source.Element.T1>>, StatePulse<Optional<Source.Element.T1>>> { return focus({ $0.v1 }, { $0.v1 = $1 }) }
+    public var v1Z: Channel<LensSource<Self, Optional<Source.Element.T1>>, Mutation<Optional<Source.Element.T1>>> { return focus({ $0.v1 }, { $0.v1 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose2Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose2Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the second option of N choices
-    public var v2Z: Channel<LensSource<Self, Optional<Source.Element.T2>>, StatePulse<Optional<Source.Element.T2>>> { return focus({ $0.v2 }, { $0.v2 = $1 }) }
+    public var v2Z: Channel<LensSource<Self, Optional<Source.Element.T2>>, Mutation<Optional<Source.Element.T2>>> { return focus({ $0.v2 }, { $0.v2 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose3Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose3Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the third option of N choices
-    public var v3Z: Channel<LensSource<Self, Optional<Source.Element.T3>>, StatePulse<Optional<Source.Element.T3>>> { return focus({ $0.v3 }, { $0.v3 = $1 }) }
+    public var v3Z: Channel<LensSource<Self, Optional<Source.Element.T3>>, Mutation<Optional<Source.Element.T3>>> { return focus({ $0.v3 }, { $0.v3 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose4Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose4Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the fourth option of N choices
-    public var v4Z: Channel<LensSource<Self, Optional<Source.Element.T4>>, StatePulse<Optional<Source.Element.T4>>> { return focus({ $0.v4 }, { $0.v4 = $1 }) }
+    public var v4Z: Channel<LensSource<Self, Optional<Source.Element.T4>>, Mutation<Optional<Source.Element.T4>>> { return focus({ $0.v4 }, { $0.v4 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose5Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose5Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the fifth option of N choices
-    public var v5Z: Channel<LensSource<Self, Optional<Source.Element.T5>>, StatePulse<Optional<Source.Element.T5>>> { return focus({ $0.v5 }, { $0.v5 = $1 }) }
+    public var v5Z: Channel<LensSource<Self, Optional<Source.Element.T5>>, Mutation<Optional<Source.Element.T5>>> { return focus({ $0.v5 }, { $0.v5 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose6Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose6Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the sixth option of N choices
-    public var v6Z: Channel<LensSource<Self, Optional<Source.Element.T6>>, StatePulse<Optional<Source.Element.T6>>> { return focus({ $0.v6 }, { $0.v6 = $1 }) }
+    public var v6Z: Channel<LensSource<Self, Optional<Source.Element.T6>>, Mutation<Optional<Source.Element.T6>>> { return focus({ $0.v6 }, { $0.v6 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose7Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose7Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the seventh option of N choices
-    public var v7Z: Channel<LensSource<Self, Optional<Source.Element.T7>>, StatePulse<Optional<Source.Element.T7>>> { return focus({ $0.v7 }, { $0.v7 = $1 }) }
+    public var v7Z: Channel<LensSource<Self, Optional<Source.Element.T7>>, Mutation<Optional<Source.Element.T7>>> { return focus({ $0.v7 }, { $0.v7 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose8Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose8Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the eighth option of N choices
-    public var v8Z: Channel<LensSource<Self, Optional<Source.Element.T8>>, StatePulse<Optional<Source.Element.T8>>> { return focus({ $0.v8 }, { $0.v8 = $1 }) }
+    public var v8Z: Channel<LensSource<Self, Optional<Source.Element.T8>>, Mutation<Optional<Source.Element.T8>>> { return focus({ $0.v8 }, { $0.v8 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose9Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose9Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the ninth option of N choices
-    public var v9Z: Channel<LensSource<Self, Optional<Source.Element.T9>>, StatePulse<Optional<Source.Element.T9>>> { return focus({ $0.v9 }, { $0.v9 = $1 }) }
+    public var v9Z: Channel<LensSource<Self, Optional<Source.Element.T9>>, Mutation<Optional<Source.Element.T9>>> { return focus({ $0.v9 }, { $0.v9 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose10Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose10Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the tenth option of N choices
-    public var v10Z: Channel<LensSource<Self, Optional<Source.Element.T10>>, StatePulse<Optional<Source.Element.T10>>> { return focus({ $0.v10 }, { $0.v10 = $1 }) }
+    public var v10Z: Channel<LensSource<Self, Optional<Source.Element.T10>>, Mutation<Optional<Source.Element.T10>>> { return focus({ $0.v10 }, { $0.v10 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose11Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose11Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the eleventh option of N choices
-    public var v11Z: Channel<LensSource<Self, Optional<Source.Element.T11>>, StatePulse<Optional<Source.Element.T11>>> { return focus({ $0.v11 }, { $0.v11 = $1 }) }
+    public var v11Z: Channel<LensSource<Self, Optional<Source.Element.T11>>, Mutation<Optional<Source.Element.T11>>> { return focus({ $0.v11 }, { $0.v11 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose12Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose12Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the twelfth option of N choices
-    public var v12Z: Channel<LensSource<Self, Optional<Source.Element.T12>>, StatePulse<Optional<Source.Element.T12>>> { return focus({ $0.v12 }, { $0.v12 = $1 }) }
+    public var v12Z: Channel<LensSource<Self, Optional<Source.Element.T12>>, Mutation<Optional<Source.Element.T12>>> { return focus({ $0.v12 }, { $0.v12 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose13Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose13Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the thirteenth option of N choices
-    public var v13Z: Channel<LensSource<Self, Optional<Source.Element.T13>>, StatePulse<Optional<Source.Element.T13>>> { return focus({ $0.v13 }, { $0.v13 = $1 }) }
+    public var v13Z: Channel<LensSource<Self, Optional<Source.Element.T13>>, Mutation<Optional<Source.Element.T13>>> { return focus({ $0.v13 }, { $0.v13 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose14Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose14Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the fourteenth option of N choices
-    public var v14Z: Channel<LensSource<Self, Optional<Source.Element.T14>>, StatePulse<Optional<Source.Element.T14>>> { return focus({ $0.v14 }, { $0.v14 = $1 }) }
+    public var v14Z: Channel<LensSource<Self, Optional<Source.Element.T14>>, Mutation<Optional<Source.Element.T14>>> { return focus({ $0.v14 }, { $0.v14 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose15Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose15Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the fifteenth option of N choices
-    public var v15Z: Channel<LensSource<Self, Optional<Source.Element.T15>>, StatePulse<Optional<Source.Element.T15>>> { return focus({ $0.v15 }, { $0.v15 = $1 }) }
+    public var v15Z: Channel<LensSource<Self, Optional<Source.Element.T15>>, Mutation<Optional<Source.Element.T15>>> { return focus({ $0.v15 }, { $0.v15 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose16Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose16Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the sixteenth option of N choices
-    public var v16Z: Channel<LensSource<Self, Optional<Source.Element.T16>>, StatePulse<Optional<Source.Element.T16>>> { return focus({ $0.v16 }, { $0.v16 = $1 }) }
+    public var v16Z: Channel<LensSource<Self, Optional<Source.Element.T16>>, Mutation<Optional<Source.Element.T16>>> { return focus({ $0.v16 }, { $0.v16 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose17Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose17Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the seventeenth option of N choices
-    public var v17Z: Channel<LensSource<Self, Optional<Source.Element.T17>>, StatePulse<Optional<Source.Element.T17>>> { return focus({ $0.v17 }, { $0.v17 = $1 }) }
+    public var v17Z: Channel<LensSource<Self, Optional<Source.Element.T17>>, Mutation<Optional<Source.Element.T17>>> { return focus({ $0.v17 }, { $0.v17 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose18Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose18Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the eighteenth option of N choices
-    public var v18Z: Channel<LensSource<Self, Optional<Source.Element.T18>>, StatePulse<Optional<Source.Element.T18>>> { return focus({ $0.v18 }, { $0.v18 = $1 }) }
+    public var v18Z: Channel<LensSource<Self, Optional<Source.Element.T18>>, Mutation<Optional<Source.Element.T18>>> { return focus({ $0.v18 }, { $0.v18 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose19Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose19Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the nineteenth option of N choices
-    public var v19Z: Channel<LensSource<Self, Optional<Source.Element.T19>>, StatePulse<Optional<Source.Element.T19>>> { return focus({ $0.v19 }, { $0.v19 = $1 }) }
+    public var v19Z: Channel<LensSource<Self, Optional<Source.Element.T19>>, Mutation<Optional<Source.Element.T19>>> { return focus({ $0.v19 }, { $0.v19 = $1 }) }
 }
 
-public extension ChannelType where Source.Element : Choose20Type, Source : TransceiverType, Pulse : StatePulseType, Pulse.Element == Source.Element {
+public extension ChannelType where Source.Element : Choose20Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the twentieth option of N choices
-    public var v20Z: Channel<LensSource<Self, Optional<Source.Element.T20>>, StatePulse<Optional<Source.Element.T20>>> { return focus({ $0.v20 }, { $0.v20 = $1 }) }
+    public var v20Z: Channel<LensSource<Self, Optional<Source.Element.T20>>, Mutation<Optional<Source.Element.T20>>> { return focus({ $0.v20 }, { $0.v20 = $1 }) }
 }

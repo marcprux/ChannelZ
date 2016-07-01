@@ -19,7 +19,7 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive state transition operations
-    public func channelZKeyState<T>(@autoclosure accessor: () -> T, keyPath: String? = nil) -> Channel<KeyValueTransceiver<T>, StatePulse<T>> {
+    public func channelZKeyState<T>(@autoclosure accessor: () -> T, keyPath: String? = nil) -> Channel<KeyValueTransceiver<T>, Mutation<T>> {
         return KeyValueTransceiver(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).transceive()
     }
 
@@ -30,7 +30,7 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive state transition operations
-    public func channelZKeyState<T>(@autoclosure accessor: () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalTransceiver<T>, StatePulse<T?>> {
+    public func channelZKeyState<T>(@autoclosure accessor: () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalTransceiver<T>, Mutation<T?>> {
         return KeyValueOptionalTransceiver(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).transceive()
     }
 
@@ -211,10 +211,10 @@ public protocol KeyTransceiverType : class, TransceiverType {
     var optional: Bool { get }
     var keyPath: String { get }
     var object: NSObject? { get }
-    var queue: ReceiverQueue<StatePulse<Element>> { get }
+    var queue: ReceiverQueue<Mutation<Element>> { get }
 
     func get() -> Element
-    func createPulse(change: NSDictionary) -> StatePulse<Element>
+    func createPulse(change: NSDictionary) -> Mutation<Element>
 }
 
 public extension KeyTransceiverType {
@@ -263,9 +263,9 @@ public extension KeyTransceiverType {
         }
     }
 
-    private func addReceiver(receiver: StatePulse<Element> -> Void) -> Receipt {
+    private func addReceiver(receiver: Mutation<Element> -> Void) -> Receipt {
         // immediately issue the original value with no previous value
-        receiver(StatePulse<Element>(old: Optional<Element>.None, new: get()))
+        receiver(Mutation<Element>(old: Optional<Element>.None, new: get()))
 
         let kp = keyPath
         let index = queue.addReceiver(receiver)
@@ -277,19 +277,19 @@ public extension KeyTransceiverType {
         })
     }
 
-    public func transceive() -> Channel<Self, StatePulse<Element>> {
+    public func transceive() -> Channel<Self, Mutation<Element>> {
         return Channel(source: self, reception: addReceiver)
     }
 }
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueTransceiver<T>: ReceiverQueueSource<StatePulse<T>>, KeyTransceiverType {
+public final class KeyValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, KeyTransceiverType {
     public typealias Element = T
 
     public let keyPath: String
     public let optional = false
     public private(set) weak var object: NSObject?
-    public var queue: ReceiverQueue<StatePulse<Element>> { return receivers }
+    public var queue: ReceiverQueue<Mutation<Element>> { return receivers }
 
     public init(target: KeyValueTarget<Element>) {
         self.object = target.target
@@ -304,22 +304,22 @@ public final class KeyValueTransceiver<T>: ReceiverQueueSource<StatePulse<T>>, K
         return coerceFoundationType(keyValue)!
     }
 
-    public func createPulse(change: NSDictionary) -> StatePulse<Element> {
+    public func createPulse(change: NSDictionary) -> Mutation<Element> {
         let newv: Element? = coerceFoundationType(change[NSKeyValueChangeNewKey]!)
         let oldv: Element? = coerceFoundationType(change[NSKeyValueChangeOldKey]!)
-        return StatePulse<Element>(old: oldv, new: newv!)
+        return Mutation<Element>(old: oldv, new: newv!)
     }
 
 }
 
 
 /// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<StatePulse<T?>>, KeyTransceiverType {
+public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<T?>>, KeyTransceiverType {
     public typealias Element = T?
     public let keyPath: String
     public let optional = true
     public private(set) weak var object: NSObject?
-    public var queue: ReceiverQueue<StatePulse<Element>> { return receivers }
+    public var queue: ReceiverQueue<Mutation<Element>> { return receivers }
 
     public init(target: KeyValueTarget<Element>) {
         self.object = target.target
@@ -334,10 +334,10 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<StatePuls
         return keyValue as? T? ?? coerceFoundationType(keyValue)
     }
 
-    public func createPulse(change: NSDictionary) -> StatePulse<Element> {
+    public func createPulse(change: NSDictionary) -> Mutation<Element> {
         let newv: Element = coerceFoundationType(change[NSKeyValueChangeNewKey]!)
         let oldv: Element = coerceFoundationType(change[NSKeyValueChangeOldKey]!)
-        return StatePulse<Element>(old: oldv, new: newv)
+        return Mutation<Element>(old: oldv, new: newv)
     }
 }
 
@@ -817,7 +817,7 @@ extension NSNumber : ConduitNumericCoercible {
 public final class ChannelController<T> : NSObject, TransceiverType {
     public static var defaultKey: String { return "value" }
 
-    public typealias State = StatePulse<T?>
+    public typealias State = Mutation<T?>
     private let receivers = ReceiverQueue<State>()
     // map of KVO observers
     private var observers = Dictionary<ChannelControllerObserverKey, [Receipt]>()
@@ -830,7 +830,7 @@ public final class ChannelController<T> : NSObject, TransceiverType {
 
         didSet(old) {
             didChangeValueForKey(key)
-            receivers.receive(StatePulse(old: old, new: $))
+            receivers.receive(Mutation(old: old, new: $))
         }
     }
 

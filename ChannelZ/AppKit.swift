@@ -17,7 +17,7 @@ import AppKit
 public extension NSObjectProtocol where Self : NSController {
     /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
     /// change valus are not provided with KVO observation
-    public func channelZControllerPath(keyPath: String) -> Channel<KeyValueOptionalTransceiver<AnyObject>, StatePulse<AnyObject?>> {
+    public func channelZControllerPath(keyPath: String) -> Channel<KeyValueOptionalTransceiver<AnyObject>, Mutation<AnyObject?>> {
         let channel = channelZKeyState(valueForKeyPath(keyPath), keyPath: keyPath)
 
         // KVO on an object controller drops the value: 
@@ -27,7 +27,7 @@ public extension NSObjectProtocol where Self : NSController {
 
         // first map it to placeholders for storing new state
         let wrapped = channel.map({ [weak self] state in
-            StatePulse(old: state.old, new: self?.valueForKeyPath(keyPath))
+            Mutation(old: state.old, new: self?.valueForKeyPath(keyPath))
             })
 
         // now save the old state and return new instances
@@ -47,7 +47,7 @@ public extension NSObjectProtocol where Self : NSController {
 // FIXME: disabled because KVO is hopelessly broken on NSController subclasses
 //extension NSObjectController : ChannelController {
 //    public typealias ContentType = AnyObject? // it would be nice if this were generic, but @objc forbids it
-//    public typealias State = StatePulse<ContentType>
+//    public typealias State = Mutation<ContentType>
 //
 //    public var value : ContentType {
 //        get {

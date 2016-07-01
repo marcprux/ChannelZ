@@ -66,15 +66,15 @@ public prefix func ∞= <S: StateEmitterType, T: Equatable where S.Element == T>
 
 prefix func ∞?=<S: StateEmitterType, T: Equatable where S.Element: _OptionalType, S.Element.Wrapped: Equatable, T == S.Element.Wrapped>(source: S) -> Channel<S, T?> {
 
-    let wrappedState: Channel<S, StatePulse<S.Element>> = source.transceive()
+    let wrappedState: Channel<S, Mutation<S.Element>> = source.transceive()
 
     // each of the three following statements should be equivalent, but they return subtly different results! Only the first is correct.
-    let unwrappedState: Channel<S, StatePulse<T?>> = wrappedState.map({ pair in StatePulse(old: pair.old?.toOptional(), new: pair.new.toOptional()) })
+    let unwrappedState: Channel<S, Mutation<T?>> = wrappedState.map({ pair in Mutation(old: pair.old?.toOptional(), new: pair.new.toOptional()) })
 //    let unwrappedState: Channel<S, (old: T??, new: T?)> = wrappedState.map({ pair in (pair.old?.map({$0}), pair.new.map({$0})) })
 //    func unwrap(pair: (S.Element?, S.Element)) -> (old: T??, new: T?) { return (pair.old?.unwrap, pair.new.unwrap) }
 //    let unwrappedState: Channel<S, (old: T??, new: T?)> = wrappedState.map({ pair in unwrap(pair) })
 
-    let notEqual: Channel<S, StatePulse<T?>> = unwrappedState.filter({ pair in pair.old == nil || pair.old! != pair.new })
+    let notEqual: Channel<S, Mutation<T?>> = unwrappedState.filter({ pair in pair.old == nil || pair.old! != pair.new })
     let changedState: Channel<S, T?> = notEqual.map({ pair in pair.new })
     return changedState
 }
