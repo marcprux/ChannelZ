@@ -47,22 +47,10 @@ public struct Mutation<Element> : MutationType {
 
 /// Abstraction of a source that can create a channel that emits a tuple of old & new state values,
 /// and provides readable access to the "current" underlying state.
-public protocol StateEmitterType : ValuableType, RawRepresentable {
+public protocol StateEmitterType : ValuableType {
 
     /// Creates a Channel from this source that will emit tuples of the old & and state values whenever a state operation occurs
     @warn_unused_result func transceive() -> Channel<Self, Mutation<Element>>
-}
-
-public extension StateEmitterType {
-    /// The default RawRepresentable implentation does not permit construction;
-    /// concrete implementations may choose to permit initialization
-    ///
-    /// - See Also: `ValueTransceiver`
-    public init?(rawValue: Element) {
-        return nil
-    }
-
-    public var rawValue: Element { return $ }
 }
 
 /// Simple protocol that permits accessing the value of the underlying source type as

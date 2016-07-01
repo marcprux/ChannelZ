@@ -79,6 +79,28 @@ extension ChannelType where Source.Element == Address?, Source : TransceiverType
     var postalCodeZ: Channel<LensSource<Self, String?>, Mutation<String?>> { return focus({ $0?.postalCode }, { if let value = $1 { $0?.postalCode = value }  }) }
 }
 
+//protocol Focusable {
+//
+//}
+//
+//extension Focusable {
+//    static func lens<B>(lens: Lens<Self, B>) -> Lens<Self, B> {
+//        return lens
+//    }
+//
+//    static func lensZ<X, Source : StateEmitterType where Source.Element == Self>(lens: Lens<Self, X>) -> Channel<Source, Mutation<Source.Element>> -> Channel<LensSource<Channel<Source, Mutation<Source.Element>>, X>, Mutation<X>> {
+//        return { channel in focus(channel)(lens) }
+//    }
+//
+//    static func focus<X, Source : StateEmitterType where Source.Element == Self>(channel: Channel<Source, Mutation<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, Mutation<Source.Element>>, X>, Mutation<X>> {
+//        return channel.focus
+//    }
+//}
+//
+//extension Person : Focusable {
+//    static let firstNameX = Person.lens(Lens({ $0.firstName }, { $0.firstName = $1 }))
+//}
+
 
 extension ChannelTests {
     func testJacket() {
