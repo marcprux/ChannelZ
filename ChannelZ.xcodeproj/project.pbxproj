@@ -26,6 +26,7 @@
 		7E8C00031A80099F00180DB1 /* Network.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8C00021A80099F00180DB1 /* Network.swift */; };
 		7E8CDCF31CAAF66D00245939 /* State.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8CDCF21CAAF66D00245939 /* State.swift */; };
 		7ECE513B1A60A29600924B8E /* Coercible.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ECE513A1A60A29600924B8E /* Coercible.swift */; };
+		7ED222FC1D2BF735003A7BE7 /* Optics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ED222FB1D2BF735003A7BE7 /* Optics.swift */; };
 		7EDBA1081A87D18300AED2CE /* AppKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EDBA1071A87D18300AED2CE /* AppKitTests.swift */; };
 		7EDBA10A1A87D18C00AED2CE /* UIKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EDBA1091A87D18C00AED2CE /* UIKitTests.swift */; };
 		7EE45E221A210FFE00E9AB52 /* PlayMarkerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */; };
@@ -69,6 +70,7 @@
 		7E8C00021A80099F00180DB1 /* Network.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = Network.swift; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
 		7E8CDCF21CAAF66D00245939 /* State.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = State.swift; sourceTree = "<group>"; };
 		7ECE513A1A60A29600924B8E /* Coercible.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Coercible.swift; sourceTree = "<group>"; };
+		7ED222FB1D2BF735003A7BE7 /* Optics.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Optics.swift; sourceTree = "<group>"; };
 		7EDBA1071A87D18300AED2CE /* AppKitTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppKitTests.swift; sourceTree = "<group>"; };
 		7EDBA1091A87D18C00AED2CE /* UIKitTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIKitTests.swift; sourceTree = "<group>"; };
 		7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayMarkerTests.swift; sourceTree = "<group>"; };
@@ -121,6 +123,7 @@
 				7E55BE731CB2018D0035281A /* Stream.swift */,
 				7E43C2CA1A1072A4003747B6 /* Channel.swift */,
 				7E8CDCF21CAAF66D00245939 /* State.swift */,
+				7ED222FB1D2BF735003A7BE7 /* Optics.swift */,
 				7E35E7F71CE0C49B006F26D6 /* Errors.swift */,
 				7EEE65121CB3EF2500DA3EDA /* Combinators.swift */,
 				7E2AB9BC1A82B90100AFBD4F /* Operators.swift */,
@@ -280,6 +283,7 @@
 				7E43C2D71A10763D003747B6 /* UIKit.swift in Sources */,
 				7E7E35461A152CCD00777D72 /* CoreData.swift in Sources */,
 				7E55BE741CB2018D0035281A /* Stream.swift in Sources */,
+				7ED222FC1D2BF735003A7BE7 /* Optics.swift in Sources */,
 				7E2AB9BD1A82B90100AFBD4F /* Operators.swift in Sources */,
 				7E43C2CF1A1073CA003747B6 /* Receivers.swift in Sources */,
 				7ECE513B1A60A29600924B8E /* Coercible.swift in Sources */,
