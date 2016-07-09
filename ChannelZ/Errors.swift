@@ -7,18 +7,18 @@
 //
 
 public enum Result<Wrapped> : _WrapperType {
-    case Success(Wrapped)
-    case Failure(ErrorType)
+    case success(Wrapped)
+    case failure(ErrorType)
 
     public init(_ some: Wrapped) {
-        self = .Success(some)
+        self = .success(some)
     }
 
     /// If `self` is `ErrorType`, returns `nil`.  Otherwise, returns `f(self!)`.
     /// - See Also: `Optional.map`
     @warn_unused_result
     public func map<U>(@noescape f: (Wrapped) throws -> U) rethrows -> U? {
-        guard case .Success(let value) = self else { return nil }
+        guard case .success(let value) = self else { return nil }
         return try f(value)
     }
 
@@ -26,7 +26,7 @@ public enum Result<Wrapped> : _WrapperType {
     /// - See Also: `Optional.flatMap`
     @warn_unused_result
     public func flatMap<U>(@noescape f: (Wrapped) throws -> U?) rethrows -> U? {
-        guard case .Success(let value) = self else { return nil }
+        guard case .success(let value) = self else { return nil }
         return try f(value)
     }
 }
@@ -44,7 +44,7 @@ extension Result : Choose2Type {
 
         set(x) {
             if let x = x {
-                self = .Success(x)
+                self = .success(x)
             }
         }
     }
@@ -53,14 +53,14 @@ extension Result : Choose2Type {
     public var v2: ErrorType? {
         get {
             switch self {
-            case .Failure(let x): return x
-            case .Success: return nil
+            case .failure(let x): return x
+            case .success: return nil
             }
         }
 
         set(x) {
             if let x = x {
-                self = .Failure(x)
+                self = .failure(x)
             }
         }
     }
@@ -78,9 +78,9 @@ public extension ChannelType {
         return lift { receive in
             { item in
                 do {
-                    receive(.Success(try transform(item)))
+                    receive(.success(try transform(item)))
                 } catch {
-                    receive(.Failure(error))
+                    receive(.failure(error))
                 }
             }
         }

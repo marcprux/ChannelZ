@@ -420,7 +420,7 @@ class FoundationTests : ChannelTestCase {
     }
 
     func testStructChannel() {
-        let ob = ∞(SwiftStruct(intField: 1, stringField: "x", enumField: .Yes))∞
+        let ob = ∞(SwiftStruct(intField: 1, stringField: "x", enumField: .yes))∞
 
         var changes = 0
 
@@ -428,30 +428,30 @@ class FoundationTests : ChannelTestCase {
         ob.subsequent().receive({ _ in changes += 1 })
 
         XCTAssertEqual(changes, 0)
-        ob ∞= SwiftStruct(intField: 2, stringField: nil, enumField: .Yes)
+        ob ∞= SwiftStruct(intField: 2, stringField: nil, enumField: .yes)
         XCTAssertEqual(changes, 1)
 
-        ob ∞= SwiftStruct(intField: 2, stringField: nil, enumField: .Yes)
+        ob ∞= SwiftStruct(intField: 2, stringField: nil, enumField: .yes)
         XCTAssertEqual(changes, 2)
     }
 
     func testEquatableStructChannel() {
-        let ob = ∞=(SwiftEquatableStruct(intField: 1, stringField: "x", enumField: .Yes))=∞
+        let ob = ∞=(SwiftEquatableStruct(intField: 1, stringField: "x", enumField: .yes))=∞
 
         var changes = 0
         ob.subsequent().receive({ _ in changes += 1 })
 
         XCTAssertEqual(changes, 0)
-        ob ∞= SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .Yes)
+        ob ∞= SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .yes)
         XCTAssertEqual(changes, 1)
 
-        ob ∞= SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .Yes)
+        ob ∞= SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .yes)
         XCTAssertEqual(changes, 1)
 
-        ob ∞= SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .No)
+        ob ∞= SwiftEquatableStruct(intField: 2, stringField: nil, enumField: .no)
         XCTAssertEqual(changes, 2)
 
-        ob ∞= SwiftEquatableStruct(intField: 3, stringField: "str", enumField: .Yes)
+        ob ∞= SwiftEquatableStruct(intField: 3, stringField: "str", enumField: .yes)
         XCTAssertEqual(changes, 3)
     }
 
@@ -466,8 +466,8 @@ class FoundationTests : ChannelTestCase {
         var enumChanges = 0
         ob.enumField.subsequent().receive { _ in enumChanges += 1 }
         XCTAssertEqual(0, enumChanges)
-        assertChanges(enumChanges, ob.enumField ∞= .MaybeSo)
-        assertRemains(enumChanges, ob.enumField ∞= .MaybeSo)
+        assertChanges(enumChanges, ob.enumField ∞= .maybeSo)
+        assertRemains(enumChanges, ob.enumField ∞= .maybeSo)
     }
 
     func testFieldChannel() {
@@ -1997,10 +1997,10 @@ class FoundationTests : ChannelTestCase {
         var changes = 0
         _ = state.channelZKeyArray(state.array).receive { change in
             switch change {
-            case .Assigned(_): break
-            case .Added(let indices, _): changes += indices.count
-            case .Removed(let indices, _): changes += indices.count
-            case .Replaced(let indices, _, _): changes += indices.count
+            case .assigned(_): break
+            case .added(let indices, _): changes += indices.count
+            case .removed(let indices, _): changes += indices.count
+            case .replaced(let indices, _, _): changes += indices.count
             }
         }
 
@@ -2022,10 +2022,10 @@ class FoundationTests : ChannelTestCase {
         var changes = 0
         _ = state.channelZKeyOrderedSet(state.orderedSet).receive { change in
             switch change {
-            case .Assigned: break
-            case .Added(let indices, _): changes += indices.count
-            case .Removed(let indices, _): changes += indices.count
-            case .Replaced(let indices, _, _): changes += indices.count
+            case .assigned: break
+            case .added(let indices, _): changes += indices.count
+            case .removed(let indices, _): changes += indices.count
+            case .replaced(let indices, _, _): changes += indices.count
             }
         }
 
@@ -2052,9 +2052,9 @@ class FoundationTests : ChannelTestCase {
         var changes = 0
         _ = state.channelZKeySet(state.set).receive { change in
             switch change {
-            case .Assigned: break
-            case .Added(let new): changes += new.count
-            case .Removed(let old): changes += old.count
+            case .assigned: break
+            case .added(let new): changes += new.count
+            case .removed(let old): changes += old.count
             }
         }
 
@@ -2101,18 +2101,18 @@ struct StatefulObjectHolder {
     let ob: StatefulObject
 }
 
-enum SomeEnum { case Yes, No, MaybeSo }
+enum SomeEnum { case yes, no, maybeSo }
 
 struct SwiftStruct {
     var intField: Int
     var stringField: String?
-    var enumField: SomeEnum = .No
+    var enumField: SomeEnum = .no
 }
 
 struct SwiftEquatableStruct : Equatable {
     var intField: Int
     var stringField: String?
-    var enumField: SomeEnum = .No
+    var enumField: SomeEnum = .no
 }
 
 func == (lhs: SwiftEquatableStruct, rhs: SwiftEquatableStruct) -> Bool {
@@ -2121,8 +2121,8 @@ func == (lhs: SwiftEquatableStruct, rhs: SwiftEquatableStruct) -> Bool {
 
 struct SwiftObservables {
     let stringField = ∞=("")=∞
-    let enumField = ∞=(SomeEnum.No)=∞
-    let swiftStruct = ∞(SwiftStruct(intField: 1, stringField: "", enumField: .Yes))∞
+    let enumField = ∞=(SomeEnum.no)=∞
+    let swiftStruct = ∞(SwiftStruct(intField: 1, stringField: "", enumField: .yes))∞
 }
 
 

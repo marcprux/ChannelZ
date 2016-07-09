@@ -78,10 +78,10 @@ extension NSObject {
                 let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
 
                 switch kind {
-                case .Setting: receivers.receive(.Assigned(new as? NSArray))
-                case .Insertion: receivers.receive(.Added(indices: indices!, new: new as! NSArray))
-                case .Removal: receivers.receive(.Removed(indices: indices!, old: old as! NSArray))
-                case .Replacement: receivers.receive(.Replaced(indices: indices!, old: old as! NSArray, new: new as! NSArray))
+                case .Setting: receivers.receive(.assigned(new as? NSArray))
+                case .Insertion: receivers.receive(.added(indices: indices!, new: new as! NSArray))
+                case .Removal: receivers.receive(.removed(indices: indices!, old: old as! NSArray))
+                case .Replacement: receivers.receive(.replaced(indices: indices!, old: old as! NSArray, new: new as! NSArray))
                 }
             }
 
@@ -113,10 +113,10 @@ extension NSObject {
                 let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
 
                 switch kind {
-                case .Setting: receivers.receive(.Assigned(new as? NSOrderedSet))
-                case .Insertion: receivers.receive(.Added(indices: indices!, new: new as! NSArray))
-                case .Removal: receivers.receive(.Removed(indices: indices!, old: old as! NSArray))
-                case .Replacement: receivers.receive(.Replaced(indices: indices!, old: old as! NSArray, new: new as! NSArray))
+                case .Setting: receivers.receive(.assigned(new as? NSOrderedSet))
+                case .Insertion: receivers.receive(.added(indices: indices!, new: new as! NSArray))
+                case .Removal: receivers.receive(.removed(indices: indices!, old: old as! NSArray))
+                case .Replacement: receivers.receive(.replaced(indices: indices!, old: old as! NSArray, new: new as! NSArray))
                 }
             }
 
@@ -147,9 +147,9 @@ extension NSObject {
                 let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
 
                 switch kind {
-                case .Setting: receivers.receive(.Assigned(new as? NSSet))
-                case .Insertion: receivers.receive(.Added(new as! NSSet))
-                case .Removal: receivers.receive(.Removed(old as! NSSet))
+                case .Setting: receivers.receive(.assigned(new as? NSSet))
+                case .Insertion: receivers.receive(.added(new as! NSSet))
+                case .Removal: receivers.receive(.removed(old as! NSSet))
                 case .Replacement: fatalError("should never happen")
                 }
             }
@@ -165,25 +165,25 @@ extension NSObject {
 
 /// Change type for `channelZKeyArray`
 public enum ArrayChange {
-    case Assigned(NSArray?)
-    case Added(indices: NSIndexSet, new: NSArray)
-    case Removed(indices: NSIndexSet, old: NSArray)
-    case Replaced(indices: NSIndexSet, old: NSArray, new: NSArray)
+    case assigned(NSArray?)
+    case added(indices: NSIndexSet, new: NSArray)
+    case removed(indices: NSIndexSet, old: NSArray)
+    case replaced(indices: NSIndexSet, old: NSArray, new: NSArray)
 }
 
 /// Change type for `channelZKeyOrderedSet`
 public enum OrderedSetChange {
-    case Assigned(NSOrderedSet?)
-    case Added(indices: NSIndexSet, new: NSArray)
-    case Removed(indices: NSIndexSet, old: NSArray)
-    case Replaced(indices: NSIndexSet, old: NSArray, new: NSArray)
+    case assigned(NSOrderedSet?)
+    case added(indices: NSIndexSet, new: NSArray)
+    case removed(indices: NSIndexSet, old: NSArray)
+    case replaced(indices: NSIndexSet, old: NSArray, new: NSArray)
 }
 
 /// Change type for `channelZKeySet`
 public enum SetChange {
-    case Assigned(NSSet?)
-    case Added(NSSet)
-    case Removed(NSSet)
+    case assigned(NSSet?)
+    case added(NSSet)
+    case removed(NSSet)
 }
 
 

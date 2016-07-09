@@ -185,9 +185,9 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
 
         return sel.either(locator).resource({ $0.0 }).map {
             switch $0 {
-            case .V1(let v): // change in elements
+            case .v1(let v): // change in elements
                 return v // the raw values are already resolved by the lens
-            case .V2(let i): // change in locator; need to perform another lookup
+            case .v2(let i): // change in locator; need to perform another lookup
                 return Mutation(old: i.old.flatMap({ finder(self.source.$, $0) }), new: finder(self.source.$, i.new))
             }
         }

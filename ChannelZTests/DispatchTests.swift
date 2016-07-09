@@ -265,15 +265,15 @@ class DispatchTests : ChannelTestCase {
 
         channelZFile(file, high: Int(arc4random_uniform(1024)) + 1).receive { event in
             switch event {
-            case .Opened:
+            case .opened:
                 break
-            case .Data(let dat):
+            case .data(let dat):
                 var encoding = UTF8()
                 encoding.decodeScalars(dat) { view.append($0) }
-            case .Error(let err):
+            case .error(let err):
                 XCTFail(String(err))
                 xpc?.fulfill()
-            case .Closed:
+            case .closed:
                 xpc?.fulfill()
             }
         }
@@ -302,7 +302,7 @@ private extension UnicodeCodecType {
 }
 
 enum InputStreamError : ErrorType {
-    case OpenError(POSIXError?, String)
+    case openError(POSIXError?, String)
 }
 
 func channelZFile(path: String, queue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false) -> Channel<dispatch_io_t, InputStreamEvent> {
@@ -323,15 +323,15 @@ func channelZFile(path: String, queue: dispatch_queue_t = dispatch_get_global_qu
         if error != 0 {
             let perr = POSIXError(rawValue: error)
             let errs = String.fromCString(strerror(error)) ?? "Unknown Error"
-            receivers.receive(InputStreamEvent.Error(InputStreamError.OpenError(perr, errs)))
+            receivers.receive(InputStreamEvent.error(InputStreamError.openError(perr, errs)))
         } else if done == true {
             dispatch_io_close(dchan, 0)
-            receivers.receive(.Closed)
+            receivers.receive(.closed)
         } else if data != nil {
             dispatch_data_apply(data, { (region, offset, buffer, size) -> Bool in
                 let ptr = UnsafePointer<UInt8>(buffer)
                 let buf = UnsafeBufferPointer<UInt8>(start: ptr, count: size)
-                receivers.receive(.Data(Array(buf)))
+                receivers.receive(.data(Array(buf)))
                 return true
             })
         }

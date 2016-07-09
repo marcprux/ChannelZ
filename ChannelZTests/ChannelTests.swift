@@ -404,15 +404,15 @@ class ChannelTests : ChannelTestCase {
         var closeCount = 0
         var count = 0
         let sub = obv.receive { switch $0 {
-            case .Opened:
+            case .opened:
                 openCount += 1
-            case .Data(let d):
+            case .data(let d):
                 count += d.count
                 allData.appendData(NSData(bytes: d, length: d.count))
-            case .Error(let e):
+            case .error(let e):
                 XCTFail(String(e))
                 xpc?.fulfill()
-            case .Closed:
+            case .closed:
                 closeCount += 1
                 xpc?.fulfill()
             }
@@ -788,9 +788,9 @@ class ChannelTests : ChannelTestCase {
 
         a.either(b).either(c).receive { r in
             switch r {
-            case .V1(.V1): ints += 1
-            case .V1(.V2): strs += 1
-            case .V2: flts += 1
+            case .v1(.v1): ints += 1
+            case .v1(.v2): strs += 1
+            case .v2: flts += 1
             }
         }
 
@@ -1061,9 +1061,9 @@ class ChannelTests : ChannelTestCase {
 
         combo2.receive { val in
             switch val {
-            case .V1: return
-            case .V2: return
-            case .V3: return
+            case .v1: return
+            case .v2: return
+            case .v3: return
             }
         }
 
@@ -1072,9 +1072,9 @@ class ChannelTests : ChannelTestCase {
         combo2.receive {
             changes += 1
             switch $0 {
-            case .V1(let x): lastFloat = x
-            case .V2: break
-            case .V3(let x): lastString = x
+            case .v1(let x): lastFloat = x
+            case .v2: break
+            case .v3(let x): lastString = x
             }
         }
 
@@ -1192,13 +1192,13 @@ class ChannelTests : ChannelTestCase {
 
             if vals.count != 7 { return XCTFail(msg) }
 
-            guard case .V1(let v0) = vals[0] where v0 == 1 else { return XCTFail(msg) }
-            guard case .V1(let v1) = vals[1] where v1 == 2 else { return XCTFail(msg) }
-            guard case .V1(let v2) = vals[2] where v2 == 3 else { return XCTFail(msg) }
-            guard case .V2(let v3) = vals[3] where v3 == "a" else { return XCTFail(msg) }
-            guard case .V2(let v4) = vals[4] where v4 == "b" else { return XCTFail(msg) }
-            guard case .V2(let v5) = vals[5] where v5 == "c" else { return XCTFail(msg) }
-            guard case .V2(let v6) = vals[6] where v6 == "d" else { return XCTFail(msg) }
+            guard case .v1(let v0) = vals[0] where v0 == 1 else { return XCTFail(msg) }
+            guard case .v1(let v1) = vals[1] where v1 == 2 else { return XCTFail(msg) }
+            guard case .v1(let v2) = vals[2] where v2 == 3 else { return XCTFail(msg) }
+            guard case .v2(let v3) = vals[3] where v3 == "a" else { return XCTFail(msg) }
+            guard case .v2(let v4) = vals[4] where v4 == "b" else { return XCTFail(msg) }
+            guard case .v2(let v5) = vals[5] where v5 == "c" else { return XCTFail(msg) }
+            guard case .v2(let v6) = vals[6] where v6 == "d" else { return XCTFail(msg) }
         }
     }
 

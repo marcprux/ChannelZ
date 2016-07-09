@@ -34,7 +34,7 @@ struct Person {
     var homeAddress: Address
     var workAddress: Address?
     var previousAddresses: [Address]
-    enum Gender { case Male, Female }
+    enum Gender { case male, female }
 }
 
 struct Address {
@@ -107,7 +107,7 @@ extension ChannelTests {
 
 
         let bebe = Person(firstName: "Beatrice", lastName: "Walter",
-                          gender: .Female,
+                          gender: .female,
                           homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
                           workAddress: nil,
                           previousAddresses: [])
@@ -116,7 +116,7 @@ extension ChannelTests {
                             companies: [
                                 Company(employees: [
                                     "359414": Person(firstName: "Marc", lastName: "Walter",
-                                        gender: .Male,
+                                        gender: .male,
                                         homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
                                         workAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
                                         previousAddresses: [])
@@ -279,8 +279,8 @@ extension ChannelTests {
 
             let doeHome = Address(line1: "123 Doe Lane", line2: nil, postalCode: "44556")
 
-            company.employeesZ.$["888888"] = Person(firstName: "John", lastName: "Doe", gender: .Male, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
-            company.employeesZ.$["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .Female, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+            company.employeesZ.$["888888"] = Person(firstName: "John", lastName: "Doe", gender: .male, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+            company.employeesZ.$["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .female, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
 
             XCTAssertEqual(dirZ.$.companies.flatMap({ $0.employees.values }).count, 3)
 

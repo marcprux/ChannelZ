@@ -23,7 +23,7 @@ public extension NSInputStream {
             case NSStreamEvent.None.rawValue:
                 break
             case NSStreamEvent.OpenCompleted.rawValue:
-                receivers.receive(.Opened)
+                receivers.receive(.opened)
                 break
             case NSStreamEvent.HasBytesAvailable.rawValue:
                 var buffer = Array<UInt8>(count: bufferLength, repeatedValue: 0)
@@ -33,17 +33,17 @@ public extension NSInputStream {
                         break
                     } else {
                         let slice: ArraySlice<UInt8> = buffer[0..<readlen]
-                        receivers.receive(.Data(Array(slice)))
+                        receivers.receive(.data(Array(slice)))
                     }
                 }
                 break
             case NSStreamEvent.HasSpaceAvailable.rawValue:
                 break
             case NSStreamEvent.ErrorOccurred.rawValue:
-                receivers.receive(.Error(self.streamError ?? NSError(domain: "Network", code: 0, userInfo: [:])))
+                receivers.receive(.error(self.streamError ?? NSError(domain: "Network", code: 0, userInfo: [:])))
                 break
             case NSStreamEvent.EndEncountered.rawValue:
-                receivers.receive(.Closed)
+                receivers.receive(.closed)
                 break
             default:
                 break
@@ -66,13 +66,13 @@ public extension NSInputStream {
 
 public enum InputStreamEvent {
     /// Event indicating that the stream opened the connection successfully
-    case Opened
+    case opened
     /// Event indicating that some data was received on the stream
-    case Data([UInt8])
+    case data([UInt8])
     /// Event indicating that an errors occurred on the stream
-    case Error(ErrorType)
+    case error(ErrorType)
     /// Event indicating that the stream was closed
-    case Closed
+    case closed
 }
 
 @objc public class ChannelStreamDelegate: NSObject, NSStreamDelegate {

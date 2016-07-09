@@ -127,8 +127,8 @@ public extension ChannelType {
     /// - Returns: A stateless Channel that emits the item of either `self` or `other`.
     @warn_unused_result public func either<C2: ChannelType>(other: C2) -> Channel<(Source, C2.Source), Choose2<Pulse, C2.Pulse>> {
         return Channel<(Source, C2.Source), Choose2<Pulse, C2.Pulse>>(source: (self.source, other.source)) { (rcvr: (Choose2<Pulse, C2.Pulse> -> Void)) in
-            let rcpt1 = self.receive { rcvr(.V1($0)) }
-            let rcpt2 = other.receive { rcvr(.V2($0)) }
+            let rcpt1 = self.receive { rcvr(.v1($0)) }
+            let rcpt2 = other.receive { rcvr(.v2($0)) }
             return ReceiptOf(receipts: [rcpt1, rcpt2])
         }
     }
@@ -154,8 +154,8 @@ public extension ChannelType {
         return either(other)
             .affect(Buffer(nil, nil)) { (prev, pulse) in
                 switch pulse {
-                case .V1(let v1): return Buffer(v1: v1, v2: prev.1)
-                case .V2(let v2): return Buffer(v1: prev.0, v2: v2)
+                case .v1(let v1): return Buffer(v1: v1, v2: prev.1)
+                case .v2(let v2): return Buffer(v1: prev.0, v2: v2)
                 }
             }
             .map { (prev, _) in prev } // drop the current pulse; it is stored in the state
@@ -180,8 +180,8 @@ public extension ChannelType {
             .affect(ZipBuffer(([], []), nil)) { (buffer, item) in
                 var buf = buffer
                 switch item {
-                case .V1(let v1): buf.store.0.append(v1)
-                case .V2(let v2): buf.store.1.append(v2)
+                case .v1(let v1): buf.store.0.append(v1)
+                case .v2(let v2): buf.store.1.append(v2)
                 }
 
                 // if we have a tuple on either side, pop the end
