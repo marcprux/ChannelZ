@@ -20,20 +20,20 @@ private let contentView: NSView = window.contentView!
 
 class AppKitTests : ChannelTestCase {
 
-    func decrement(inout x: Int) -> Int {
+    func decrement(_ x: inout Int) -> Int {
         x -= 1
         return x
     }
 
     func testCocoaBindings() {
-        let objc = NSObjectController(content: NSNumber(integer: 1))
+        let objc = NSObjectController(content: NSNumber(value: 1 as Int))
         XCTAssertEqual(1, (objc.content as? NSNumber) ?? -999)
 
         let state1 = StatefulObject()
         state1.num3 = 0
 
         XCTAssertEqual(0, state1.num3)
-        objc.bind("content", toObject: state1, withKeyPath: "num3", options: nil)
+        objc.bind("content", to: state1, withKeyPath: "num3", options: nil)
         XCTAssertEqual(0, state1.num3)
 
         objc.content = 2
@@ -46,7 +46,7 @@ class AppKitTests : ChannelTestCase {
 
         let state2 = StatefulObject()
         state2.num3 = 0
-        state2.bind("num3", toObject: state1, withKeyPath: "num3", options: nil)
+        state2.bind("num3", to: state1, withKeyPath: "num3", options: nil)
 
         let channel2: Channel<KeyValueTransceiver<NSNumber>, NSNumber> = state2∞(state2.num3, "num3")
         let _ = channel2 ∞> { num in
@@ -69,36 +69,39 @@ class AppKitTests : ChannelTestCase {
 
         let constraint = NSLayoutConstraint()
         constraint∞constraint.constant ∞> { _ in counter += 1 }
-        constraint∞constraint.active ∞> { _ in counter += 1 }
+        constraint∞constraint.isActive ∞> { _ in counter += 1 }
         counter -= 2
 
-        let undo = NSUndoManager()
-        undo.channelZNotification(NSUndoManagerDidUndoChangeNotification) ∞> { _ in counter += 1 }
+        let undo = UndoManager()
+        undo.channelZNotification(NSNotification.Name.NSUndoManagerDidUndoChange.rawValue) ∞> { _ in counter += 1 }
         undo∞undo.canUndo ∞> { _ in counter += 1 }
         undo∞undo.canRedo ∞> { _ in counter += 1 }
         undo∞undo.levelsOfUndo ∞> { _ in counter += 1 }
         undo∞undo.undoActionName ∞> { _ in counter += 1 }
         undo∞undo.redoActionName ∞> { _ in counter += 1 }
-        counter -= 6
+        counter -= 5
+        XCTAssertEqual(0, counter)
 
-        let df = NSDateFormatter()
+        let df = DateFormatter()
         df∞df.dateFormat ∞> { _ in counter += 1 }
         df∞df.locale ∞> { _ in counter += 1 }
         df∞df.timeZone ∞> { _ in counter += 1 }
-        //df∞df.eraSymbols ∞> { _ in counter += 1 }
-        counter -= 3
-
-        let comps = NSDateComponents()
-        comps∞comps.date ∞> { _ in counter += 1 }
-        comps∞comps.era ∞> { _ in counter += 1 }
-        comps∞comps.year ∞> { _ in counter += 1 }
-        comps∞comps.month ∞> { _ in counter += 1 }
-        comps.year = 2016
+        df∞df.eraSymbols ∞> { _ in counter += 1 }
         counter -= 4
+        XCTAssertEqual(0, counter)
+
+        // NSDateComponents is now a struct
+//        var comps = DateComponents()
+//        comps∞comps.date ∞> { _ in counter += 1 }
+//        comps∞comps.era ∞> { _ in counter += 1 }
+//        comps∞comps.year ∞> { _ in counter += 1 }
+//        comps∞comps.month ∞> { _ in counter += 1 }
+//        comps.year = 2016
+//        counter -= 4
 
         XCTAssertEqual(0, counter)
 
-        let prog = NSProgress(totalUnitCount: 100)
+        let prog = Progress(totalUnitCount: 100)
         prog∞prog.totalUnitCount ∞> { _ in counter += 1 }
         prog.totalUnitCount = 200
         counter -= 1
@@ -168,7 +171,7 @@ class AppKitTests : ChannelTestCase {
         let textReceiver = textChannel.receive({ text = $0 })
 
         var enabled = true
-        let enabledChannel = textField∞(textField.enabled)
+        let enabledChannel = textField∞(textField.isEnabled)
         let enabledReceiver = enabledChannel.receive({ enabled = $0 })
 
         textField.stringValue = "ABC"
@@ -179,11 +182,11 @@ class AppKitTests : ChannelTestCase {
         XCTAssertEqual("XYZ", textField.stringValue)
         XCTAssertEqual("XYZ", text)
 
-        textField.enabled = false
-        XCTAssertEqual(false, textField.enabled)
+        textField.isEnabled = false
+        XCTAssertEqual(false, textField.isEnabled)
         XCTAssertEqual(false, enabled)
 
-        textField.enabled = true
+        textField.isEnabled = true
         XCTAssertEqual(true, enabled)
 
         textReceiver.cancel()
@@ -193,7 +196,7 @@ class AppKitTests : ChannelTestCase {
 
         enabledReceiver.cancel()
 
-        textField.enabled = false
+        textField.isEnabled = false
         XCTAssertEqual(true, enabled)
     }
 
@@ -238,7 +241,7 @@ class AppKitTests : ChannelTestCase {
         XCTAssertEqual(stepper.doubleValue, Double(75.0))
         XCTAssertEqual(progbar.doubleValue, Double(0.75))
 
-        let progress = NSProgress(totalUnitCount: Int64(vm.amountMax))
+        let progress = Progress(totalUnitCount: Int64(vm.amountMax))
         vm.amount.map({ Int64($0) }) ∞=> (progress∞progress.completedUnitCount)
 
         // FIXME: memory leak
@@ -257,14 +260,14 @@ class AppKitTests : ChannelTestCase {
     }
 
     func testControllers() {
-        var val: AnyObject? = 0
+        var val: AnyObject? = 0 as AnyObject?
         let content: NSMutableDictionary = ["x": 12]
 
         let controller = NSObjectController(content: content)
-        controller.channelZControllerPath("content.x").receive({ val = $0.new })
-        XCTAssertEqual(val as? NSNumber, NSNumber(integer: 12))
+        controller.channelZControllerPath(keyPath: "content.x").receive({ val = $0.new as AnyObject? })
+        XCTAssertEqual(val as? NSNumber, NSNumber(value: 12 as Int))
         content["x"] = 13
-        XCTAssertEqual(val as? NSNumber, NSNumber(integer: 13))
+        XCTAssertEqual(val as? NSNumber, NSNumber(value: 13 as Int))
     }
 
     func testControllerBinding() {
@@ -298,7 +301,7 @@ class AppKitTests : ChannelTestCase {
         defer { stepper.removeFromSuperview() }
 
         do { // bind to double
-            let controller = stepper.channelZBinding(0.0)
+            let controller = stepper.channelZBinding(value: 0.0)
 
             controller.$ = 3.2
             XCTAssertEqual(3.2, stepper.doubleValue, "stepper should mirror controller binding")
@@ -313,7 +316,7 @@ class AppKitTests : ChannelTestCase {
         }
 
         do { // bind to int
-            let controller = stepper.channelZBinding(3)
+            let controller = stepper.channelZBinding(value: 3)
 
             controller.$ = 4
             XCTAssertEqual(4, stepper.integerValue, "stepper should mirror controller binding")
@@ -328,7 +331,7 @@ class AppKitTests : ChannelTestCase {
         }
 
         do { // bind to int?
-            let controller = stepper.channelZBinding(44)
+            let controller = stepper.channelZBinding(value: 44)
 
             stepper.maxValue = 88
             controller.$ = 4
@@ -356,13 +359,13 @@ class AppKitTests : ChannelTestCase {
             contentView.addSubview(textField)
             defer { textField.removeFromSuperview() }
 
-            let controller = textField.channelZBinding("ABC")
-            let enabled = textField.channelZBinding(true, binding: NSEnabledBinding)
-            let hidden = textField.channelZBinding(false, binding: NSHiddenBinding)
+            let controller = textField.channelZBinding(value: "ABC")
+            let enabled = textField.channelZBinding(value: true, binding: NSEnabledBinding)
+            let hidden = textField.channelZBinding(value: false, binding: NSHiddenBinding)
 
             controller.$ = "XYZ"
             XCTAssertEqual("XYZ", textField.stringValue, "text field should mirror controller binding")
-            XCTAssertEqual("XYZ", textField.objectValue as? NSObject, "text field should show null binding")
+            XCTAssertEqual("XYZ" as NSObject, textField.objectValue as? NSObject, "text field should show null binding")
             XCTAssertEqual(nil, textField.placeholderString, "placeholder should not be set unless content is nil")
 
             controller.$ = nil
@@ -370,17 +373,17 @@ class AppKitTests : ChannelTestCase {
             XCTAssertEqual("", textField.stringValue)
             XCTAssertEqual("ABC", textField.placeholderString, "placeholder should be set when content is nil")
 
-            XCTAssertEqual(true, textField.enabled)
+            XCTAssertEqual(true, textField.isEnabled)
             enabled.$ = false
-            XCTAssertEqual(false, textField.enabled)
+            XCTAssertEqual(false, textField.isEnabled)
             enabled.$ = true
-            XCTAssertEqual(true, textField.enabled)
+            XCTAssertEqual(true, textField.isEnabled)
 
-            XCTAssertEqual(false, textField.hidden)
+            XCTAssertEqual(false, textField.isHidden)
             hidden.$ = true
-            XCTAssertEqual(true, textField.hidden)
+            XCTAssertEqual(true, textField.isHidden)
             hidden.$ = false
-            XCTAssertEqual(false, textField.hidden)
+            XCTAssertEqual(false, textField.isHidden)
 
             // now make it so enabled and hidden are bound to opposite valies, so that
             // when the control is disabled it is hidden and when the control is hidden it is disabled
@@ -388,20 +391,20 @@ class AppKitTests : ChannelTestCase {
             enabled.transceiveChanges().map({ $0.flatMap(!) }).bind(hidden.transceiveChanges().map({ $0.flatMap(!) }))
 
             enabled.$ = false
-            XCTAssertEqual(false, textField.enabled)
-            XCTAssertEqual(true, textField.hidden)
+            XCTAssertEqual(false, textField.isEnabled)
+            XCTAssertEqual(true, textField.isHidden)
 
             enabled.$ = true
-            XCTAssertEqual(true, textField.enabled)
-            XCTAssertEqual(false, textField.hidden)
+            XCTAssertEqual(true, textField.isEnabled)
+            XCTAssertEqual(false, textField.isHidden)
 
             hidden.$ = true
-            XCTAssertEqual(true, textField.hidden)
-            XCTAssertEqual(false, textField.enabled)
+            XCTAssertEqual(true, textField.isHidden)
+            XCTAssertEqual(false, textField.isEnabled)
 
             hidden.$ = false
-            XCTAssertEqual(false, textField.hidden)
-            XCTAssertEqual(true, textField.enabled)
+            XCTAssertEqual(false, textField.isHidden)
+            XCTAssertEqual(true, textField.isEnabled)
 
 
             // “If you change the value of an item in the user interface programmatically, for example sending an NSTextField a setStringValue: message, the model is not updated with the new value.”

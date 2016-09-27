@@ -10,7 +10,7 @@ import Foundation
 
 
 /// Dynamically convert between the given numeric types, getting past Swift's inability to statically cast between numbers
-public func convertNumericType<From : ConduitNumericCoercible, To : ConduitNumericCoercible>(from: From) -> To {
+public func convertNumericType<From : ConduitNumericCoercible, To : ConduitNumericCoercible>(_ from: From) -> To {
     // try both sides of the convertables so this can be extended by other types (such as NSNumber)
     return To.fromConduitNumericCoercible(from) ?? from.toConduitNumericCoercible() ?? from as! To
 }
@@ -18,13 +18,13 @@ public func convertNumericType<From : ConduitNumericCoercible, To : ConduitNumer
 
 /// Implemented by numeric types that can be coerced into other numeric types
 public protocol ConduitNumericCoercible {
-    static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self?
+    static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Self?
     func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T?
 }
 
 
 extension Bool : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Bool? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Bool? {
         if let value = value as? Bool { return self.init(value) }
         else if let value = value as? Int8 { return self.init(value != 0) }
         else if let value = value as? UInt8 { return self.init(value != 0) }
@@ -61,7 +61,7 @@ extension Bool : ConduitNumericCoercible {
 
 
 extension Int8 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int8? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int8? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -97,7 +97,7 @@ extension Int8 : ConduitNumericCoercible {
 }
 
 extension UInt8 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt8? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt8? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(abs(value)) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -133,7 +133,7 @@ extension UInt8 : ConduitNumericCoercible {
 }
 
 extension Int16 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int16? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int16? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -169,7 +169,7 @@ extension Int16 : ConduitNumericCoercible {
 }
 
 extension UInt16 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt16? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt16? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(abs(value)) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -205,7 +205,7 @@ extension UInt16 : ConduitNumericCoercible {
 }
 
 extension Int32 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int32? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int32? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -241,7 +241,7 @@ extension Int32 : ConduitNumericCoercible {
 }
 
 extension UInt32 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt32? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt32? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(abs(value)) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -277,7 +277,7 @@ extension UInt32 : ConduitNumericCoercible {
 }
 
 extension Int : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -313,7 +313,7 @@ extension Int : ConduitNumericCoercible {
 }
 
 extension UInt : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(abs(value)) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -349,7 +349,7 @@ extension UInt : ConduitNumericCoercible {
 }
 
 extension Int64 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Int64? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int64? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -385,7 +385,7 @@ extension Int64 : ConduitNumericCoercible {
 }
 
 extension UInt64 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> UInt64? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt64? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(abs(value)) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -421,7 +421,7 @@ extension UInt64 : ConduitNumericCoercible {
 }
 
 extension Float : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Float? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Float? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -457,7 +457,7 @@ extension Float : ConduitNumericCoercible {
 }
 
 extension Double : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Double? {
+    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Double? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }

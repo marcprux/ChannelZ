@@ -11,12 +11,12 @@ import ChannelZ
 import Dispatch
 
 /// Creates an asynchronous trickle of events for the given generator
-func trickleZ<G: GeneratorType>(fromx: G, _ interval: NSTimeInterval, queue: dispatch_queue_t = dispatch_get_main_queue()) -> Channel<G, G.Element> {
+func trickleZ<G: IteratorProtocol>(_ fromx: G, _ interval: TimeInterval, queue: DispatchQueue = DispatchQueue.main) -> Channel<G, G.Element> {
     var from = fromx
     var receivers = ReceiverQueue<G.Element>()
-    let delay = Int64(interval * NSTimeInterval(NSEC_PER_SEC))
+    let delay = Int64(interval * TimeInterval(NSEC_PER_SEC))
     func tick() {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay), queue) {
+        queue.asyncAfter(deadline: DispatchTime.now() + Double(delay) / Double(NSEC_PER_SEC)) {
             if receivers.count > 0 { // i.e., they haven't all been cancelled
                 if let next = from.next() {
                     receivers.receive(next)
@@ -30,8 +30,8 @@ func trickleZ<G: GeneratorType>(fromx: G, _ interval: NSTimeInterval, queue: dis
     return Channel(source: from) { rcvr in receivers.addReceipt(rcvr) }
 }
 
-@warn_unused_result public func channelZSinkSingleReceiver<T>(type: T.Type) -> Channel<AnyReceiver<T>, T> {
-    var receive: T -> Void = { _ in }
+public func channelZSinkSingleReceiver<T>(_ type: T.Type) -> Channel<AnyReceiver<T>, T> {
+    var receive: (T) -> Void = { _ in }
     let sink = AnyReceiver<T>({ receive($0) })
     return Channel<AnyReceiver<T>, T>(source: sink) { receive = $0; return ReceiptOf(canceler: { _ in }) }
 }
@@ -45,14 +45,14 @@ class DispatchTests : ChannelTestCase {
             values[i] = i
         }
 
-        let channel = channelZSinkSingleReceiver(Int)
+        let channel = channelZSinkSingleReceiver(Int.self)
 
         channel.receive { i in
-            values.removeValueForKey(i)
+            values.removeValue(forKey: i)
         }
 
         //        for i in values {
-        dispatch_apply(count + 1, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)) { i in
+        DispatchQueue.concurrentPerform(iterations: count + 1) { i in
             channel.source.receive(i)
         }
 
@@ -63,18 +63,18 @@ class DispatchTests : ChannelTestCase {
     func testSyncReceive() {
         let count = 999
         var values = Set(0..<count)
-        let queue = dispatch_queue_create(#function, DISPATCH_QUEUE_SERIAL)
+        let queue = DispatchQueue(label: #function, attributes: [])
 
         // FIXME: the receiverlist itself if not locked, so we can't use anything that uses the ReceiverQueue
         // not sure how to fix this without resoring to RevceiverQueue depending on dispatch
-        let channel = channelZSinkSingleReceiver(Int)
+        let channel = channelZSinkSingleReceiver(Int.self)
 
         channel.sync(queue).receive { i in
             values.remove(i)
         }
 
 //        for i in values {
-        dispatch_apply(count + 1, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)) { i in
+        DispatchQueue.concurrentPerform(iterations: count + 1) { i in
             channel.source.receive(i)
         }
 
@@ -84,7 +84,7 @@ class DispatchTests : ChannelTestCase {
     func testSyncSource() {
         let count = 999
         var values = Set(0..<count)
-        let queue = dispatch_queue_create(#function, DISPATCH_QUEUE_SERIAL)
+        let queue = DispatchQueue(label: #function, attributes: [])
         let channel = channelZPropertyValue(0).syncSource(queue)
 
         channel.receive { i in
@@ -92,7 +92,7 @@ class DispatchTests : ChannelTestCase {
         }
 
 //        for i in values {
-        dispatch_apply(count + 1, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)) { i in
+        DispatchQueue.concurrentPerform(iterations: count + 1) { i in
             channel.source.receive(i)
         }
 
@@ -103,55 +103,55 @@ class DispatchTests : ChannelTestCase {
     func testTrickle() {
         var tricklets: [Int] = []
         let count = 10
-        let channel = trickleZ((1...10).generate(), 0.001)
-        weak var xpc = expectationWithDescription("testTrickle")
+        let channel = trickleZ((1...10).makeIterator(), 0.001)
+        weak var xpc = expectation(description: "testTrickle")
         channel.receive {
             tricklets += [$0]
             if tricklets.count >= count { xpc?.fulfill() }
         }
 
-        waitForExpectationsWithTimeout(5, handler: { err in })
+        waitForExpectations(timeout: 5, handler: { err in })
         XCTAssertEqual(count, tricklets.count)
     }
 
     func testTrickleZip() {
         var tricklets: [(Int, Int)] = []
         let count = 10
-        let channel1 = trickleZ((1...50).generate(), 0.001)
-        let channel2 = trickleZ((11...20).generate(), 0.005) // slower; channel1 will be buffered by zip()
-        weak var xpc = expectationWithDescription("testTrickleZip")
+        let channel1 = trickleZ((1...50).makeIterator(), 0.001)
+        let channel2 = trickleZ((11...20).makeIterator(), 0.005) // slower; channel1 will be buffered by zip()
+        weak var xpc = expectation(description: "testTrickleZip")
         channel1.zip(channel2).receive {
             tricklets += [$0]
             if tricklets.count >= count { xpc?.fulfill() }
         }
 
-        waitForExpectationsWithTimeout(5, handler: { err in })
+        waitForExpectations(timeout: 5, handler: { err in })
         XCTAssertEqual(count, tricklets.count)
         
     }
 
-    func XXXtestDispatchChannel() {
-        let obv = channelZSink(Int)
-
-        let xpc: XCTestExpectation = expectationWithDescription("queue delay")
-
-        var count = 0
-        _ = obv.filter({ $0 > 0 }).dispatch(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0)).receive({ _ in
-            XCTAssertFalse(NSThread.isMainThread())
-            count += 1
-            if count >= 3 {
-                xpc.fulfill()
-            }
-        })
-
-        let numz = -10...3
-        for x in numz { obv.source.receive(x) }
-
-//        XCTAssertNotEqual(3, count, "should have been a delay")
-        waitForExpectationsWithTimeout(1, handler: { _ in })
-        XCTAssertEqual(3, count)
-
-    }
+//    func XXXtestDispatchChannel() {
+//        let obv = channelZSink(Int.self)
+//
+//        let xpc: XCTestExpectation = expectation(description: "queue delay")
+//
+//        var count = 0
+//        _ = obv.filter({ $0 > 0 }).dispatch(dispatch_get_global_queue(DispatchQoS.QoSClass.default, 0)).receive({ _ in
+//            XCTAssertFalse(NSThread.isMainThread())
+//            count += 1
+//            if count >= 3 {
+//                xpc.fulfill()
+//            }
+//        })
+//
+//        let numz = -10...3
+//        for x in numz { obv.source.receive(x) }
+//
+////        XCTAssertNotEqual(3, count, "should have been a delay")
+//        waitForExpectations(timeout: 1, handler: { _ in })
+//        XCTAssertEqual(3, count)
+//
+//    }
 
     func testDispatchSyncronize() {
 
@@ -161,9 +161,9 @@ class DispatchTests : ChannelTestCase {
         var fibs: [Int] = [] // the shared mutable data structure; this is why we need sync()
 
         // this is the queue we will use to synchronize access to fibs
-        let lock = dispatch_queue_create("testDispatchSyncronize.synker", DISPATCH_QUEUE_SERIAL)
+        let lock = DispatchQueue(label: "testDispatchSyncronize.synker", attributes: [])
 
-        func fib(num: Int) -> Int{
+        func fib(_ num: Int) -> Int{
             if(num == 0){
                 return 0;
             }
@@ -173,14 +173,14 @@ class DispatchTests : ChannelTestCase {
             return fib(num - 1) + fib(num - 2);
         }
 
-        let opq = NSOperationQueue()
+        let opq = OperationQueue()
         for _ in 1...channelCount {
-            let obv = channelZSink(Int)
+            let obv = channelZSink(Int.self)
             let rcpt = obv.map(fib).sync(lock).receive({ fibs += [$0] })
-            var source: NSArray = Array(1...fibcount)
+            var source: NSArray = Array(1...fibcount) as NSArray
 
-            opq.addOperationWithBlock({ () -> Void in
-                source.enumerateObjectsWithOptions(NSEnumerationOptions.Concurrent, usingBlock: { (ob, index, stop) -> Void in
+            opq.addOperation({ () -> Void in
+                source.enumerateObjects(options: NSEnumerationOptions.concurrent, using: { (ob, index, stop) -> Void in
                     obv.source.receive(ob as! Int)
                 })
             })
@@ -194,37 +194,37 @@ class DispatchTests : ChannelTestCase {
 
         XCTAssertEqual(fibcount * channelCount, fibs.count)
 
-        func dedupe<S: SequenceType, T: Equatable where T == S.Generator.Element>(seq: S) -> Array<T> {
+        func dedupe<S: Sequence, T: Equatable>(_ seq: S) -> Array<T> where T == S.Iterator.Element {
             let reduced = seq.reduce(Array<T>()) { (array, item) in
                 return array + (item == array.last ? [] : [item])
             }
             return reduced
         }
 
-        let distinctAll = dedupe(fibs.sort())
+        let distinctAll = dedupe(fibs.sorted())
         let distinct24 = Array(distinctAll[0..<24])
 
         XCTAssertEqual([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765, 10946, 17711, 28657, 46368, 75025], distinct24)
     }
 
     func testDelay() {
-        let channel = channelZSink(Void)
+        let channel = channelZSink(Void.self)
 
-        weak var xpc = expectationWithDescription("testDebounce")
+        weak var xpc = expectation(description: "testDebounce")
 
         let vcount = 4
 
         var pulses = 0
         let interval = 0.1
-        _ = dispatch_time(DISPATCH_TIME_NOW, Int64(interval * Double(NSEC_PER_SEC)))
-        _ = channel.dispatch(dispatch_get_main_queue(), delay: interval).receive { void in
+        _ = DispatchTime.now() + Double(Int64(interval * Double(NSEC_PER_SEC))) / Double(NSEC_PER_SEC)
+        _ = channel.dispatch(DispatchQueue.main, delay: interval).receive { void in
             pulses += 1
             if pulses >= vcount { xpc?.fulfill() }
         }
 
         for _ in 1...vcount { channel.source.receive() }
 
-        waitForExpectationsWithTimeout(5, handler: { err in })
+        waitForExpectations(timeout: 5, handler: { err in })
         XCTAssertEqual(vcount, pulses) // make sure the pulse contained all the items
     }
 
@@ -257,8 +257,8 @@ class DispatchTests : ChannelTestCase {
 //    }
 
     /// Disabled only because it fails on TravisCI
-    func XXXtestDispatchFile() {
-        weak var xpc = expectationWithDescription(#function)
+    func testDispatchFile() {
+        weak var xpc = expectation(description: #function)
 
         let file = #file
         var view = String.UnicodeScalarView()
@@ -271,84 +271,88 @@ class DispatchTests : ChannelTestCase {
                 var encoding = UTF8()
                 encoding.decodeScalars(dat) { view.append($0) }
             case .error(let err):
-                XCTFail(String(err))
+                XCTFail(String(describing: err))
                 xpc?.fulfill()
             case .closed:
                 xpc?.fulfill()
             }
         }
-        waitForExpectationsWithTimeout(30, handler: { err in })
+        waitForExpectations(timeout: 30, handler: { err in })
 
         let swstr = String(view)
-        let nsstr = (try? NSString(contentsOfFile: file, encoding: NSUTF8StringEncoding)) ?? "XXX"
+        let nsstr = (try? NSString(contentsOfFile: file, encoding: String.Encoding.utf8.rawValue)) ?? "XXX"
 
-        XCTAssertTrue(nsstr == swstr, "file contents did not match: \(swstr.utf16.count) vs. \(nsstr.length)")
+        XCTAssertTrue(nsstr as String == swstr, "file contents did not match: \(swstr.utf16.count) vs. \(nsstr.length)")
     }
 
 }
 
-private extension UnicodeCodecType {
+private extension UnicodeCodec {
     /// Helper function to decode the sequence of scalars into a string
-    private mutating func decodeScalars<S: SequenceType where S.Generator.Element == CodeUnit>(scalars: S, f: UnicodeScalar->Void) {
-        var g = scalars.generate()
+    mutating func decodeScalars<S: Sequence>(_ scalars: S, f: (UnicodeScalar)->Void) where S.Iterator.Element == CodeUnit {
+        var g = scalars.makeIterator()
         while true {
             switch decode(&g) {
-            case .Result(let us): f(us)
-            case .EmptyInput: return
-            case .Error: fatalError("decoding error")
+            case .scalarValue(let us): f(us)
+            case .emptyInput: return
+            case .error: fatalError("decoding error")
             }
         }
     }
 }
 
-enum InputStreamError : ErrorType {
-    case openError(POSIXError?, String)
+enum InputStreamError : Error {
+    case openError(POSIXErrorCode?, String)
 }
 
-func channelZFile(path: String, queue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false) -> Channel<dispatch_io_t, InputStreamEvent> {
+func channelZFile(_ path: String, queue: DispatchQueue = DispatchQueue.global(qos: .default), low: Int? = nil, high: Int? = nil, interval: DispatchTimeInterval? = nil, strict: Bool = false) -> Channel<DispatchIO, InputStreamEvent> {
     let receivers = ReceiverQueue<InputStreamEvent>()
 
     let dchan = path.withCString {
-        dispatch_io_create_with_path(DISPATCH_IO_STREAM, $0, O_RDONLY, 0, queue) { error in
+        DispatchIO(type: DispatchIO.StreamType.stream, path: $0, oflag: O_RDONLY, mode: 0, queue: queue) { error in
             // any open errors will also be sent through dispatch_io_read, so don't handle them here
             receivers.clear()
         }
     }
 
-    if let low = low { dispatch_io_set_low_water(dchan, low) }
-    if let high = high { dispatch_io_set_high_water(dchan, high) }
-    if let interval = interval { dispatch_io_set_interval(dchan, interval, strict ? DISPATCH_IO_STRICT_INTERVAL : 0) }
+    if let low = low { dchan.setLimit(lowWater: low) }
+    if let high = high { dchan.setLimit(highWater: high) }
 
-    dispatch_io_read(dchan, 0, Int.max, queue) { (done, data, error) -> Void in
+    if let interval = interval {
+        if strict {
+            dchan.setInterval(interval: interval, flags: .strictInterval)
+        } else {
+            dchan.setInterval(interval: interval)
+        }
+    }
+
+    dchan.read(offset: 0, length: Int.max, queue: queue) { (done, data, error) -> Void in
         if error != 0 {
-            let perr = POSIXError(rawValue: error)
-            let errs = String.fromCString(strerror(error)) ?? "Unknown Error"
+            let perr = POSIXErrorCode(rawValue: error)
+            let errs = String(cString: strerror(error))
             receivers.receive(InputStreamEvent.error(InputStreamError.openError(perr, errs)))
         } else if done == true {
-            dispatch_io_close(dchan, 0)
+            dchan.close()
             receivers.receive(.closed)
         } else if data != nil {
-            dispatch_data_apply(data, { (region, offset, buffer, size) -> Bool in
-                let ptr = UnsafePointer<UInt8>(buffer)
-                let buf = UnsafeBufferPointer<UInt8>(start: ptr, count: size)
-                receivers.receive(.data(Array(buf)))
-                return true
+            data?.enumerateBytes(block: { (buffer, offset, stop) in
+                receivers.receive(.data(Array(buffer)))
             })
         }
     }
 
-    return Channel<dispatch_io_t, InputStreamEvent>(source: dchan) { receiver in
+    return Channel<DispatchIO, InputStreamEvent>(source: dchan) { receiver in
         let index = receivers.addReceiver(receiver)
         return ReceiptOf(canceler: {
             receivers.removeReceptor(index)
             if receivers.count == 0 {
-                dispatch_io_close(dchan, DISPATCH_IO_STOP)
+                dchan.close(flags: .stop)
             }
         })
     }
 }
 
-//func channelZSocket(aqueue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), rqueue: dispatch_queue_t = dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false) {
+//func channelZSocket(aqueue: dispatch_queue_t = DispatchQueue.global(qos: .default), rqueue: dispatch_queue_t = DispatchQueue.global(qos: .default), low: Int? = nil, high: Int? = nil, interval: UInt64? = nil, strict: Bool = false) {
 //
 //    let nativeSocket = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP)
 //    var sin = sockaddr_in()

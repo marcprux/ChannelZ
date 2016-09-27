@@ -10,7 +10,7 @@ import CoreData
 
 /// Extension for observableing notications for various Core Data events
 extension NSManagedObjectContext {
-    private class func mobs4key(note: [NSObject : AnyObject], keys: [String]) -> [NSManagedObject] {
+    fileprivate class func mobs4key(_ note: [AnyHashable: Any], keys: [String]) -> [NSManagedObject] {
         var mobs = [NSManagedObject]()
         for key in keys {
             if let set = note[key] as? NSSet {
@@ -22,38 +22,38 @@ extension NSManagedObjectContext {
         return mobs
     }
 
-    private func typeChangeChannel(noteType: String, changeTypes: String...)->Channel<NSNotificationCenter, [NSManagedObject]> {
+    fileprivate func typeChangeChannel(_ noteType: String, changeTypes: String...)->Channel<NotificationCenter, [NSManagedObject]> {
         return self.channelZNotification(noteType).map { NSManagedObjectContext.mobs4key($0, keys: changeTypes) }
     }
 
     /// Channels notifications of inserted objects after the changes have been processed in the context
-    public func channelZProcessedInserts()->Channel<NSNotificationCenter, [NSManagedObject]> {
-        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInsertedObjectsKey)
+    public func channelZProcessedInserts()->Channel<NotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSNotification.Name.NSManagedObjectContextObjectsDidChange.rawValue, changeTypes: NSInsertedObjectsKey)
     }
 
     /// Channels notifications of updated objects after the changes have been processed in the context
-    public func channelZProcessedUpdates()->Channel<NSNotificationCenter, [NSManagedObject]> {
-        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSUpdatedObjectsKey)
+    public func channelZProcessedUpdates()->Channel<NotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSNotification.Name.NSManagedObjectContextObjectsDidChange.rawValue, changeTypes: NSUpdatedObjectsKey)
     }
 
     /// Channels notifications of deleted objects after the changes have been processed in the context
-    public func channelZProcessedDeletes()->Channel<NSNotificationCenter, [NSManagedObject]> {
-        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSDeletedObjectsKey)
+    public func channelZProcessedDeletes()->Channel<NotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSNotification.Name.NSManagedObjectContextObjectsDidChange.rawValue, changeTypes: NSDeletedObjectsKey)
     }
 
     /// Channels notifications of changed (updated/inserted/deleted) objects after the changes have been processed in the context
-    public func channelZProcessedAlters()->Channel<NSNotificationCenter, [NSManagedObject]> {
-        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey)
+    public func channelZProcessedAlters()->Channel<NotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSNotification.Name.NSManagedObjectContextObjectsDidChange.rawValue, changeTypes: NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey)
     }
 
     /// Channels notifications of refreshed objects after the changes have been processed in the context
-    public func channelZProcessedRefreshes()->Channel<NSNotificationCenter, [NSManagedObject]> {
-        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSRefreshedObjectsKey)
+    public func channelZProcessedRefreshes()->Channel<NotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSNotification.Name.NSManagedObjectContextObjectsDidChange.rawValue, changeTypes: NSRefreshedObjectsKey)
     }
 
     /// Channels notifications of invalidated objects after the changes have been processed in the context
-    public func channelZProcessedInvalidates()->Channel<NSNotificationCenter, [NSManagedObject]> {
-        return typeChangeChannel(NSManagedObjectContextObjectsDidChangeNotification, changeTypes: NSInvalidatedObjectsKey)
+    public func channelZProcessedInvalidates()->Channel<NotificationCenter, [NSManagedObject]> {
+        return typeChangeChannel(NSNotification.Name.NSManagedObjectContextObjectsDidChange.rawValue, changeTypes: NSInvalidatedObjectsKey)
     }
 
 

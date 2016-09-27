@@ -19,13 +19,13 @@ public protocol Receipt : class {
 }
 
 // A receipt implementation
-public class ReceiptOf: Receipt {
-    public var cancelled: Bool { return cancelCounter > 0 }
-    private var cancelCounter: Int64 = 0
+open class ReceiptOf: Receipt {
+    open var cancelled: Bool { return cancelCounter > 0 }
+    fileprivate var cancelCounter: Int64 = 0
 
     let canceler: () -> ()
 
-    public init(canceler: () -> ()) {
+    public init(canceler: @escaping () -> ()) {
         self.canceler = canceler
     }
 
@@ -47,7 +47,7 @@ public class ReceiptOf: Receipt {
     }
 
     /// Disconnects this receipt from the source observable
-    public func cancel() {
+    open func cancel() {
         // only cancel the first time
         if OSAtomicIncrement64(&cancelCounter) == 1 {
             canceler()
@@ -65,22 +65,22 @@ public var ChannelZReentrancyLimit: Int = 1
 
 /// A ReceiverQueue manages a list of receivers and handles dispatching pulses to all the receivers
 public final class ReceiverQueue<T> : ReceiverType {
-    public typealias Receptor = T -> ()
+    public typealias Receptor = (T) -> ()
     public let maxdepth: Int
 
-    private var receivers: [(index: Int64, receptor: Receptor)] = []
-    private var entrancy: Int64 = 0
-    private var receptorIndex: Int64 = 0
+    fileprivate var receivers: [(index: Int64, receptor: Receptor)] = []
+    fileprivate var entrancy: Int64 = 0
+    fileprivate var receptorIndex: Int64 = 0
 
     public var count: Int { return receivers.count }
-    private let lock: Lock
+    fileprivate let lock: Lock
 
     public init(maxdepth: Int? = nil, lock: Lock = ReentrantLock()) {
         self.maxdepth = maxdepth ?? ChannelZReentrancyLimit
         self.lock = lock
     }
 
-    public func receive(element: T) {
+    public func receive(_ element: T) {
         lock.withLock {
             let currentEntrancy = OSAtomicIncrement64(&entrancy)
             defer { OSAtomicDecrement64(&entrancy) }
@@ -94,28 +94,28 @@ public final class ReceiverQueue<T> : ReceiverType {
         }
     }
 
-    public func reentrantChannelReception(element: Any) {
+    public func reentrantChannelReception(_ element: Any) {
         #if DEBUG_CHANNELZ
-            print("ChannelZ reentrant channel short-circuit; break on \(#function) to debug", element.dynamicType)
+            print("ChannelZ reentrant channel short-circuit; break on \(#function) to debug", type(of: element))
             OSAtomicIncrement64(&ChannelZReentrantReceptions)
         #endif
     }
 
     /// Adds a receiver that will return a receipt that simply removes itself from the list
-    public func addReceipt(receptor: Receptor) -> Receipt {
+    public func addReceipt(_ receptor: @escaping Receptor) -> Receipt {
         let token = addReceiver(receptor)
         return ReceiptOf(canceler: { self.removeReceptor(token) })
     }
 
     /// Adds a custom receiver block and returns a token that can later be used to remove the receiver
-    public func addReceiver(receptor: Receptor) -> Int64 {
+    public func addReceiver(_ receptor: @escaping Receptor) -> Int64 {
         precondition(entrancy == 0, "cannot add to receivers while they are flowing")
         let index = OSAtomicIncrement64(&receptorIndex)
         receivers.append((index, receptor))
         return index
     }
 
-    public func removeReceptor(index: Int64) {
+    public func removeReceptor(_ index: Int64) {
         receivers = receivers.filter { $0.index != index }
     }
 
@@ -125,7 +125,7 @@ public final class ReceiverQueue<T> : ReceiverType {
     }
 }
 
-public class ReceiverQueueSource<T> {
+open class ReceiverQueueSource<T> {
     let receivers = ReceiverQueue<T>()
 }
 
@@ -133,7 +133,7 @@ public class ReceiverQueueSource<T> {
 public protocol Lock {
     func lock()
     func unlock()
-    func withLock<T>(@noescape f: () throws -> T) rethrows -> T
+    func withLock<T>(_ f: () throws -> T) rethrows -> T
 }
 
 /// A no-op `Lock` implementation
@@ -144,7 +144,7 @@ public final class NoLock : Lock {
     public func unlock() {
     }
 
-    public func withLock<T>(@noescape f: () throws -> T) rethrows -> T {
+    public func withLock<T>(_ f: () throws -> T) rethrows -> T {
         return try f()
     }
 }
@@ -161,13 +161,13 @@ public final class SpinLock : Lock {
         OSSpinLockUnlock(&spinLock)
     }
 
-    public func withLock<T>(@noescape f: () throws -> T) rethrows -> T {
+    public func withLock<T>(_ f: () throws -> T) rethrows -> T {
         OSSpinLockLock(&spinLock)
         defer { OSSpinLockUnlock(&spinLock) }
         return try f()
     }
 
-    public func tryLock<T>(@noescape f: () throws -> T) rethrows -> T? {
+    public func tryLock<T>(_ f: () throws -> T) rethrows -> T? {
         if !OSSpinLockTry(&spinLock) { return nil }
         defer { OSSpinLockUnlock(&spinLock) }
         return try f()
@@ -176,8 +176,8 @@ public final class SpinLock : Lock {
 
 /// A `Lock` implementation that uses a `pthread_mutex_t`
 public final class ReentrantLock : Lock {
-    private var mutex = pthread_mutex_t()
-    private var mutexAttr = pthread_mutexattr_t()
+    fileprivate var mutex = pthread_mutex_t()
+    fileprivate var mutexAttr = pthread_mutexattr_t()
 
     public init(attr: Int32 = PTHREAD_MUTEX_RECURSIVE) {
         pthread_mutexattr_init(&mutexAttr)
@@ -198,7 +198,7 @@ public final class ReentrantLock : Lock {
         pthread_mutex_unlock(&self.mutex)
     }
 
-    public func withLock<T>(@noescape f: () throws -> T) rethrows -> T {
+    public func withLock<T>(_ f: () throws -> T) rethrows -> T {
         pthread_mutex_lock(&self.mutex)
         defer { pthread_mutex_unlock(&self.mutex) }
         return try f()

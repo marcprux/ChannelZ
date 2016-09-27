@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "BA3A9C3DEB09A57039CDF8EA8FC65815CC42C363",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "BA3A9C3DEB09A57039CDF8EA8FC65815CC42C363" : 9223372036854775807,
+    "963FA805B4117C250D428575017B0EA5CC34879C" : 9223372036854775807
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "1671E348-D48D-4E6B-8939-28DFA48E46DD",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "BA3A9C3DEB09A57039CDF8EA8FC65815CC42C363" : "ChannelZ\/",
+    "963FA805B4117C250D428575017B0EA5CC34879C" : ""
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "ChannelZ",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "ChannelZ.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/glimpseio\/GIO.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "963FA805B4117C250D428575017B0EA5CC34879C"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/glimpseio\/ChannelZ.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "BA3A9C3DEB09A57039CDF8EA8FC65815CC42C363"
+    }
+  ]
+}

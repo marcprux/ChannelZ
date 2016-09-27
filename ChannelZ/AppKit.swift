@@ -17,8 +17,8 @@ import AppKit
 public extension NSObjectProtocol where Self : NSController {
     /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
     /// change valus are not provided with KVO observation
-    public func channelZControllerPath(keyPath: String) -> Channel<KeyValueOptionalTransceiver<AnyObject>, Mutation<AnyObject?>> {
-        let channel = channelZKeyState(valueForKeyPath(keyPath), keyPath: keyPath)
+    public func channelZControllerPath(keyPath: String) -> Channel<KeyValueOptionalTransceiver<Any>, Mutation<Any?>> {
+        let channel = channelZKeyState(value(forKeyPath: keyPath), keyPath: keyPath)
 
         // KVO on an object controller drops the value: 
         // “Important: The Cocoa bindings controller classes do not provide change values when sending key-value observing notifications to observers. It is the developer’s responsibility to query the controller to determine the new values.”
@@ -27,7 +27,7 @@ public extension NSObjectProtocol where Self : NSController {
 
         // first map it to placeholders for storing new state
         let wrapped = channel.map({ [weak self] state in
-            Mutation(old: state.old, new: self?.valueForKeyPath(keyPath))
+            Mutation(old: state.old, new: self?.value(forKeyPath: keyPath))
             })
 
         // now save the old state and return new instances
@@ -90,11 +90,11 @@ extension NSControl { // : KeyValueChannelSupplementing {
             options[NSNullPlaceholderBindingOption] = options[NSNullPlaceholderBindingOption] ?? nullValue
         }
         let controller = controller ?? ChannelController(value: value, key: keyPath)
-        bind(binding, toObject: controller, withKeyPath: controller.key, options: options)
+        bind(binding, to: controller, withKeyPath: controller.key, options: options)
         return controller
     }
 
-    public func supplementKeyValueChannel(forKeyPath: String, receiver: (AnyObject?) -> ()) -> (() -> ())? {
+    public func supplementKeyValueChannel(forKeyPath: String, receiver: @escaping (Any?) -> ()) -> (() -> ())? {
         // NSControl action events do not trigger KVO notifications, so we manually supplement any subscriptions with control events
 
         if forKeyPath == "doubleValue" {

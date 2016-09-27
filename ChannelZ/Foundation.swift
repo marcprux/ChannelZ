@@ -19,7 +19,7 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive state transition operations
-    public func channelZKeyState<T>(@autoclosure accessor: () -> T, keyPath: String? = nil) -> Channel<KeyValueTransceiver<T>, Mutation<T>> {
+    public func channelZKeyState<T>(_ accessor: @autoclosure () -> T, keyPath: String? = nil) -> Channel<KeyValueTransceiver<T>, Mutation<T>> {
         return KeyValueTransceiver(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).transceive()
     }
 
@@ -30,7 +30,7 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive state transition operations
-    public func channelZKeyState<T>(@autoclosure accessor: () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalTransceiver<T>, Mutation<T?>> {
+    public func channelZKeyState<T>(_ accessor: @autoclosure () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalTransceiver<T>, Mutation<T?>> {
         return KeyValueOptionalTransceiver(target: KeyValueTarget(target: self, accessor: accessor, keyPath: keyPath)).transceive()
     }
 
@@ -40,7 +40,7 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     /// 
     /// - Returns a channel backed by the KVO property that will receive items for every time the state is assigned
-    public func channelZKey<T>(@autoclosure accessor: () -> T, keyPath: String? = nil) -> Channel<KeyValueTransceiver<T>, T> {
+    public func channelZKey<T>(_ accessor: @autoclosure () -> T, keyPath: String? = nil) -> Channel<KeyValueTransceiver<T>, T> {
         return channelZKeyState(accessor, keyPath: keyPath).new()
     }
 
@@ -50,7 +50,7 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive items for every time the state is assigned
-    public func channelZKey<T>(@autoclosure accessor: () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
+    public func channelZKey<T>(_ accessor: @autoclosure () -> T?, keyPath: String? = nil) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
         return channelZKeyState(accessor, keyPath: keyPath).new()
     }
 
@@ -63,25 +63,24 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive ArrayChange items for mutations
-    public func channelZKeyArray(@autoclosure accessor: () -> NSArray?, keyPath: String? = nil) -> Channel<NSObject, ArrayChange> {
+    public func channelZKeyArray(_ accessor: @autoclosure () -> NSArray?, keyPath: String? = nil) -> Channel<NSObject, ArrayChange> {
 
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
         let receivers = ReceiverQueue<ArrayChange>()
 
         return Channel(source: self) { [unowned self] receiver in
-
             let observer = TargetObserverRegister.get(self).addObserver(kp) { change in
-                let new: AnyObject? = change[NSKeyValueChangeNewKey]
-                let old: AnyObject? = change[NSKeyValueChangeOldKey]
-                let indices = change[NSKeyValueChangeIndexesKey] as? NSIndexSet
+                let new = change[NSKeyValueChangeKey.newKey]
+                let old = change[NSKeyValueChangeKey.oldKey]
+                let indices = change[NSKeyValueChangeKey.indexesKey] as? IndexSet
 
-                let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
+                let kind = (change[NSKeyValueChangeKey.kindKey] as? UInt).flatMap(NSKeyValueChange.init(rawValue:)) ?? .setting
 
                 switch kind {
-                case .Setting: receivers.receive(.assigned(new as? NSArray))
-                case .Insertion: receivers.receive(.added(indices: indices!, new: new as! NSArray))
-                case .Removal: receivers.receive(.removed(indices: indices!, old: old as! NSArray))
-                case .Replacement: receivers.receive(.replaced(indices: indices!, old: old as! NSArray, new: new as! NSArray))
+                case .setting: receivers.receive(.assigned(new as? NSArray))
+                case .insertion: receivers.receive(.added(indices: indices ?? [], new: new as? NSArray ?? []))
+                case .removal: receivers.receive(.removed(indices: indices ?? [], old: old as? NSArray ?? []))
+                case .replacement: receivers.receive(.replaced(indices: indices ?? [], old: old as? NSArray ?? [], new: new as? NSArray ?? []))
                 }
             }
 
@@ -99,24 +98,24 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive OrderedSetChange items for mutations
-    public func channelZKeyOrderedSet(@autoclosure accessor: () -> NSOrderedSet?, keyPath: String? = nil) -> Channel<NSObject, OrderedSetChange> {
+    public func channelZKeyOrderedSet(_ accessor: @autoclosure () -> NSOrderedSet?, keyPath: String? = nil) -> Channel<NSObject, OrderedSetChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
         let receivers = ReceiverQueue<OrderedSetChange>()
 
         return Channel(source: self) { [unowned self] receiver in
 
             let observer = TargetObserverRegister.get(self).addObserver(kp) { change in
-                let new: AnyObject? = change[NSKeyValueChangeNewKey]
-                let old: AnyObject? = change[NSKeyValueChangeOldKey]
-                let indices = change[NSKeyValueChangeIndexesKey] as? NSIndexSet
+                let new = change[NSKeyValueChangeKey.newKey]
+                let old = change[NSKeyValueChangeKey.oldKey]
+                let indices = change[NSKeyValueChangeKey.indexesKey] as? IndexSet
 
-                let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
+                let kind = (change[NSKeyValueChangeKey.kindKey] as? UInt).flatMap(NSKeyValueChange.init(rawValue:)) ?? .setting
 
                 switch kind {
-                case .Setting: receivers.receive(.assigned(new as? NSOrderedSet))
-                case .Insertion: receivers.receive(.added(indices: indices!, new: new as! NSArray))
-                case .Removal: receivers.receive(.removed(indices: indices!, old: old as! NSArray))
-                case .Replacement: receivers.receive(.replaced(indices: indices!, old: old as! NSArray, new: new as! NSArray))
+                case .setting: receivers.receive(.assigned(new as? NSOrderedSet))
+                case .insertion: receivers.receive(.added(indices: indices ?? [], new: new as? NSArray ?? []))
+                case .removal: receivers.receive(.removed(indices: indices ?? [], old: old as? NSArray ?? []))
+                case .replacement: receivers.receive(.replaced(indices: indices ?? [], old: old as? NSArray ?? [], new: new as? NSArray ?? []))
                 }
             }
 
@@ -134,23 +133,23 @@ extension NSObject {
     /// - Parameter keyPath: the keyPath for the value; if ommitted, auto-discovery will be attempted
     ///
     /// - Returns a channel backed by the KVO property that will receive SetChange items for mutations
-    public func channelZKeySet(@autoclosure accessor: () -> NSSet?, keyPath: String? = nil) -> Channel<NSObject, SetChange> {
+    public func channelZKeySet(_ accessor: @autoclosure () -> NSSet?, keyPath: String? = nil) -> Channel<NSObject, SetChange> {
         let kp = keyPath ?? conjectKeypath(self, accessor, true)!
         let receivers = ReceiverQueue<SetChange>()
 
         return Channel(source: self) { [unowned self] receiver in
 
             let observer = TargetObserverRegister.get(self).addObserver(kp) { change in
-                let new: AnyObject? = change[NSKeyValueChangeNewKey]
-                let old: AnyObject? = change[NSKeyValueChangeOldKey]
+                let new = change[NSKeyValueChangeKey.newKey]
+                let old = change[NSKeyValueChangeKey.oldKey]
 
-                let kind = NSKeyValueChange(rawValue: change[NSKeyValueChangeKindKey] as! UInt)!
+                let kind = (change[NSKeyValueChangeKey.kindKey] as? UInt).flatMap(NSKeyValueChange.init(rawValue:)) ?? .setting
 
                 switch kind {
-                case .Setting: receivers.receive(.assigned(new as? NSSet))
-                case .Insertion: receivers.receive(.added(new as! NSSet))
-                case .Removal: receivers.receive(.removed(old as! NSSet))
-                case .Replacement: fatalError("should never happen")
+                case .setting: receivers.receive(.assigned(new as? NSSet))
+                case .insertion: receivers.receive(.added(new as? NSSet ?? []))
+                case .removal: receivers.receive(.removed(old as? NSSet ?? []))
+                case .replacement: fatalError("should never happen")
                 }
             }
 
@@ -166,17 +165,17 @@ extension NSObject {
 /// Change type for `channelZKeyArray`
 public enum ArrayChange {
     case assigned(NSArray?)
-    case added(indices: NSIndexSet, new: NSArray)
-    case removed(indices: NSIndexSet, old: NSArray)
-    case replaced(indices: NSIndexSet, old: NSArray, new: NSArray)
+    case added(indices: IndexSet, new: NSArray)
+    case removed(indices: IndexSet, old: NSArray)
+    case replaced(indices: IndexSet, old: NSArray, new: NSArray)
 }
 
 /// Change type for `channelZKeyOrderedSet`
 public enum OrderedSetChange {
     case assigned(NSOrderedSet?)
-    case added(indices: NSIndexSet, new: NSArray)
-    case removed(indices: NSIndexSet, old: NSArray)
-    case replaced(indices: NSIndexSet, old: NSArray, new: NSArray)
+    case added(indices: IndexSet, new: NSArray)
+    case removed(indices: IndexSet, old: NSArray)
+    case replaced(indices: IndexSet, old: NSArray, new: NSArray)
 }
 
 /// Change type for `channelZKeySet`
@@ -195,7 +194,7 @@ public struct KeyValueTarget<T> {
 }
 
 public extension KeyValueTarget {
-    public init(target: NSObject, @autoclosure accessor: () -> T, keyPath: String? = nil) {
+    public init(target: NSObject, accessor: @autoclosure () -> T, keyPath: String? = nil) {
         self.target = target
         self.initialValue = accessor()
         if let kp = keyPath {
@@ -214,11 +213,12 @@ public protocol KeyTransceiverType : class, TransceiverType {
     var queue: ReceiverQueue<Mutation<Element>> { get }
 
     func get() -> Element
-    func createPulse(change: NSDictionary) -> Mutation<Element>
+    func createPulse(_ change: NSDictionary) -> Mutation<Element>
 }
 
 public extension KeyTransceiverType {
-    public func set(value: Element) -> Bool {
+    @discardableResult
+    public func set(_ value: Element) -> Bool {
         if let target = self.object {
             setValueForKeyPath(target, keyPath: keyPath, nullable: optional, value: value)
             return true
@@ -234,14 +234,14 @@ public extension KeyTransceiverType {
     }
 
     /// Sets the current value (ReceiverType implementation)
-    public func receive(value: Element) -> Void {
+    public func receive(_ value: Element) -> Void {
         set(value)
     }
 
-    private func validateInitialValue(iv: Element) {
+    fileprivate func validateInitialValue(_ iv: Element) {
         // validate the keyPath by checking that the initialized value matched the actual key path
-        let initialValue: AnyObject? = object?.valueForKeyPath(self.keyPath)
-        if let initialValueActual: AnyObject = initialValue {
+        let initialValue = object?.value(forKeyPath: self.keyPath)
+        if let initialValueActual = initialValue {
             if let gotten = iv as? NSObject {
                 if let eq1 = initialValueActual as? NSObjectProtocol {
                     // make sure the key path is really returning the specified value
@@ -252,20 +252,25 @@ public extension KeyTransceiverType {
 
     }
 
-    private func registerObserver() {
+    fileprivate func registerObserver() {
         guard let target = self.object else {
             preconditionFailure("ChannelZ: cannot add receiver for deallocated instance (channels do not retain their targets)")
         }
 
         let rcvrs = self.queue
         TargetObserverRegister.get(target).addObserver(keyPath) { change in
-            rcvrs.receive(self.createPulse(change))
+            // note: casting lf chage fails in Swift 3.0, and dictionary initialization throws an error
+            let dict = NSMutableDictionary()
+            for (key, value) in change {
+                dict[key] = value
+            }
+            rcvrs.receive(self.createPulse(dict))
         }
     }
 
-    private func addReceiver(receiver: Mutation<Element> -> Void) -> Receipt {
+    fileprivate func addReceiver(_ receiver: @escaping (Mutation<Element>) -> Void) -> Receipt {
         // immediately issue the original value with no previous value
-        receiver(Mutation<Element>(old: Optional<Element>.None, new: get()))
+        receiver(Mutation<Element>(old: Optional<Element>.none, new: get()))
 
         let kp = keyPath
         let index = queue.addReceiver(receiver)
@@ -277,7 +282,9 @@ public extension KeyTransceiverType {
         })
     }
 
-    public func transceive() -> Channel<Self, Mutation<Element>> {
+    public typealias StateChannel<T> = Channel<Self, Mutation<T>>
+
+    public func transceive() -> StateChannel<Element> {
         return Channel(source: self, reception: addReceiver)
     }
 }
@@ -288,7 +295,7 @@ public final class KeyValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, Key
 
     public let keyPath: String
     public let optional = false
-    public private(set) weak var object: NSObject?
+    public fileprivate(set) weak var object: NSObject?
     public var queue: ReceiverQueue<Mutation<Element>> { return receivers }
 
     public init(target: KeyValueTarget<Element>) {
@@ -300,13 +307,13 @@ public final class KeyValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, Key
     }
 
     public func get() -> T {
-        let keyValue: AnyObject? = object?.valueForKeyPath(self.keyPath)
+        let keyValue = object?.value(forKeyPath: self.keyPath)
         return coerceFoundationType(keyValue)!
     }
 
-    public func createPulse(change: NSDictionary) -> Mutation<Element> {
-        let newv: Element? = coerceFoundationType(change[NSKeyValueChangeNewKey]!)
-        let oldv: Element? = coerceFoundationType(change[NSKeyValueChangeOldKey]!)
+    public func createPulse(_ change: NSDictionary) -> Mutation<Element> {
+        let newv: Element? = coerceFoundationType(change[NSKeyValueChangeKey.newKey])
+        let oldv: Element? = coerceFoundationType(change[NSKeyValueChangeKey.oldKey])
         return Mutation<Element>(old: oldv, new: newv!)
     }
 
@@ -318,7 +325,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
     public typealias Element = T?
     public let keyPath: String
     public let optional = true
-    public private(set) weak var object: NSObject?
+    public fileprivate(set) weak var object: NSObject?
     public var queue: ReceiverQueue<Mutation<Element>> { return receivers }
 
     public init(target: KeyValueTarget<Element>) {
@@ -330,13 +337,13 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
     }
 
     public func get() -> T? {
-        let keyValue: AnyObject? = object?.valueForKeyPath(self.keyPath)
+        let keyValue = object?.value(forKeyPath: self.keyPath)
         return keyValue as? T? ?? coerceFoundationType(keyValue)
     }
 
-    public func createPulse(change: NSDictionary) -> Mutation<Element> {
-        let newv: Element = coerceFoundationType(change[NSKeyValueChangeNewKey]!)
-        let oldv: Element = coerceFoundationType(change[NSKeyValueChangeOldKey]!)
+    public func createPulse(_ change: NSDictionary) -> Mutation<Element> {
+        let newv: Element = coerceFoundationType(change[NSKeyValueChangeKey.newKey])
+        let oldv: Element = coerceFoundationType(change[NSKeyValueChangeKey.oldKey])
         return Mutation<Element>(old: oldv, new: newv)
     }
 }
@@ -345,7 +352,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
 /// Optional protocol for target objects to implement when they need to supplement key-value observing with additional events
 @objc public protocol KeyValueChannelSupplementing {
     /// Add additional observers for the specified keyPath, returning the unsubscriber for any supplements
-    func supplementKeyValueChannel(forKeyPath: String, subscription: (AnyObject?) -> ()) -> (() -> ())?
+    func supplementKeyValueChannel(_ forKeyPath: String, subscription: (AnyObject?) -> ()) -> (() -> ())?
 }
 
 
@@ -359,39 +366,39 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
 @objc final class TargetObserverRegister : NSObject {
     // note: it would make sense to declare this as TargetObserverRegister<T:NSObject>, but the class won't receive any KVO notifications if it is a generic
 
-    private struct Context {
+    fileprivate struct Context {
         /// Global pointer to the context that will holder the observer list
-        private static var ObserverListAssociatedKey: UnsafePointer<Void> = nil
+        fileprivate static var ObserverListAssociatedKey: UnsafeRawPointer? = nil
 
         /// Global lock for getting/setting the observer
-        private static var RegisterLock = NSLock()
+        fileprivate static var RegisterLock = NSLock()
 
         /// Singleton notification center; we don't currently support multiple NSNotificationCenter observers
-        private static let RegisterNotificationCenter = NSNotificationCenter.defaultCenter()
+        fileprivate static let RegisterNotificationCenter = NotificationCenter.default
 
         /// Note that we don't use NSKeyValueObservingOptions.Initial because the initial values wind up
         /// being broadcast to *all* receivers, not just the changed one
-        private static let KVOOptions = NSKeyValueObservingOptions(rawValue: NSKeyValueObservingOptions.Old.rawValue | NSKeyValueObservingOptions.New.rawValue)
+        fileprivate static let KVOOptions = NSKeyValueObservingOptions(rawValue: NSKeyValueObservingOptions.old.rawValue | NSKeyValueObservingOptions.new.rawValue)
     }
 
     /// The signature for the callback when a change occurs
-    typealias Callback = ([NSObject : AnyObject]) -> ()
+    typealias Callback = ([AnyHashable: Any]) -> ()
 
     typealias Observer = (identifier: Int64, handler: Callback)
 
     // since this associated object is deallocated as part of the owning object's dealloc (see objc_destructInstance in <http://opensource.apple.com/source/objc4/objc4-646/runtime/objc-runtime-new.mm>), we can't rely on the weak reference not having been zeroed, so use an extra unmanaged pointer to the target object that we can use to remove the observer
-    private let targetPtr: Unmanaged<NSObject>
+    fileprivate let targetPtr: Unmanaged<NSObject>
 
-    private var target : NSObject { return targetPtr.takeUnretainedValue() }
+    fileprivate var target : NSObject { return targetPtr.takeUnretainedValue() }
 
-    private var keyObservers = [String: [Observer]]()
+    fileprivate var keyObservers = [String: [Observer]]()
 
-    private var noteObservers = [String: [Observer]]()
+    fileprivate var noteObservers = [String: [Observer]]()
 
     /// The internal counter of identifiers
-    private var identifierCounter : Int64 = 0
+    fileprivate var identifierCounter : Int64 = 0
 
-    class func get(target: NSObject) -> TargetObserverRegister {
+    class func get(_ target: NSObject) -> TargetObserverRegister {
         Context.RegisterLock.lock()
         if let ob = objc_getAssociatedObject(target, &Context.ObserverListAssociatedKey) as? TargetObserverRegister {
             Context.RegisterLock.unlock()
@@ -418,7 +425,8 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
         clear()
     }
 
-    func addObserver(keyPath: String, callback: Callback) -> Int64 {
+    @discardableResult
+    func addObserver(_ keyPath: String, callback: @escaping Callback) -> Int64 {
         OSAtomicIncrement64(&identifierCounter)
         let observer = Observer(identifier: identifierCounter, handler: callback)
 
@@ -432,11 +440,12 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
         return observer.identifier
     }
 
-    func addNotification(name: String, callback: Callback) -> Int64 {
+    @discardableResult
+    func addNotification(_ name: String, callback: @escaping Callback) -> Int64 {
         OSAtomicIncrement64(&identifierCounter)
         let observers = noteObservers[name] ?? []
         if observers.count == 0 { // this is the first observer: actually add it to the target
-            Context.RegisterNotificationCenter.addObserver(self, selector: #selector(self.notificationReceived), name: name, object: target)
+            Context.RegisterNotificationCenter.addObserver(self, selector: #selector(self.notificationReceived), name: NSNotification.Name(rawValue: name), object: target)
         }
 
         identifierCounter += 1
@@ -454,7 +463,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
             let origclass: AnyClass = object_getClass(target)
             var cls: AnyClass = origclass
             while cls !== nsobjectclass {
-                if let className = String.fromCString(class_getName(cls)) {
+                if let className = String(validatingUTF8: class_getName(cls)) {
                     if className == "NSController" {
                         return true
                     }
@@ -470,7 +479,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
 
         for keyPath in keyObservers.keys {
             // FIXME: random crash with certain classes: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x1057715e0> for the key path "isFinished" from <NSBlockOperation 0x105769810> because it is not registered as an observer."
-            if target is NSBlockOperation {
+            if target is BlockOperation {
                 // NSBlockOperation doesn't seem to require observers to be removed?
                 // target.addObserver(self, forKeyPath: keyPath, options: Context.KVOOptions, context: nil) // crash
             } else if isControllerClass {
@@ -482,18 +491,18 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
         keyObservers = [:]
 
         for name in noteObservers.keys {
-            Context.RegisterNotificationCenter.removeObserver(self, name: name, object: target)
+            Context.RegisterNotificationCenter.removeObserver(self, name: NSNotification.Name(rawValue: name), object: target)
         }
         noteObservers = [:]
     }
 
-    func removeObserver(keyPath: String, identifier: Int64) {
+    func removeObserver(_ keyPath: String, identifier: Int64) {
         if let observers = keyObservers[keyPath] {
             let filtered = observers.filter { $0.identifier != identifier }
             if filtered.count == 0 { // no more observers left: remove ourselves as the observer
                 // FIXME: random crashes in certain specific observed classes, such as NSBlockOperation:
                 // error: -[ChannelZTests.ChannelZTests testOperationChannels] : failed: caught "NSRangeException", "Cannot remove an observer <ChannelZ.TargetObserverRegister 0x109c0daa0> for the key path "isExecuting" from <NSBlockOperation 0x109c07830> because it is not registered as an observer."
-                keyObservers.removeValueForKey(keyPath)
+                keyObservers.removeValue(forKey: keyPath)
                 target.removeObserver(self, forKeyPath: keyPath, context: nil)
             } else {
                 keyObservers[keyPath] = filtered
@@ -501,12 +510,12 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
         }
     }
 
-    func removeNotification(name: String, identifier: Int64) {
+    func removeNotification(_ name: String, identifier: Int64) {
         if let observers = noteObservers[name] {
             let filtered = observers.filter { $0.identifier != identifier }
             if filtered.count == 0 { // no more observers left: remove ourselves as the observer
-                noteObservers.removeValueForKey(name)
-                Context.RegisterNotificationCenter.removeObserver(self, name: name, object: nil)
+                noteObservers.removeValue(forKey: name)
+                Context.RegisterNotificationCenter.removeObserver(self, name: NSNotification.Name(rawValue: name), object: nil)
             } else {
                 noteObservers[name] = filtered
             }
@@ -514,8 +523,8 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
     }
 
     /// Callback for KVO
-    override func observeValueForKeyPath(keyPath: String?, ofObject object: AnyObject?, change: [String : AnyObject]?, context: UnsafeMutablePointer<Void>) {
-        if let keyPath = keyPath, observers = keyObservers[keyPath] {
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if let keyPath = keyPath, let observers = keyObservers[keyPath] {
             for observer in observers {
                 observer.handler(change ?? [:])
             }
@@ -523,9 +532,9 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
     }
 
     /// Callback for in NSNotificationCenter
-    func notificationReceived(note: NSNotification) {
-        let change = note.userInfo ?? [:]
-        if let observers = noteObservers[note.name] {
+    func notificationReceived(_ note: Notification) {
+        let change = (note as NSNotification).userInfo ?? [:]
+        if let observers = noteObservers[note.name.rawValue] {
             for observer in observers {
                 observer.handler(change)
             }
@@ -544,7 +553,7 @@ let ChannelZInstrumentorSwizzledISASuffix = "_ChannelZKeyInspection"
 let ChannelZKeyPathForAutoclosureLock = NSLock()
 
 /// Attempts to determine the properties that are accessed by the given autoclosure; does so by temporarily swizzling the object's isa pointer to a generated subclass that instruments access to all the properties; note that this is not thread-safe in the unlikely event that another method (e.g., KVO swizzling) is being used at the same time for the class on another thread
-func conjectKeypath<T>(target: NSObject, @autoclosure _ accessor: () -> T, _ required: Bool) -> String? {
+func conjectKeypath<T>(_ target: NSObject, _ accessor: @autoclosure () -> T, _ required: Bool) -> String? {
     var keyPath: String?
 
     let origclass : AnyClass = object_getClass(target)
@@ -570,21 +579,19 @@ func conjectKeypath<T>(target: NSObject, @autoclosure _ accessor: () -> T, _ req
         // println("instrumenting \(propCount) properties of \(NSStringFromClass(propclass))")
 
         for i in 0..<propCount {
-            let prop = propList[Int(i)]
-
-            let pname = property_getName(prop)
-            let propName = String.fromCString(pname)
+            let prop = propList?[Int(i)]
 
             // the selector we will implement will be the accessor for the property; these often differ with bools (e.g. "enabled" vs. "isEnabled")
             let gname = property_copyAttributeValue(prop, "G") // the getter name
-            let getterName = String.fromCString(gname)
+            let getterName = gname.flatMap({ String(cString:$0) })
             free(gname)
 
             let ronly = property_copyAttributeValue(prop, "R") // whether the property is read-only
             let readonly = ronly != nil
             free(ronly)
 
-            if let propName = propName {
+            if let pname = property_getName(prop) {
+                let propName = String(cString: pname)
                 let propSelName = getterName ?? propName
                 
                 // println("instrumenting \(NSStringFromClass(propclass)).\(propSelName) (prop=\(propName) getter=\(getterName) readonly=\(readonly))")
@@ -602,20 +609,21 @@ func conjectKeypath<T>(target: NSObject, @autoclosure _ accessor: () -> T, _ req
                 // let returnType = String.fromCString(returnTypePtr) ?? "@"
                 free(returnTypePtr)
 
-                let propBlock : @convention(block) (AnyObject) -> AnyObject? = { (sself : AnyObject) -> (AnyObject?) in
+                let propBlock : @convention(block) (AnyObject) -> Any? = { (sself : AnyObject) -> (Any?) in
                     // add the name of the property that was accessed; read-only properties tend to use their getterName as the key path (e.g., NSOperation.isFinished)
                     let keyName = readonly && getterName != nil ? getterName! : propName
                     keyPath = keyName // remember the keyPath for later
                     object_setClass(target, origclass) // immediately swap the isa back to the original
-                    return target.valueForKey(keyName) // and defer the invocation to the discovered keyPath (throwing a helpful exception is we are wrong)
+                    return target.value(forKey: keyName) // and defer the invocation to the discovered keyPath (throwing a helpful exception is we are wrong)
                 }
 
-                let propSelIMP = imp_implementationWithBlock(unsafeBitCast(propBlock, AnyObject.self))
-                if !class_addMethod(subclass, propSel, propSelIMP, typeEncoding) {
-                    // ignore errors; sometimes happens with UITextField.inputView or NSView.tag
-                    // println("could not add method implementation")
+                if let propSelIMP = imp_implementationWithBlock(unsafeBitCast(propBlock, to: AnyObject.self)) {
+                    if !class_addMethod(subclass, propSel, propSelIMP, typeEncoding) {
+                        // ignore errors; sometimes happens with UITextField.inputView or NSView.tag
+                        // println("could not add method implementation")
+                    }
+                    propSelIMPs.append(propSelIMP)
                 }
-                propSelIMPs.append(propSelIMP)
             }
         }
 
@@ -626,7 +634,7 @@ func conjectKeypath<T>(target: NSObject, @autoclosure _ accessor: () -> T, _ req
     objc_registerClassPair(subclass)
     object_setClass(target, subclass)
 
-    accessor() // invoke the accessor to see what instrumented properties are accessed
+    _ = accessor() // invoke the accessor to see what instrumented properties are accessed
 
     // resore the isa if we haven't done already and destroy the instrumenter subclass
     if object_getClass(target) !== origclass {
@@ -648,24 +656,24 @@ func conjectKeypath<T>(target: NSObject, @autoclosure _ accessor: () -> T, _ req
     return keyPath
 }
 
-private func setValueForKeyPath<T>(target: NSObject, keyPath: String, nullable: Bool, value: T?) {
+private func setValueForKeyPath<T>(_ target: NSObject, keyPath: String, nullable: Bool, value: T?) {
     if let value = value {
         if nullable && value is NSNull { target.setValue(nil, forKeyPath: keyPath) }
         else if let ob = value as? NSObject { target.setValue(ob, forKeyPath: keyPath) }
             // manual numeric coercion: because only “the following types are automatically bridged to NSNumber: Int, UInt, Float, Double, Bool”
-        else if let value = value as? Bool { target.setValue(NSNumber(bool: value), forKeyPath: keyPath) }
-        else if let value = value as? Int8 { target.setValue(NSNumber(char: value), forKeyPath: keyPath) }
-        else if let value = value as? UInt8 { target.setValue(NSNumber(unsignedChar: value), forKeyPath: keyPath) }
-        else if let value = value as? Int16 { target.setValue(NSNumber(short: value), forKeyPath: keyPath) }
-        else if let value = value as? UInt16 { target.setValue(NSNumber(unsignedShort: value), forKeyPath: keyPath) }
-        else if let value = value as? Int32 { target.setValue(NSNumber(int: value), forKeyPath: keyPath) }
-        else if let value = value as? UInt32 { target.setValue(NSNumber(unsignedInt: value), forKeyPath: keyPath) }
-        else if let value = value as? Int { target.setValue(NSNumber(integer: value), forKeyPath: keyPath) }
-        else if let value = value as? UInt { target.setValue(NSNumber(unsignedLong: value), forKeyPath: keyPath) }
-        else if let value = value as? Int64 { target.setValue(NSNumber(longLong: value), forKeyPath: keyPath) }
-        else if let value = value as? UInt64 { target.setValue(NSNumber(unsignedLongLong: value), forKeyPath: keyPath) }
-        else if let value = value as? Float { target.setValue(NSNumber(float: value), forKeyPath: keyPath) }
-        else if let value = value as? Double { target.setValue(NSNumber(double: value), forKeyPath: keyPath) }
+        else if let value = value as? Bool { target.setValue(NSNumber(value: value as Bool), forKeyPath: keyPath) }
+        else if let value = value as? Int8 { target.setValue(NSNumber(value: value as Int8), forKeyPath: keyPath) }
+        else if let value = value as? UInt8 { target.setValue(NSNumber(value: value as UInt8), forKeyPath: keyPath) }
+        else if let value = value as? Int16 { target.setValue(NSNumber(value: value as Int16), forKeyPath: keyPath) }
+        else if let value = value as? UInt16 { target.setValue(NSNumber(value: value as UInt16), forKeyPath: keyPath) }
+        else if let value = value as? Int32 { target.setValue(NSNumber(value: value as Int32), forKeyPath: keyPath) }
+        else if let value = value as? UInt32 { target.setValue(NSNumber(value: value as UInt32), forKeyPath: keyPath) }
+        else if let value = value as? Int { target.setValue(NSNumber(value: value as Int), forKeyPath: keyPath) }
+        else if let value = value as? UInt { target.setValue(NSNumber(value: value as UInt), forKeyPath: keyPath) }
+        else if let value = value as? Int64 { target.setValue(NSNumber(value: value as Int64), forKeyPath: keyPath) }
+        else if let value = value as? UInt64 { target.setValue(NSNumber(value: value as UInt64), forKeyPath: keyPath) }
+        else if let value = value as? Float { target.setValue(NSNumber(value: value as Float), forKeyPath: keyPath) }
+        else if let value = value as? Double { target.setValue(NSNumber(value: value as Double), forKeyPath: keyPath) }
         else {
             target.setValue(nil, forKeyPath: keyPath)
             //            preconditionFailure("unable to coerce value «\(value.dynamicType)» into Foundation type for keyPath «\(keyPath)»")
@@ -673,59 +681,59 @@ private func setValueForKeyPath<T>(target: NSObject, keyPath: String, nullable: 
     } else if nullable {
         target.setValue(nil, forKeyPath: keyPath)
     } else {
-        preconditionFailure("unable to coerce value «\(value.dynamicType)» into Foundation type for non-nullable keyPath «\(keyPath)»")
+        preconditionFailure("unable to coerce value «\(type(of: value))» into Foundation type for non-nullable keyPath «\(keyPath)»")
     }
 }
 
-private func coerceFoundationType<SourceType>(ob: AnyObject?) -> SourceType? {
+private func coerceFoundationType<SourceType>(_ ob: Any?) -> SourceType? {
     if let ob = ob as? SourceType {
         return ob // always first try to get automatic coercion (e.g., NSString to String)
     } else if let ob = ob as? NSNumber {
         // when an NSNumber is sent to an observer that is listening for a particular primitive, try to coerce it
         if SourceType.self is UInt64.Type {
-            return ob.unsignedLongLongValue as? SourceType
+            return ob.uint64Value as? SourceType
         } else if SourceType.self is Int64.Type {
-            return ob.longLongValue as? SourceType
+            return ob.int64Value as? SourceType
         } else if SourceType.self is Double.Type {
             return ob.doubleValue as? SourceType
         } else if SourceType.self is Float.Type {
             return ob.floatValue as? SourceType
         } else if SourceType.self is UInt.Type {
-            return ob.unsignedLongValue as? SourceType
+            return ob.uintValue as? SourceType
         } else if SourceType.self is Int.Type {
-            return ob.integerValue as? SourceType
-        } else if SourceType.self is UInt32.Type {
-            return ob.unsignedIntValue as? SourceType
-        } else if SourceType.self is Int32.Type {
             return ob.intValue as? SourceType
+        } else if SourceType.self is UInt32.Type {
+            return ob.uint32Value as? SourceType
+        } else if SourceType.self is Int32.Type {
+            return ob.int32Value as? SourceType
         } else if SourceType.self is UInt16.Type {
-            return ob.unsignedShortValue as? SourceType
+            return ob.uint16Value as? SourceType
         } else if SourceType.self is Int16.Type {
-            return ob.shortValue as? SourceType
+            return ob.int16Value as? SourceType
         } else if SourceType.self is UInt8.Type {
-            return ob.unsignedCharValue as? SourceType
+            return ob.uint8Value as? SourceType
         } else if SourceType.self is Int8.Type {
-            return ob.charValue as? SourceType
+            return ob.int8Value as? SourceType
         } else if SourceType.self is Bool.Type {
             return ob.boolValue as? SourceType
         }
     }
 
-//    println("failed to coerce value «\(ob)» of type \(ob?.dynamicType) into \(SourceType.self)")
+    //print("failed to coerce value «\(ob)» of type \(type(of: ob)) into \(SourceType.self)")
     return nil
 }
 
 /// Extension for listening to notifications of a given type
 extension NSObject {
-    public typealias UserInfo = [NSObject : AnyObject]
+    public typealias UserInfo = [AnyHashable: Any]
 
     /// Registers with the NSNotificationCenter to observable event notications of the given name for this object
     ///
     /// - Parameter notificationName: the name of the notification to register
     /// - Parameter center: the NSNotificationCenter to register with (defaults to defaultCenter())
-    public func channelZNotification(name: String, center: NSNotificationCenter = NSNotificationCenter.defaultCenter()) -> Channel<NSNotificationCenter, UserInfo> {
+    public func channelZNotification(_ name: String, center: NotificationCenter = NotificationCenter.default) -> Channel<NotificationCenter, UserInfo> {
         let receivers = ReceiverQueue<UserInfo>()
-        return Channel(source: center) { [weak self] (receiver: UserInfo -> Void) -> Receipt in
+        return Channel(source: center) { [weak self] (receiver: @escaping (UserInfo) -> Void) -> Receipt in
             var rindex: Int64
 
             if let target = self {
@@ -737,7 +745,7 @@ extension NSObject {
 
             return ReceiptOf(canceler: { [weak self] in
                 if let target = self {
-                    TargetObserverRegister.get(target) // .removeObserver(kp, identifier: oindex)
+                    _ = TargetObserverRegister.get(target) // .removeObserver(kp, identifier: oindex)
                 }
                 receivers.removeReceptor(rindex)
             })
@@ -746,55 +754,55 @@ extension NSObject {
 }
 
 extension NSNumber : ConduitNumericCoercible {
-    @warn_unused_result public class func fromConduitNumericCoercible(value: ConduitNumericCoercible) -> Self? {
-        if let value = value as? NSNumber {
-            let type = Character(UnicodeScalar(UInt32(value.objCType.memory)))
+    public class func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Self? {
+        if let value = value as? NSNumber, let scalar = UnicodeScalar(UInt32(value.objCType.pointee)) {
+            let type = Character(scalar)
             
-            if type == "c" { return self.init(char: value.charValue) }
-            else if type == "C" { return self.init(unsignedChar: value.unsignedCharValue) }
-            else if type == "s" { return self.init(short: value.shortValue) }
-            else if type == "S" { return self.init(unsignedShort: value.unsignedShortValue) }
-            else if type == "i" { return self.init(int: value.intValue) }
-            else if type == "I" { return self.init(unsignedInt: value.unsignedIntValue) }
-            else if type == "l" { return self.init(long: value.longValue) }
-            else if type == "L" { return self.init(unsignedLong: value.unsignedLongValue) }
-            else if type == "q" { return self.init(longLong: value.longLongValue) }
-            else if type == "Q" { return self.init(unsignedLongLong: value.unsignedLongLongValue) }
-            else if type == "f" { return self.init(float: value.floatValue) }
-            else if type == "d" { return self.init(double: value.doubleValue) }
+            if type == "c" { return self.init(value: value.int8Value) }
+            else if type == "C" { return self.init(value: value.uint8Value) }
+            else if type == "s" { return self.init(value: value.int16Value) }
+            else if type == "S" { return self.init(value: value.uint16Value) }
+            else if type == "i" { return self.init(value: value.int32Value) }
+            else if type == "I" { return self.init(value: value.uint32Value) }
+            else if type == "l" { return self.init(value: value.intValue) }
+            else if type == "L" { return self.init(value: value.uintValue) }
+            else if type == "q" { return self.init(value: value.int64Value) }
+            else if type == "Q" { return self.init(value: value.uint64Value) }
+            else if type == "f" { return self.init(value: value.floatValue) }
+            else if type == "d" { return self.init(value: value.doubleValue) }
             else { return nil }
         }
-        else if let value = value as? Bool { return self.init(bool: value) }
-        else if let value = value as? Int8 { return self.init(char: value) }
-        else if let value = value as? UInt8 { return self.init(unsignedChar: value) }
-        else if let value = value as? Int16 { return self.init(short: value) }
-        else if let value = value as? UInt16 { return self.init(unsignedShort: value) }
-        else if let value = value as? Int32 { return self.init(int: value) }
-        else if let value = value as? UInt32 { return self.init(unsignedInt: value) }
-        else if let value = value as? Int { return self.init(long: value) }
-        else if let value = value as? UInt { return self.init(unsignedLong: value) }
-        else if let value = value as? Int64 { return self.init(longLong: value) }
-        else if let value = value as? UInt64 { return self.init(unsignedLongLong: value) }
-        else if let value = value as? Float { return self.init(float: value) }
-//        else if let value = value as? Float80 { return self.init(double: value) }
-        else if let value = value as? Double { return self.init(double: value) }
+        else if let value = value as? Bool { return self.init(value: value) }
+        else if let value = value as? Int8 { return self.init(value: value) }
+        else if let value = value as? UInt8 { return self.init(value: value) }
+        else if let value = value as? Int16 { return self.init(value: value) }
+        else if let value = value as? UInt16 { return self.init(value: value) }
+        else if let value = value as? Int32 { return self.init(value: value) }
+        else if let value = value as? UInt32 { return self.init(value: value) }
+        else if let value = value as? Int { return self.init(value: value) }
+        else if let value = value as? UInt { return self.init(value: value) }
+        else if let value = value as? Int64 { return self.init(value: value) }
+        else if let value = value as? UInt64 { return self.init(value: value) }
+        else if let value = value as? Float { return self.init(value: value) }
+//        else if let value = value as? Float80 { return self.init(value: value) }
+        else if let value = value as? Double { return self.init(value: value) }
         else { return nil }
     }
 
     public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
-        if T.self is NSDecimalNumber.Type { return NSDecimalNumber(double: self.doubleValue) as? T }
+        if T.self is NSDecimalNumber.Type { return NSDecimalNumber(value: self.doubleValue as Double) as? T }
         else if T.self is NSNumber.Type { return self as? T }
         else if T.self is Bool.Type { return Bool(self.boolValue) as? T }
-        else if T.self is Int8.Type { return Int8(self.charValue) as? T }
-        else if T.self is UInt8.Type { return UInt8(self.unsignedCharValue) as? T }
-        else if T.self is Int16.Type { return Int16(self.shortValue) as? T }
-        else if T.self is UInt16.Type { return UInt16(self.unsignedShortValue) as? T }
-        else if T.self is Int32.Type { return Int32(self.intValue) as? T }
-        else if T.self is UInt32.Type { return UInt32(self.unsignedIntValue) as? T }
-        else if T.self is Int.Type { return Int(self.longValue) as? T }
-        else if T.self is UInt.Type { return UInt(self.unsignedLongValue) as? T }
-        else if T.self is Int64.Type { return Int64(self.longLongValue) as? T }
-        else if T.self is UInt64.Type { return UInt64(self.unsignedLongLongValue) as? T }
+        else if T.self is Int8.Type { return Int8(self.int8Value) as? T }
+        else if T.self is UInt8.Type { return UInt8(self.uint8Value) as? T }
+        else if T.self is Int16.Type { return Int16(self.int16Value) as? T }
+        else if T.self is UInt16.Type { return UInt16(self.uint16Value) as? T }
+        else if T.self is Int32.Type { return Int32(self.int32Value) as? T }
+        else if T.self is UInt32.Type { return UInt32(self.uint32Value) as? T }
+        else if T.self is Int.Type { return Int(self.intValue) as? T }
+        else if T.self is UInt.Type { return UInt(self.uintValue) as? T }
+        else if T.self is Int64.Type { return Int64(self.int64Value) as? T }
+        else if T.self is UInt64.Type { return UInt64(self.uint64Value) as? T }
         else if T.self is Float.Type { return Float(self.floatValue) as? T }
 //        else if T.self is Float80.Type { return Float80(self) as? T }
         else if T.self is Double.Type { return Double(self.doubleValue) as? T }
@@ -825,11 +833,11 @@ public final class ChannelController<T> : NSObject, TransceiverType {
     public let key: String
     public var $: T? {
         willSet {
-            willChangeValueForKey(key)
+            willChangeValue(forKey: key)
         }
 
         didSet(old) {
-            didChangeValueForKey(key)
+            didChangeValue(forKey: key)
             receivers.receive(Mutation(old: old, new: $))
         }
     }
@@ -844,38 +852,38 @@ public final class ChannelController<T> : NSObject, TransceiverType {
         self.init(value: rawValue)
     }
 
-    public func receive(x: T?) { $ = x }
+    public func receive(_ x: T?) { $ = x }
 
-    @warn_unused_result public func transceive() -> Channel<ChannelController<T>, State> {
+    public func transceive() -> Channel<ChannelController<T>, State> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
-            rcvr(State(old: Optional<T>.None, new: self.$))
+            rcvr(State(old: Optional<T>.none, new: self.$))
             return self.receivers.addReceipt(rcvr)
         }
     }
 
-    public override func addObserver(observer: NSObject, forKeyPath keyPath: String, options: NSKeyValueObservingOptions, context: UnsafeMutablePointer<Void>) {
-        if keyPath == self.key {
+    public override func addObserver(_ observer: NSObject, forKeyPath keyPath: String, options: NSKeyValueObservingOptions, context: UnsafeMutableRawPointer?) {
+        if keyPath == self.key, let context = context {
             var channel = transceive()
 
-            if !options.contains(.Initial) {
+            if !options.contains(.initial) {
                 // only send the initial values if we request it in the options
                 channel = channel.subsequent()
             }
 
             let receipt = channel.receive { [weak self] pulse in
-                var change: [String : AnyObject] = [
-                    NSKeyValueChangeKindKey: NSKeyValueChange.Setting.rawValue
+                var change: [NSKeyValueChangeKey : AnyObject] = [
+                    NSKeyValueChangeKey.kindKey: NSKeyValueChange.setting.rawValue as AnyObject
                 ]
 
-                if options.contains(.New) {
-                    change[NSKeyValueChangeNewKey] = pulse.new as? NSObject
+                if options.contains(.new) {
+                    change[NSKeyValueChangeKey.newKey] = pulse.new as? NSObject
                 }
-                if options.contains(.Old) {
-                    change[NSKeyValueChangeOldKey] = pulse.old as? NSObject
+                if options.contains(.old) {
+                    change[NSKeyValueChangeKey.oldKey] = pulse.old as? NSObject
                 }
 
-                observer.observeValueForKeyPath(keyPath, ofObject: self, change: change, context: context)
+                observer.observeValue(forKeyPath: keyPath, of: self, change: change, context: context)
             }
 
             // remember the receivers for a given context pointer so we can cancel them later
@@ -886,10 +894,10 @@ public final class ChannelController<T> : NSObject, TransceiverType {
         }
     }
 
-    public override func removeObserver(observer: NSObject, forKeyPath keyPath: String, context: UnsafeMutablePointer<Void>) {
-        if keyPath == self.key {
+    public override func removeObserver(_ observer: NSObject, forKeyPath keyPath: String, context: UnsafeMutableRawPointer?) {
+        if keyPath == self.key, let context = context {
             let key = ChannelControllerObserverKey(context: context, observer: observer)
-            for receipt in observers.removeValueForKey(key) ?? [] {
+            for receipt in observers.removeValue(forKey: key) ?? [] {
                 receipt.cancel()
             }
         } else {
@@ -897,7 +905,7 @@ public final class ChannelController<T> : NSObject, TransceiverType {
         }
     }
 
-    public override func removeObserver(observer: NSObject, forKeyPath keyPath: String) {
+    public override func removeObserver(_ observer: NSObject, forKeyPath keyPath: String) {
 
 
         // Manual unbinding on `unbind`:
@@ -928,7 +936,7 @@ public final class ChannelController<T> : NSObject, TransceiverType {
                     for receipt in receipts {
                         receipt.cancel()
                     }
-                    observers.removeValueForKey(key)
+                    observers.removeValue(forKey: key)
                 }
             }
         } else {
@@ -936,37 +944,37 @@ public final class ChannelController<T> : NSObject, TransceiverType {
         }
     }
 
-    public override func willChangeValueForKey(key: String) {
+    public override func willChangeValue(forKey key: String) {
         if key == self.key {
         } else {
-            super.willChangeValueForKey(key)
+            super.willChangeValue(forKey: key)
         }
     }
 
-    public override func didChangeValueForKey(key: String) {
+    public override func didChangeValue(forKey key: String) {
         if key == self.key {
         } else {
-            super.didChangeValueForKey(key)
+            super.didChangeValue(forKey: key)
         }
     }
 
-    public override func valueForKey(key: String) -> AnyObject? {
+    public override func value(forKey key: String) -> Any? {
         if key == self.key {
             return self.$ as? NSObject
         } else {
-            return super.valueForKey(key)
+            return super.value(forKey: key)
         }
     }
 
-    public override func valueForKeyPath(keyPath: String) -> AnyObject? {
+    public override func value(forKeyPath keyPath: String) -> Any? {
         if keyPath == self.key {
             return self.$ as? NSObject
         } else {
-            return super.valueForKeyPath(keyPath)
+            return super.value(forKeyPath: keyPath)
         }
     }
 
-    public override func setValue(value: AnyObject?, forKey key: String) {
+    public override func setValue(_ value: Any?, forKey key: String) {
         if key == self.key {
             if let value = value as? T {
                 self.$ = value
@@ -978,7 +986,7 @@ public final class ChannelController<T> : NSObject, TransceiverType {
         }
     }
 
-    public override func setValue(value: AnyObject?, forKeyPath keyPath: String) {
+    public override func setValue(_ value: Any?, forKeyPath keyPath: String) {
         if keyPath == self.key {
             if let value = value as? T {
                 self.$ = value
@@ -993,10 +1001,10 @@ public final class ChannelController<T> : NSObject, TransceiverType {
 
 /// Key for observer info in ChannelController (cannot nest in generic)
 private struct ChannelControllerObserverKey : Hashable {
-    var context: UnsafeMutablePointer<Void>
+    var context: UnsafeMutableRawPointer
     weak var observer: NSObject?
 
-    private var hashValue: Int { return context.hashValue }
+    fileprivate var hashValue: Int { return context.hashValue }
 }
 
 private func ==(lhs: ChannelControllerObserverKey, rhs: ChannelControllerObserverKey) -> Bool {

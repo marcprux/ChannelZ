@@ -8,25 +8,25 @@
 
 import Foundation
 
-public extension NSInputStream {
+public extension InputStream {
 
     /// Creates a Channel for the stream and assigns it to handle `NSStreamDelegate` delegate callbacks
     /// for stream events
     ///
     /// - Parameter bufferLength: The maximum size of the buffer that will be filled
-    public func channelZStream(bufferLength: Int = 1024) -> Channel<ChannelStreamDelegate, InputStreamEvent> {
+    public func channelZStream(_ bufferLength: Int = 1024) -> Channel<ChannelStreamDelegate, InputStreamEvent> {
         precondition(bufferLength > 0, "buffer size must be greater than zero")
         let receivers = ReceiverQueue<InputStreamEvent>()
 
         let delegate = ChannelStreamDelegate(stream: self) { event in
             switch event.rawValue {
-            case NSStreamEvent.None.rawValue:
+            case Stream.Event().rawValue:
                 break
-            case NSStreamEvent.OpenCompleted.rawValue:
+            case Stream.Event.openCompleted.rawValue:
                 receivers.receive(.opened)
                 break
-            case NSStreamEvent.HasBytesAvailable.rawValue:
-                var buffer = Array<UInt8>(count: bufferLength, repeatedValue: 0)
+            case Stream.Event.hasBytesAvailable.rawValue:
+                var buffer = Array<UInt8>(repeating: 0, count: bufferLength)
                 while true {
                     let readlen = self.read(&buffer, maxLength: bufferLength)
                     if readlen <= 0 {
@@ -37,12 +37,12 @@ public extension NSInputStream {
                     }
                 }
                 break
-            case NSStreamEvent.HasSpaceAvailable.rawValue:
+            case Stream.Event.hasSpaceAvailable.rawValue:
                 break
-            case NSStreamEvent.ErrorOccurred.rawValue:
+            case Stream.Event.errorOccurred.rawValue:
                 receivers.receive(.error(self.streamError ?? NSError(domain: "Network", code: 0, userInfo: [:])))
                 break
-            case NSStreamEvent.EndEncountered.rawValue:
+            case Stream.Event.endEncountered.rawValue:
                 receivers.receive(.closed)
                 break
             default:
@@ -70,21 +70,21 @@ public enum InputStreamEvent {
     /// Event indicating that some data was received on the stream
     case data([UInt8])
     /// Event indicating that an errors occurred on the stream
-    case error(ErrorType)
+    case error(Error)
     /// Event indicating that the stream was closed
     case closed
 }
 
-@objc public class ChannelStreamDelegate: NSObject, NSStreamDelegate {
-    let stream: NSInputStream
-    let handler: NSStreamEvent->Void
+@objc open class ChannelStreamDelegate: NSObject, StreamDelegate {
+    let stream: InputStream
+    let handler: (Stream.Event)->Void
 
-    init(stream: NSInputStream, handler: NSStreamEvent->Void) {
+    init(stream: InputStream, handler: @escaping (Stream.Event)->Void) {
         self.stream = stream
         self.handler = handler
     }
 
-    public func stream(aStream: NSStream, handleEvent eventCode: NSStreamEvent) {
+    open func stream(_ aStream: Stream, handle eventCode: Stream.Event) {
         handler(eventCode)
     }
 }

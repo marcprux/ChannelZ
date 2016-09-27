@@ -19,10 +19,11 @@ public protocol StreamType {
     /// - Parameter receiver: the block to be executed whenever this Stream pulses an item
     ///
     /// - Returns: A `Receipt`, which can be used to later `cancel` reception
-    func receive<R: ReceiverType where R.Pulse == Pulse>(receiver: R) -> Receipt
+    @discardableResult
+    func receive<R: ReceiverType>(_ receiver: R) -> Receipt where R.Pulse == Pulse
 
     /// Creates a new form of this stream type with the given reception
-    @warn_unused_result func phase(reception: (Self.Pulse -> Void) -> Receipt) -> Self
+    func phase(_ reception: @escaping (@escaping (Self.Pulse) -> Void) -> Receipt) -> Self
 
     /// Adds a stream phase that drops the first `count` pulses.
     ///
@@ -31,7 +32,7 @@ public protocol StreamType {
     /// - Parameter count: the number of pulses to skip before emitting pulses
     ///
     /// - Returns: A stateful Channel that drops the first `count` pulses.
-    @warn_unused_result func dropFirst(count: Int) -> Self
+    func dropFirst(_ count: Int) -> Self
 
     /// Adds a stream phase that will send only the specified number of pulses.
     ///
@@ -40,7 +41,7 @@ public protocol StreamType {
     /// - Parameter count: the number of pulses to skip before emitting pulses
     ///
     /// - Returns: A stateful Channel that drops the first `count` pulses.
-    @warn_unused_result func prefix(count: Int) -> Self
+    func prefix(_ count: Int) -> Self
 }
 
 
@@ -51,7 +52,7 @@ public protocol StreamType {
 /// - See also: `AnyReceiver`, `LazyCollection`
 public protocol ReceiverType {
     associatedtype Pulse
-    func receive(value: Pulse)
+    func receive(_ value: Pulse)
 }
 
 /// A type-erased receiver of `Pulse`.
@@ -60,17 +61,17 @@ public protocol ReceiverType {
 /// receiver having the same `Pulse` type, hiding the specifics of the
 /// underlying `ReceiverType`.
 public struct AnyReceiver<Pulse> : ReceiverType {
-    public let op: Pulse -> Void
+    public let op: (Pulse) -> Void
 
-    public init(_ op: Pulse -> Void) {
+    public init(_ op: @escaping (Pulse) -> Void) {
         self.op = op
     }
 
-    public init<R: ReceiverType where R.Pulse == Pulse>(_ receiver: R) {
+    public init<R: ReceiverType>(_ receiver: R) where R.Pulse == Pulse {
         self.init(receiver.receive)
     }
 
-    public func receive(value: Pulse) {
+    public func receive(_ value: Pulse) {
         self.op(value)
     }
 }
@@ -78,7 +79,7 @@ public struct AnyReceiver<Pulse> : ReceiverType {
 /// Utilites for creating the special trap receipt (useful for testing)
 public extension StreamType {
     /// Adds a receiver that will retain a certain number of values
-    public func trap(capacity: Int = 1) -> TrapReceipt<Self> {
+    public func trap(_ capacity: Int = 1) -> TrapReceipt<Self> {
         return TrapReceipt(stream: self, capacity: capacity)
     }
 }
@@ -89,13 +90,14 @@ public extension StreamType {
     /// - Parameter receiver: the closure to be executed whenever this Stream pulses an item
     ///
     /// - Returns: A `Receipt`, which can be used to later `cancel` reception
-    public func receive(receiver: Pulse -> Void) -> Receipt {
+    @discardableResult
+    public func receive(_ receiver: @escaping (Pulse) -> Void) -> Receipt {
         return receive(AnyReceiver(receiver))
     }
 }
 
 /// A TrapReceipt is a receptor to a stream that retains a number of values (default 1) when they are sent by the source
-public final class TrapReceipt<C where C: StreamType>: Receipt {
+public final class TrapReceipt<C>: Receipt where C: StreamType {
     public var cancelled: Bool = false
     public let stream: C
 
@@ -107,7 +109,7 @@ public final class TrapReceipt<C where C: StreamType>: Receipt {
 
     public let capacity: Int
 
-    private var receipt: Receipt?
+    fileprivate var receipt: Receipt?
 
     public init(stream: C, capacity: Int) {
         self.stream = stream
@@ -123,7 +125,7 @@ public final class TrapReceipt<C where C: StreamType>: Receipt {
     deinit { receipt?.cancel() }
     public func cancel() { receipt?.cancel() }
 
-    public func receive(value: C.Pulse) {
+    public func receive(_ value: C.Pulse) {
         if caught.count >= capacity {
             caught.removeFirst(caught.count - capacity + 1)
         }
@@ -141,7 +143,7 @@ public extension StreamType {
     /// - Parameter receptor: The functon that transforms one receiver to another
     ///
     /// - Returns: The new stream
-    @warn_unused_result public func lifts(receptor: (Pulse -> Void) -> (Pulse -> Void)) -> Self {
+    public func lifts(_ receptor: @escaping (@escaping (Pulse) -> Void) -> ((Pulse) -> Void)) -> Self {
         return phase { self.receive(receptor($0)) }
     }
 
@@ -151,7 +153,7 @@ public extension StreamType {
     ///   returning `true` if they pass the filter
     ///
     /// - Returns: A stateless stream that emits only those pulses in the original stream that the filter evaluates as `true`
-    @warn_unused_result public func filter(predicate: Pulse -> Bool) -> Self {
+    public func filter(_ predicate: @escaping (Pulse) -> Bool) -> Self {
         return lifts { receive in { item in if predicate(item) { receive(item) } } }
     }
 
@@ -160,7 +162,7 @@ public extension StreamType {
     /// In ReactiveX parlance, this convert this `observable` stream from `cold` to `hot`
     ///
     /// - Returns: A stream that drops any pulses that are emitted upon a receiver being added
-    @warn_unused_result public func subsequent() -> Self {
+    public func subsequent() -> Self {
         return phase { receiver in
             var immediate = true
             let receipt = self.receive { item in if !immediate { receiver(item) } }

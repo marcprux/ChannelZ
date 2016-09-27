@@ -21,17 +21,18 @@ public func + <S, T>(lhs: Channel<S, T>, rhs: Channel<S, T>)->Channel<[S], (S, T
 }
 
 /// Operator for adding a receiver to the given channel
-public func ∞> <S, T>(lhs: Channel<S, T>, rhs: T->Void)->Receipt { return lhs.receive(rhs) }
-infix operator ∞> { }
+@discardableResult
+public func ∞> <S, T>(lhs: Channel<S, T>, rhs: @escaping (T)->Void)->Receipt { return lhs.receive(rhs) }
+infix operator ∞> : AssignmentPrecedence
 
 /// Sets the value of a channel's source that is sourced by a `Sink`
 public func ∞= <T, S: ReceiverType>(lhs: Channel<S, T>, rhs: S.Pulse)->Void { lhs.source.receive(rhs) }
-infix operator ∞= { }
+infix operator ∞= : AssignmentPrecedence
 
 
 /// Reads the value from the given channel's source that is sourced by an Sink implementation
 public postfix func ∞? <T, S: StateEmitterType>(c: Channel<S, T>)->S.Element { return c.source.$ }
-postfix operator ∞? { }
+postfix operator ∞?
 
 
 /// Increments the value of the source of the channel; works, but only when we define one of them
@@ -43,28 +44,28 @@ postfix operator ∞? { }
 
 // MARK: Operators that create state channels
 
-prefix operator ∞ { }
-prefix operator ∞= { }
-prefix operator ∞?= { }
+prefix operator ∞
+prefix operator ∞=
+prefix operator ∞?=
 
-postfix operator =∞ { }
-postfix operator ∞ { }
+postfix operator =∞
+postfix operator ∞
 
 // MARK: Prefix operators 
 
 /// Creates a channel from the given state source such that emits items for every state operation
-public prefix func ∞ <S: StateEmitterType, T where S.Element == T>(source: S)->Channel<S, T> {
+public prefix func ∞ <S: StateEmitterType, T>(source: S)->Channel<S, T> where S.Element == T {
     return source.transceive().new()
 }
 
 /// Creates a distinct sieved channel from the given Equatable state source such that only state changes are emitted
 ///
 /// - See: `Channel.changes`
-public prefix func ∞= <S: StateEmitterType, T: Equatable where S.Element == T>(source: S) -> Channel<S, T> {
+public prefix func ∞= <S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T> where S.Element == T {
     return source.transceive().sieve().new()
 }
 
-prefix func ∞?=<S: StateEmitterType, T: Equatable where S.Element: _OptionalType, S.Element.Wrapped: Equatable, T == S.Element.Wrapped>(source: S) -> Channel<S, T?> {
+prefix func ∞?=<S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T?> where S.Element: _OptionalType, S.Element.Wrapped: Equatable, T == S.Element.Wrapped {
 
     let wrappedState: Channel<S, Mutation<S.Element>> = source.transceive()
 
@@ -99,37 +100,42 @@ public postfix func =∞ <T: Equatable>(value: T?) -> ValueTransceiver<T?> { ret
 
 /// Creates a one-way pipe betweek a `Channel` and a `Sink`, such that all receiver emissions are sent to the sink.
 /// This is the operator form of `pipe`
-public func ∞-> <S1, T, S2: ReceiverType where T == S2.Pulse>(r: Channel<S1, T>, s: S2) -> Receipt { return r.receive(s) }
-infix operator ∞-> { }
+@discardableResult
+public func ∞-> <S1, T, S2: ReceiverType>(r: Channel<S1, T>, s: S2) -> Receipt where T == S2.Pulse { return r.receive(s) }
+infix operator ∞-> : AssignmentPrecedence
 
 
 /// Creates a one-way pipe betweek a `Channel` and an `Equatable` `Sink`, such that all receiver emissions are sent to the sink.
 /// This is the operator form of `pipe`
-public func ∞=> <S1, S2, T1, T2 where S2: ReceiverType, S2.Pulse == T1>(c1: Channel<S1, T1>, c2: Channel<S2, T2>) -> Receipt {
+@discardableResult
+public func ∞=> <S1, S2, T1, T2>(c1: Channel<S1, T1>, c2: Channel<S2, T2>) -> Receipt where S2: ReceiverType, S2.Pulse == T1 {
     return c1.conduct(c2)
 }
 
-infix operator ∞=> { }
+infix operator ∞=> : AssignmentPrecedence
 
 
 /// Creates a two-way binding betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is
 /// changed, the other side is updated
 /// This is the operator form of `bind`
-public func <=∞=> <S1, S2, T1, T2 where S1: TransceiverType, S2: TransceiverType, S1.Element == T2, S2.Element == T1, S1.Element: Equatable, S2.Element: Equatable>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return r1.bind(r2) }
-infix operator <=∞=> { }
+@discardableResult
+public func <=∞=> <S1, S2, T1, T2>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt where S1: TransceiverType, S2: TransceiverType, S1.Element == T2, S2.Element == T1, S1.Element: Equatable, S2.Element: Equatable { return r1.bind(r2) }
+infix operator <=∞=> : AssignmentPrecedence
 
 /// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is
 /// changed, the other side is updated
 /// This is the operator form of `channel`
-public func <∞> <S1, S2, T1, T2 where S1: ReceiverType, S2: ReceiverType, S1.Pulse == T2, S2.Pulse == T1>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt { return r1.conduit(r2) }
-infix operator <∞> { }
+@discardableResult
+public func <∞> <S1, S2, T1, T2>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt where S1: ReceiverType, S2: ReceiverType, S1.Pulse == T2, S2.Pulse == T1 { return r1.conduit(r2) }
+infix operator <∞> : AssignmentPrecedence
 
 
 /// Lossy conduit conversion operators
-infix operator <~∞~> { }
+infix operator <~∞~> : AssignmentPrecedence
 
 ///// Conduit operator that filters out nil values with a custom transformer
-public func <~∞~> <S1, S2, T1, T2 where S1: ReceiverType, S2: ReceiverType>(lhs: (o: Channel<S1, T1>, f: T1 -> Optional<S2.Pulse>), rhs: (o: Channel<S2, T2>, f: T2 -> Optional<S1.Pulse>)) -> Receipt {
+@discardableResult
+public func <~∞~> <S1, S2, T1, T2>(lhs: (o: Channel<S1, T1>, f: (T1) -> Optional<S2.Pulse>), rhs: (o: Channel<S2, T2>, f: (T2) -> Optional<S1.Pulse>)) -> Receipt where S1: ReceiverType, S2: ReceiverType {
     let lhsf = lhs.f
     let lhsm: Channel<S1, S2.Pulse> = lhs.o.map({ lhsf($0) ?? nil }).some()
     let rhsf = rhs.f
@@ -139,16 +145,19 @@ public func <~∞~> <S1, S2, T1, T2 where S1: ReceiverType, S2: ReceiverType>(lh
 
 
 /// Convert (possibly lossily) between two numeric types
-public func <~∞~> <S1, S2, T1, T2 where S1: ReceiverType, S2: ReceiverType, S1.Pulse: ConduitNumericCoercible, S2.Pulse: ConduitNumericCoercible, T1: ConduitNumericCoercible, T2: ConduitNumericCoercible>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>) -> Receipt {
+@discardableResult
+public func <~∞~> <S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, T2>) -> Receipt where S1: ReceiverType, S2: ReceiverType, S1.Pulse: ConduitNumericCoercible, S2.Pulse: ConduitNumericCoercible, T1: ConduitNumericCoercible, T2: ConduitNumericCoercible {
     return lhs.map({ convertNumericType($0) }).conduit(rhs.map({ convertNumericType($0) }))
 }
 
 /// Convert (possibly lossily) between optional and non-optional types
-public func <~∞~> <S1, S2, T1, T2 where S1: ReceiverType, S2: ReceiverType, S1.Pulse == T2, S2.Pulse == T1>(lhs: Channel<S1, Optional<T1>>, rhs: Channel<S2, T2>) -> Receipt {
+@discardableResult
+public func <~∞~> <S1, S2, T1, T2>(lhs: Channel<S1, Optional<T1>>, rhs: Channel<S2, T2>) -> Receipt where S1: ReceiverType, S2: ReceiverType, S1.Pulse == T2, S2.Pulse == T1 {
     return lhs.some().conduit(rhs)
 }
 
-public func <~∞~> <S1, S2, T1, T2 where S1: ReceiverType, S2: ReceiverType, S1.Pulse == T2, S2.Pulse == T1>(lhs: Channel<S1, T1>, rhs: Channel<S2, Optional<T2>>) -> Receipt {
+@discardableResult
+public func <~∞~> <S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, Optional<T2>>) -> Receipt where S1: ReceiverType, S2: ReceiverType, S1.Pulse == T2, S2.Pulse == T1 {
     return lhs.conduit(rhs.some())
 }
 
@@ -183,7 +192,7 @@ public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T?>) -> KeyValueOpti
 
 /// Use the specified accessor to determine the keyPath for the given autoclosure
 /// For example, slider§slider.doubleValue will return: (slider, { slider.doubleValue }, "doubleValue")
-public func § <T>(object: NSObject, @autoclosure getter: () -> T) -> KeyValueTarget<T> {
+public func § <T>(object: NSObject, getter: @autoclosure () -> T) -> KeyValueTarget<T> {
     return KeyValueTarget(target: object, initialValue: getter(), keyPath: conjectKeypath(object, getter, true)!)
 }
 
@@ -192,26 +201,26 @@ public func § <T>(object: NSObject, getkey: (value: T, keyPath: String)) -> Key
     return KeyValueTarget(target: object, initialValue: getkey.value, keyPath: getkey.keyPath)
 }
 
-infix operator § { precedence 255 }
+infix operator § : NilCoalescingPrecedence
 
 
 /// Operation to create a channel from an object's keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, @autoclosure getter: () -> T) -> Channel<KeyValueTransceiver<T>, T> {
+public func ∞ <T>(object: NSObject, getter: @autoclosure () -> T) -> Channel<KeyValueTransceiver<T>, T> {
     return ∞(object§getter)∞
 }
 
 /// Operation to create a channel from an object's equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, @autoclosure getter: () -> T) -> Channel<KeyValueTransceiver<T>, T> {
+public func ∞ <T: Equatable>(object: NSObject, getter: @autoclosure () -> T) -> Channel<KeyValueTransceiver<T>, T> {
     return ∞=(object§getter)=∞
 }
 
 /// Operation to create a channel from an object's optional keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, @autoclosure getter: () -> T?) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
+public func ∞ <T>(object: NSObject, getter: @autoclosure () -> T?) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
     return ∞(object§getter)∞
 }
 
 /// Operation to create a channel from an object's optional equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, @autoclosure getter: () -> T?) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
+public func ∞ <T: Equatable>(object: NSObject, getter: @autoclosure () -> T?) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
     return ∞=(object§getter)=∞
 }
 
@@ -238,5 +247,5 @@ public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T?, keyPath: S
 }
 
 
-infix operator ∞ { precedence 255 }
+infix operator ∞ : NilCoalescingPrecedence
 
