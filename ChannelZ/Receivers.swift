@@ -8,6 +8,19 @@
 
 import Darwin // for OSAtomicIncrement64
 
+
+@available(*, /* deprecated */ message: "TODO: use atomic_fetch_sub_explicit once it becomes available too Swift")
+@discardableResult
+func channelZIncrement64(_ value: UnsafeMutablePointer<Int64>) -> Int64 {
+    return OSAtomicIncrement64(value)
+}
+
+@available(*, /* deprecated */ message: "TODO: use atomic_fetch_sub_explicit once it becomes available too Swift")
+@discardableResult
+func channelZDecrement64(_ value: UnsafeMutablePointer<Int64>) -> Int64 {
+    return OSAtomicDecrement64(value)
+}
+
 /// An `Receipt` is the result of `receive`ing to a Observable or Channel
 public protocol Receipt : class {
 
@@ -49,7 +62,7 @@ open class ReceiptOf: Receipt {
     /// Disconnects this receipt from the source observable
     open func cancel() {
         // only cancel the first time
-        if OSAtomicIncrement64(&cancelCounter) == 1 {
+        if channelZIncrement64(&cancelCounter) == 1 {
             canceler()
         }
     }
@@ -82,8 +95,8 @@ public final class ReceiverQueue<T> : ReceiverType {
 
     public func receive(_ element: T) {
         lock.withLock {
-            let currentEntrancy = OSAtomicIncrement64(&entrancy)
-            defer { OSAtomicDecrement64(&entrancy) }
+            let currentEntrancy = channelZIncrement64(&entrancy)
+            defer { channelZDecrement64(&entrancy) }
             if currentEntrancy > maxdepth + 1 {
                 reentrantChannelReception(element)
             } else {
@@ -97,7 +110,7 @@ public final class ReceiverQueue<T> : ReceiverType {
     public func reentrantChannelReception(_ element: Any) {
         #if DEBUG_CHANNELZ
             print("ChannelZ reentrant channel short-circuit; break on \(#function) to debug", type(of: element))
-            OSAtomicIncrement64(&ChannelZReentrantReceptions)
+            channelZIncrement64(&ChannelZReentrantReceptions)
         #endif
     }
 
@@ -110,7 +123,7 @@ public final class ReceiverQueue<T> : ReceiverType {
     /// Adds a custom receiver block and returns a token that can later be used to remove the receiver
     public func addReceiver(_ receptor: @escaping Receptor) -> Int64 {
         precondition(entrancy == 0, "cannot add to receivers while they are flowing")
-        let index = OSAtomicIncrement64(&receptorIndex)
+        let index = channelZIncrement64(&receptorIndex)
         receivers.append((index, receptor))
         return index
     }
@@ -149,27 +162,27 @@ public final class NoLock : Lock {
     }
 }
 
-/// A `Lock` implementation that uses an `OSSpinLock`
+/// A `Lock` implementation that uses an `os_unfair_lock`
 public final class SpinLock : Lock {
-    var spinLock: OSSpinLock = OS_SPINLOCK_INIT
+    var spinLock = os_unfair_lock_s()
 
     public func lock() {
-        OSSpinLockLock(&spinLock)
+        os_unfair_lock_lock(&spinLock)
     }
 
     public func unlock() {
-        OSSpinLockUnlock(&spinLock)
+        os_unfair_lock_unlock(&spinLock)
     }
 
     public func withLock<T>(_ f: () throws -> T) rethrows -> T {
-        OSSpinLockLock(&spinLock)
-        defer { OSSpinLockUnlock(&spinLock) }
+        os_unfair_lock_lock(&spinLock)
+        defer { os_unfair_lock_unlock(&spinLock) }
         return try f()
     }
 
     public func tryLock<T>(_ f: () throws -> T) rethrows -> T? {
-        if !OSSpinLockTry(&spinLock) { return nil }
-        defer { OSSpinLockUnlock(&spinLock) }
+        if !os_unfair_lock_trylock(&spinLock) { return nil }
+        defer { os_unfair_lock_unlock(&spinLock) }
         return try f()
     }
 }

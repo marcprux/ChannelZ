@@ -407,7 +407,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
             let ob = TargetObserverRegister(targetPtr: Unmanaged.passUnretained(target))
             objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, ob, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             #if DEBUG_CHANNELZ
-                OSAtomicIncrement64(&ChannelZKeyValueObserverCount)
+                channelZIncrement64(&ChannelZKeyValueObserverCount)
             #endif
             Context.RegisterLock.unlock()
             return ob
@@ -420,14 +420,14 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
 
     deinit {
         #if DEBUG_CHANNELZ
-            OSAtomicDecrement64(&ChannelZKeyValueObserverCount)
+            channelZDecrement64(&ChannelZKeyValueObserverCount)
         #endif
         clear()
     }
 
     @discardableResult
     func addObserver(_ keyPath: String, callback: @escaping Callback) -> Int64 {
-        OSAtomicIncrement64(&identifierCounter)
+        channelZIncrement64(&identifierCounter)
         let observer = Observer(identifier: identifierCounter, handler: callback)
 
         let observers = keyObservers[keyPath] ?? []
@@ -442,7 +442,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
 
     @discardableResult
     func addNotification(_ name: String, callback: @escaping Callback) -> Int64 {
-        OSAtomicIncrement64(&identifierCounter)
+        channelZIncrement64(&identifierCounter)
         let observers = noteObservers[name] ?? []
         if observers.count == 0 { // this is the first observer: actually add it to the target
             Context.RegisterNotificationCenter.addObserver(self, selector: #selector(self.notificationReceived), name: NSNotification.Name(rawValue: name), object: target)

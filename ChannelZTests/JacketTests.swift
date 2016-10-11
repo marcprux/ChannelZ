@@ -9,9 +9,7 @@
 import ChannelZ
 import XCTest
 
-
 // MARK: Jacket Test Data Model
-
 
 typealias PersonID = String
 
@@ -43,43 +41,88 @@ struct Address {
     var postalCode: String
 }
 
-extension ChannelType where Source.Element == Directory, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
-    var authorZ: LensChannel<Self, Person> { return focus({ $0.author }, { (x: inout Directory, y: Person) in x.author = y }) }
-//    var companiesZ: LensChannel<Self, [Company]> { return focus({ $0.companies }, { $0.companies = $1 }) }
+extension Directory : Focusable {
+    static let authorZ = lenz({$0.author}, {$0.author = $1})
+    static let companiesZ = lenz({$0.companies}, {$0.companies = $1})
+}
 
-    static func makeLens(channel: Self) -> LensChannel<Self, Person> {
-        return channel.focus({ $0.author }, { (x: inout Directory, y: Person) in x.author = y })
-    }
+//extension ChannelType where Source.Element == Directory, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
+//    var authorZ: LensChannel<Self, Person> { return focus(Directory.authorZ) }
+//    var companiesZ: LensChannel<Self, [Company]> { return focus(Directory.companiesZ) }
+//}
+
+extension Company : Focusable {
+    static let addressZ = lenz({$0.address}, {$0.address = $1})
+    static let employeesZ = lenz({$0.employees}, {$0.employees = $1})
+    static let ceoIDZ = lenz({$0.ceoID}, {$0.ceoID = $1})
+    static let ctoIDZ = lenz({$0.ctoID}, {$0.ctoID = $1})
 }
 
 //extension ChannelType where Source.Element == Company, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
-//    var addressZ: LensChannel<Self, Address> { return focus({ $0.address }, { $0.address = $1 }) }
-//    var employeesZ: LensChannel<Self, [PersonID: Person]> { return focus({ $0.employees }, { $0.employees = $1 }) }
-//    var ceoIDZ: LensChannel<Self, PersonID> { return focus({ $0.ceoID }, { $0.ceoID = $1 }) }
-//    var ctoIDZ: LensChannel<Self, PersonID?> { return focus({ $0.ctoID }, { $0.ctoID = $1 }) }
+//    var addressZ: LensChannel<Self, Address> { return focus(Company.addressZ) }
+//    var employeesZ: LensChannel<Self, [PersonID: Person]> { return focus(Company.employeesZ) }
+//    var ceoIDZ: LensChannel<Self, PersonID> { return focus(Company.ceoIDZ) }
+//    var ctoIDZ: LensChannel<Self, PersonID?> { return focus(Company.ctoIDZ) }
 //}
-//
+
+extension Person : Focusable {
+    static let firstNameZ = lenz({$0.firstName}, {$0.firstName = $1})
+    static let lastNameZ = lenz({$0.lastName}, {$0.lastName = $1})
+    static let genderZ = lenz({$0.gender}, {$0.gender = $1})
+    static let homeAddressZ = lenz({$0.homeAddress}, {$0.homeAddress = $1})
+    static let workAddressZ = lenz({$0.workAddress}, {$0.workAddress = $1})
+    static let previousAddressesZ = lenz({$0.previousAddresses}, {$0.previousAddresses = $1})
+}
+
+//extension Lens {
+//    func focus<C: ChannelType>(_ channel: C) -> LensChannel<A, B> where C.Source.Element == A, C.Source : TransceiverType, C.Pulse : MutationType, C.Pulse.Element == C.Source.Element {
+//        fatalError()
+////        return channel.focus(lens: self)
+//    }
+//}
+
 //extension ChannelType where Source.Element == Person, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
-//    var firstNameZ: LensChannel<Self, String> { return focus({ $0.firstName }, { $0.firstName = $1 }) }
-//    var lastNameZ: LensChannel<Self, String> { return focus({ $0.lastName }, { $0.lastName = $1 }) }
-//    var genderZ: LensChannel<Self, Person.Gender> { return focus({ $0.gender }, { $0.gender = $1 }) }
-//    var homeAddressZ: LensChannel<Self, Address> { return focus({ $0.homeAddress }, { $0.homeAddress = $1 }) }
-//    var workAddressZ: LensChannel<Self, Address?> { return focus({ $0.workAddress }, { $0.workAddress = $1 }) }
-//    var previousAddressesZ: LensChannel<Self, [Address]> { return focus({ $0.previousAddresses }, { $0.previousAddresses = $1 }) }
+////    var XXX = Person.firstNameZ.focus(self)
+//    var firstNameZ: LensChannel<Self, String> { return focus(Person.firstNameZ) }
+//    var lastNameZ: LensChannel<Self, String> { return focus(Person.lastNameZ) }
+//    var genderZ: LensChannel<Self, Person.Gender> { return focus(Person.genderZ) }
+//    var homeAddressZ: LensChannel<Self, Address> { return focus(Person.homeAddressZ) }
+//    var workAddressZ: LensChannel<Self, Address?> { return focus(Person.workAddressZ) }
+//    var previousAddressesZ: LensChannel<Self, [Address]> { return focus(Person.previousAddressesZ) }
 //}
-//
+
+extension Address : Focusable {
+    static let line1Z = lenz({$0.line1}, {$0.line1 = $1})
+    static let line2Z = lenz({$0.line2}, {$0.line2 = $1})
+    static let postalCodeZ = lenz({$0.postalCode}, {$0.postalCode = $1})
+}
+
 //extension ChannelType where Source.Element == Address, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
-//    var line1Z: LensChannel<Self, String> { return focus({ $0.line1 }, { $0.line1 = $1 }) }
-//    var line2Z: LensChannel<Self, String?> { return focus({ $0.line2 }, { $0.line2 = $1 }) }
-//    var postalCodeZ: LensChannel<Self, String> { return focus({ $0.postalCode }, { $0.postalCode = $1 }) }
+//    var line1Z: LensChannel<Self, String> { return focus(Address.line1Z) }
+//    var line2Z: LensChannel<Self, String?> { return focus(Address.line2Z) }
+//    var postalCodeZ: LensChannel<Self, String> { return focus(Address.postalCodeZ) }
 //}
-//
+
 //extension ChannelType where Source.Element == Address?, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
-//    var line1Z: LensChannel<Self, String?> { return focus({ $0?.line1 }, { if let value = $1 { $0?.line1 = value }  }) }
+//    var line1Z: LensChannel<Self, String?> {
+//        let xxx: Lens<Address?, String> = Address.line1Z.maybe()
+//        let yyy = focus(lens: xxx)
+//        return yyy
+//    }
+////    var line1Z: LensChannel<Self, String?> { return focus(lens: Address.line1Z.maybe()) }
+////    var line2Z: LensChannel<Self, String??> { return focus(lens: Address.line2Z.maybe()) }
+////    var postalCodeZ: LensChannel<Self, String?> { return focus(lens: Address.postalCodeZ.maybe()) }
+//}
+
+extension ChannelType where Source.Element == Address?, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
+//    var line1Z: LensChannel<Self, String?> { return focus(get: { a in a?.line1 }, set: { (a: inout Address?, b: String?) in if let b = b { a?.line1 = b } }) }
+//    var line2Z: LensChannel<Self, String??> { return focus(get: { a in a?.line2 }, set: { (a: inout Address?, b: String??) in if let b = b { a?.line2 = b } }) }
+
 //    var line2Z: LensChannel<Self, String??> { return focus({ $0?.line2 }, { if let value = $1 { $0?.line2 = value }  }) }
 //    var postalCodeZ: LensChannel<Self, String?> { return focus({ $0?.postalCode }, { if let value = $1 { $0?.postalCode = value }  }) }
-//}
-//
+}
+
+
 ////protocol Focusable {
 ////
 ////}
@@ -101,245 +144,243 @@ extension ChannelType where Source.Element == Directory, Source : TransceiverTyp
 ////extension Person : Focusable {
 ////    static let firstNameX = Person.lens(Lens({ $0.firstName }, { $0.firstName = $1 }))
 ////}
-//
-//
-//extension ChannelTests {
-//    func testJacket() {
-//
-//
-//        let bebe = Person(firstName: "Beatrice", lastName: "Walter",
-//                          gender: .female,
-//                          homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
-//                          workAddress: nil,
-//                          previousAddresses: [])
-//
-//        var dir = Directory(author: bebe,
-//                            companies: [
-//                                Company(employees: [
-//                                    "359414": Person(firstName: "Marc", lastName: "Walter",
-//                                        gender: .male,
-//                                        homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
-//                                        workAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
-//                                        previousAddresses: [])
-//                                    ],
-//                                    ceoID: "359414",
-//                                    ctoID: nil,
-//                                    address: Address(line1: "1 NaN Loop", line2: nil, postalCode: "99999"))
-//            ]
-//        )
-//
-////        let firstNameLens = Lens<Person, String>({ $0.firstName }, { $0.firstName = $1 })
-//        let lastNameLens = Lens<Person, String>({ $0.lastName }, { $0.lastName = $1 })
-//
-//        dir.companies[0].employees[dir.companies[0].ceoID]?.workAddress?.line2 = "Suite #111"
-//
-//        do {
-//            let dirZ = transceive(dir)
-//
-//            let bebeZ = dirZ.authorZ
-//
-//            bebeZ.homeAddressZ.line1Z.$ = "Foo"
-//            bebeZ.homeAddressZ.line2Z.$ = "Bar"
-//            XCTAssertEqual("Foo", bebeZ.$.homeAddress.line1)
-//            XCTAssertEqual("Bar", bebeZ.$.homeAddress.line2)
-//
-//            XCTAssertEqual(nil, bebeZ.$.workAddress?.line1)
-//
-//            XCTAssertEqual(nil, bebeZ.$.workAddress?.line1)
-//            XCTAssertEqual(nil, bebeZ.$.workAddress?.line2)
-//
-//            let defaddr = Address(line1: "", line2: nil, postalCode: "")
-//            bebeZ.workAddressZ.coalesce({ _ in defaddr }).line1Z.$ = "AAA"
-//            bebeZ.workAddressZ.coalesce({ _ in defaddr }).line2Z.$ = "BBB"
-//
-//            XCTAssertEqual("AAA", bebeZ.$.workAddress?.line1)
-//            XCTAssertEqual("BBB", bebeZ.$.workAddress?.line2)
-//
-//            let a1 = bebeZ.homeAddressZ.line1Z.sieve(!=).new()
-//            let a2 = bebeZ.workAddressZ.coalesce({ _ in defaddr }).line1Z.sieve(!=).new()
-//
-//            let b1 = bebeZ.homeAddressZ.line2Z.sieve(!=).new()
-//            let b2 = bebeZ.workAddressZ.coalesce({ _ in defaddr }).line2Z.sieve(!=).new()
-//
-//            a1.bind(a2) // works from home
-//            b1.bind(b2) // works from home
-//
-//            bebeZ.$.workAddress?.line1 = "XXX"
-//            XCTAssertEqual("XXX", bebeZ.$.homeAddress.line1)
-//            XCTAssertEqual("XXX", bebeZ.$.workAddress?.line1)
-//
-//            bebeZ.homeAddressZ.line1Z.$ = "YYY"
-//            XCTAssertEqual("YYY", bebeZ.$.homeAddress.line1)
-//            XCTAssertEqual("YYY", bebeZ.$.workAddress?.line1)
-//
-//            bebeZ.workAddressZ.coalesce({ _ in defaddr }).line1Z.$ = "ZZZ"
-//            XCTAssertEqual("ZZZ", bebeZ.$.homeAddress.line1)
-//            XCTAssertEqual("ZZZ", bebeZ.$.workAddress?.line1)
-//
+
+extension ChannelTests {
+    func testJacket() {
+
+
+        let bebe = Person(firstName: "Beatrice", lastName: "Walter",
+                          gender: .female,
+                          homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
+                          workAddress: nil,
+                          previousAddresses: [])
+
+        var dir = Directory(author: bebe,
+                            companies: [
+                                Company(employees: [
+                                    "359414": Person(firstName: "Marc", lastName: "Walter",
+                                        gender: .male,
+                                        homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
+                                        workAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
+                                        previousAddresses: [])
+                                    ],
+                                    ceoID: "359414",
+                                    ctoID: nil,
+                                    address: Address(line1: "1 NaN Loop", line2: nil, postalCode: "99999"))
+            ]
+        )
+
+//        let firstNameLens = Lens<Person, String>({ $0.firstName }, { $0.firstName = $1 })
+//        let lastNameLens = Person.lastNameZ
+
+        dir.companies[0].employees[dir.companies[0].ceoID]?.workAddress?.line2 = "Suite #111"
+
+        do {
+            let dirZ = transceive(dir)
+
+            let bebeZ = dirZ.focus(Directory.authorZ)
+
+            bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).$ = "Foo"
+            bebeZ.focus(Person.homeAddressZ).focus(Address.line2Z).$ = "Bar"
+            XCTAssertEqual("Foo", bebeZ.$.homeAddress.line1)
+            XCTAssertEqual("Bar", bebeZ.$.homeAddress.line2)
+
+            XCTAssertEqual(nil, bebeZ.$.workAddress?.line1)
+
+            XCTAssertEqual(nil, bebeZ.$.workAddress?.line1)
+            XCTAssertEqual(nil, bebeZ.$.workAddress?.line2)
+
+            let defaddr = Address(line1: "", line2: nil, postalCode: "")
+            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).$ = "AAA"
+            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line2Z).$ = "BBB"
+
+            XCTAssertEqual("AAA", bebeZ.$.workAddress?.line1)
+            XCTAssertEqual("BBB", bebeZ.$.workAddress?.line2)
+
+            let a1 = bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).sieve(!=).new()
+            let a2 = bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).sieve(!=).new()
+
+            let b1 = bebeZ.focus(Person.homeAddressZ).focus(Address.line2Z).sieve(!=).new()
+            let b2 = bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line2Z).sieve(!=).new()
+
+            a1.bind(a2) // works from home
+            b1.bind(b2) // works from home
+
+            bebeZ.$.workAddress?.line1 = "XXX"
+            XCTAssertEqual("XXX", bebeZ.$.homeAddress.line1)
+            XCTAssertEqual("XXX", bebeZ.$.workAddress?.line1)
+
+            bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).$ = "YYY"
+            XCTAssertEqual("YYY", bebeZ.$.homeAddress.line1)
+            XCTAssertEqual("YYY", bebeZ.$.workAddress?.line1)
+
+            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).$ = "ZZZ"
+            XCTAssertEqual("ZZZ", bebeZ.$.homeAddress.line1)
+            XCTAssertEqual("ZZZ", bebeZ.$.workAddress?.line1)
+
 //            let prevZ = bebeZ.previousAddressesZ
-//
-//            var lines: [String?] = []
-//            prevZ.index(1).line1Z.sieve().new().receive { line in
-//                lines.append(line)
-//            }
-//
-//            XCTAssertEqual(0, bebeZ.$.previousAddresses.count)
-//            prevZ.index(2).coalesce({ _ in defaddr }).line1Z.$ = "XYZ"
-//            XCTAssertEqual(3, bebeZ.$.previousAddresses.count)
-//            XCTAssertEqual(["XYZ", "XYZ", "XYZ"], bebeZ.$.previousAddresses.map({ $0.line1 }))
-//
-//            prevZ.index(1).coalesce({ _ in defaddr }).line1Z.$ = "ABC"
-//            XCTAssertEqual(["XYZ", "ABC", "XYZ"], bebeZ.$.previousAddresses.map({ $0.line1 }))
-//
-//
-//            XCTAssertEqual(["XYZ", "ABC"].flatMap({ $0 }), lines.flatMap({ $0 }))
-//
-//            // create an accessor for the prism
-//            let line1Lens = Lens<Address, String>({ $0.line1 }, { $0.line1 = $1 })
-////            let line2Lens = Lens<Address, String?>({ $0.line2 }, { $0.line2 = $1 })
-//
-//            let line1sZ = prevZ.prism(line1Lens)
-//
-//            XCTAssertEqual(["XYZ", "ABC", "XYZ"], line1sZ.$)
-//
-//            line1sZ.$ = ["123", "123", "123"]
-//            XCTAssertEqual(["123", "123", "123"], line1sZ.$)
-//
-//            line1sZ.$ = ["QQQ"] // a prism set to a subset will only apply to the subset
-//            XCTAssertEqual(["QQQ", "123", "123"], line1sZ.$)
-//
-//
-//            // sets the last two elements of the lensed collection, ignoring any trail-offs
-//            prevZ.range(1...2).prism(line1Lens).$ = ["PRQ", "PRQ", "PRQ", "PRQ"]
-//            XCTAssertEqual(["QQQ", "PRQ", "PRQ"], line1sZ.$)
-//
-//
-//            // check non-contiguous index access
-//            prevZ.indices([2, 0, 1]).prism(line1Lens).$ = ["Z", "X", "Y"]
-//            XCTAssertEqual(["X", "Y", "Z"], line1sZ.$)
-//
-//            // creates a "select" combination of collection and index channels
-//            let indexChannel = transceive([0])
-//            let selectZ = prevZ.indexed(indexChannel).prism(line1Lens)
-//
-//            let seltrap = selectZ.trap(Int.max)
-//            
-//            XCTAssertEqual(["X"], selectZ.$)
-//
-//            XCTAssertEqual(2, seltrap.caught.count)
-//
-//            // changing the index changes the underlying prism
-//            indexChannel.$ = [2, 0]
-//            XCTAssertEqual(["Z", "X"], selectZ.$)
-//            XCTAssertEqual(3, seltrap.caught.count)
-//
-//
-//            // changing the values changes the underlying prism
-//            line1sZ.$ = ["A", "B", "C"]
-//            XCTAssertEqual(["C", "A"], selectZ.$)
-//            XCTAssertEqual(["A", "B", "C"], line1sZ.$)
-//            XCTAssertEqual(4, seltrap.caught.count)
-//
-//            selectZ.$ = ["Q", "T"]
-//            XCTAssertEqual(["Q", "T"], selectZ.$)
-//            XCTAssertEqual(["T", "B", "Q"], line1sZ.$)
-//            XCTAssertEqual(5, seltrap.caught.count)
-//
-//            // invalidating an index drops the last selection
-//            prevZ.$.removeLast()
-//            XCTAssertEqual(["T"], selectZ.$)
-//            XCTAssertEqual(6, seltrap.caught.count)
-//
-//            indexChannel.$ = Array((0...999).reversed()) // go outside the bounds
-//            XCTAssertEqual(["B", "T"], selectZ.$)
-//            XCTAssertEqual(["T", "B"], line1sZ.$)
-//
-//            selectZ.$ = [ "Y", "X" ] // does nothing, since 999 & 998 are outside the range
-//            XCTAssertEqual(["T", "B"], line1sZ.$)
-//
-//            indexChannel.$ = Array((0...999)) // go outside the bounds
-//            selectZ.$ = [ "Y", "X" ] // does nothing, since 999 & 998 are outside the range
-//            XCTAssertEqual(["Y", "X"], line1sZ.$)
-//
-//            selectZ.$ = Array(count: 2, repeatedValue: "T")
-//            XCTAssertEqual(["T", "T"], line1sZ.$)
-//
-//            var persons: [Person] = []
-//            let company = dirZ.companiesZ.index(0).coalesce({ _ in nil as Company! })
-//
-//            company.employeesZ.at("359414").value().some().receive { person in
-//                persons.append(person)
-//            }
-//
-//            let empnameZ = company.employeesZ.at("359414").coalesce({ _ in nil as Person! }).firstNameZ
-//            empnameZ.$ = "Marcus"
-//
-//            XCTAssertEqual("Marcus", dirZ.$.companies.first?.employees["359414"]?.firstName)
-//
-//            // now add two more employees and edit mutliple aspects of them
-//
-//            let doeHome = Address(line1: "123 Doe Lane", line2: nil, postalCode: "44556")
-//
-//            company.employeesZ.$["888888"] = Person(firstName: "John", lastName: "Doe", gender: .male, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
-//            company.employeesZ.$["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .female, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
-//
-//            XCTAssertEqual(dirZ.$.companies.flatMap({ $0.employees.values }).count, 3)
-//
-//            // TODO: generalize select() to work on collections and dictionaries
-//            let keysChannel = transceive(["888888"])
-//            let keyedZ: Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<Directory>, Mutation<Directory>>, [Company]>, Mutation<[Company]>>, Company?>, Mutation<Company?>>, Company>, Mutation<Company>>, [PersonID : Person]>, Mutation<[PersonID : Person]>>, [Person?]>, Mutation<[Person?]>> = company.employeesZ.keyed(keysChannel)
-//
-//            let empselZ = keyedZ.prism(lastNameLens.prism)
-//            let empseltrap = empselZ.trap(Int.max)
-//
-//            XCTAssertEqual(3, company.employeesZ.$.count)
-//
-//            XCTAssertEqual(2, empseltrap.caught.count)
-//            XCTAssertEqual(["Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
-//
-//            keysChannel.$ += ["NaN", "999999"]
-//            XCTAssertEqual(3, empseltrap.caught.count)
-//            XCTAssertEqual(["Doe", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
-//
-//            empselZ.$ = ["A", "B"] // missing key won't be updated
-//            XCTAssertEqual(4, empseltrap.caught.count)
-//            XCTAssertEqual(3, company.employeesZ.$.count)
-//
-//            XCTAssertEqual(["A", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
-//
-//            empselZ.$ = ["X", "Y", "Z"]
-//            XCTAssertEqual(5, empseltrap.caught.count)
-//            XCTAssertEqual(3, company.employeesZ.$.count)
-//            XCTAssertEqual("X", empseltrap.value?.new[0])
-//            XCTAssertEqual(nil, empseltrap.value?.new[1])
-//            XCTAssertEqual("Z", empseltrap.value?.new[2])
-//
-//            empselZ.$ = [nil, nil, nil] // no effect since lastName is non-nullable
-//            XCTAssertEqual(6, empseltrap.caught.count)
-//            XCTAssertEqual(3, company.employeesZ.$.count)
-//            XCTAssertEqual(3, empseltrap.value?.new.count)
-//            if empseltrap.value?.new.count == 3 {
-//                XCTAssertEqual("X", empseltrap.value?.new[0])
-//                XCTAssertEqual(nil, empseltrap.value?.new[1])
-//                XCTAssertEqual("Z", empseltrap.value?.new[2])
-//            }
-//
-//            // include duplicates in the channel
-//            keysChannel.$ = ["999999", "888888", "999999", "888888", "999999"]
-//            empselZ.$ = ["A", "B", "C", "D", "E"]
-//            XCTAssertEqual(5, empseltrap.value?.new.count)
-//            if empseltrap.value?.new.count == 5 {
-//                XCTAssertEqual("E", empseltrap.value?.new[0])
-//                XCTAssertEqual("D", empseltrap.value?.new[1])
-//                XCTAssertEqual("E", empseltrap.value?.new[2])
-//                XCTAssertEqual("D", empseltrap.value?.new[3])
-//                XCTAssertEqual("E", empseltrap.value?.new[4])
-//            }
-//            XCTAssertEqual(company.employeesZ.$["888888"]?.lastName, "D")
-//            XCTAssertEqual(company.employeesZ.$["999999"]?.lastName, "E")
-//        }
-//    }
-//
+            let prevZ = bebeZ.focus(Person.previousAddressesZ)
+
+            var lines: [String?] = []
+
+            prevZ.index(1).focus(Address.line1Z.prism).sieve().new().receive { line in
+                lines.append(line)
+            }
+
+            XCTAssertEqual(0, bebeZ.$.previousAddresses.count)
+            prevZ.index(2).coalesce({ _ in defaddr }).focus(Address.line1Z).$ = "XYZ"
+            XCTAssertEqual(3, bebeZ.$.previousAddresses.count)
+            XCTAssertEqual(["XYZ", "XYZ", "XYZ"], bebeZ.$.previousAddresses.map({ $0.line1 }))
+
+            prevZ.index(1).coalesce({ _ in defaddr }).focus(Address.line1Z).$ = "ABC"
+            XCTAssertEqual(["XYZ", "ABC", "XYZ"], bebeZ.$.previousAddresses.map({ $0.line1 }))
+
+
+            XCTAssertEqual(["XYZ", "ABC"].flatMap({ $0 }), lines.flatMap({ $0 }))
+
+            let line1sZ = prevZ.prism(Address.line1Z)
+
+            XCTAssertEqual(["XYZ", "ABC", "XYZ"], line1sZ.$)
+
+            line1sZ.$ = ["123", "123", "123"]
+            XCTAssertEqual(["123", "123", "123"], line1sZ.$)
+
+            line1sZ.$ = ["QQQ"] // a prism set to a subset will only apply to the subset
+            XCTAssertEqual(["QQQ", "123", "123"], line1sZ.$)
+
+
+            // sets the last two elements of the lensed collection, ignoring any trail-offs
+            //            prevZ.range(1...2).prism(Address.line1Z).$ = ["PRQ", "PRQ", "PRQ", "PRQ"] // FIXME: closed range error
+            prevZ.indices([1,2]).prism(Address.line1Z).$ = ["PRQ", "PRQ", "PRQ", "PRQ"]
+            XCTAssertEqual(["QQQ", "PRQ", "PRQ"], line1sZ.$)
+
+
+            // check non-contiguous index access
+            prevZ.indices([2, 0, 1]).prism(Address.line1Z).$ = ["Z", "X", "Y"]
+            XCTAssertEqual(["X", "Y", "Z"], line1sZ.$)
+
+            // creates a "select" combination of collection and index channels
+            let indexChannel = transceive([0])
+            let selectZ = prevZ.indexed(indexChannel).prism(Address.line1Z) // Swift 3 compiler crash!
+
+            let seltrap = selectZ.trap(Int.max)
+            
+            XCTAssertEqual(["X"], selectZ.$)
+
+            XCTAssertEqual(2, seltrap.caught.count)
+
+            // changing the index changes the underlying prism
+            indexChannel.$ = [2, 0]
+            XCTAssertEqual(["Z", "X"], selectZ.$)
+            XCTAssertEqual(3, seltrap.caught.count)
+
+
+            // changing the values changes the underlying prism
+            line1sZ.$ = ["A", "B", "C"]
+            XCTAssertEqual(["C", "A"], selectZ.$)
+            XCTAssertEqual(["A", "B", "C"], line1sZ.$)
+            XCTAssertEqual(4, seltrap.caught.count)
+
+            selectZ.$ = ["Q", "T"]
+            XCTAssertEqual(["Q", "T"], selectZ.$)
+            XCTAssertEqual(["T", "B", "Q"], line1sZ.$)
+            XCTAssertEqual(5, seltrap.caught.count)
+
+            // invalidating an index drops the last selection
+            prevZ.$.removeLast()
+            XCTAssertEqual(["T"], selectZ.$)
+            XCTAssertEqual(6, seltrap.caught.count)
+
+            indexChannel.$ = Array((0...999).reversed()) // go outside the bounds
+            XCTAssertEqual(["B", "T"], selectZ.$)
+            XCTAssertEqual(["T", "B"], line1sZ.$)
+
+            selectZ.$ = [ "Y", "X" ] // does nothing, since 999 & 998 are outside the range
+            XCTAssertEqual(["T", "B"], line1sZ.$)
+
+            indexChannel.$ = Array((0...999)) // go outside the bounds
+            selectZ.$ = [ "Y", "X" ] // does nothing, since 999 & 998 are outside the range
+            XCTAssertEqual(["Y", "X"], line1sZ.$)
+
+            selectZ.$ = Array(repeating: "T", count: 2)
+            XCTAssertEqual(["T", "T"], line1sZ.$)
+
+            var persons: [Person] = []
+            let company = dirZ.focus(Directory.companiesZ).index(0).coalesce({ _ in nil as Company! })
+
+            company.focus(Company.employeesZ).at("359414").value().some().receive { person in
+                persons.append(person)
+            }
+
+            let empnameZ = company.focus(Company.employeesZ).at("359414").coalesce({ _ in nil as Person! }).focus(Person.firstNameZ)
+            empnameZ.$ = "Marcus"
+
+            XCTAssertEqual("Marcus", dirZ.$.companies.first?.employees["359414"]?.firstName)
+
+            // now add two more employees and edit mutliple aspects of them
+
+            let doeHome = Address(line1: "123 Doe Lane", line2: nil, postalCode: "44556")
+
+            company.focus(Company.employeesZ).$["888888"] = Person(firstName: "John", lastName: "Doe", gender: .male, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+            company.focus(Company.employeesZ).$["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .female, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+
+            XCTAssertEqual(dirZ.$.companies.flatMap({ $0.employees.values }).count, 3)
+
+            // TODO: generalize select() to work on collections and dictionaries
+            let keysChannel = transceive(["888888"])
+            let keyedZ: Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<Directory>, Mutation<Directory>>, [Company]>, Mutation<[Company]>>, Company?>, Mutation<Company?>>, Company>, Mutation<Company>>, [PersonID : Person]>, Mutation<[PersonID : Person]>>, [Person?]>, Mutation<[Person?]>> = company.focus(Company.employeesZ).keyed(keysChannel) // Swift 3 compiler crash
+
+            let empselZ = keyedZ.prism(Person.lastNameZ.prism)
+            let empseltrap = empselZ.trap(Int.max)
+
+            XCTAssertEqual(3, company.focus(Company.employeesZ).$.count)
+
+            XCTAssertEqual(2, empseltrap.caught.count)
+            XCTAssertEqual(["Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
+
+            keysChannel.$ += ["NaN", "999999"]
+            XCTAssertEqual(3, empseltrap.caught.count)
+            XCTAssertEqual(["Doe", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
+
+            empselZ.$ = ["A", "B"] // missing key won't be updated
+            XCTAssertEqual(4, empseltrap.caught.count)
+            XCTAssertEqual(3, company.focus(Company.employeesZ).$.count)
+
+            XCTAssertEqual(["A", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
+
+            empselZ.$ = ["X", "Y", "Z"]
+            XCTAssertEqual(5, empseltrap.caught.count)
+            XCTAssertEqual(3, company.focus(Company.employeesZ).$.count)
+            XCTAssertEqual("X", empseltrap.value?.new[0])
+            XCTAssertEqual(nil, empseltrap.value?.new[1])
+            XCTAssertEqual("Z", empseltrap.value?.new[2])
+
+            empselZ.$ = [nil, nil, nil] // no effect since lastName is non-nullable
+            XCTAssertEqual(6, empseltrap.caught.count)
+            XCTAssertEqual(3, company.focus(Company.employeesZ).$.count)
+            XCTAssertEqual(3, empseltrap.value?.new.count)
+            if empseltrap.value?.new.count == 3 {
+                XCTAssertEqual("X", empseltrap.value?.new[0])
+                XCTAssertEqual(nil, empseltrap.value?.new[1])
+                XCTAssertEqual("Z", empseltrap.value?.new[2])
+            }
+
+            // include duplicates in the channel
+            keysChannel.$ = ["999999", "888888", "999999", "888888", "999999"]
+            empselZ.$ = ["A", "B", "C", "D", "E"]
+            XCTAssertEqual(5, empseltrap.value?.new.count)
+            if empseltrap.value?.new.count == 5 {
+                XCTAssertEqual("E", empseltrap.value?.new[0])
+                XCTAssertEqual("D", empseltrap.value?.new[1])
+                XCTAssertEqual("E", empseltrap.value?.new[2])
+                XCTAssertEqual("D", empseltrap.value?.new[3])
+                XCTAssertEqual("E", empseltrap.value?.new[4])
+            }
+            XCTAssertEqual(company.focus(Company.employeesZ).$["888888"]?.lastName, "D")
+            XCTAssertEqual(company.focus(Company.employeesZ).$["999999"]?.lastName, "E")
+        }
+    }
+
 //    func testLensChannels() {
 //        let prop = transceive((int: 1, dbl: 2.2, str: "Foo", sub: (a: true, b: 22, c: "")))
 //
@@ -398,4 +439,4 @@ extension ChannelType where Source.Element == Directory, Source : TransceiverTyp
 ////        dump(compound.$)
 ////        let MVλ = 1
 //    }
-//}
+}

@@ -50,7 +50,7 @@ public struct Lens<A, B> : LensType {
         self.setter = create
     }
 
-    public init(_ get: @escaping (A) -> B, _ set: @escaping (inout A, B) -> ()) {
+    public init(get: @escaping (A) -> B, set: @escaping (inout A, B) -> ()) {
         self.getter = get
         self.setter = { var copy = $0; set(&copy, $1); return copy }
     }
@@ -63,6 +63,18 @@ public struct Lens<A, B> : LensType {
         return getter(target)
     }
 }
+
+/// A `Focusable` instance is able focus on individual properties of the model
+public protocol Focusable {
+}
+
+public extension Focusable {
+    /// Takes a setter & getter for a property of this instance and returns a lens than encapsulates the action
+    public static func lenz<T>(_ get: @escaping (Self) -> T, _ set: @escaping (inout Self, T) -> Void) -> Lens<Self, T> {
+        return Lens(get: get, set: set)
+    }
+}
+
 
 public protocol LensSourceType : TransceiverType {
     associatedtype Owner : ChannelType
@@ -138,13 +150,13 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
 
     /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
     /// channel can modify sub-elements of a complex data structure
-    public func focus<X>(lens: Lens<Source.Element, X>) -> LensChannel<Self, X> {
+    public func focus<X>(_ lens: Lens<Source.Element, X>) -> LensChannel<Self, X> {
         return LensSource(channel: self, lens: lens).transceive()
     }
 
     /// Constructs a Lens channel using a getter and an inout setter
-    public func focus<X>(_ get: @escaping (Source.Element) -> X, _ set: @escaping (inout Source.Element, X) -> ()) -> LensChannel<Self, X> {
-        return focus(lens: Lens(get, set))
+    public func focus<X>(get: @escaping (Source.Element) -> X, set: @escaping (inout Source.Element, X) -> ()) -> LensChannel<Self, X> {
+        return focus(Lens(get: get, set: set))
     }
 
 //    public func focuz<X>(_ get: @escaping (Source.Element) -> X) -> (_ set: @escaping (inout Source.Element, X) -> ()) -> LensChannel<Self, X> {
@@ -153,7 +165,7 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
 
     /// Constructs a Lens channel using a getter and a tranformation setter
     public func focus<X>(get: @escaping (Source.Element) -> X, create: @escaping (Source.Element, X) -> Source.Element) -> LensChannel<Self, X> {
-        return focus(lens: Lens(get: get, create: create))
+        return focus(Lens(get: get, create: create))
     }
 }
 
@@ -192,7 +204,7 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
             updater((elements, locator.source.$), values).0
         }
 
-        let sel = focus(lens: lens)
+        let sel = focus(lens)
 
         return sel.either(locator).resource({ $0.0 }).map {
             switch $0 {
@@ -274,13 +286,34 @@ public extension ChannelType where Source.Element : MutableCollection, Source : 
     }
 }
 
+@available(*, deprecated, message: "crashes always!")
+public func todo<T>() -> T { fatalError("TODO: \(T.self)") }
+
 public extension ChannelType where Source.Element : KeyIndexed, Source.Element.Key : Hashable, Source.Element : Collection, Source.Element.Index : KeyIndexedIndexType, Source.Element.Key == Source.Element.Index.Key, Source.Element.Value == Source.Element.Index.Value, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element, Pulse.Element.Indices.Iterator.Element == Pulse.Element.Index {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be represented by nil in the
     /// pulsed collection; nulling out individual members of existant keys will have no effect.
-    public func keyed<Join: ChannelType>(_ indices: Join) -> LensChannel<Self, [Self.Pulse.Element.Value?]> where Join.Source : StateEmitterType, Join.Source.Element : Sequence, Join.Source.Element.Iterator.Element == Source.Element.Key, Join.Pulse : MutationType, Join.Pulse.Element == Join.Source.Element {
+    public func keyed<S: Sequence>(_ indices: TransceiverChannel<S>) -> LensChannel<Self, [Self.Pulse.Element.Value?]> where S.Iterator.Element == Self.Pulse.Element.Key {
+
+        return join(indices, finder: { dict, keys in
+            var values: [Pulse.Element.Value?] = []
+            for key in keys {
+                values.append(dict[key])
+            }
+            return values
+            }, updater: { dkeys, values in
+                var dict = dkeys.0
+                for (key, value) in Swift.zip(dkeys.1, values) {
+                    dict[key] = value
+                }
+                return (dict, dkeys.1)
+        })
+    }
+
+    // FIXME: replace with identical indexed() function once crashing Swit 3 compiler bug with generic specialization is fixed
+    private func keyedCRASHES<Join: ChannelType>(_ indices: Join) -> LensChannel<Self, [Self.Pulse.Element.Value?]> where Join.Source : StateEmitterType, Join.Source.Element : Sequence, Join.Source.Element.Iterator.Element == Source.Element.Key, Join.Pulse : MutationType, Join.Pulse.Element == Join.Source.Element {
 
         func find(_ dict: Pulse.Element, keys: Join.Pulse.Element) -> [Pulse.Element.Value?] {
 
@@ -301,14 +334,13 @@ public extension ChannelType where Source.Element : KeyIndexed, Source.Element.K
 
         return join(indices, finder: find, updater: update)
     }
+
 }
 
 public extension ChannelType where Source.Element : RangeReplaceableCollection, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element, Pulse.Element.Indices.Iterator.Element == Pulse.Element.Index {
 
-    /// Combines this collection state source with a channel of indices and combines them into a prism
-    /// where the subselection will be issued whenever a change in either the selection or the underlying
-    /// elements occurs; indices that are invalid or become invalid will be silently ignored.
-    public func indexed<C: ChannelType>(_ indices: C) -> LensChannel<Self, [Self.Pulse.Element.Iterator.Element]> where C.Source : StateEmitterType, C.Source.Element : Sequence, C.Source.Element.Iterator.Element == Source.Element.Index, C.Pulse : MutationType, C.Pulse.Element == C.Source.Element {
+    // FIXME: replace with identical indexed() function once crashing Swit 3 compiler bug with generic specialization is fixed
+    private func indexedOLD<C: ChannelType>(_ indices: C) -> LensChannel<Self, [Self.Pulse.Element.Iterator.Element]> where C.Source : StateEmitterType, C.Source.Element : Sequence, C.Source.Element.Iterator.Element == Source.Element.Index, C.Pulse : MutationType, C.Pulse.Element == C.Source.Element {
         return find(indices) { (seq, idx, val) in
             var seq = seq
             if seq.indices.contains(idx) {
@@ -318,9 +350,11 @@ public extension ChannelType where Source.Element : RangeReplaceableCollection, 
         }
     }
 
-    // FIXME: replace with identical indexed() function once crashing compiler bug with generic specialization is fixed
-    private func indexedCRASH(_ indices: TransceiverChannel<[Self.Pulse.Element.Index]>) -> LensChannel<Self, [Self.Pulse.Element.Iterator.Element]> {
-        // return indexed(indices) // CRASH
+    /// Combines this collection state source with a channel of indices and combines them into a prism
+    /// where the subselection will be issued whenever a change in either the selection or the underlying
+    /// elements occurs; indices that are invalid or become invalid will be silently ignored.
+    public func indexed<S: Sequence>(_ indices: TransceiverChannel<S>) -> LensChannel<Self, [Self.Pulse.Element.Iterator.Element]> where S.Iterator.Element == Self.Pulse.Element.Index {
+        //return indexed(indices) // CRASH
         return find(indices) { (seq, idx, val) in
             var seq = seq
             if seq.indices.contains(idx) {
@@ -332,7 +366,7 @@ public extension ChannelType where Source.Element : RangeReplaceableCollection, 
 
     /// Returns an accessor to the collection's static indices of elements
     public func indices(_ indices: [Source.Element.Index]) -> LensChannel<Self, [Self.Pulse.Element.Iterator.Element]> {
-        return indexedCRASH(transceive(indices))
+        return indexed(transceive(indices))
     }
 
     /// Creates a channel to the underlying collection type where the channel creates an optional
@@ -362,12 +396,12 @@ public extension ChannelType where Source.Element : RangeReplaceableCollection, 
                 return target
         })
 
-        return focus(lens: lens)
+        return focus(lens)
     }
 
     /// Creates a prism lens channel, allowing access to a collection's mapped lens
     public func prism<T>(_ lens: Lens<Source.Element.Iterator.Element, T>) -> LensChannel<Self, [T]> {
-        let prismLens = Lens<Source.Element, [T]>({ $0.map(lens.get) }) {
+        let prismLens = Lens<Source.Element, [T]>(get: { $0.map(lens.get) }) {
             (elements: inout Source.Element, values: [T]) in
             var vals = values.makeIterator()
             for i in elements.indices {
@@ -376,19 +410,19 @@ public extension ChannelType where Source.Element : RangeReplaceableCollection, 
                 }
             }
         }
-        return focus(lens: prismLens)
+        return focus(prismLens)
     }
 }
 
 public extension ChannelType where Source.Element : RangeReplaceableCollection, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element, Source.Element.SubSequence.Iterator.Element == Source.Element.Iterator.Element, Pulse.Element.Indices.Iterator.Element == Pulse.Element.Index {
 
     /// Returns an accessor to the collection's range of elements
-    public func range(_ range: Range<Source.Element.Index>) -> LensChannel<Self, Source.Element.SubSequence> {
-        let rangeLens = Lens<Source.Element, Source.Element.SubSequence>({ $0[range] }) {
+    public func range(_ range: ClosedRange<Source.Element.Index>) -> LensChannel<Self, Source.Element.SubSequence> {
+        let rangeLens = Lens<Source.Element, Source.Element.SubSequence>(get: { $0[range] }) {
             (elements: inout Source.Element, values: Source.Element.SubSequence) in
             elements.replaceSubrange(range, with: Array(values))
         }
-        return focus(lens: rangeLens)
+        return focus(rangeLens)
     }
 }
 
@@ -432,146 +466,146 @@ public extension ChannelType where Source.Element : KeyIndexed, Source : Transce
                 return target
         })
 
-        return focus(lens: lens)
+        return focus(lens)
     }
 }
 
 public extension ChannelType where Source.Element : Choose1Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the first option of N choices
     public var v1Z: LensChannel<Self, Source.Element.T1?> {
-        return focus({ (x: Pulse.Element) in x.v1 }, { (x: inout Pulse.Element, y: Pulse.Element.T1?) in x.v1 = y })
+        return focus(get: { (x: Pulse.Element) in x.v1 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T1?) in x.v1 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose2Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the second option of N choices
     public var v2Z: LensChannel<Self, Source.Element.T2?> {
-        return focus({ $0.v2 }, { (x: inout Pulse.Element, y: Pulse.Element.T2?) in x.v2 = y })
+        return focus(get: { $0.v2 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T2?) in x.v2 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose3Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the third option of N choices
     public var v3Z: LensChannel<Self, Source.Element.T3?> {
-        return focus({ $0.v3 }, { (x: inout Pulse.Element, y: Pulse.Element.T3?) in x.v3 = y })
+        return focus(get: { $0.v3 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T3?) in x.v3 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose4Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the fourth option of N choices
     public var v4Z: LensChannel<Self, Source.Element.T4?> {
-        return focus({ $0.v4 }, { (x: inout Pulse.Element, y: Pulse.Element.T4?) in x.v4 = y })
+        return focus(get: { $0.v4 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T4?) in x.v4 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose5Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the fifth option of N choices
     public var v5Z: LensChannel<Self, Source.Element.T5?> {
-        return focus({ $0.v5 }, { (x: inout Pulse.Element, y: Pulse.Element.T5?) in x.v5 = y })
+        return focus(get: { $0.v5 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T5?) in x.v5 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose6Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the sixth option of N choices
     public var v6Z: LensChannel<Self, Source.Element.T6?> {
-        return focus({ $0.v6 }, { (x: inout Pulse.Element, y: Pulse.Element.T6?) in x.v6 = y })
+        return focus(get: { $0.v6 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T6?) in x.v6 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose7Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the seventh option of N choices
     public var v7Z: LensChannel<Self, Source.Element.T7?> {
-        return focus({ $0.v7 }, { (x: inout Pulse.Element, y: Pulse.Element.T7?) in x.v7 = y })
+        return focus(get: { $0.v7 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T7?) in x.v7 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose8Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the eighth option of N choices
     public var v8Z: LensChannel<Self, Source.Element.T8?> {
-        return focus({ $0.v8 }, { (x: inout Pulse.Element, y: Pulse.Element.T8?) in x.v8 = y })
+        return focus(get: { $0.v8 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T8?) in x.v8 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose9Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the ninth option of N choices
     public var v9Z: LensChannel<Self, Source.Element.T9?> {
-        return focus({ $0.v9 }, { (x: inout Pulse.Element, y: Pulse.Element.T9?) in x.v9 = y })
+        return focus(get: { $0.v9 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T9?) in x.v9 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose10Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the tenth option of N choices
     public var v10Z: LensChannel<Self, Source.Element.T10?> {
-        return focus({ $0.v10 }, { (x: inout Pulse.Element, y: Pulse.Element.T10?) in x.v10 = y })
+        return focus(get: { $0.v10 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T10?) in x.v10 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose11Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the eleventh option of N choices
     public var v11Z: LensChannel<Self, Source.Element.T11?> {
-        return focus({ $0.v11 }, { (x: inout Pulse.Element, y: Pulse.Element.T11?) in x.v11 = y })
+        return focus(get: { $0.v11 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T11?) in x.v11 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose12Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the twelfth option of N choices
     public var v12Z: LensChannel<Self, Source.Element.T12?> {
-        return focus({ $0.v12 }, { (x: inout Pulse.Element, y: Pulse.Element.T12?) in x.v12 = y })
+        return focus(get: { $0.v12 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T12?) in x.v12 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose13Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the thirteenth option of N choices
     public var v13Z: LensChannel<Self, Source.Element.T13?> {
-        return focus({ $0.v13 }, { (x: inout Pulse.Element, y: Pulse.Element.T13?) in x.v13 = y })
+        return focus(get: { $0.v13 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T13?) in x.v13 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose14Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the fourteenth option of N choices
     public var v14Z: LensChannel<Self, Source.Element.T14?> {
-        return focus({ $0.v14 }, { (x: inout Pulse.Element, y: Pulse.Element.T14?) in x.v14 = y })
+        return focus(get: { $0.v14 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T14?) in x.v14 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose15Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the fifteenth option of N choices
     public var v15Z: LensChannel<Self, Source.Element.T15?> {
-        return focus({ $0.v15 }, { (x: inout Pulse.Element, y: Pulse.Element.T15?) in x.v15 = y })
+        return focus(get: { $0.v15 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T15?) in x.v15 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose16Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the sixteenth option of N choices
     public var v16Z: LensChannel<Self, Source.Element.T16?> {
-        return focus({ $0.v16 }, { (x: inout Pulse.Element, y: Pulse.Element.T16?) in x.v16 = y })
+        return focus(get: { $0.v16 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T16?) in x.v16 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose17Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the seventeenth option of N choices
     public var v17Z: LensChannel<Self, Source.Element.T17?> {
-        return focus({ $0.v17 }, { (x: inout Pulse.Element, y: Pulse.Element.T17?) in x.v17 = y })
+        return focus(get: { $0.v17 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T17?) in x.v17 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose18Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the eighteenth option of N choices
     public var v18Z: LensChannel<Self, Source.Element.T18?> {
-        return focus({ $0.v18 }, { (x: inout Pulse.Element, y: Pulse.Element.T18?) in x.v18 = y })
+        return focus(get: { $0.v18 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T18?) in x.v18 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose19Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the nineteenth option of N choices
     public var v19Z: LensChannel<Self, Source.Element.T19?> {
-        return focus({ $0.v19 }, { (x: inout Pulse.Element, y: Pulse.Element.T19?) in x.v19 = y })
+        return focus(get: { $0.v19 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T19?) in x.v19 = y })
     }
 }
 
 public extension ChannelType where Source.Element : Choose20Type, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
     /// Channel for the twentieth option of N choices
     public var v20Z: LensChannel<Self, Source.Element.T20?> {
-        return focus({ $0.v20 }, { (x: inout Pulse.Element, y: Pulse.Element.T20?) in x.v20 = y })
+        return focus(get: { $0.v20 }, set: { (x: inout Pulse.Element, y: Pulse.Element.T20?) in x.v20 = y })
     }
 }
