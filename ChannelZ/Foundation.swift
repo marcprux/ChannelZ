@@ -245,7 +245,7 @@ public extension KeyTransceiverType {
             if let gotten = iv as? NSObject {
                 if let eq1 = initialValueActual as? NSObjectProtocol {
                     // make sure the key path is really returning the specified value
-                    assert(eq1.isEqual(gotten), "valueForKeyPath(\(keyPath)): «\(initialValue)» did not equal initialized value: «\(gotten)»")
+                    assert(eq1.isEqual(gotten), "valueForKeyPath(\(keyPath)): «\(initialValue ?? "nil")» did not equal initialized value: «\(gotten)»")
                 }
             }
         }

@@ -42,8 +42,8 @@ struct Address {
 }
 
 extension Directory : Focusable {
-    static let authorZ = lenz({$0.author}, {$0.author = $1})
-    static let companiesZ = lenz({$0.companies}, {$0.companies = $1})
+    static let authorZ = lenZ({$0.author}, {$0.author = $1})
+    static let companiesZ = lenZ({$0.companies}, {$0.companies = $1})
 }
 
 //extension ChannelType where Source.Element == Directory, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
@@ -52,10 +52,10 @@ extension Directory : Focusable {
 //}
 
 extension Company : Focusable {
-    static let addressZ = lenz({$0.address}, {$0.address = $1})
-    static let employeesZ = lenz({$0.employees}, {$0.employees = $1})
-    static let ceoIDZ = lenz({$0.ceoID}, {$0.ceoID = $1})
-    static let ctoIDZ = lenz({$0.ctoID}, {$0.ctoID = $1})
+    static let addressZ = lenZ({$0.address}, {$0.address = $1})
+    static let employeesZ = lenZ({$0.employees}, {$0.employees = $1})
+    static let ceoIDZ = lenZ({$0.ceoID}, {$0.ceoID = $1})
+    static let ctoIDZ = lenZ({$0.ctoID}, {$0.ctoID = $1})
 }
 
 //extension ChannelType where Source.Element == Company, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
@@ -66,12 +66,12 @@ extension Company : Focusable {
 //}
 
 extension Person : Focusable {
-    static let firstNameZ = lenz({$0.firstName}, {$0.firstName = $1})
-    static let lastNameZ = lenz({$0.lastName}, {$0.lastName = $1})
-    static let genderZ = lenz({$0.gender}, {$0.gender = $1})
-    static let homeAddressZ = lenz({$0.homeAddress}, {$0.homeAddress = $1})
-    static let workAddressZ = lenz({$0.workAddress}, {$0.workAddress = $1})
-    static let previousAddressesZ = lenz({$0.previousAddresses}, {$0.previousAddresses = $1})
+    static let firstNameZ = lenZ({$0.firstName}, {$0.firstName = $1})
+    static let lastNameZ = lenZ({$0.lastName}, {$0.lastName = $1})
+    static let genderZ = lenZ({$0.gender}, {$0.gender = $1})
+    static let homeAddressZ = lenZ({$0.homeAddress}, {$0.homeAddress = $1})
+    static let workAddressZ = lenZ({$0.workAddress}, {$0.workAddress = $1})
+    static let previousAddressesZ = lenZ({$0.previousAddresses}, {$0.previousAddresses = $1})
 }
 
 //extension Lens {
@@ -92,9 +92,9 @@ extension Person : Focusable {
 //}
 
 extension Address : Focusable {
-    static let line1Z = lenz({$0.line1}, {$0.line1 = $1})
-    static let line2Z = lenz({$0.line2}, {$0.line2 = $1})
-    static let postalCodeZ = lenz({$0.postalCode}, {$0.postalCode = $1})
+    static let line1Z = lenZ({$0.line1}, {$0.line1 = $1})
+    static let line2Z = lenZ({$0.line2}, {$0.line2 = $1})
+    static let postalCodeZ = lenZ({$0.postalCode}, {$0.postalCode = $1})
 }
 
 //extension ChannelType where Source.Element == Address, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
