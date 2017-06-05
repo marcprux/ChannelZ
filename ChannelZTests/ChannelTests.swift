@@ -61,7 +61,7 @@ private func feedZ<T, U, S>(_ input: [T], setup: (Channel<ValueTransceiver<T>, T
     defer { r0.cancel() }
 
     let r1 = transformed.receive { outputs.1.append($0) }
-    defer { r2.cancel() }
+    defer { r1.cancel() }
 
     let r2 = transformed.receive { outputs.2.append($0) }
     defer { r2.cancel() }
@@ -1351,7 +1351,7 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(3, counts.2)
     }
 
-    func XXXtestDropWithMultipleReceivers() {
+    func testDropWithMultipleReceivers() {
         let prop: Channel<ValueTransceiver<Int>, Int> = channelZPropertyValue(0)
         XCTAssertEqual(24, MemoryLayout.size(ofValue: prop))
         let dropped = prop.dropFirst(3)

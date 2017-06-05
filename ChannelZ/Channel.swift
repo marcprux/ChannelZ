@@ -277,7 +277,7 @@ public extension ChannelType {
                 if var stateValue = state[index] {
                     stateValue = affector(stateValue, pulse)
                     state[index] = stateValue
-                    receiver(store: stateValue, pulse: pulse)
+                    receiver((store: stateValue, pulse: pulse))
                 }
             }
 

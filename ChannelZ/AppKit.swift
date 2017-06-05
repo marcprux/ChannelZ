@@ -84,6 +84,7 @@ extension NSControl { // : KeyValueChannelSupplementing {
     }
 
     /// Creates a binding to an intermediate NSObjectController with the given options and returns the bound channel
+    @discardableResult
     public func channelZBinding<T>(value: T?, binding: String = NSValueBinding, controller: ChannelController<T>? = nil, keyPath: String = "content", options: [String : AnyObject] = [:]) -> ChannelController<T> {
         var options = options
         if let nullValue = value as? NSObject {
