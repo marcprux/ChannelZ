@@ -6,8 +6,28 @@
 //  License: MIT (or whatever)
 //
 
-import Darwin // for OSAtomicIncrement64
+//import Dispatch
+//
+//private let incrementQueue = DispatchQueue(label: "incrementer", attributes: [])
+//
+//@discardableResult
+//func channelZIncrement64(_ value: UnsafeMutablePointer<Int64>) -> Int64 {
+//    return incrementQueue.sync {
+//        value.pointee += 1
+//        return value.pointee
+//    }
+//}
+//
+//@discardableResult
+//func channelZDecrement64(_ value: UnsafeMutablePointer<Int64>) -> Int64 {
+//    return incrementQueue.sync {
+//        value.pointee -= 1
+//        return value.pointee
+//    }
+//}
 
+
+import Darwin // for OSAtomicIncrement64
 
 @available(*, /* deprecated */ message: "TODO: use atomic_fetch_sub_explicit once it becomes available too Swift")
 @discardableResult
@@ -20,6 +40,7 @@ func channelZIncrement64(_ value: UnsafeMutablePointer<Int64>) -> Int64 {
 func channelZDecrement64(_ value: UnsafeMutablePointer<Int64>) -> Int64 {
     return OSAtomicDecrement64(value)
 }
+
 
 /// An `Receipt` is the result of `receive`ing to a Observable or Channel
 public protocol Receipt : class {
@@ -97,7 +118,7 @@ public final class ReceiverQueue<T> : ReceiverType {
         lock.withLock {
             let currentEntrancy = channelZIncrement64(&entrancy)
             defer { channelZDecrement64(&entrancy) }
-            if currentEntrancy > maxdepth + 1 {
+            if currentEntrancy > Int64(maxdepth + 1) {
                 reentrantChannelReception(element)
             } else {
                 for (_, receiver) in receivers {
@@ -163,29 +184,29 @@ public final class NoLock : Lock {
 }
 
 /// A `Lock` implementation that uses an `os_unfair_lock`
-public final class SpinLock : Lock {
-    var spinLock = os_unfair_lock_s()
-
-    public func lock() {
-        os_unfair_lock_lock(&spinLock)
-    }
-
-    public func unlock() {
-        os_unfair_lock_unlock(&spinLock)
-    }
-
-    public func withLock<T>(_ f: () throws -> T) rethrows -> T {
-        os_unfair_lock_lock(&spinLock)
-        defer { os_unfair_lock_unlock(&spinLock) }
-        return try f()
-    }
-
-    public func tryLock<T>(_ f: () throws -> T) rethrows -> T? {
-        if !os_unfair_lock_trylock(&spinLock) { return nil }
-        defer { os_unfair_lock_unlock(&spinLock) }
-        return try f()
-    }
-}
+//public final class SpinLock : Lock {
+//    var spinLock = os_unfair_lock_s()
+//
+//    public func lock() {
+//        os_unfair_lock_lock(&spinLock)
+//    }
+//
+//    public func unlock() {
+//        os_unfair_lock_unlock(&spinLock)
+//    }
+//
+//    public func withLock<T>(_ f: () throws -> T) rethrows -> T {
+//        os_unfair_lock_lock(&spinLock)
+//        defer { os_unfair_lock_unlock(&spinLock) }
+//        return try f()
+//    }
+//
+//    public func tryLock<T>(_ f: () throws -> T) rethrows -> T? {
+//        if !os_unfair_lock_trylock(&spinLock) { return nil }
+//        defer { os_unfair_lock_unlock(&spinLock) }
+//        return try f()
+//    }
+//}
 
 /// A `Lock` implementation that uses a `pthread_mutex_t`
 public final class ReentrantLock : Lock {

@@ -25,13 +25,26 @@ public extension LensType {
     ///
     /// - See Also: `ChannelType.prism`
     public var prism : Lens<A?, B?> {
-        return Lens<A?, B?>(get: { $0.flatMap(self.get) }) { (whole, part) in
+        return Lens<A?, B?>(get: { $0.flatMap(self.get) }, create: { (whole, part) in
             if let whole = whole, let part = part {
                 return self.set(whole, part)
             } else {
                 return whole
             }
-        }
+        })
+    }
+
+    /// Maps this lens to a new lens with the given pair of recripocal functions.
+    public func map<C>(_ getmap: @escaping (B) -> C, _ setmap: @escaping (C) -> B) -> Lens<A, C> {
+        return Lens(get: { getmap(self.get($0)) }, create: { self.set($0, setmap($1)) })
+    }
+}
+
+public extension LensType where B : _OptionalType {
+
+    /// Maps this lens to a new lens with the given pair of recripocal functions that operate on optional types.
+    public func flatMap<C>(_ getmap: @escaping (B.Wrapped) -> C, _ setmap: @escaping (C) -> B.Wrapped) -> Lens<A, C?> {
+        return Lens(get: { a in self.get(a).flatMap(getmap) }, create: { a, c in self.set(a, c.flatMap(setmap).map(B.init) ?? nil) })
     }
 }
 
@@ -70,7 +83,7 @@ public protocol Focusable {
 
 public extension Focusable {
     /// Takes a setter & getter for a property of this instance and returns a lens than encapsulates the action
-    public static func lenz<T>(_ get: @escaping (Self) -> T, _ set: @escaping (inout Self, T) -> Void) -> Lens<Self, T> {
+    public static func lenZ<T>(_ get: @escaping (Self) -> T, _ set: @escaping (inout Self, T) -> Void) -> Lens<Self, T> {
         return Lens(get: get, set: set)
     }
 }
@@ -287,7 +300,7 @@ public extension ChannelType where Source.Element : MutableCollection, Source : 
 }
 
 @available(*, deprecated, message: "crashes always!")
-public func todo<T>() -> T { fatalError("TODO: \(T.self)") }
+func todo<T>() -> T { fatalError("TODO: \(T.self)") }
 
 public extension ChannelType where Source.Element : KeyIndexed, Source.Element.Key : Hashable, Source.Element : Collection, Source.Element.Index : KeyIndexedIndexType, Source.Element.Key == Source.Element.Index.Key, Source.Element.Value == Source.Element.Index.Value, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element, Pulse.Element.Indices.Iterator.Element == Pulse.Element.Index {
 
