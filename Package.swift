@@ -9,5 +9,5 @@ let package = Package(
     targets: [
         .target(name: "ChannelZ"),
         .testTarget(name: "ChannelZTests"),
-        ],
+        ]
 )
