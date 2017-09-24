@@ -13,5 +13,5 @@ let package = Package(
             name: "ChannelZ",
         .testTarget(
             name: "ChannelZTests",
-        ]
+        ]),
 )
