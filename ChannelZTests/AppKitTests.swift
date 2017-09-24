@@ -33,7 +33,7 @@ class AppKitTests : ChannelTestCase {
         state1.num3 = 0
 
         XCTAssertEqual(0, state1.num3)
-        objc.bind("content", to: state1, withKeyPath: "num3", options: nil)
+        objc.bind(NSBindingName(rawValue: "content"), to: state1, withKeyPath: "num3", options: nil)
         XCTAssertEqual(0, state1.num3)
 
         objc.content = 2
@@ -46,7 +46,7 @@ class AppKitTests : ChannelTestCase {
 
         let state2 = StatefulObject()
         state2.num3 = 0
-        state2.bind("num3", to: state1, withKeyPath: "num3", options: nil)
+        state2.bind(NSBindingName(rawValue: "num3"), to: state1, withKeyPath: "num3", options: nil)
 
         let channel2: Channel<KeyValueTransceiver<NSNumber>, NSNumber> = state2∞(state2.num3, "num3")
         let _ = channel2 ∞> { num in
@@ -59,8 +59,8 @@ class AppKitTests : ChannelTestCase {
         XCTAssertEqual(4, state2.num3)
 
         // need to manually unbind in order to release memory
-        objc.unbind("content")
-        state2.unbind("num3")
+        objc.unbind(NSBindingName(rawValue: "content"))
+        state2.unbind(NSBindingName(rawValue: "num3"))
     }
 
 
@@ -131,10 +131,10 @@ class AppKitTests : ChannelTestCase {
 
         XCTAssertEqual(stateChanges, 1)
 
-        button.state = NSOnState
-        button.state = NSOffState
-        button.state = NSOnState
-        button.state = NSOffState
+        button.state = NSControl.StateValue.on
+        button.state = NSControl.StateValue.off
+        button.state = NSControl.StateValue.on
+        button.state = NSControl.StateValue.off
         XCTAssertEqual(stateChanges, 5)
 
         var clicks = 0 // track the number of clicks on the button
@@ -303,54 +303,54 @@ class AppKitTests : ChannelTestCase {
         do { // bind to double
             let controller = stepper.channelZBinding(value: 0.0)
 
-            controller.$ = 3.2
+            controller.value = 3.2
             XCTAssertEqual(3.2, stepper.doubleValue, "stepper should mirror controller binding")
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(2.2, controller.$, "stepper decrement should be seem in controller")
+            XCTAssertEqual(2.2, controller.value, "stepper decrement should be seem in controller")
 
-            stepper.unbind(NSValueBinding)
+            stepper.unbind(NSBindingName.value)
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(2.2, controller.$, "control should have been unbound")
+            XCTAssertEqual(2.2, controller.value, "control should have been unbound")
         }
 
         do { // bind to int
             let controller = stepper.channelZBinding(value: 3)
 
-            controller.$ = 4
+            controller.value = 4
             XCTAssertEqual(4, stepper.integerValue, "stepper should mirror controller binding")
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(3, controller.$, "stepper decrement should be seem in controller")
+            XCTAssertEqual(3, controller.value, "stepper decrement should be seem in controller")
 
-            stepper.unbind(NSValueBinding)
+            stepper.unbind(NSBindingName.value)
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(3, controller.$, "control should have been unbound")
+            XCTAssertEqual(3, controller.value, "control should have been unbound")
         }
 
         do { // bind to int?
             let controller = stepper.channelZBinding(value: 44)
 
             stepper.maxValue = 88
-            controller.$ = 4
+            controller.value = 4
             XCTAssertEqual(4, stepper.integerValue, "stepper should mirror controller binding")
 
-            controller.$ = nil
+            controller.value = nil
             XCTAssertEqual(44, stepper.integerValue, "stepper should treat nil as NSNullPlaceholderBindingOption")
 
-            controller.$ = 99
+            controller.value = 99
             XCTAssertEqual(88, stepper.integerValue, "stepper should pin to max")
-            XCTAssertEqual(99, controller.$, "controller should hold set value")
+            XCTAssertEqual(99, controller.value, "controller should hold set value")
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(87, controller.$, "stepper decrement should be seem in controller")
+            XCTAssertEqual(87, controller.value, "stepper decrement should be seem in controller")
 
-            stepper.unbind(NSValueBinding)
+            stepper.unbind(NSBindingName.value)
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(87, controller.$, "control should have been unbound")
+            XCTAssertEqual(87, controller.value, "control should have been unbound")
         }
 
         do { // bind to string
@@ -360,29 +360,29 @@ class AppKitTests : ChannelTestCase {
             defer { textField.removeFromSuperview() }
 
             let controller = textField.channelZBinding(value: "ABC")
-            let enabled = textField.channelZBinding(value: true, binding: NSEnabledBinding)
-            let hidden = textField.channelZBinding(value: false, binding: NSHiddenBinding)
+            let enabled = textField.channelZBinding(value: true, binding: NSBindingName.enabled)
+            let hidden = textField.channelZBinding(value: false, binding: NSBindingName.hidden)
 
-            controller.$ = "XYZ"
+            controller.value = "XYZ"
             XCTAssertEqual("XYZ", textField.stringValue, "text field should mirror controller binding")
             XCTAssertEqual("XYZ" as NSObject, textField.objectValue as? NSObject, "text field should show null binding")
             XCTAssertEqual(nil, textField.placeholderString, "placeholder should not be set unless content is nil")
 
-            controller.$ = nil
+            controller.value = nil
             XCTAssertEqual(nil, textField.objectValue as? NSObject)
             XCTAssertEqual("", textField.stringValue)
             XCTAssertEqual("ABC", textField.placeholderString, "placeholder should be set when content is nil")
 
             XCTAssertEqual(true, textField.isEnabled)
-            enabled.$ = false
+            enabled.value = false
             XCTAssertEqual(false, textField.isEnabled)
-            enabled.$ = true
+            enabled.value = true
             XCTAssertEqual(true, textField.isEnabled)
 
             XCTAssertEqual(false, textField.isHidden)
-            hidden.$ = true
+            hidden.value = true
             XCTAssertEqual(true, textField.isHidden)
-            hidden.$ = false
+            hidden.value = false
             XCTAssertEqual(false, textField.isHidden)
 
             // now make it so enabled and hidden are bound to opposite valies, so that
@@ -390,19 +390,19 @@ class AppKitTests : ChannelTestCase {
 //            enabled.transceiveChanges().map(!).bind(hidden.transceiveChanges().map(!))
             enabled.transceiveChanges().map({ $0.flatMap(!) }).bind(hidden.transceiveChanges().map({ $0.flatMap(!) }))
 
-            enabled.$ = false
+            enabled.value = false
             XCTAssertEqual(false, textField.isEnabled)
             XCTAssertEqual(true, textField.isHidden)
 
-            enabled.$ = true
+            enabled.value = true
             XCTAssertEqual(true, textField.isEnabled)
             XCTAssertEqual(false, textField.isHidden)
 
-            hidden.$ = true
+            hidden.value = true
             XCTAssertEqual(true, textField.isHidden)
             XCTAssertEqual(false, textField.isEnabled)
 
-            hidden.$ = false
+            hidden.value = false
             XCTAssertEqual(false, textField.isHidden)
             XCTAssertEqual(true, textField.isEnabled)
 
@@ -430,11 +430,11 @@ class AppKitTests : ChannelTestCase {
             XCTAssertEqual(0, ChannelZTests.StatefulObjectCount, "all StatefulObject instances should have been deallocated")
             ChannelZTests.StatefulObjectCount = 0
 
-            XCTAssertEqual(0, ChannelZ.ChannelZKeyValueObserverCount, "KV observers were not cleaned up")
-            ChannelZ.ChannelZKeyValueObserverCount = 0
+            XCTAssertEqual(0, ChannelZ.ChannelZKeyValueObserverCount.get(), "KV observers were not cleaned up")
+            ChannelZ.ChannelZKeyValueObserverCount.set(0)
 
-            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions, "reentrant receptions detected")
-            ChannelZ.ChannelZReentrantReceptions = 0
+            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions.get(), "reentrant receptions detected")
+            ChannelZ.ChannelZReentrantReceptions.set(0)
 
             // XCTAssertEqual(0, ChannelZ.ChannelZNotificationObserverCount, "Notification observers were not cleaned up")
             // ChannelZ.ChannelZNotificationObserverCount = 0

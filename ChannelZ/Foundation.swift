@@ -228,7 +228,7 @@ public extension KeyTransceiverType {
     }
 
     /// access to the underlying source value
-    public var $: Element {
+    public var value: Element {
         get { return get() }
         set(v) { set(v) }
     }
@@ -358,7 +358,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
 
 #if DEBUG_CHANNELZ
     /// Track how many observers we have created and released; useful for ensuring that subscriptions are correctly cleaned up
-    public var ChannelZKeyValueObserverCount = Int64(0)
+    public let ChannelZKeyValueObserverCount: Counter = 0
 #endif
 
 
@@ -396,7 +396,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
     fileprivate var noteObservers = [String: [Observer]]()
 
     /// The internal counter of identifiers
-    fileprivate var identifierCounter : Int64 = 0
+    fileprivate let identifierCounter : Counter = 0
 
     class func get(_ target: NSObject) -> TargetObserverRegister {
         Context.RegisterLock.lock()
@@ -407,7 +407,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
             let ob = TargetObserverRegister(targetPtr: Unmanaged.passUnretained(target))
             objc_setAssociatedObject(target, &Context.ObserverListAssociatedKey, ob, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             #if DEBUG_CHANNELZ
-                channelZIncrement64(&ChannelZKeyValueObserverCount)
+                ChannelZKeyValueObserverCount.increment()
             #endif
             Context.RegisterLock.unlock()
             return ob
@@ -420,15 +420,15 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
 
     deinit {
         #if DEBUG_CHANNELZ
-            channelZDecrement64(&ChannelZKeyValueObserverCount)
+            ChannelZKeyValueObserverCount.decrement()
         #endif
         clear()
     }
 
     @discardableResult
     func addObserver(_ keyPath: String, callback: @escaping Callback) -> Int64 {
-        channelZIncrement64(&identifierCounter)
-        let observer = Observer(identifier: identifierCounter, handler: callback)
+        let id = identifierCounter.increment()
+        let observer = Observer(identifier: id, handler: callback)
 
         let observers = keyObservers[keyPath] ?? []
         keyObservers[keyPath] = observers + [observer]
@@ -442,14 +442,13 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
 
     @discardableResult
     func addNotification(_ name: String, callback: @escaping Callback) -> Int64 {
-        channelZIncrement64(&identifierCounter)
+        let id = identifierCounter.increment()
         let observers = noteObservers[name] ?? []
         if observers.count == 0 { // this is the first observer: actually add it to the target
             Context.RegisterNotificationCenter.addObserver(self, selector: #selector(self.notificationReceived), name: NSNotification.Name(rawValue: name), object: target)
         }
 
-        identifierCounter += 1
-        let observer = Observer(identifier: identifierCounter, handler: callback)
+        let observer = Observer(identifier: id, handler: callback)
         noteObservers[name] = observers + [observer]
         return observer.identifier
     }
@@ -459,8 +458,8 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
         let target = self.target // hang on to the target since the accessor won't be valid after we remove the associated object
 
         let isControllerClass: Bool = {
-            let nsobjectclass: AnyClass = object_getClass(NSObject())
-            let origclass: AnyClass = object_getClass(target)
+            let nsobjectclass: AnyClass = object_getClass(NSObject())!
+            let origclass: AnyClass = object_getClass(target)!
             var cls: AnyClass = origclass
             while cls !== nsobjectclass {
                 if let className = String(validatingUTF8: class_getName(cls)) {
@@ -468,7 +467,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
                         return true
                     }
                 }
-                cls = class_getSuperclass(cls)
+                cls = class_getSuperclass(cls)!
             }
 
             return false
@@ -532,7 +531,7 @@ public final class KeyValueOptionalTransceiver<T>: ReceiverQueueSource<Mutation<
     }
 
     /// Callback for in NSNotificationCenter
-    func notificationReceived(_ note: Notification) {
+    @objc func notificationReceived(_ note: Notification) {
         let change = (note as NSNotification).userInfo ?? [:]
         if let observers = noteObservers[note.name.rawValue] {
             for observer in observers {
@@ -556,20 +555,20 @@ let ChannelZKeyPathForAutoclosureLock = NSLock()
 func conjectKeypath<T>(_ target: NSObject, _ accessor: @autoclosure () -> T, _ required: Bool) -> String? {
     var keyPath: String?
 
-    let origclass : AnyClass = object_getClass(target)
+    let origclass : AnyClass = object_getClass(target)!
     let className = NSStringFromClass(origclass)
 
     let subclassName = className + ChannelZInstrumentorSwizzledISASuffix // unique subclass name
-    let subclass : AnyClass = objc_allocateClassPair(origclass, subclassName, 0)
+    let subclass : AnyClass = objc_allocateClassPair(origclass, subclassName, 0)!
     var propSelIMPs: [IMP] = []
 
-    let nsobjectclass : AnyClass = object_getClass(NSObject())
+    let nsobjectclass : AnyClass = object_getClass(NSObject())!
 
     var classes: [AnyClass] = []
     var cls: AnyClass = origclass
     while cls !== nsobjectclass {
         classes.append(cls)
-        cls = class_getSuperclass(cls)
+        cls = class_getSuperclass(cls)!
     }
 
     for propclass in classes {
@@ -582,23 +581,22 @@ func conjectKeypath<T>(_ target: NSObject, _ accessor: @autoclosure () -> T, _ r
             let prop = propList?[Int(i)]
 
             // the selector we will implement will be the accessor for the property; these often differ with bools (e.g. "enabled" vs. "isEnabled")
-            let gname = property_copyAttributeValue(prop, "G") // the getter name
+            let gname = property_copyAttributeValue(prop!, "G") // the getter name
             let getterName = gname.flatMap({ String(cString:$0) })
             free(gname)
 
-            let ronly = property_copyAttributeValue(prop, "R") // whether the property is read-only
+            let ronly = property_copyAttributeValue(prop!, "R") // whether the property is read-only
             let readonly = ronly != nil
             free(ronly)
 
-            if let pname = property_getName(prop) {
-                let propName = String(cString: pname)
-                let propSelName = getterName ?? propName
-                
-                // println("instrumenting \(NSStringFromClass(propclass)).\(propSelName) (prop=\(propName) getter=\(getterName) readonly=\(readonly))")
-                let propSel = Selector(propSelName)
-
-                let method = class_getInstanceMethod(propclass, propSel)
-                if method == nil { continue }
+            let pname = property_getName(prop!)
+            let propName = String(cString: pname)
+            let propSelName = getterName ?? propName
+            
+            // println("instrumenting \(NSStringFromClass(propclass)).\(propSelName) (prop=\(propName) getter=\(getterName) readonly=\(readonly))")
+            let propSel = Selector(propSelName)
+            
+            if let method = class_getInstanceMethod(propclass, propSel) {
 
                 if class_getInstanceMethod(nsobjectclass, propSel) != nil { continue }
 
@@ -617,13 +615,12 @@ func conjectKeypath<T>(_ target: NSObject, _ accessor: @autoclosure () -> T, _ r
                     return target.value(forKey: keyName) // and defer the invocation to the discovered keyPath (throwing a helpful exception is we are wrong)
                 }
 
-                if let propSelIMP = imp_implementationWithBlock(unsafeBitCast(propBlock, to: AnyObject.self)) {
-                    if !class_addMethod(subclass, propSel, propSelIMP, typeEncoding) {
-                        // ignore errors; sometimes happens with UITextField.inputView or NSView.tag
-                        // println("could not add method implementation")
-                    }
-                    propSelIMPs.append(propSelIMP)
+                let propSelIMP = imp_implementationWithBlock(unsafeBitCast(propBlock, to: AnyObject.self))
+                if !class_addMethod(subclass, propSel, propSelIMP, typeEncoding) {
+                    // ignore errors; sometimes happens with UITextField.inputView or NSView.tag
+                    // println("could not add method implementation")
                 }
+                propSelIMPs.append(propSelIMP)
             }
         }
 
@@ -831,20 +828,20 @@ public final class ChannelController<T> : NSObject, TransceiverType {
     private var observers = Dictionary<ChannelControllerObserverKey, [Receipt]>()
 
     public let key: String
-    public var $: T? {
+    public var value: T? {
         willSet {
             willChangeValue(forKey: key)
         }
 
         didSet(old) {
             didChangeValue(forKey: key)
-            receivers.receive(Mutation(old: old, new: $))
+            receivers.receive(Mutation(old: old, new: value))
         }
     }
 
 
     public init(value: T?, key: String = "value") {
-        self.$ = value
+        self.value = value
         self.key = key
     }
 
@@ -852,12 +849,12 @@ public final class ChannelController<T> : NSObject, TransceiverType {
         self.init(value: rawValue)
     }
 
-    public func receive(_ x: T?) { $ = x }
+    public func receive(_ x: T?) { value = x }
 
     public func transceive() -> Channel<ChannelController<T>, State> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
-            rcvr(State(old: Optional<T>.none, new: self.$))
+            rcvr(State(old: Optional<T>.none, new: self.value))
             return self.receivers.addReceipt(rcvr)
         }
     }
@@ -960,7 +957,7 @@ public final class ChannelController<T> : NSObject, TransceiverType {
 
     public override func value(forKey key: String) -> Any? {
         if key == self.key {
-            return self.$ as? NSObject
+            return self.value as? NSObject
         } else {
             return super.value(forKey: key)
         }
@@ -968,7 +965,7 @@ public final class ChannelController<T> : NSObject, TransceiverType {
 
     public override func value(forKeyPath keyPath: String) -> Any? {
         if keyPath == self.key {
-            return self.$ as? NSObject
+            return self.value as? NSObject
         } else {
             return super.value(forKeyPath: keyPath)
         }
@@ -977,9 +974,9 @@ public final class ChannelController<T> : NSObject, TransceiverType {
     public override func setValue(_ value: Any?, forKey key: String) {
         if key == self.key {
             if let value = value as? T {
-                self.$ = value
+                self.value = value
             } else {
-                self.$ = nil
+                self.value = nil
             }
         } else {
             super.setValue(value, forKey: key)
@@ -989,9 +986,9 @@ public final class ChannelController<T> : NSObject, TransceiverType {
     public override func setValue(_ value: Any?, forKeyPath keyPath: String) {
         if keyPath == self.key {
             if let value = value as? T {
-                self.$ = value
+                self.value = value
             } else {
-                self.$ = nil
+                self.value = nil
             }
         } else {
             super.setValue(value, forKeyPath: keyPath)

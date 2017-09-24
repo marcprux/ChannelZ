@@ -180,22 +180,22 @@ extension ChannelTests {
 
             let bebeZ = dirZ.focus(Directory.authorZ)
 
-            bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).$ = "Foo"
-            bebeZ.focus(Person.homeAddressZ).focus(Address.line2Z).$ = "Bar"
-            XCTAssertEqual("Foo", bebeZ.$.homeAddress.line1)
-            XCTAssertEqual("Bar", bebeZ.$.homeAddress.line2)
+            bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).value = "Foo"
+            bebeZ.focus(Person.homeAddressZ).focus(Address.line2Z).value = "Bar"
+            XCTAssertEqual("Foo", bebeZ.value.homeAddress.line1)
+            XCTAssertEqual("Bar", bebeZ.value.homeAddress.line2)
 
-            XCTAssertEqual(nil, bebeZ.$.workAddress?.line1)
+            XCTAssertEqual(nil, bebeZ.value.workAddress?.line1)
 
-            XCTAssertEqual(nil, bebeZ.$.workAddress?.line1)
-            XCTAssertEqual(nil, bebeZ.$.workAddress?.line2)
+            XCTAssertEqual(nil, bebeZ.value.workAddress?.line1)
+            XCTAssertEqual(nil, bebeZ.value.workAddress?.line2)
 
             let defaddr = Address(line1: "", line2: nil, postalCode: "")
-            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).$ = "AAA"
-            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line2Z).$ = "BBB"
+            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).value = "AAA"
+            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line2Z).value = "BBB"
 
-            XCTAssertEqual("AAA", bebeZ.$.workAddress?.line1)
-            XCTAssertEqual("BBB", bebeZ.$.workAddress?.line2)
+            XCTAssertEqual("AAA", bebeZ.value.workAddress?.line1)
+            XCTAssertEqual("BBB", bebeZ.value.workAddress?.line2)
 
             let a1 = bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).sieve(!=).new()
             let a2 = bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).sieve(!=).new()
@@ -206,17 +206,17 @@ extension ChannelTests {
             a1.bind(a2) // works from home
             b1.bind(b2) // works from home
 
-            bebeZ.$.workAddress?.line1 = "XXX"
-            XCTAssertEqual("XXX", bebeZ.$.homeAddress.line1)
-            XCTAssertEqual("XXX", bebeZ.$.workAddress?.line1)
+            bebeZ.value.workAddress?.line1 = "XXX"
+            XCTAssertEqual("XXX", bebeZ.value.homeAddress.line1)
+            XCTAssertEqual("XXX", bebeZ.value.workAddress?.line1)
 
-            bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).$ = "YYY"
-            XCTAssertEqual("YYY", bebeZ.$.homeAddress.line1)
-            XCTAssertEqual("YYY", bebeZ.$.workAddress?.line1)
+            bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).value = "YYY"
+            XCTAssertEqual("YYY", bebeZ.value.homeAddress.line1)
+            XCTAssertEqual("YYY", bebeZ.value.workAddress?.line1)
 
-            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).$ = "ZZZ"
-            XCTAssertEqual("ZZZ", bebeZ.$.homeAddress.line1)
-            XCTAssertEqual("ZZZ", bebeZ.$.workAddress?.line1)
+            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).value = "ZZZ"
+            XCTAssertEqual("ZZZ", bebeZ.value.homeAddress.line1)
+            XCTAssertEqual("ZZZ", bebeZ.value.workAddress?.line1)
 
 //            let prevZ = bebeZ.previousAddressesZ
             let prevZ = bebeZ.focus(Person.previousAddressesZ)
@@ -227,37 +227,37 @@ extension ChannelTests {
                 lines.append(line)
             }
 
-            XCTAssertEqual(0, bebeZ.$.previousAddresses.count)
-            prevZ.index(2).coalesce({ _ in defaddr }).focus(Address.line1Z).$ = "XYZ"
-            XCTAssertEqual(3, bebeZ.$.previousAddresses.count)
-            XCTAssertEqual(["XYZ", "XYZ", "XYZ"], bebeZ.$.previousAddresses.map({ $0.line1 }))
+            XCTAssertEqual(0, bebeZ.value.previousAddresses.count)
+            prevZ.index(2).coalesce({ _ in defaddr }).focus(Address.line1Z).value = "XYZ"
+            XCTAssertEqual(3, bebeZ.value.previousAddresses.count)
+            XCTAssertEqual(["XYZ", "XYZ", "XYZ"], bebeZ.value.previousAddresses.map({ $0.line1 }))
 
-            prevZ.index(1).coalesce({ _ in defaddr }).focus(Address.line1Z).$ = "ABC"
-            XCTAssertEqual(["XYZ", "ABC", "XYZ"], bebeZ.$.previousAddresses.map({ $0.line1 }))
+            prevZ.index(1).coalesce({ _ in defaddr }).focus(Address.line1Z).value = "ABC"
+            XCTAssertEqual(["XYZ", "ABC", "XYZ"], bebeZ.value.previousAddresses.map({ $0.line1 }))
 
 
             XCTAssertEqual(["XYZ", "ABC"].flatMap({ $0 }), lines.flatMap({ $0 }))
 
             let line1sZ = prevZ.prism(Address.line1Z)
 
-            XCTAssertEqual(["XYZ", "ABC", "XYZ"], line1sZ.$)
+            XCTAssertEqual(["XYZ", "ABC", "XYZ"], line1sZ.value)
 
-            line1sZ.$ = ["123", "123", "123"]
-            XCTAssertEqual(["123", "123", "123"], line1sZ.$)
+            line1sZ.value = ["123", "123", "123"]
+            XCTAssertEqual(["123", "123", "123"], line1sZ.value)
 
-            line1sZ.$ = ["QQQ"] // a prism set to a subset will only apply to the subset
-            XCTAssertEqual(["QQQ", "123", "123"], line1sZ.$)
+            line1sZ.value = ["QQQ"] // a prism set to a subset will only apply to the subset
+            XCTAssertEqual(["QQQ", "123", "123"], line1sZ.value)
 
 
             // sets the last two elements of the lensed collection, ignoring any trail-offs
             //            prevZ.range(1...2).prism(Address.line1Z).$ = ["PRQ", "PRQ", "PRQ", "PRQ"] // FIXME: closed range error
-            prevZ.indices([1,2]).prism(Address.line1Z).$ = ["PRQ", "PRQ", "PRQ", "PRQ"]
-            XCTAssertEqual(["QQQ", "PRQ", "PRQ"], line1sZ.$)
+            prevZ.indices([1,2]).prism(Address.line1Z).value = ["PRQ", "PRQ", "PRQ", "PRQ"]
+            XCTAssertEqual(["QQQ", "PRQ", "PRQ"], line1sZ.value)
 
 
             // check non-contiguous index access
-            prevZ.indices([2, 0, 1]).prism(Address.line1Z).$ = ["Z", "X", "Y"]
-            XCTAssertEqual(["X", "Y", "Z"], line1sZ.$)
+            prevZ.indices([2, 0, 1]).prism(Address.line1Z).value = ["Z", "X", "Y"]
+            XCTAssertEqual(["X", "Y", "Z"], line1sZ.value)
 
             // creates a "select" combination of collection and index channels
             let indexChannel = transceive([0])
@@ -265,66 +265,66 @@ extension ChannelTests {
 
             let seltrap = selectZ.trap(Int.max)
             
-            XCTAssertEqual(["X"], selectZ.$)
+            XCTAssertEqual(["X"], selectZ.value)
 
             XCTAssertEqual(2, seltrap.caught.count)
 
             // changing the index changes the underlying prism
-            indexChannel.$ = [2, 0]
-            XCTAssertEqual(["Z", "X"], selectZ.$)
+            indexChannel.value = [2, 0]
+            XCTAssertEqual(["Z", "X"], selectZ.value)
             XCTAssertEqual(3, seltrap.caught.count)
 
 
             // changing the values changes the underlying prism
-            line1sZ.$ = ["A", "B", "C"]
-            XCTAssertEqual(["C", "A"], selectZ.$)
-            XCTAssertEqual(["A", "B", "C"], line1sZ.$)
+            line1sZ.value = ["A", "B", "C"]
+            XCTAssertEqual(["C", "A"], selectZ.value)
+            XCTAssertEqual(["A", "B", "C"], line1sZ.value)
             XCTAssertEqual(4, seltrap.caught.count)
 
-            selectZ.$ = ["Q", "T"]
-            XCTAssertEqual(["Q", "T"], selectZ.$)
-            XCTAssertEqual(["T", "B", "Q"], line1sZ.$)
+            selectZ.value = ["Q", "T"]
+            XCTAssertEqual(["Q", "T"], selectZ.value)
+            XCTAssertEqual(["T", "B", "Q"], line1sZ.value)
             XCTAssertEqual(5, seltrap.caught.count)
 
             // invalidating an index drops the last selection
-            prevZ.$.removeLast()
-            XCTAssertEqual(["T"], selectZ.$)
+            prevZ.value.removeLast()
+            XCTAssertEqual(["T"], selectZ.value)
             XCTAssertEqual(6, seltrap.caught.count)
 
-            indexChannel.$ = Array((0...999).reversed()) // go outside the bounds
-            XCTAssertEqual(["B", "T"], selectZ.$)
-            XCTAssertEqual(["T", "B"], line1sZ.$)
+            indexChannel.value = Array((0...999).reversed()) // go outside the bounds
+            XCTAssertEqual(["B", "T"], selectZ.value)
+            XCTAssertEqual(["T", "B"], line1sZ.value)
 
-            selectZ.$ = [ "Y", "X" ] // does nothing, since 999 & 998 are outside the range
-            XCTAssertEqual(["T", "B"], line1sZ.$)
+            selectZ.value = [ "Y", "X" ] // does nothing, since 999 & 998 are outside the range
+            XCTAssertEqual(["T", "B"], line1sZ.value)
 
-            indexChannel.$ = Array((0...999)) // go outside the bounds
-            selectZ.$ = [ "Y", "X" ] // does nothing, since 999 & 998 are outside the range
-            XCTAssertEqual(["Y", "X"], line1sZ.$)
+            indexChannel.value = Array((0...999)) // go outside the bounds
+            selectZ.value = [ "Y", "X" ] // does nothing, since 999 & 998 are outside the range
+            XCTAssertEqual(["Y", "X"], line1sZ.value)
 
-            selectZ.$ = Array(repeating: "T", count: 2)
-            XCTAssertEqual(["T", "T"], line1sZ.$)
+            selectZ.value = Array(repeating: "T", count: 2)
+            XCTAssertEqual(["T", "T"], line1sZ.value)
 
             var persons: [Person] = []
             let company = dirZ.focus(Directory.companiesZ).index(0).coalesce({ _ in nil as Company! })
 
-            company.focus(Company.employeesZ).at("359414").value().some().receive { person in
+            company.focus(Company.employeesZ).at("359414").val().some().receive { person in
                 persons.append(person)
             }
 
             let empnameZ = company.focus(Company.employeesZ).at("359414").coalesce({ _ in nil as Person! }).focus(Person.firstNameZ)
-            empnameZ.$ = "Marcus"
+            empnameZ.value = "Marcus"
 
-            XCTAssertEqual("Marcus", dirZ.$.companies.first?.employees["359414"]?.firstName)
+            XCTAssertEqual("Marcus", dirZ.value.companies.first?.employees["359414"]?.firstName)
 
             // now add two more employees and edit mutliple aspects of them
 
             let doeHome = Address(line1: "123 Doe Lane", line2: nil, postalCode: "44556")
 
-            company.focus(Company.employeesZ).$["888888"] = Person(firstName: "John", lastName: "Doe", gender: .male, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
-            company.focus(Company.employeesZ).$["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .female, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+            company.focus(Company.employeesZ).value["888888"] = Person(firstName: "John", lastName: "Doe", gender: .male, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+            company.focus(Company.employeesZ).value["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .female, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
 
-            XCTAssertEqual(dirZ.$.companies.flatMap({ $0.employees.values }).count, 3)
+            XCTAssertEqual(dirZ.value.companies.flatMap({ $0.employees.values }).count, 3)
 
             // TODO: generalize select() to work on collections and dictionaries
             let keysChannel = transceive(["888888"])
@@ -333,31 +333,31 @@ extension ChannelTests {
             let empselZ = keyedZ.prism(Person.lastNameZ.prism)
             let empseltrap = empselZ.trap(Int.max)
 
-            XCTAssertEqual(3, company.focus(Company.employeesZ).$.count)
+            XCTAssertEqual(3, company.focus(Company.employeesZ).value.count)
 
             XCTAssertEqual(2, empseltrap.caught.count)
             XCTAssertEqual(["Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
 
-            keysChannel.$ += ["NaN", "999999"]
+            keysChannel.value += ["NaN", "999999"]
             XCTAssertEqual(3, empseltrap.caught.count)
             XCTAssertEqual(["Doe", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
 
-            empselZ.$ = ["A", "B"] // missing key won't be updated
+            empselZ.value = ["A", "B"] // missing key won't be updated
             XCTAssertEqual(4, empseltrap.caught.count)
-            XCTAssertEqual(3, company.focus(Company.employeesZ).$.count)
+            XCTAssertEqual(3, company.focus(Company.employeesZ).value.count)
 
             XCTAssertEqual(["A", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
 
-            empselZ.$ = ["X", "Y", "Z"]
+            empselZ.value = ["X", "Y", "Z"]
             XCTAssertEqual(5, empseltrap.caught.count)
-            XCTAssertEqual(3, company.focus(Company.employeesZ).$.count)
+            XCTAssertEqual(3, company.focus(Company.employeesZ).value.count)
             XCTAssertEqual("X", empseltrap.value?.new[0])
             XCTAssertEqual(nil, empseltrap.value?.new[1])
             XCTAssertEqual("Z", empseltrap.value?.new[2])
 
-            empselZ.$ = [nil, nil, nil] // no effect since lastName is non-nullable
+            empselZ.value = [nil, nil, nil] // no effect since lastName is non-nullable
             XCTAssertEqual(6, empseltrap.caught.count)
-            XCTAssertEqual(3, company.focus(Company.employeesZ).$.count)
+            XCTAssertEqual(3, company.focus(Company.employeesZ).value.count)
             XCTAssertEqual(3, empseltrap.value?.new.count)
             if empseltrap.value?.new.count == 3 {
                 XCTAssertEqual("X", empseltrap.value?.new[0])
@@ -366,8 +366,8 @@ extension ChannelTests {
             }
 
             // include duplicates in the channel
-            keysChannel.$ = ["999999", "888888", "999999", "888888", "999999"]
-            empselZ.$ = ["A", "B", "C", "D", "E"]
+            keysChannel.value = ["999999", "888888", "999999", "888888", "999999"]
+            empselZ.value = ["A", "B", "C", "D", "E"]
             XCTAssertEqual(5, empseltrap.value?.new.count)
             if empseltrap.value?.new.count == 5 {
                 XCTAssertEqual("E", empseltrap.value?.new[0])
@@ -376,8 +376,8 @@ extension ChannelTests {
                 XCTAssertEqual("D", empseltrap.value?.new[3])
                 XCTAssertEqual("E", empseltrap.value?.new[4])
             }
-            XCTAssertEqual(company.focus(Company.employeesZ).$["888888"]?.lastName, "D")
-            XCTAssertEqual(company.focus(Company.employeesZ).$["999999"]?.lastName, "E")
+            XCTAssertEqual(company.focus(Company.employeesZ).value["888888"]?.lastName, "D")
+            XCTAssertEqual(company.focus(Company.employeesZ).value["999999"]?.lastName, "E")
         }
     }
 

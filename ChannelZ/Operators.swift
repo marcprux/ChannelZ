@@ -31,7 +31,7 @@ infix operator ∞= : AssignmentPrecedence
 
 
 /// Reads the value from the given channel's source that is sourced by an Sink implementation
-public postfix func ∞? <T, S: StateEmitterType>(c: Channel<S, T>)->S.Element { return c.source.$ }
+public postfix func ∞? <T, S: StateEmitterType>(c: Channel<S, T>)->S.Element { return c.source.value }
 postfix operator ∞?
 
 
@@ -65,7 +65,7 @@ public prefix func ∞= <S: StateEmitterType, T: Equatable>(source: S) -> Channe
     return source.transceive().sieve().new()
 }
 
-prefix func ∞?=<S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T?> where S.Element: _OptionalType, S.Element.Wrapped: Equatable, T == S.Element.Wrapped {
+prefix func ∞?=<S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T?> where S.Element: _OptionalType, T == S.Element.Wrapped {
 
     let wrappedState: Channel<S, Mutation<S.Element>> = source.transceive()
 

@@ -9,7 +9,7 @@
 /// A `ValuableType` simply encapsulates a value
 public protocol ValuableType {
     associatedtype Element
-    var $: Element { get }
+    var value: Element { get }
 }
 
 /// A MutationType is an encapsulation of state over time, such that a pulse has
@@ -21,7 +21,6 @@ public protocol ValuableType {
 ///
 /// - See Also: `Channel.sieve`
 public protocol MutationType : ValuableType {
-    associatedtype Element
     /// The previous value of the state; can be `.None` when there is no previous state (e.g., when it is the initial pulse being emitted)
     var old: Element? { get }
     /// The new value of the state
@@ -29,11 +28,13 @@ public protocol MutationType : ValuableType {
 }
 
 public extension MutationType {
-    public var $: Element { return new }
+    public var value: Element { return new }
 }
 
 /// A Mutation encapsulates a state change from an old value to a new value
-public struct Mutation<Element> : MutationType {
+public struct Mutation<T> : MutationType {
+    public typealias Element = T
+    
     /// The previous value of the state; can be `.None` when there is no previous state (e.g., when it is the initial pulse being emitted)
     public let old: Element?
     /// The new value of the state
@@ -69,7 +70,7 @@ public protocol StateReceiverType : ReceiverType {
 public protocol TransceiverType : StateEmitterType, StateReceiverType {
     /// The underlying state value of this source; so named because it is an
     /// anonymous parameter, analagous to a closure's anonymous $0, $1, etc. parameters
-    var $: Element { get nonmutating set }
+    var value: Element { get nonmutating set }
 }
 
 /// A ValueTransceiver wraps any type to make it act as a `Channel` where changes to the underlying
@@ -79,23 +80,23 @@ public final class ValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, Transc
     public typealias State = Mutation<T>
 
     /// The underlying value for this tranceiver
-    public var $: T {
+    public var value: T {
         didSet(old) {
-            receivers.receive(Mutation(old: old, new: $))
+            receivers.receive(Mutation(old: old, new: value))
         }
     }
 
-    public init(_ value: T) { self.$ = value }
+    public init(_ value: T) { self.value = value }
 
     /// Initializer for RawRepresentable
-    public init(rawValue: T) { self.$ = rawValue }
+    public init(rawValue: T) { self.value = rawValue }
 
-    public func receive(_ x: T) { $ = x }
+    public func receive(_ x: T) { value = x }
 
     public func transceive() -> TransceiverChannel<T> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
-            rcvr(State(old: Optional<T>.none, new: self.$))
+            rcvr(State(old: Optional<T>.none, new: self.value))
             return self.receivers.addReceipt(rcvr)
         }
     }
@@ -106,22 +107,22 @@ public typealias TransceiverChannel<T> = Channel<ValueTransceiver<T>, Mutation<T
 
 /// A type-erased wrapper around some state source whose value changes will emit a `Mutation`
 public struct AnyTransceiver<T> : TransceiverType {
-    fileprivate let valueget: (Void) -> T
+    fileprivate let valueget: () -> T
     fileprivate let valueset: (T) -> Void
-    fileprivate let channler: (Void) -> Channel<Void, Mutation<T>>
+    fileprivate let channler: () -> Channel<Void, Mutation<T>>
 
-    public var $: T {
+    public var value: T {
         get { return valueget() }
         nonmutating set { receive(newValue) }
     }
 
     public init<S>(_ source: S) where S: TransceiverType, S.Element == T {
-        valueget = { source.$ }
-        valueset = { source.$ = $0 }
+        valueget = { source.value }
+        valueset = { source.value = $0 }
         channler = { source.transceive().desource() }
     }
 
-    public init(get: @escaping (Void) -> T, set: @escaping (T) -> Void, channeler: @escaping (Void) -> Channel<Void, Mutation<T>>) {
+    public init(get: @escaping () -> T, set: @escaping (T) -> Void, channeler: @escaping () -> Channel<Void, Mutation<T>>) {
         valueget = get
         valueset = set
         channler = channeler
@@ -230,9 +231,9 @@ public func channelZDecomposedState<T, T1, T2>(_ constructor: @escaping (T1, T2)
         channelZPropertyValue(values.0).anyTransceiver(),
         channelZPropertyValue(values.1).anyTransceiver()
     )
-    func update(_ x: Any) { channel.$ = constructor(
-        source.0.$,
-        source.1.$
+    func update(_ x: Any) { channel.value = constructor(
+        source.0.value,
+        source.1.value
         )
     }
     source.0.receive(update)
@@ -254,10 +255,10 @@ public func channelZDecomposedState<T, T1, T2, T3>(_ constructor: @escaping (T1,
         channelZPropertyValue(values.1).anyTransceiver(),
         channelZPropertyValue(values.2).anyTransceiver()
     )
-    func update(_ x: Any) { channel.$ = constructor(
-        source.0.$,
-        source.1.$,
-        source.2.$
+    func update(_ x: Any) { channel.value = constructor(
+        source.0.value,
+        source.1.value,
+        source.2.value
         )
     }
     source.0.receive(update)
@@ -282,11 +283,11 @@ public func channelZDecomposedState<T, T1, T2, T3, T4>(_ constructor: @escaping 
         channelZPropertyValue(values.2).anyTransceiver(),
         channelZPropertyValue(values.3).anyTransceiver()
     )
-    func update(_ x: Any) { channel.$ = constructor(
-        source.0.$,
-        source.1.$,
-        source.2.$,
-        source.3.$
+    func update(_ x: Any) { channel.value = constructor(
+        source.0.value,
+        source.1.value,
+        source.2.value,
+        source.3.value
         )
     }
     source.0.receive(update)
@@ -457,15 +458,15 @@ public extension StateEmitterType where Element : _WrapperType, Element.Wrapped 
 
 public extension ChannelType where Pulse : ValuableType {
     /// Maps to the `new` value of the `Mutation` element
-    public func value() -> Channel<Source, Pulse.Element> {
-        return map({ $0.$ })
+    public func val() -> Channel<Source, Pulse.Element> {
+        return map({ $0.value })
     }
 }
 
 public extension ChannelType where Pulse : MutationType {
     /// Maps to the `new` value of the `Mutation` element
     public func new() -> Channel<Source, Pulse.Element> {
-        return value() // the value of a MutationType is the new() field
+        return val() // the value of a MutationType is the new() field
     }
 
     /// Maps to the `old` value of the `Mutation` element
@@ -492,14 +493,14 @@ public extension ChannelType where Pulse : _WrapperType {
 
 public extension ChannelType where Source : TransceiverType {
     /// A Channel whose source is a `TransceiverType` can get and set its value directly without mutating the channel
-    public var $ : Source.Element {
-        get { return source.$ }
-        nonmutating set { source.$ = newValue }
+    public var value : Source.Element {
+        get { return source.value }
+        nonmutating set { source.value = newValue }
     }
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
     public func stateMap<X>(get: @escaping (Source.Element) -> X, set: @escaping (X) -> Source.Element) -> Channel<AnyTransceiver<X>, Pulse> {
-        return resource { source in AnyTransceiver(get: { get(source.$) }, set: { source.$ = set($0) }, channeler: { source.transceive().desource().map { state in Mutation(old: state.old.flatMap(get), new: get(state.new)) } }) }
+        return resource { source in AnyTransceiver(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.transceive().desource().map { state in Mutation(old: state.old.flatMap(get), new: get(state.new)) } }) }
     }
 }
 
@@ -568,8 +569,8 @@ public extension ChannelType where Source : TransceiverType {
     /// such that when either side is changed the other side is updated provided the filter is satisifed
     @discardableResult
     public func conjoin<C2: ChannelType>(_ to: C2, filterLeft: @escaping (Self.Pulse, C2.Source.Element) -> Bool, filterRight: @escaping (Self.Source.Element, Self.Source.Element) -> Bool) -> Receipt where C2.Pulse == Source.Element, C2.Source : TransceiverType, C2.Source.Element == Self.Pulse {
-        let filtered1 = self.filter({ filterLeft($0, to.source.$) })
-        let filtered2 = to.filter({ filterRight($0, self.source.$) })
+        let filtered1 = self.filter({ filterLeft($0, to.source.value) })
+        let filtered2 = to.filter({ filterRight($0, self.source.value) })
 
         // return filtered1.conduit(filtered2) // FIXME: types don't line up for some reason
         return filtered1.anyTransceiver().conduit(filtered2.anyTransceiver()) // need to erase state to get them to line up

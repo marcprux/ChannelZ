@@ -6,39 +6,85 @@
 //  License: MIT (or whatever)
 //
 
-//import Dispatch
-//
-//private let incrementQueue = DispatchQueue(label: "incrementer", attributes: [])
+import Dispatch
+
+// Atomic increment/decrement is deprecated and there is currently no replacement for Swift
+
+//public typealias Counter = Int64
 //
 //@discardableResult
-//func channelZIncrement64(_ value: UnsafeMutablePointer<Int64>) -> Int64 {
-//    return incrementQueue.sync {
-//        value.pointee += 1
-//        return value.pointee
-//    }
+//func channelZIncrement64(_ value: UnsafeMutablePointer<Counter>) -> Int64 {
+//    return OSAtomicIncrement64(value)
 //}
 //
 //@discardableResult
-//func channelZDecrement64(_ value: UnsafeMutablePointer<Int64>) -> Int64 {
-//    return incrementQueue.sync {
-//        value.pointee -= 1
-//        return value.pointee
+//func channelZDecrement64(_ value: UnsafeMutablePointer<Counter>) -> Int64 {
+//    return OSAtomicDecrement64(value)
+//}
+//
+//public final class Counter : ExpressibleByIntegerLiteral {
+//    private var value: Int64 = 0
+//    
+//    public init(integerLiteral: Int) {
+//        self.value = Int64(integerLiteral)
+//    }
+//
+//    public func set(_ v: Int64) {
+//        value = v
+//    }
+//    
+//    public func current() -> Int64 {
+//        return value
+//    }
+//    
+//    @discardableResult
+//    public func increment() -> Int64 {
+//        return OSAtomicIncrement64(&value)
+//    }
+//    
+//    @discardableResult
+//    public func decrement() -> Int64 {
+//        return OSAtomicDecrement64(&value)
 //    }
 //}
 
 
-import Darwin // for OSAtomicIncrement64
+public final class Counter : ExpressibleByIntegerLiteral {
+    private var value: Int64 = 0
+    private let queue = DispatchQueue(label: "ChannelZCounter")
+    
+    public init(integerLiteral: Int) {
+        self.value = Int64(integerLiteral)
+    }
+    
+    public func set(_ v: Int64) {
+        queue.sync {
+            value = v
+        }
+    }
+    
+    private func change(_ offset: Int64) -> Int64 {
+        var v: Int64 = 0
+        queue.sync {
+            value += offset
+            v = value
+        }
+        return v
+    }
 
-@available(*, /* deprecated */ message: "TODO: use atomic_fetch_sub_explicit once it becomes available too Swift")
-@discardableResult
-func channelZIncrement64(_ value: UnsafeMutablePointer<Int64>) -> Int64 {
-    return OSAtomicIncrement64(value)
-}
-
-@available(*, /* deprecated */ message: "TODO: use atomic_fetch_sub_explicit once it becomes available too Swift")
-@discardableResult
-func channelZDecrement64(_ value: UnsafeMutablePointer<Int64>) -> Int64 {
-    return OSAtomicDecrement64(value)
+    public func get() -> Int64 {
+        return change(0)
+    }
+    
+    @discardableResult
+    public func increment() -> Int64 {
+        return change(+1)
+    }
+    
+    @discardableResult
+    public func decrement() -> Int64 {
+        return change(-1)
+    }
 }
 
 
@@ -54,8 +100,8 @@ public protocol Receipt : class {
 
 // A receipt implementation
 open class ReceiptOf: Receipt {
-    open var cancelled: Bool { return cancelCounter > 0 }
-    fileprivate var cancelCounter: Int64 = 0
+    open var cancelled: Bool { return cancelCounter.get() > 0 }
+    fileprivate let cancelCounter: Counter = 0
 
     let canceler: () -> ()
 
@@ -66,7 +112,7 @@ open class ReceiptOf: Receipt {
     /// Creates a Receipt backed by one or more other Receipts
     public init(receipts: [Receipt]) {
         // no receipts means that it is cancelled already
-        if receipts.count == 0 { cancelCounter = 1 }
+        if receipts.count == 0 { cancelCounter.set(1) }
         self.canceler = { for s in receipts { s.cancel() } }
     }
 
@@ -83,7 +129,7 @@ open class ReceiptOf: Receipt {
     /// Disconnects this receipt from the source observable
     open func cancel() {
         // only cancel the first time
-        if channelZIncrement64(&cancelCounter) == 1 {
+        if cancelCounter.increment() == 1 {
             canceler()
         }
     }
@@ -94,7 +140,7 @@ public var ChannelZReentrancyLimit: Int = 1
 
 #if DEBUG_CHANNELZ
     /// Global number of times a reentrant invocation was made
-    public var ChannelZReentrantReceptions = Int64(0)
+    public let ChannelZReentrantReceptions: Counter = 0
 #endif
 
 /// A ReceiverQueue manages a list of receivers and handles dispatching pulses to all the receivers
@@ -103,8 +149,8 @@ public final class ReceiverQueue<T> : ReceiverType {
     public let maxdepth: Int
 
     fileprivate var receivers: [(index: Int64, receptor: Receptor)] = []
-    fileprivate var entrancy: Int64 = 0
-    fileprivate var receptorIndex: Int64 = 0
+    fileprivate let entrancy: Counter = 0
+    fileprivate let receptorIndex: Counter = 0
 
     public var count: Int { return receivers.count }
     fileprivate let lock: Lock
@@ -116,8 +162,8 @@ public final class ReceiverQueue<T> : ReceiverType {
 
     public func receive(_ element: T) {
         lock.withLock {
-            let currentEntrancy = channelZIncrement64(&entrancy)
-            defer { channelZDecrement64(&entrancy) }
+            let currentEntrancy = entrancy.increment()
+            defer { entrancy.decrement() }
             if currentEntrancy > Int64(maxdepth + 1) {
                 reentrantChannelReception(element)
             } else {
@@ -131,7 +177,7 @@ public final class ReceiverQueue<T> : ReceiverType {
     public func reentrantChannelReception(_ element: Any) {
         #if DEBUG_CHANNELZ
             print("ChannelZ reentrant channel short-circuit; break on \(#function) to debug", type(of: element))
-            channelZIncrement64(&ChannelZReentrantReceptions)
+            ChannelZReentrantReceptions.increment()
         #endif
     }
 
@@ -143,8 +189,8 @@ public final class ReceiverQueue<T> : ReceiverType {
 
     /// Adds a custom receiver block and returns a token that can later be used to remove the receiver
     public func addReceiver(_ receptor: @escaping Receptor) -> Int64 {
-        precondition(entrancy == 0, "cannot add to receivers while they are flowing")
-        let index = channelZIncrement64(&receptorIndex)
+        precondition(entrancy.get() == 0, "cannot add to receivers while they are flowing")
+        let index = receptorIndex.increment()
         receivers.append((index, receptor))
         return index
     }
