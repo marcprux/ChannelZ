@@ -13,7 +13,7 @@ matrix:
         - echo $iOS_DEVICE_NAME
         - echo $iOS_RUNTIME_VERSION
         - xcodebuild test -scheme ChannelZ -sdk iphonesimulator -destination "platform=iOS Simulator,name=${iOS_DEVICE_NAME},OS=${iOS_RUNTIME_VERSION}" | xcpretty -c
-        - xcodebuild test -scheme ChannelZ -sdk tvos -destination 'platform=tvOS Simulator,name=Apple TV 1080p' | xcpretty -c
+        #- xcodebuild test -scheme ChannelZ -sdk tvos -destination 'platform=tvOS Simulator,name=Apple TV 1080p' | xcpretty -c
     - os: linux
       language: generic
       sudo: required
