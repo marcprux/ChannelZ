@@ -1,10 +1,28 @@
-osx_image: xcode9
-language: objective-c
-xcode_project: ChannelZ.xcodeproj
-xcode_scheme: ChannelZ
-# xcode_sdk: iphonesimulator8.3
-# script: xctool -project ChannelZ.xcodeproj -scheme ChannelZ -sdk iphonesimulator -destination platform='iOS Simulator',name='iPad Retina',OS='8.1' clean test
-# script: xcodebuild test -project ChannelZ.xcodeproj -scheme ChannelZ -sdk iphonesimulator ONLY_ACTIVE_ARCH=NO
-script: 
-  - xcodebuild test -sdk macosx -project ChannelZ.xcodeproj -scheme ChannelZ
-  - xcodebuild test -destination 'platform=iOS Simulator,name=iPhone 6,OS=9.3' -sdk iphonesimulator -project ChannelZ.xcodeproj -scheme ChannelZ
+matrix:
+  include:
+    - os: osx
+      language: objective-c
+      osx_image: xcode9
+      script:
+        - set -o pipefail
+        - xcodebuild test -sdk macosx -scheme ChannelZ | xcpretty -c
+        - iOS_DEVICE_NAME="iPad Pro (12.9-inch)"
+        - iOS_RUNTIME_VERSION="10.0"
+        - SIMULATOR_ID=$(xcrun instruments -s | grep -o "${iOS_DEVICE_NAME} (${iOS_RUNTIME_VERSION}) \[.*\]" | grep -o "\[.*\]" | sed "s/^\[\(.*\)\]$/\1/")
+        - echo $SIMULATOR_ID
+        - echo $iOS_DEVICE_NAME
+        - echo $iOS_RUNTIME_VERSION
+        - xcodebuild test -scheme ChannelZ -sdk iphonesimulator -destination "platform=iOS Simulator,name=${iOS_DEVICE_NAME},OS=${iOS_RUNTIME_VERSION}" | xcpretty -c
+        - xcodebuild test -scheme ChannelZ -sdk tvos -destination 'platform=tvOS Simulator,name=Apple TV 1080p' | xcpretty -c
+    - os: linux
+      language: generic
+      sudo: required
+      dist: trusty
+      before_install:
+      - wget -q -O - https://swift.org/keys/all-keys.asc | gpg --import -
+      - wget https://swift.org/builds/swift-4.0-release/ubuntu1404/swift-4.0-RELEASE/swift-4.0-RELEASE-ubuntu14.04.tar.gz
+      - tar xzf swift-4.0-RELEASE-ubuntu14.04.tar.gz
+      - export PATH=${PWD}/swift-4.0-RELEASE-ubuntu14.04/usr/bin:"${PATH}"
+      script:
+        - swift test
+
