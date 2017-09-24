@@ -1370,4 +1370,11 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual([3, 4, 5, 6, 7, 8, 9], values.1)
         XCTAssertEqual([3, 4, 5, 6, 7, 8, 9], values.2)
     }
+
+    #if !os(macOS) && !os(iOS) && !os(tvOS)
+    static var allTests = testCase([
+    ("testAnalogousSequenceFunctions", testAnalogousSequenceFunctions),
+    ("testZipImplementations", testZipImplementations),
+    ])
+    #endif
 }
