@@ -7,4 +7,4 @@ xcode_scheme: ChannelZ
 # script: xcodebuild test -project ChannelZ.xcodeproj -scheme ChannelZ -sdk iphonesimulator ONLY_ACTIVE_ARCH=NO
 script: 
   - xcodebuild test -sdk macosx -project ChannelZ.xcodeproj -scheme ChannelZ
-  - xcodebuild test -sdk iphonesimulator -project ChannelZ.xcodeproj -scheme ChannelZ
+  - xcodebuild test -destination 'platform=iOS Simulator,name=iPhone 6,OS=9.3' -sdk iphonesimulator -project ChannelZ.xcodeproj -scheme ChannelZ
