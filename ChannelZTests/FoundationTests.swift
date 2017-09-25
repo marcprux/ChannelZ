@@ -2077,14 +2077,14 @@ class FoundationTests : ChannelTestCase {
 
         // ensure that all the bindings and observers are properly cleaned up
         #if DEBUG_CHANNELZ
-            XCTAssertEqual(0, ChannelZTests.StatefulObjectCount, "\(self.name ?? "nil") all StatefulObject instances should have been deallocated")
+            XCTAssertEqual(0, ChannelZTests.StatefulObjectCount, "\(self.name) all StatefulObject instances should have been deallocated")
             ChannelZTests.StatefulObjectCount = 0
 
-            XCTAssertEqual(0, ChannelZ.ChannelZKeyValueObserverCount.get(), "\(self.name ?? "nil") KV observers were not cleaned up")
+            XCTAssertEqual(0, ChannelZ.ChannelZKeyValueObserverCount.get(), "\(self.name) KV observers were not cleaned up")
             ChannelZ.ChannelZKeyValueObserverCount.set(0)
 
             // tests that expect reentrant detection should manually clear it with ChannelZReentrantReceptions = 0
-            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions.get(), "\(self.name ?? "nil") unexpected reentrant receptions detected")
+            XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions.get(), "\(self.name) unexpected reentrant receptions detected")
             ChannelZ.ChannelZReentrantReceptions.set(0)
 
             // XCTAssertEqual(0, ChannelZ.ChannelZNotificationObserverCount.get(), "Notification observers were not cleaned up")
