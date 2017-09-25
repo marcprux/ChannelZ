@@ -6,18 +6,17 @@
 //  Copyright © 2015 glimpse.io. All rights reserved.
 //
 
-#if !os(Linux)
-
 import XCTest
 import ChannelZ
 import Dispatch
 import Foundation
 
+let NSEC_PER_SEC = 1000000000
+
 /// Creates an asynchronous trickle of events for the given generator
 func trickleZ<G: IteratorProtocol>(_ fromx: G, _ interval: TimeInterval, queue: DispatchQueue = DispatchQueue.main) -> Channel<G, G.Element> {
     var from = fromx
     var receivers = ReceiverQueue<G.Element>()
-    let NSEC_PER_SEC = 1000000000
     let delay = Int64(interval * TimeInterval(NSEC_PER_SEC))
     func tick() {
         queue.asyncAfter(deadline: DispatchTime.now() + Double(delay) / Double(NSEC_PER_SEC)) {
@@ -41,6 +40,16 @@ public func channelZSinkSingleReceiver<T>(_ type: T.Type) -> Channel<AnyReceiver
 }
 
 class DispatchTests : ChannelTestCase {
+    public static var allTests = [
+        ("testThreadsafeReception", testThreadsafeReception),
+        ("testSyncReceive", testSyncReceive),
+        ("testSyncSource", testSyncSource),
+        ("testTrickle", testTrickle),
+        ("testTrickleZip", testTrickleZip),
+        ("testDispatchSyncronize", testDispatchSyncronize),
+        ("testDelay", testDelay),
+        ("testDispatchFile", testDispatchFile),
+        ]
 
     func testThreadsafeReception() {
         let count = 999
@@ -161,7 +170,10 @@ class DispatchTests : ChannelTestCase {
 //    }
 
     func testDispatchSyncronize() {
-
+#if os(Linux)
+        // "fatal error: _enumerateWithOptions(_:range:paramType:returnType:block:) is not yet implemented: file Foundation/NSIndexSet.swift, line 381"
+        return
+#endif
         let channelCount = 10
         let fibcount = 25
 
@@ -184,7 +196,7 @@ class DispatchTests : ChannelTestCase {
         for _ in 1...channelCount {
             let obv = channelZSink(Int.self)
             let rcpt = obv.map(fib).sync(lock).receive({ fibs += [$0] })
-            var source: NSArray = Array(1...fibcount) as NSArray
+            var source = NSArray(array: Array(1...fibcount))
 
             opq.addOperation({ () -> Void in
                 source.enumerateObjects(options: NSEnumerationOptions.concurrent, using: { (ob, index, stop) -> Void in
@@ -263,13 +275,24 @@ class DispatchTests : ChannelTestCase {
 //        XCTAssertEqual(vcount, items) // make sure the pulse contained all the items
 //    }
 
+    func rnd(_ i: UInt32) -> UInt32 {
+        #if os(Linux)
+            srandom(UInt32(time(nil)))
+            let rnd = UInt32(random() % Int(i))
+        #else
+            let rnd = arc4random_uniform(3)
+        #endif
+    
+        return rnd
+    }
+
     func testDispatchFile() {
         weak var xpc = expectation(description: #function)
 
         let file = #file
         var view = String.UnicodeScalarView()
 
-        channelZFile(file, high: Int(arc4random_uniform(1024)) + 1).receive { event in
+        channelZFile(file, high: Int(rnd(1024)) + 1).receive { event in
             switch event {
             case .opened:
                 break
@@ -288,7 +311,7 @@ class DispatchTests : ChannelTestCase {
         let swstr = String(view)
         let nsstr = (try? NSString(contentsOfFile: file, encoding: String.Encoding.utf8.rawValue)) ?? "XXX"
 
-        XCTAssertTrue(nsstr as String == swstr, "file contents did not match: \(swstr.utf16.count) vs. \(nsstr.length)")
+        XCTAssertTrue(String(describing: nsstr) == swstr, "file contents did not match: \(swstr.utf16.count) vs. \(nsstr.length)")
     }
 }
 
@@ -307,7 +330,7 @@ private extension UnicodeCodec {
 }
 
 enum InputStreamError : Error {
-    case openError(POSIXErrorCode?, String)
+    case openError(Int32, String)
 }
 
 func channelZFile(_ path: String, queue: DispatchQueue = DispatchQueue.global(qos: .default), low: Int? = nil, high: Int? = nil, interval: DispatchTimeInterval? = nil, strict: Bool = false) -> Channel<DispatchIO, InputStreamEvent> {
@@ -333,9 +356,8 @@ func channelZFile(_ path: String, queue: DispatchQueue = DispatchQueue.global(qo
 
     dchan?.read(offset: 0, length: Int.max, queue: queue) { (done, data, error) -> Void in
         if error != 0 {
-            let perr = POSIXErrorCode(rawValue: error)
             let errs = String(cString: strerror(error))
-            receivers.receive(InputStreamEvent.error(InputStreamError.openError(perr, errs)))
+            receivers.receive(InputStreamEvent.error(InputStreamError.openError(error, errs)))
         } else if done == true {
             dchan?.close()
             receivers.receive(.closed)
@@ -422,4 +444,3 @@ func channelZFile(_ path: String, queue: DispatchQueue = DispatchQueue.global(qo
 //
 //}
 
-#endif

@@ -66,17 +66,6 @@ public extension InputStream {
 
 }
 
-public enum InputStreamEvent {
-    /// Event indicating that the stream opened the connection successfully
-    case opened
-    /// Event indicating that some data was received on the stream
-    case data([UInt8])
-    /// Event indicating that an errors occurred on the stream
-    case error(Error)
-    /// Event indicating that the stream was closed
-    case closed
-}
-
 @objc open class ChannelStreamDelegate: NSObject, StreamDelegate {
     let stream: InputStream
     let handler: (Stream.Event)->Void
@@ -91,5 +80,17 @@ public enum InputStreamEvent {
     }
 }
 
+
 #endif
+public enum InputStreamEvent {
+    /// Event indicating that the stream opened the connection successfully
+    case opened
+    /// Event indicating that some data was received on the stream
+    case data([UInt8])
+    /// Event indicating that an errors occurred on the stream
+    case error(Error)
+    /// Event indicating that the stream was closed
+    case closed
+}
+
 
