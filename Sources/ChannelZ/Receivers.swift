@@ -258,7 +258,13 @@ public final class ReentrantLock : Lock {
     fileprivate var mutex = pthread_mutex_t()
     fileprivate var mutexAttr = pthread_mutexattr_t()
 
-    public init(attr: Int = PTHREAD_MUTEX_RECURSIVE) {
+    #if os(Linux)
+    public typealias PTHREAD_ATTR_TYPE = Int
+    #else
+    public typealias PTHREAD_ATTR_TYPE = Int32
+    #endif
+    
+    public init(attr: PTHREAD_ATTR_TYPE = PTHREAD_MUTEX_RECURSIVE) {
         pthread_mutexattr_init(&mutexAttr)
         pthread_mutexattr_settype(&mutexAttr, Int32(attr))
         pthread_mutex_init(&mutex, &mutexAttr)
