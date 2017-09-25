@@ -280,24 +280,27 @@ class DispatchTests : ChannelTestCase {
             srandom(UInt32(time(nil)))
             let rnd = UInt32(random() % Int(i))
         #else
-            let rnd = arc4random_uniform(3)
+            let rnd = arc4random_uniform(i)
         #endif
     
         return rnd
     }
 
     func testDispatchFile() {
+        
         weak var xpc = expectation(description: #function)
 
         let file = #file
         var view = String.UnicodeScalarView()
+            var encoding = UTF8()
 
-        channelZFile(file, high: Int(rnd(1024)) + 1).receive { event in
+        let high = Int(rnd(1024)) + 10
+            // high=2 => decoding error
+        channelZFile(file, high: high).receive { event in
             switch event {
             case .opened:
                 break
             case .data(let dat):
-                var encoding = UTF8()
                 encoding.decodeScalars(dat) { view.append($0) }
             case .error(let err):
                 XCTFail(String(describing: err))

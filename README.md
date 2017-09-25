@@ -1,5 +1,3 @@
-<img src="http://glimpseio.github.io/ChannelZ/images/ChannelZ.svg" width="100%" />
-
 [![Build Status](https://travis-ci.org/glimpseio/ChannelZ.svg?branch=master)](https://travis-ci.org/glimpseio/ChannelZ)
 
 *ChannelZ: Lightweight Reactive Swift*
