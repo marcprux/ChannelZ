@@ -85,13 +85,13 @@ extension NSControl { // : KeyValueChannelSupplementing {
 
     /// Creates a binding to an intermediate NSObjectController with the given options and returns the bound channel
     @discardableResult
-    public func channelZBinding<T>(value: T?, binding: String = NSValueBinding, controller: ChannelController<T>? = nil, keyPath: String = "content", options: [String : AnyObject] = [:]) -> ChannelController<T> {
+    public func channelZBinding<T>(value: T?, binding: NSBindingName = NSBindingName.value, controller: ChannelController<T>? = nil, keyPath: String = "content", options: [NSBindingOption : AnyObject] = [:]) -> ChannelController<T> {
         var options = options
         if let nullValue = value as? NSObject {
-            options[NSNullPlaceholderBindingOption] = options[NSNullPlaceholderBindingOption] ?? nullValue
+            options[NSBindingOption.nullPlaceholder] = options[NSBindingOption.nullPlaceholder] ?? nullValue
         }
         let controller = controller ?? ChannelController(value: value, key: keyPath)
-        bind(binding, to: controller, withKeyPath: controller.key, options: options)
+        self.bind(binding, to: controller, withKeyPath: controller.key, options: options)
         return controller
     }
 
@@ -153,7 +153,7 @@ extension NSMenuItem {
     public let control: NSObject
     public let receivers = ReceiverQueue<Void>()
     public init(control: NSObject) { self.control = control }
-    public func channelEvent() { receivers.receive(Void()) }
+    @objc public func channelEvent() { receivers.receive(Void()) }
 }
 
 #endif

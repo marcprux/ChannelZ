@@ -6,6 +6,8 @@
 //  Copyright (c) 2015 glimpse.io. All rights reserved.
 //
 
+#if !os(Linux)
+
 import Foundation
 
 public extension InputStream {
@@ -88,4 +90,6 @@ public enum InputStreamEvent {
         handler(eventCode)
     }
 }
+
+#endif
 

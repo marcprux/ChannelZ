@@ -31,7 +31,7 @@ infix operator ∞= : AssignmentPrecedence
 
 
 /// Reads the value from the given channel's source that is sourced by an Sink implementation
-public postfix func ∞? <T, S: StateEmitterType>(c: Channel<S, T>)->S.Element { return c.source.$ }
+public postfix func ∞? <T, S: StateEmitterType>(c: Channel<S, T>)->S.Element { return c.source.value }
 postfix operator ∞?
 
 
@@ -65,7 +65,7 @@ public prefix func ∞= <S: StateEmitterType, T: Equatable>(source: S) -> Channe
     return source.transceive().sieve().new()
 }
 
-prefix func ∞?=<S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T?> where S.Element: _OptionalType, S.Element.Wrapped: Equatable, T == S.Element.Wrapped {
+prefix func ∞?=<S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T?> where S.Element: _OptionalType, T == S.Element.Wrapped {
 
     let wrappedState: Channel<S, Mutation<S.Element>> = source.transceive()
 
@@ -162,6 +162,8 @@ public func <~∞~> <S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, Opti
 }
 
 
+#if !os(Linux)
+
 // MARK: KVO Operators
 
 /// Creates a distinct sieved channel from the given Optional Equatable ValueTransceiver (cover for ∞?=)
@@ -248,4 +250,6 @@ public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T?, keyPath: S
 
 
 infix operator ∞ : NilCoalescingPrecedence
+
+#endif
 

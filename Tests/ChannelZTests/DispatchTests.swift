@@ -6,14 +6,18 @@
 //  Copyright © 2015 glimpse.io. All rights reserved.
 //
 
+#if !os(Linux)
+
 import XCTest
 import ChannelZ
 import Dispatch
+import Foundation
 
 /// Creates an asynchronous trickle of events for the given generator
 func trickleZ<G: IteratorProtocol>(_ fromx: G, _ interval: TimeInterval, queue: DispatchQueue = DispatchQueue.main) -> Channel<G, G.Element> {
     var from = fromx
     var receivers = ReceiverQueue<G.Element>()
+    let NSEC_PER_SEC = 1000000000
     let delay = Int64(interval * TimeInterval(NSEC_PER_SEC))
     func tick() {
         queue.asyncAfter(deadline: DispatchTime.now() + Double(delay) / Double(NSEC_PER_SEC)) {
@@ -33,7 +37,7 @@ func trickleZ<G: IteratorProtocol>(_ fromx: G, _ interval: TimeInterval, queue: 
 public func channelZSinkSingleReceiver<T>(_ type: T.Type) -> Channel<AnyReceiver<T>, T> {
     var receive: (T) -> Void = { _ in }
     let sink = AnyReceiver<T>({ receive($0) })
-    return Channel<AnyReceiver<T>, T>(source: sink) { receive = $0; return ReceiptOf(canceler: { _ in }) }
+    return Channel<AnyReceiver<T>, T>(source: sink) { receive = $0; return ReceiptOf(canceler: {  }) }
 }
 
 class DispatchTests : ChannelTestCase {
@@ -41,6 +45,7 @@ class DispatchTests : ChannelTestCase {
     func testThreadsafeReception() {
         let count = 999
         var values = Dictionary<Int, Int>()
+        let dictq = DispatchQueue(label: "dictq")
         for i in 0..<count {
             values[i] = i
         }
@@ -48,7 +53,9 @@ class DispatchTests : ChannelTestCase {
         let channel = channelZSinkSingleReceiver(Int.self)
 
         channel.receive { i in
-            values.removeValue(forKey: i)
+            dictq.sync {
+                values.removeValue(forKey: i)
+            }
         }
 
         //        for i in values {
@@ -222,7 +229,7 @@ class DispatchTests : ChannelTestCase {
             if pulses >= vcount { xpc?.fulfill() }
         }
 
-        for _ in 1...vcount { channel.source.receive() }
+        for _ in 1...vcount { channel.source.receive(()) }
 
         waitForExpectations(timeout: 5, handler: { err in })
         XCTAssertEqual(vcount, pulses) // make sure the pulse contained all the items
@@ -256,7 +263,6 @@ class DispatchTests : ChannelTestCase {
 //        XCTAssertEqual(vcount, items) // make sure the pulse contained all the items
 //    }
 
-    /// Disabled only because it fails on TravisCI
     func testDispatchFile() {
         weak var xpc = expectation(description: #function)
 
@@ -284,7 +290,6 @@ class DispatchTests : ChannelTestCase {
 
         XCTAssertTrue(nsstr as String == swstr, "file contents did not match: \(swstr.utf16.count) vs. \(nsstr.length)")
     }
-
 }
 
 private extension UnicodeCodec {
@@ -315,24 +320,24 @@ func channelZFile(_ path: String, queue: DispatchQueue = DispatchQueue.global(qo
         }
     }
 
-    if let low = low { dchan.setLimit(lowWater: low) }
-    if let high = high { dchan.setLimit(highWater: high) }
+    if let low = low { dchan?.setLimit(lowWater: low) }
+    if let high = high { dchan?.setLimit(highWater: high) }
 
     if let interval = interval {
         if strict {
-            dchan.setInterval(interval: interval, flags: .strictInterval)
+            dchan?.setInterval(interval: interval, flags: .strictInterval)
         } else {
-            dchan.setInterval(interval: interval)
+            dchan?.setInterval(interval: interval)
         }
     }
 
-    dchan.read(offset: 0, length: Int.max, queue: queue) { (done, data, error) -> Void in
+    dchan?.read(offset: 0, length: Int.max, queue: queue) { (done, data, error) -> Void in
         if error != 0 {
             let perr = POSIXErrorCode(rawValue: error)
             let errs = String(cString: strerror(error))
             receivers.receive(InputStreamEvent.error(InputStreamError.openError(perr, errs)))
         } else if done == true {
-            dchan.close()
+            dchan?.close()
             receivers.receive(.closed)
         } else if data != nil {
             data?.enumerateBytes(block: { (buffer, offset, stop) in
@@ -341,12 +346,12 @@ func channelZFile(_ path: String, queue: DispatchQueue = DispatchQueue.global(qo
         }
     }
 
-    return Channel<DispatchIO, InputStreamEvent>(source: dchan) { receiver in
+    return Channel<DispatchIO, InputStreamEvent>(source: dchan!) { receiver in
         let index = receivers.addReceiver(receiver)
         return ReceiptOf(canceler: {
             receivers.removeReceptor(index)
             if receivers.count == 0 {
-                dchan.close(flags: .stop)
+                dchan?.close(flags: .stop)
             }
         })
     }
@@ -417,3 +422,4 @@ func channelZFile(_ path: String, queue: DispatchQueue = DispatchQueue.global(qo
 //
 //}
 
+#endif

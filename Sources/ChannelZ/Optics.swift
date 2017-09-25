@@ -108,12 +108,12 @@ public struct LensSource<C: ChannelType, T>: LensSourceType where C.Source : Tra
     public let lens: Lens<C.Source.Element, T>
 
     public func receive(_ x: T) {
-        self.$ = x
+        self.value = x
     }
 
-    public var $: T {
-        get { return lens.get(channel.$) }
-        nonmutating set { channel.$ = lens.set(channel.$, newValue) }
+    public var value: T {
+        get { return lens.get(channel.value) }
+        nonmutating set { channel.value = lens.set(channel.value, newValue) }
     }
 
     /// Creates a state tranceiver to the focus of this lens, allowing the access and modification
@@ -142,12 +142,12 @@ public struct PrismSource<C: ChannelType, T>: LensSourceType where C.Source : Tr
     public typealias Pulse = T
 
     public func receive(_ x: T) {
-        self.$ = x
+        self.value = x
     }
 
-    public var $: T {
-        get { return lens.get(channel.$) }
-        nonmutating set { channel.$ = lens.set(channel.$, newValue) }
+    public var value: T {
+        get { return lens.get(channel.value) }
+        nonmutating set { channel.value = lens.set(channel.value, newValue) }
     }
 
     /// Creates a state tranceiver to the focus of this lens, allowing the access and modification
@@ -212,9 +212,9 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
 
         // the selection lens value is a prism over the current selection and the current elements
         let lens = Lens<Pulse.Element, T>(get: { elements in
-            finder(elements, locator.source.$)
+            finder(elements, locator.source.value)
         }) { (elements, values) in
-            updater((elements, locator.source.$), values).0
+            updater((elements, locator.source.value), values).0
         }
 
         let sel = focus(lens)
@@ -224,13 +224,13 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
             case .v1(let v): // change in elements
                 return v // the raw values are already resolved by the lens
             case .v2(let i): // change in locator; need to perform another lookup
-                return Mutation(old: i.old.flatMap({ finder(self.source.$, $0) }), new: finder(self.source.$, i.new))
+                return Mutation(old: i.old.flatMap({ finder(self.source.value, $0) }), new: finder(self.source.value, i.new))
             }
         }
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Element == Pulse.Element, Pulse: MutationType, Pulse.Element : Sequence, Pulse.Element : Collection {
+public extension ChannelType where Source : TransceiverType, Source.Element == Pulse.Element, Pulse: MutationType, Pulse.Element : Collection {
 
     /// Combines this sequence state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
@@ -261,11 +261,11 @@ public extension ChannelType where Source : TransceiverType, Source.Element == P
             return (updated, query.indices)
         }
 
-        return join(locator, finder: query, updater: update)
+        return join(locator, finder: { query(($0, $1)) }, updater: update)
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Element == Pulse.Element, Pulse: MutationType, Pulse.Element : Collection, Pulse.Element.Indices.Iterator.Element == Pulse.Element.Index {
+public extension ChannelType where Source : TransceiverType, Source.Element == Pulse.Element, Pulse: MutationType, Pulse.Element : Collection {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
@@ -282,7 +282,7 @@ public extension ChannelType where Source : TransceiverType, Source.Element == P
     }
 }
 
-public extension ChannelType where Source.Element : MutableCollection, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element, Pulse.Element.Indices.Iterator.Element == Pulse.Element.Index {
+public extension ChannelType where Source.Element : MutableCollection, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
@@ -302,7 +302,7 @@ public extension ChannelType where Source.Element : MutableCollection, Source : 
 @available(*, deprecated, message: "crashes always!")
 func todo<T>() -> T { fatalError("TODO: \(T.self)") }
 
-public extension ChannelType where Source.Element : KeyIndexed, Source.Element.Key : Hashable, Source.Element : Collection, Source.Element.Index : KeyIndexedIndexType, Source.Element.Key == Source.Element.Index.Key, Source.Element.Value == Source.Element.Index.Value, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element, Pulse.Element.Indices.Iterator.Element == Pulse.Element.Index {
+public extension ChannelType where Source.Element : KeyIndexed, Source.Element : Collection, Source.Element.Index : KeyIndexedIndexType, Source.Element.Key == Source.Element.Index.Key, Source.Element.Value == Source.Element.Index.Value, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
@@ -350,7 +350,7 @@ public extension ChannelType where Source.Element : KeyIndexed, Source.Element.K
 
 }
 
-public extension ChannelType where Source.Element : RangeReplaceableCollection, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element, Pulse.Element.Indices.Iterator.Element == Pulse.Element.Index {
+public extension ChannelType where Source.Element : RangeReplaceableCollection, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
 
     // FIXME: replace with identical indexed() function once crashing Swit 3 compiler bug with generic specialization is fixed
     private func indexedOLD<C: ChannelType>(_ indices: C) -> LensChannel<Self, [Self.Pulse.Element.Iterator.Element]> where C.Source : StateEmitterType, C.Source.Element : Sequence, C.Source.Element.Iterator.Element == Source.Element.Index, C.Pulse : MutationType, C.Pulse.Element == C.Source.Element {
@@ -427,7 +427,7 @@ public extension ChannelType where Source.Element : RangeReplaceableCollection, 
     }
 }
 
-public extension ChannelType where Source.Element : RangeReplaceableCollection, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element, Source.Element.SubSequence.Iterator.Element == Source.Element.Iterator.Element, Pulse.Element.Indices.Iterator.Element == Pulse.Element.Index {
+public extension ChannelType where Source.Element : RangeReplaceableCollection, Source : TransceiverType, Pulse: MutationType, Pulse.Element == Source.Element {
 
     /// Returns an accessor to the collection's range of elements
     public func range(_ range: ClosedRange<Source.Element.Index>) -> LensChannel<Self, Source.Element.SubSequence> {
