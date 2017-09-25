@@ -1415,6 +1415,6 @@ class ChannelTests : ChannelTestCase {
 
     #if !os(Linux)
     // no-op function on non-Linux platforms
-    static func testCase(values: Any) { }
+    static func testCase(_ values: Any) { }
     #endif
 }
