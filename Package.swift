@@ -7,7 +7,7 @@ let package = Package(
         .library(name: "ChannelZ", targets: ["ChannelZ"]),
         ],
     targets: [
-        .target(name: "ChannelZ", path: "ChannelZ"),
-        .testTarget(name: "ChannelZTests", path: "ChannelZTests"),
+        .target(name: "ChannelZ"),
+        .testTarget(name: "ChannelZTests", dependencies: ["ChannelZ"]),
         ]
 )

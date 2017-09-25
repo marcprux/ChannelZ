@@ -6,29 +6,12 @@
 //  Copyright (c) 2015 glimpse.io. All rights reserved.
 //
 
+#if !os(Linux)
+
 import XCTest
 import ChannelZ
 import CoreData
 
-
-func assertChanges<T>(_ check: @autoclosure ()->T, _ code: @autoclosure ()->(Any), file: StaticString = #file, line: UInt = #line) where T: Equatable {
-    let start = check()
-    _ = code()
-    let end = check()
-    XCTAssertNotEqual(start, end, "assertChanges failure", file: file, line: line)
-}
-
-func assertRemains<T>(_ check: @autoclosure ()->T, _ code:  @autoclosure ()->(Any), file: StaticString = #file, line: UInt = #line) where T: Equatable {
-    let start = check()
-    _ = code()
-    let end = check()
-    XCTAssertEqual(start, end, "assertRemains failure", file: file, line: line)
-}
-
-func assertSingleChange(_ count: inout Int, file: StaticString = #file, line: UInt = #line) {
-    count -= 1
-    XCTAssertTrue(count == 0, "single change should have occurred, but got: \(count)", file: file, line: line)
-}
 
 
 class FoundationTests : ChannelTestCase {
@@ -2269,3 +2252,5 @@ class ChannelThing: NSObject {
     override init() { ChannelThingsInstances += 1 }
     deinit { ChannelThingsInstances -= 1 }
 }
+
+#endif

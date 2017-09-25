@@ -7,6 +7,7 @@
 //
 
 import Dispatch
+import Foundation
 
 // Atomic increment/decrement is deprecated and there is currently no replacement for Swift
 
@@ -138,10 +139,8 @@ open class ReceiptOf: Receipt {
 /// How many levels of re-entrancy are permitted when flowing state observations
 public var ChannelZReentrancyLimit: Int = 1
 
-#if DEBUG_CHANNELZ
-    /// Global number of times a reentrant invocation was made
-    public let ChannelZReentrantReceptions: Counter = 0
-#endif
+/// Global number of times a reentrant invocation was made
+public let ChannelZReentrantReceptions: Counter = 0
 
 /// A ReceiverQueue manages a list of receivers and handles dispatching pulses to all the receivers
 public final class ReceiverQueue<T> : ReceiverType {
@@ -259,7 +258,7 @@ public final class ReentrantLock : Lock {
     fileprivate var mutex = pthread_mutex_t()
     fileprivate var mutexAttr = pthread_mutexattr_t()
 
-    public init(attr: Int32 = PTHREAD_MUTEX_RECURSIVE) {
+    public init(attr: Int = PTHREAD_MUTEX_RECURSIVE) {
         pthread_mutexattr_init(&mutexAttr)
         pthread_mutexattr_settype(&mutexAttr, Int32(attr))
         pthread_mutex_init(&mutex, &mutexAttr)

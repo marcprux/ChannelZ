@@ -6,6 +6,8 @@
 //  Copyright © 2015 glimpse.io. All rights reserved.
 //
 
+#if !os(Linux)
+
 import XCTest
 import ChannelZ
 import Dispatch
@@ -15,6 +17,7 @@ import Foundation
 func trickleZ<G: IteratorProtocol>(_ fromx: G, _ interval: TimeInterval, queue: DispatchQueue = DispatchQueue.main) -> Channel<G, G.Element> {
     var from = fromx
     var receivers = ReceiverQueue<G.Element>()
+    let NSEC_PER_SEC = 1000000000
     let delay = Int64(interval * TimeInterval(NSEC_PER_SEC))
     func tick() {
         queue.asyncAfter(deadline: DispatchTime.now() + Double(delay) / Double(NSEC_PER_SEC)) {
@@ -419,3 +422,4 @@ func channelZFile(_ path: String, queue: DispatchQueue = DispatchQueue.global(qo
 //
 //}
 
+#endif

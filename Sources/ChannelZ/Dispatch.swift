@@ -18,7 +18,8 @@ public extension StreamType {
         return lifts { receive in { event in
             let rcvr = { receive(event) }
             if let delay = delay {
-                let time = DispatchTime.now() + Double(Int64(delay * Double(NSEC_PER_SEC))) / Double(NSEC_PER_SEC)
+		let nsecPerSec = 1000000000
+                let time = DispatchTime.now() + Double(Int64(delay * Double(nsecPerSec))) / Double(nsecPerSec)
                 if time == DispatchTime.now() { // optimize now to be async
                     if barrier {
                         queue.async(flags: .barrier, execute: rcvr)

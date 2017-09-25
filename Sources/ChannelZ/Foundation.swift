@@ -7,6 +7,9 @@
 //
 //
 /// Support for Foundation channels and observables, such as KVO-based channels and NSNotificationCenter observables
+
+#if !os(Linux)
+
 import Foundation
 
 /// Extension on NSObject that permits creating a channel from a key-value compliant property
@@ -1007,4 +1010,6 @@ private struct ChannelControllerObserverKey : Hashable {
 private func ==(lhs: ChannelControllerObserverKey, rhs: ChannelControllerObserverKey) -> Bool {
     return lhs.context == rhs.context && lhs.observer === rhs.observer
 }
+
+#endif
 

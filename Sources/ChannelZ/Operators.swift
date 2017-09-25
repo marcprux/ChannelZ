@@ -162,6 +162,8 @@ public func <~∞~> <S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, Opti
 }
 
 
+#if !os(Linux)
+
 // MARK: KVO Operators
 
 /// Creates a distinct sieved channel from the given Optional Equatable ValueTransceiver (cover for ∞?=)
@@ -248,4 +250,6 @@ public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T?, keyPath: S
 
 
 infix operator ∞ : NilCoalescingPrecedence
+
+#endif
 

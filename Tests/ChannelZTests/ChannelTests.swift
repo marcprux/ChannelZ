@@ -9,6 +9,29 @@
 import XCTest
 import ChannelZ
 
+#if os(Linux)
+import Glibc
+#endif
+
+func assertChanges<T>(_ check: @autoclosure ()->T, _ code: @autoclosure ()->(Any), file: StaticString = #file, line: UInt = #line) where T: Equatable {
+    let start = check()
+    _ = code()
+    let end = check()
+    XCTAssertNotEqual(start, end, "assertChanges failure", file: file, line: line)
+}
+
+func assertRemains<T>(_ check: @autoclosure ()->T, _ code:  @autoclosure ()->(Any), file: StaticString = #file, line: UInt = #line) where T: Equatable {
+    let start = check()
+    _ = code()
+    let end = check()
+    XCTAssertEqual(start, end, "assertRemains failure", file: file, line: line)
+}
+
+func assertSingleChange(_ count: inout Int, file: StaticString = #file, line: UInt = #line) {
+    count -= 1
+    XCTAssertTrue(count == 0, "single change should have occurred, but got: \(count)", file: file, line: line)
+}
+
 class ChannelTestCase : XCTestCase {
     override func invokeTest() {
 //        return invocation?.selector == #selector(ChannelTests.testJacket) ? super.invokeTest() : print("skipping test", name)
@@ -67,12 +90,23 @@ private func feedZ<T, U, S>(_ input: [T], setup: (Channel<ValueTransceiver<T>, T
     defer { r2.cancel() }
 
     for value in input.dropFirst() { channel.source.receive(value) }
-    switch arc4random_uniform(3) {
+    switch rnd(3) {
     case 0: return outputs.0
     case 1: return outputs.1
     case 2: return outputs.2
     default: fatalError("bad random number")
     }
+}
+
+func rnd(_ i: UInt32) -> UInt32 {
+    #if os(Linux)
+        srandom(UInt32(time(nil)))
+        let rnd = UInt32(random() % Int(i))
+    #else
+        let rnd = arc4random_uniform(3)
+    #endif
+
+    return rnd
 }
 
 // Just run the function on the static sequence; the immediate form of feedZ
@@ -360,7 +394,7 @@ class ChannelTests : ChannelTestCase {
 
     func testMergedUnreceive() {
         func coinFlip() -> Void? {
-            if arc4random_uniform(100) > 50 {
+            if rnd(100) > 50 {
                 return Void()
             } else {
                 return nil
@@ -401,6 +435,7 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(9, count)
     }
 
+#if !os(Linux)
     func testStreamExtensions() {
         guard let stream = InputStream(fileAtPath: #file) else {
             return XCTFail("could not open \(#file)")
@@ -445,6 +480,7 @@ class ChannelTests : ChannelTestCase {
             XCTFail("could not create string from data in \(#file)")
         }
     }
+#endif
 
     func testFilterChannel() {
         let obv = channelZSink(Int.self)
@@ -1371,7 +1407,7 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual([3, 4, 5, 6, 7, 8, 9], values.2)
     }
 
-    static var allTests = testCase([
+    public static var allTests = [
         ("testAnalogousSequenceFunctions", testAnalogousSequenceFunctions),
         ("testZipImplementations", testZipImplementations),
         ("testEnumerateCount", testEnumerateCount),
@@ -1379,7 +1415,7 @@ class ChannelTests : ChannelTestCase {
         ("testTraps", testTraps),
         ("testGenerators", testGenerators),
         ("testMergedUnreceive", testMergedUnreceive),
-        ("testStreamExtensions", testStreamExtensions),
+        //("testStreamExtensions", testStreamExtensions),
         ("testFilterChannel", testFilterChannel),
         ("testMapChannel", testMapChannel),
         ("testSieveDistinct", testSieveDistinct),
@@ -1411,10 +1447,5 @@ class ChannelTests : ChannelTestCase {
         ("testMultipleReceiversOnPropertyChannel", testMultipleReceiversOnPropertyChannel),
         ("testMultipleReceiversOnSievedPropertyChannel", testMultipleReceiversOnSievedPropertyChannel),
         ("testDropWithMultipleReceivers", testDropWithMultipleReceivers),
-        ])
-
-    #if !os(Linux)
-    // no-op function on non-Linux platforms
-    static func testCase(_ values: Array<(String, (ChannelTests) -> () -> ())>) -> Int { return 0 }
-    #endif
+        ]
 }
