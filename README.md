@@ -313,9 +313,4 @@ Following is a list of the variants of the ∞ operator that is used throughout 
 1. **Problems?** Please file a Github [ChannelZ issue](https://github.com/mprudhom/ChannelZ/issues/new).
 1. **Questions** Please use StackOverflow's [#channelz tag](http://stackoverflow.com/questions/tagged/channelz).
 
-## References
-
-* [Deprecating the Observer Pattern with Scala.React](http://infoscience.epfl.ch/record/176887)
-* [Groovy Parallel Systems](http://gpars.codehaus.org/Dataflow)
-
 
