@@ -286,13 +286,13 @@ class DispatchTests : ChannelTestCase {
         return rnd
     }
 
-    func testDispatchFile() {
+    func testDispatchFile() throws {
         
         weak var xpc = expectation(description: #function)
 
         let file = #file
         var view = String.UnicodeScalarView()
-            var encoding = UTF8()
+        var encoding = UTF8()
 
         let high = Int(rnd(1024)) + 10
             // high=2 => decoding error
@@ -312,9 +312,9 @@ class DispatchTests : ChannelTestCase {
         waitForExpectations(timeout: 30, handler: { err in })
 
         let swstr = String(view)
-        let nsstr = (try? NSString(contentsOfFile: file, encoding: String.Encoding.utf8.rawValue)) ?? "XXX"
+        let filestr = try String(contentsOfFile: file, encoding: String.Encoding.utf8)
 
-        XCTAssertTrue(String(describing: nsstr) == swstr, "file contents did not match: \(swstr.utf16.count) vs. \(nsstr.length)")
+        XCTAssertTrue(filestr == swstr, "file contents (high=\(high)) did not match: \(swstr.count) vs. \(filestr.count)")
     }
 }
 
@@ -336,6 +336,7 @@ enum InputStreamError : Error {
     case openError(Int32, String)
 }
 
+/// Creates a stream channel to the given file path
 func channelZFile(_ path: String, queue: DispatchQueue = DispatchQueue.global(qos: .default), low: Int? = nil, high: Int? = nil, interval: DispatchTimeInterval? = nil, strict: Bool = false) -> Channel<DispatchIO, InputStreamEvent> {
     let receivers = ReceiverQueue<InputStreamEvent>()
 
