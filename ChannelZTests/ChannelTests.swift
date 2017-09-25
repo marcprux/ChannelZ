@@ -1371,10 +1371,50 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual([3, 4, 5, 6, 7, 8, 9], values.2)
     }
 
-    #if !os(macOS) && !os(iOS) && !os(tvOS)
     static var allTests = testCase([
-    ("testAnalogousSequenceFunctions", testAnalogousSequenceFunctions),
-    ("testZipImplementations", testZipImplementations),
-    ])
+        ("testAnalogousSequenceFunctions", testAnalogousSequenceFunctions),
+        ("testZipImplementations", testZipImplementations),
+        ("testEnumerateCount", testEnumerateCount),
+        ("testEnumerations", testEnumerations),
+        ("testTraps", testTraps),
+        ("testGenerators", testGenerators),
+        ("testMergedUnreceive", testMergedUnreceive),
+        ("testStreamExtensions", testStreamExtensions),
+        ("testFilterChannel", testFilterChannel),
+        ("testMapChannel", testMapChannel),
+        ("testSieveDistinct", testSieveDistinct),
+        ("testSieveLastIncrementing", testSieveLastIncrementing),
+        ("testReduceImmediate", testReduceImmediate),
+        ("testReduceMultiple", testReduceMultiple),
+        ("testEnumerateWithMultipleReceivers", testEnumerateWithMultipleReceivers),
+        ("testBuffer", testBuffer),
+        ("testReduceNumbers", testReduceNumbers),
+        ("testFlatMapChannel", testFlatMapChannel),
+        ("testFlatMapTransformChannel", testFlatMapTransformChannel),
+        ("testPropertyReceivers", testPropertyReceivers),
+        ("testValueTransceivers", testValueTransceivers),
+        ("testConversionChannels", testConversionChannels),
+        ("testUnstableChannels", testUnstableChannels),
+        ("testEitherOr", testEitherOr),
+        ("testPropertyChannel", testPropertyChannel),
+        ("testFieldChannelMapObservable", testFieldChannelMapObservable),
+        ("testFieldSieveChannelMapObservable", testFieldSieveChannelMapObservable),
+        ("testHeterogeneousConduit", testHeterogeneousConduit),
+        ("testHomogeneousConduit", testHomogeneousConduit),
+        ("testChannelBindSignatures", testChannelBindSignatures),
+        ("testChannelLinkSignatures", testChannelLinkSignatures),
+        ("testUnstableConduit", testUnstableConduit),
+        ("testAnyCombinations", testAnyCombinations),
+        ("testZippedObservable", testZippedObservable),
+        ("testEither", testEither),
+        ("testPropertyChannelSieve", testPropertyChannelSieve),
+        ("testMultipleReceiversOnPropertyChannel", testMultipleReceiversOnPropertyChannel),
+        ("testMultipleReceiversOnSievedPropertyChannel", testMultipleReceiversOnSievedPropertyChannel),
+        ("testDropWithMultipleReceivers", testDropWithMultipleReceivers),
+        ])
+
+    #if !os(Linux)
+    // no-op function on non-Linux platforms
+    static func testCase(values: Any) { }
     #endif
 }
