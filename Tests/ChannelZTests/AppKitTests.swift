@@ -359,8 +359,8 @@ class AppKitTests : ChannelTestCase {
             defer { textField.removeFromSuperview() }
 
             let controller = textField.channelZBinding(value: "ABC")
-            let enabled = textField.channelZBinding(value: true, binding: NSBindingName.enabled)
-            let hidden = textField.channelZBinding(value: false, binding: NSBindingName.hidden)
+            let enabled = textField.channelZBinding(value: true, name: .enabled)
+            let hidden = textField.channelZBinding(value: false, name: .hidden)
 
             controller.value = "XYZ"
             XCTAssertEqual("XYZ", textField.stringValue, "text field should mirror controller binding")
