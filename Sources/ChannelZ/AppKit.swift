@@ -16,9 +16,9 @@ import AppKit
 
 public extension NSObjectProtocol where Self : NSController {
     /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
-    /// change valus are not provided with KVO observation
-    public func channelZControllerPath(keyPath: String) -> Channel<KeyValueOptionalTransceiver<Any>, Mutation<Any?>> {
-        let channel = channelZKeyState(value(forKeyPath: keyPath), keyPath: keyPath)
+    /// change values are not provided with KVO observation
+    public func channelZControllerPath<T>(_ keyPath: KeyPath<Self, T>) -> Channel<KeyValueTransceiver<Self, T>, Mutation<T?>> {
+        let channel = channelZKeyState(keyPath)
 
         // KVO on an object controller drops the value: 
         // “Important: The Cocoa bindings controller classes do not provide change values when sending key-value observing notifications to observers. It is the developer’s responsibility to query the controller to determine the new values.”
@@ -27,7 +27,7 @@ public extension NSObjectProtocol where Self : NSController {
 
         // first map it to placeholders for storing new state
         let wrapped = channel.map({ [weak self] state in
-            Mutation(old: state.old, new: self?.value(forKeyPath: keyPath))
+            Mutation(old: state.old, new: self?[keyPath: keyPath])
             })
 
         // now save the old state and return new instances

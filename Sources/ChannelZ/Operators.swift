@@ -166,87 +166,46 @@ public func <~∞~> <S1, S2, T1, T2>(lhs: Channel<S1, T1>, rhs: Channel<S2, Opti
 
 // MARK: KVO Operators
 
-/// Creates a distinct sieved channel from the given Optional Equatable ValueTransceiver (cover for ∞?=)
-public prefix func ∞= <T: Equatable>(source: KeyValueOptionalTransceiver<T>) -> Channel<KeyValueOptionalTransceiver<T>, T?> { return ∞?=source }
-
 /// Creates a source for the given property that will emit state operations
-public postfix func ∞ <T>(kvt: KeyValueTarget<T>) -> KeyValueTransceiver<T> {
+public postfix func ∞ <O, T>(kvt: KeyValueTarget<O, T>) -> KeyValueTransceiver<O, T> {
     return KeyValueTransceiver(target: kvt)
 }
 
 /// Creates a source for the given equatable property that will emit state operations
-public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T>) -> KeyValueTransceiver<T> {
+public postfix func =∞ <O, T: Equatable>(kvt: KeyValueTarget<O, T>) -> KeyValueTransceiver<O, T> {
     return KeyValueTransceiver(target: kvt)
 }
-
-/// Creates a source for the given optional property that will emit state operations
-public postfix func ∞ <T>(kvt: KeyValueTarget<T?>) -> KeyValueOptionalTransceiver<T> {
-    return KeyValueOptionalTransceiver(target: kvt)
-}
-
-/// Creates a source for the given equatable & optional property that will emit state operations
-public postfix func =∞ <T: Equatable>(kvt: KeyValueTarget<T?>) -> KeyValueOptionalTransceiver<T> {
-    return KeyValueOptionalTransceiver(target: kvt)
-}
-
 
 // MARK: Infix operators
 
 /// Use the specified accessor to determine the keyPath for the given autoclosure
 /// For example, slider§slider.doubleValue will return: (slider, { slider.doubleValue }, "doubleValue")
-public func § <T>(object: NSObject, getter: @autoclosure () -> T) -> KeyValueTarget<T> {
-    return KeyValueTarget(target: object, initialValue: getter(), keyPath: conjectKeypath(object, getter, true)!)
+public func § <O: NSObject, T>(object: O, keyPath: KeyPath<O, T>) -> KeyValueTarget<O, T> {
+    return KeyValueTarget(target: object, keyPath: keyPath)
 }
 
-/// Use the specified accessor to manually specify the keyPath for the given autoclosure
-public func § <T>(object: NSObject, getkey: (value: T, keyPath: String)) -> KeyValueTarget<T> {
-    return KeyValueTarget(target: object, initialValue: getkey.value, keyPath: getkey.keyPath)
+public func § <O: NSObject, T>(object: O, keyPath: (KeyPath<O, T>, String)) -> KeyValueTarget<O, T> {
+    return KeyValueTarget(target: object, keyPath: keyPath.0, path: keyPath.1)
 }
 
 infix operator § : NilCoalescingPrecedence
 
 
 /// Operation to create a channel from an object's keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getter: @autoclosure () -> T) -> Channel<KeyValueTransceiver<T>, T> {
-    return ∞(object§getter)∞
+public func ∞ <O: NSObject, T>(object: O, keyPath: KeyPath<O, T>) -> KeyValueChannel<O, T> {
+    return ∞(object§keyPath)∞
 }
-
-/// Operation to create a channel from an object's equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getter: @autoclosure () -> T) -> Channel<KeyValueTransceiver<T>, T> {
-    return ∞=(object§getter)=∞
-}
-
-/// Operation to create a channel from an object's optional keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getter: @autoclosure () -> T?) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
-    return ∞(object§getter)∞
-}
-
-/// Operation to create a channel from an object's optional equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getter: @autoclosure () -> T?) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
-    return ∞=(object§getter)=∞
-}
-
-
 
 /// Operation to create a channel from an object's keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getpath: (value: T, keyPath: String)) -> Channel<KeyValueTransceiver<T>, T> {
-    return ∞(object§getpath)∞
+public func ∞ <O: NSObject, T>(object: O, keyPath: (KeyPath<O, T>, String)) -> KeyValueChannel<O, T> {
+    return ∞(object§keyPath)∞
 }
 
 /// Operation to create a channel from an object's equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T, keyPath: String)) -> Channel<KeyValueTransceiver<T>, T> {
-    return ∞=(object§getpath)=∞
+public func ∞ <O: NSObject, T: Equatable>(object: O, keyPath: KeyPath<O, T>) -> KeyValueChannel<O, T> {
+    return ∞=(object§keyPath)=∞
 }
 
-/// Operation to create a channel from an object's optional keyPath; shorthand for  ∞(object§getter)∞
-public func ∞ <T>(object: NSObject, getpath: (value: T?, keyPath: String)) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
-    return ∞(object§getpath)∞
-}
-
-/// Operation to create a channel from an object's optional equatable keyPath; shorthand for ∞=(object§getter)=∞
-public func ∞ <T: Equatable>(object: NSObject, getpath: (value: T?, keyPath: String)) -> Channel<KeyValueOptionalTransceiver<T>, T?> {
-    return ∞=(object§getpath)=∞
-}
 
 
 infix operator ∞ : NilCoalescingPrecedence

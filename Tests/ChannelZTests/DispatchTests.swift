@@ -287,21 +287,23 @@ class DispatchTests : ChannelTestCase {
     }
 
     func testDispatchFile() throws {
-        
         weak var xpc = expectation(description: #function)
 
         let file = #file
-        var view = String.UnicodeScalarView()
-        var encoding = UTF8()
 
-        let high = Int(rnd(1024)) + 10
-            // high=2 => decoding error
+        var data = Data()
+        
+        var high = Int(rnd(1024)) + 10
+        high = 35 // => decoding error
+//        high = 3 // => decoding error
+//        high = 37
+        
         channelZFile(file, high: high).receive { event in
             switch event {
             case .opened:
                 break
             case .data(let dat):
-                encoding.decodeScalars(dat) { view.append($0) }
+                data.append(contentsOf: dat)
             case .error(let err):
                 XCTFail(String(describing: err))
                 xpc?.fulfill()
@@ -311,22 +313,21 @@ class DispatchTests : ChannelTestCase {
         }
         waitForExpectations(timeout: 30, handler: { err in })
 
-        let swstr = String(view)
-        let filestr = try String(contentsOfFile: file, encoding: String.Encoding.utf8)
+        let fdat = try Data(contentsOf: URL(fileURLWithPath: file))
 
-        XCTAssertTrue(filestr == swstr, "file contents (high=\(high)) did not match: \(swstr.count) vs. \(filestr.count)")
+        XCTAssertTrue(data == fdat, "file contents (high=\(high)) did not match: \(data.count) vs. \(fdat.count)")
     }
 }
 
 private extension UnicodeCodec {
-    /// Helper function to decode the sequence of scalars into a string
-    mutating func decodeScalars<S: Sequence>(_ scalars: S, f: (UnicodeScalar)->Void) where S.Iterator.Element == CodeUnit {
+    /// Helper function to decode the sequence of scalars into a string, returning true if there was no error
+    mutating func decodeScalars<S: Sequence>(_ scalars: S, f: (UnicodeScalar)->Void) -> Bool where S.Iterator.Element == CodeUnit {
         var g = scalars.makeIterator()
         while true {
             switch decode(&g) {
-            case .scalarValue(let us): f(us)
-            case .emptyInput: return
-            case .error: fatalError("decoding error")
+            case .scalarValue(let us): f(us); return true
+            case .emptyInput: return true
+            case .error: return false // fatalError("decoding error")
             }
         }
     }

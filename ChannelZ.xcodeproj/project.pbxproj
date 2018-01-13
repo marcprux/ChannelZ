@@ -8,10 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		7E2AB9BD1A82B90100AFBD4F /* Operators.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2AB9BC1A82B90100AFBD4F /* Operators.swift */; };
-		7E2AB9BF1A83C21A00AFBD4F /* FoundationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2AB9BE1A83C21A00AFBD4F /* FoundationTests.swift */; };
+		7E2AB9BF1A83C21A00AFBD4F /* KeyPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2AB9BE1A83C21A00AFBD4F /* KeyPathTests.swift */; };
 		7E30DC3C1A0D6A510050EC52 /* ChannelZ.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E30DC301A0D6A510050EC52 /* ChannelZ.framework */; };
 		7E30DC431A0D6A510050EC52 /* ChannelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC421A0D6A510050EC52 /* ChannelTests.swift */; };
-		7E30DC5D1A0D6B1B0050EC52 /* Foundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC591A0D6B1B0050EC52 /* Foundation.swift */; };
+		7E30DC5D1A0D6B1B0050EC52 /* KeyPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30DC591A0D6B1B0050EC52 /* KeyPath.swift */; };
 		7E35E7F81CE0C49B006F26D6 /* Errors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E35E7F71CE0C49B006F26D6 /* Errors.swift */; };
 		7E43C2CB1A1072A4003747B6 /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CA1A1072A4003747B6 /* Channel.swift */; };
 		7E43C2CF1A1073CA003747B6 /* Receivers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CE1A1073CA003747B6 /* Receivers.swift */; };
@@ -45,13 +45,13 @@
 
 /* Begin PBXFileReference section */
 		7E2AB9BC1A82B90100AFBD4F /* Operators.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Operators.swift; sourceTree = "<group>"; };
-		7E2AB9BE1A83C21A00AFBD4F /* FoundationTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FoundationTests.swift; sourceTree = "<group>"; };
+		7E2AB9BE1A83C21A00AFBD4F /* KeyPathTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KeyPathTests.swift; sourceTree = "<group>"; };
 		7E30DC301A0D6A510050EC52 /* ChannelZ.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ChannelZ.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E30DC341A0D6A510050EC52 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7E30DC3B1A0D6A510050EC52 /* ChannelZTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChannelZTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E30DC411A0D6A510050EC52 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7E30DC421A0D6A510050EC52 /* ChannelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = ChannelTests.swift; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
-		7E30DC591A0D6B1B0050EC52 /* Foundation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Foundation.swift; sourceTree = "<group>"; };
+		7E30DC591A0D6B1B0050EC52 /* KeyPath.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KeyPath.swift; sourceTree = "<group>"; };
 		7E30DC5F1A0D6B230050EC52 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		7E30DC611A0D73690050EC52 /* ChannelZUIKit.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = ChannelZUIKit.playground; sourceTree = "<group>"; };
 		7E35E7F71CE0C49B006F26D6 /* Errors.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Errors.swift; sourceTree = "<group>"; };
@@ -128,7 +128,7 @@
 				7E2AB9BC1A82B90100AFBD4F /* Operators.swift */,
 				7E43C2CE1A1073CA003747B6 /* Receivers.swift */,
 				7E806D511A7F4C6F00CB3992 /* Dispatch.swift */,
-				7E30DC591A0D6B1B0050EC52 /* Foundation.swift */,
+				7E30DC591A0D6B1B0050EC52 /* KeyPath.swift */,
 				7ECE513A1A60A29600924B8E /* Coercible.swift */,
 				7E8C00021A80099F00180DB1 /* Network.swift */,
 				7E7E35451A152CCD00777D72 /* CoreData.swift */,
@@ -146,7 +146,7 @@
 				7E30DC411A0D6A510050EC52 /* Info.plist */,
 				7E30DC421A0D6A510050EC52 /* ChannelTests.swift */,
 				7E7EC5741BCD7D3F0098E797 /* DispatchTests.swift */,
-				7E2AB9BE1A83C21A00AFBD4F /* FoundationTests.swift */,
+				7E2AB9BE1A83C21A00AFBD4F /* KeyPathTests.swift */,
 				7EDBA1071A87D18300AED2CE /* AppKitTests.swift */,
 				7EDBA1091A87D18C00AED2CE /* UIKitTests.swift */,
 				7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */,
@@ -223,7 +223,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0700;
-				LastUpgradeCheck = 0800;
+				LastUpgradeCheck = 0920;
 				ORGANIZATIONNAME = glimpse.io;
 				TargetAttributes = {
 					7E30DC2F1A0D6A510050EC52 = {
@@ -279,7 +279,7 @@
 			files = (
 				7E8C00031A80099F00180DB1 /* Network.swift in Sources */,
 				7E806D521A7F4C6F00CB3992 /* Dispatch.swift in Sources */,
-				7E30DC5D1A0D6B1B0050EC52 /* Foundation.swift in Sources */,
+				7E30DC5D1A0D6B1B0050EC52 /* KeyPath.swift in Sources */,
 				7E8CDCF31CAAF66D00245939 /* State.swift in Sources */,
 				7EEE65131CB3EF2500DA3EDA /* Combinators.swift in Sources */,
 				7E43C2D31A1075D0003747B6 /* AppKit.swift in Sources */,
@@ -302,7 +302,7 @@
 				7E30DC431A0D6A510050EC52 /* ChannelTests.swift in Sources */,
 				7EE45E221A210FFE00E9AB52 /* PlayMarkerTests.swift in Sources */,
 				7EDBA10A1A87D18C00AED2CE /* UIKitTests.swift in Sources */,
-				7E2AB9BF1A83C21A00AFBD4F /* FoundationTests.swift in Sources */,
+				7E2AB9BF1A83C21A00AFBD4F /* KeyPathTests.swift in Sources */,
 				7E7EC5751BCD7D3F0098E797 /* DispatchTests.swift in Sources */,
 				7EDBA1081A87D18300AED2CE /* AppKitTests.swift in Sources */,
 				7E4E53CA1A21578700B1016C /* PlayMarker.swift in Sources */,
@@ -330,14 +330,20 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -383,14 +389,20 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;

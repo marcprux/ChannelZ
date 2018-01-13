@@ -13,30 +13,30 @@ import ChannelZ
 import Glibc
 #endif
 
-func assertChanges<T>(_ check: @autoclosure ()->T, _ code: @autoclosure ()->(Any), file: StaticString = #file, line: UInt = #line) where T: Equatable {
+func assertChanges<T>(_ check: @autoclosure ()->T, _ code: @autoclosure ()->(Any), msg: String? = nil, file: StaticString = #file, line: UInt = #line) where T: Equatable {
     let start = check()
     _ = code()
     let end = check()
-    XCTAssertNotEqual(start, end, "assertChanges failure", file: file, line: line)
+    XCTAssertNotEqual(start, end, msg ?? "assertChanges failure", file: file, line: line)
 }
 
-func assertRemains<T>(_ check: @autoclosure ()->T, _ code:  @autoclosure ()->(Any), file: StaticString = #file, line: UInt = #line) where T: Equatable {
+func assertRemains<T>(_ check: @autoclosure ()->T, _ code:  @autoclosure ()->(Any), msg: String? = nil, file: StaticString = #file, line: UInt = #line) where T: Equatable {
     let start = check()
     _ = code()
     let end = check()
-    XCTAssertEqual(start, end, "assertRemains failure", file: file, line: line)
+    XCTAssertEqual(start, end, msg ?? "assertRemains failure", file: file, line: line)
 }
 
-func assertSingleChange(_ count: inout Int, file: StaticString = #file, line: UInt = #line) {
+func assertSingleChange(_ count: inout Int, msg: String? = nil, file: StaticString = #file, line: UInt = #line) {
     count -= 1
-    XCTAssertTrue(count == 0, "single change should have occurred, but got: \(count)", file: file, line: line)
+    XCTAssertTrue(count == 0, msg ?? "single change should have occurred, but got: \(count)", file: file, line: line)
 }
 
 class ChannelTestCase : XCTestCase {
-    override func invokeTest() {
-//        return invocation?.selector == #selector(ChannelTests.testJacket) ? super.invokeTest() : print("skipping test", name)
-        return super.invokeTest()
-    }
+//    override func invokeTest() {
+////        return invocation?.selector == #selector(ChannelTests.testJacket) ? super.invokeTest() : print("skipping test", name)
+//        return super.invokeTest()
+//    }
 
 
     override internal func tearDown() {
