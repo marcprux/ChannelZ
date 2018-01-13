@@ -1285,7 +1285,7 @@ class KeyPathTests : ChannelTestCase {
                 ctx.persistentStoreCoordinator = psc
 
                 var saveCount = 0
-                _ = ctx.channelZNotification(NSNotification.Name.NSManagedObjectContextDidSave).receive { _ in saveCount = saveCount + 1 }
+                _ = ctx.channelZNotification(.NSManagedObjectContextDidSave).receive { _ in saveCount = saveCount + 1 }
 
                 var inserted = 0
                 ctx.channelZProcessedInserts().receive { inserted = $0.count }
@@ -1587,8 +1587,8 @@ class KeyPathTests : ChannelTestCase {
             undo∞\.levelsOfUndo ∞> { _ in levelsOfUndo += 1 }
             undo∞\.undoActionName ∞> { _ in counter += 1 }
             undo∞\.redoActionName ∞> { _ in counter += 1 }
-            undo.channelZNotification(NSNotification.Name.NSUndoManagerDidOpenUndoGroup).receive({ _ in opened += 1 })
-            undo.channelZNotification(NSNotification.Name.NSUndoManagerDidCloseUndoGroup).receive({ _ in closed += 1 })
+            undo.channelZNotification(.NSUndoManagerDidOpenUndoGroup).receive({ _ in opened += 1 })
+            undo.channelZNotification(.NSUndoManagerDidCloseUndoGroup).receive({ _ in closed += 1 })
 
             counter = 0
 

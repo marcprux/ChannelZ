@@ -73,7 +73,7 @@ class AppKitTests : ChannelTestCase {
         counter -= 2
 
         let undo = UndoManager()
-        undo.channelZNotification(NSNotification.Name.NSUndoManagerDidUndoChange) ∞> { _ in counter += 1 }
+        undo.channelZNotification(.NSUndoManagerDidUndoChange) ∞> { _ in counter += 1 }
         undo∞\.canUndo ∞> { _ in counter += 1 }
         undo∞\.canRedo ∞> { _ in counter += 1 }
         undo∞\.levelsOfUndo ∞> { _ in counter += 1 }

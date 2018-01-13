@@ -68,7 +68,7 @@ public extension NSObjectProtocol where Self : NSController {
 //    }
 //}
 
-extension NSControl { // : KeyValueChannelSupplementing {
+public extension NSControl { // : KeyValueChannelSupplementing {
 
     public func channelZControl() -> Channel<ActionTarget, Void> {
         if self.target != nil && !(self.target is ActionTarget) {
@@ -132,7 +132,7 @@ extension NSControl { // : KeyValueChannelSupplementing {
     }
 }
 
-extension NSMenuItem {
+public extension NSMenuItem {
 
     public func channelZMenu() -> Channel<ActionTarget, Void> {
 
