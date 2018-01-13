@@ -1,5 +1,5 @@
 //
-//  JacketTests.swift
+//  OpticsTests.swift
 //  ChannelZ
 //
 //  Created by Marc Prud'hommeaux on 5/1/16.
@@ -9,7 +9,7 @@
 import ChannelZ
 import XCTest
 
-// MARK: Jacket Test Data Model
+// MARK: Optics Test Data Model
 
 typealias PersonID = String
 
@@ -42,8 +42,8 @@ struct Address {
 }
 
 extension Directory : Focusable {
-    static let authorZ = lenZ({$0.author}, {$0.author = $1})
-    static let companiesZ = lenZ({$0.companies}, {$0.companies = $1})
+    static let authorZ = lenZ(\.author)
+    static let companiesZ = lenZ(\.companies)
 }
 
 //extension ChannelType where Source.Element == Directory, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
@@ -52,10 +52,10 @@ extension Directory : Focusable {
 //}
 
 extension Company : Focusable {
-    static let addressZ = lenZ({$0.address}, {$0.address = $1})
-    static let employeesZ = lenZ({$0.employees}, {$0.employees = $1})
-    static let ceoIDZ = lenZ({$0.ceoID}, {$0.ceoID = $1})
-    static let ctoIDZ = lenZ({$0.ctoID}, {$0.ctoID = $1})
+    static let addressZ = lenZ(\.address)
+    static let employeesZ = lenZ(\.employees)
+    static let ceoIDZ = lenZ(\.ceoID)
+    static let ctoIDZ = lenZ(\.ctoID)
 }
 
 //extension ChannelType where Source.Element == Company, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
@@ -66,12 +66,12 @@ extension Company : Focusable {
 //}
 
 extension Person : Focusable {
-    static let firstNameZ = lenZ({$0.firstName}, {$0.firstName = $1})
-    static let lastNameZ = lenZ({$0.lastName}, {$0.lastName = $1})
-    static let genderZ = lenZ({$0.gender}, {$0.gender = $1})
-    static let homeAddressZ = lenZ({$0.homeAddress}, {$0.homeAddress = $1})
-    static let workAddressZ = lenZ({$0.workAddress}, {$0.workAddress = $1})
-    static let previousAddressesZ = lenZ({$0.previousAddresses}, {$0.previousAddresses = $1})
+    static let firstNameZ = lenZ(\.firstName)
+    static let lastNameZ = lenZ(\.lastName)
+    static let genderZ = lenZ(\.gender)
+    static let homeAddressZ = lenZ(\.homeAddress)
+    static let workAddressZ = lenZ(\.workAddress)
+    static let previousAddressesZ = lenZ(\.previousAddresses)
 }
 
 //extension Lens {
@@ -92,9 +92,9 @@ extension Person : Focusable {
 //}
 
 extension Address : Focusable {
-    static let line1Z = lenZ({$0.line1}, {$0.line1 = $1})
-    static let line2Z = lenZ({$0.line2}, {$0.line2 = $1})
-    static let postalCodeZ = lenZ({$0.postalCode}, {$0.postalCode = $1})
+    static let line1Z = lenZ(\.line1)
+    static let line2Z = lenZ(\.line2)
+    static let postalCodeZ = lenZ(\.postalCode)
 }
 
 //extension ChannelType where Source.Element == Address, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
@@ -145,30 +145,47 @@ extension ChannelType where Source.Element == Address?, Source : TransceiverType
 ////    static let firstNameX = Person.lens(Lens({ $0.firstName }, { $0.firstName = $1 }))
 ////}
 
-extension ChannelTests {
-    func testJacket() {
-
-
+class OpticsTests : ChannelTestCase {
+    func createModel() -> Directory {
         let bebe = Person(firstName: "Beatrice", lastName: "Walter",
                           gender: .female,
                           homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
                           workAddress: nil,
                           previousAddresses: [])
-
-        var dir = Directory(author: bebe,
+        
+        let dir = Directory(author: bebe,
                             companies: [
                                 Company(employees: [
                                     "359414": Person(firstName: "Marc", lastName: "Walter",
-                                        gender: .male,
-                                        homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
-                                        workAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
-                                        previousAddresses: [])
+                                                     gender: .male,
+                                                     homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
+                                                     workAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
+                                                     previousAddresses: [])
                                     ],
-                                    ceoID: "359414",
-                                    ctoID: nil,
-                                    address: Address(line1: "1 NaN Loop", line2: nil, postalCode: "99999"))
+                                        ceoID: "359414",
+                                        ctoID: nil,
+                                        address: Address(line1: "1 NaN Loop", line2: nil, postalCode: "99999"))
             ]
         )
+
+        return dir
+    }
+    
+    func testKeyPathOptics() {
+        var dir = createModel()
+
+        let nameKp: WritableKeyPath<Directory, String> = \Directory.author.firstName
+        
+        XCTAssertEqual("Beatrice", dir[keyPath: nameKp])
+        
+        dir[keyPath: nameKp] = "Beatrix"
+        XCTAssertEqual("Beatrix", dir[keyPath: nameKp])
+        
+        
+    }
+    
+    func testOptics() {
+        var dir = createModel()
 
 //        let firstNameLens = Lens<Person, String>({ $0.firstName }, { $0.firstName = $1 })
 //        let lastNameLens = Person.lastNameZ
@@ -178,10 +195,15 @@ extension ChannelTests {
         do {
             let dirZ = transceive(dir)
 
-            let bebeZ = dirZ.focus(Directory.authorZ)
+            let bebeZ = dirZ.focus(\.author)
+            //            let workAddressKP: WritableKeyPath<Person, String?> = \Person.workAddress?.line1 // FIXME: not writeable
+            
+//            let waddrl1 = waddr.focus(\?.line1)
 
-            bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).value = "Foo"
-            bebeZ.focus(Person.homeAddressZ).focus(Address.line2Z).value = "Bar"
+            
+//            bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).value = "Foo"
+            bebeZ.focus(\.homeAddress.line1).value = "Foo"
+            bebeZ.focus(\.homeAddress.line2).value = "Bar"
             XCTAssertEqual("Foo", bebeZ.value.homeAddress.line1)
             XCTAssertEqual("Bar", bebeZ.value.homeAddress.line2)
 
@@ -190,19 +212,26 @@ extension ChannelTests {
             XCTAssertEqual(nil, bebeZ.value.workAddress?.line1)
             XCTAssertEqual(nil, bebeZ.value.workAddress?.line2)
 
+//            bebeZ.focus(\.workAddress?.line1).receive { _ in
+//                print("### changed work address)
+//            }
+
             let defaddr = Address(line1: "", line2: nil, postalCode: "")
-            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).value = "AAA"
-            bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line2Z).value = "BBB"
+            bebeZ.focus(\.workAddress).coalesce({ _ in defaddr }).focus(\.line1).value = "AAA"
+//            bebeZ.focus(\.workAddress?.line1).value = "AAA"
+            bebeZ.focus(\.workAddress).coalesce({ _ in defaddr }).focus(\.line2).value = "BBB"
 
             XCTAssertEqual("AAA", bebeZ.value.workAddress?.line1)
             XCTAssertEqual("BBB", bebeZ.value.workAddress?.line2)
 
-            let a1 = bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).sieve(!=).new()
-            let a2 = bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).sieve(!=).new()
-
-            let b1 = bebeZ.focus(Person.homeAddressZ).focus(Address.line2Z).sieve(!=).new()
+//            let a1 = bebeZ.focus(Person.homeAddressZ).focus(Address.lenZ(\Address.line1)).sieve(!=).new()
+            let a1: Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<Directory>, Mutation<Directory>>, Person>, Mutation<Person>>, String>, String> = bebeZ.focus(\.homeAddress.line1).sieve(!=).new()
+            let a2: Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<Directory>, Mutation<Directory>>, Person>, Mutation<Person>>, Address?>, Mutation<Address?>>, Address>, Mutation<Address>>, String>, String> = bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line1Z).sieve(!=).new()
+            let b1 = bebeZ.focus(\.homeAddress.line2).sieve(!=).new()
             let b2 = bebeZ.focus(Person.workAddressZ).coalesce({ _ in defaddr }).focus(Address.line2Z).sieve(!=).new()
 
+//            bebeZ.focus(\.homeAddress).bind(bebeZ.focus(\.workAddress))
+            
             a1.bind(a2) // works from home
             b1.bind(b2) // works from home
 
@@ -210,7 +239,7 @@ extension ChannelTests {
             XCTAssertEqual("XXX", bebeZ.value.homeAddress.line1)
             XCTAssertEqual("XXX", bebeZ.value.workAddress?.line1)
 
-            bebeZ.focus(Person.homeAddressZ).focus(Address.line1Z).value = "YYY"
+            bebeZ.focus(\.homeAddress.line1).value = "YYY"
             XCTAssertEqual("YYY", bebeZ.value.homeAddress.line1)
             XCTAssertEqual("YYY", bebeZ.value.workAddress?.line1)
 
@@ -223,9 +252,8 @@ extension ChannelTests {
 
             var lines: [String?] = []
 
-            prevZ.index(1).focus(Address.line1Z.prism).sieve().new().receive { line in
-                lines.append(line)
-            }
+            prevZ.index(1).focus(Address.line1Z.prism).sieve().new().receive({ lines.append($0) })
+            //prevZ.focus(\.[1].line1).sieve().new().receive({ lines.append($0) }) // works, but crashes when getting with no index #1
 
             XCTAssertEqual(0, bebeZ.value.previousAddresses.count)
             prevZ.index(2).coalesce({ _ in defaddr }).focus(Address.line1Z).value = "XYZ"

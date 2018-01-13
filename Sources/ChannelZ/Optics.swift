@@ -68,6 +68,11 @@ public struct Lens<A, B> : LensType {
         self.setter = { var copy = $0; set(&copy, $1); return copy }
     }
 
+    public init(kp: WritableKeyPath<A, B>) {
+        self.getter = { $0[keyPath: kp] }
+        self.setter = { var copy = $0; copy[keyPath: kp] = $1; return copy }
+    }
+
     public func set(_ target: A, _ value: B) -> A {
         return setter(target, value)
     }
@@ -85,6 +90,11 @@ public extension Focusable {
     /// Takes a setter & getter for a property of this instance and returns a lens than encapsulates the action
     public static func lenZ<T>(_ get: @escaping (Self) -> T, _ set: @escaping (inout Self, T) -> Void) -> Lens<Self, T> {
         return Lens(get: get, set: set)
+    }
+    
+    /// Takes a writeable keypath for a property of this instance and returns a lens than encapsulates the action
+    public static func lenZ<T>(_ kp: WritableKeyPath<Self, T>) -> Lens<Self, T> {
+        return Lens(kp: kp)
     }
 }
 
@@ -165,6 +175,11 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
     /// channel can modify sub-elements of a complex data structure
     public func focus<X>(_ lens: Lens<Source.Element, X>) -> LensChannel<Self, X> {
         return LensSource(channel: self, lens: lens).transceive()
+    }
+
+    /// Constructs a Lens channel using a getter and an inout setter
+    public func focus<X>(_ kp: WritableKeyPath<Source.Element, X>) -> LensChannel<Self, X> {
+        return focus(Lens(kp: kp))
     }
 
     /// Constructs a Lens channel using a getter and an inout setter

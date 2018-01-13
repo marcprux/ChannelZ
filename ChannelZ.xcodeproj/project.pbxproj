@@ -19,7 +19,7 @@
 		7E43C2D71A10763D003747B6 /* UIKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D61A10763D003747B6 /* UIKit.swift */; };
 		7E4E53CA1A21578700B1016C /* PlayMarker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4E53C91A21578700B1016C /* PlayMarker.swift */; };
 		7E55BE741CB2018D0035281A /* Stream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E55BE731CB2018D0035281A /* Stream.swift */; };
-		7E64D8611CD6879D00AA3DBB /* JacketTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E64D8601CD6879D00AA3DBB /* JacketTests.swift */; };
+		7E64D8611CD6879D00AA3DBB /* OpticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E64D8601CD6879D00AA3DBB /* OpticsTests.swift */; };
 		7E7E35461A152CCD00777D72 /* CoreData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7E35451A152CCD00777D72 /* CoreData.swift */; };
 		7E7EC5751BCD7D3F0098E797 /* DispatchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7EC5741BCD7D3F0098E797 /* DispatchTests.swift */; };
 		7E806D521A7F4C6F00CB3992 /* Dispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E806D511A7F4C6F00CB3992 /* Dispatch.swift */; };
@@ -63,7 +63,7 @@
 		7E4E53C91A21578700B1016C /* PlayMarker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayMarker.swift; sourceTree = "<group>"; };
 		7E4E53CB1A21749F00B1016C /* Introduction.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = Introduction.playground; sourceTree = "<group>"; };
 		7E55BE731CB2018D0035281A /* Stream.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Stream.swift; sourceTree = "<group>"; };
-		7E64D8601CD6879D00AA3DBB /* JacketTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JacketTests.swift; sourceTree = "<group>"; };
+		7E64D8601CD6879D00AA3DBB /* OpticsTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OpticsTests.swift; sourceTree = "<group>"; };
 		7E7E35451A152CCD00777D72 /* CoreData.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CoreData.swift; sourceTree = "<group>"; };
 		7E7EC5741BCD7D3F0098E797 /* DispatchTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DispatchTests.swift; sourceTree = "<group>"; };
 		7E806D511A7F4C6F00CB3992 /* Dispatch.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Dispatch.swift; sourceTree = "<group>"; };
@@ -151,7 +151,7 @@
 				7EDBA1091A87D18C00AED2CE /* UIKitTests.swift */,
 				7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */,
 				7E4E53C91A21578700B1016C /* PlayMarker.swift */,
-				7E64D8601CD6879D00AA3DBB /* JacketTests.swift */,
+				7E64D8601CD6879D00AA3DBB /* OpticsTests.swift */,
 			);
 			name = ChannelZTests;
 			path = Tests/ChannelZTests;
@@ -306,7 +306,7 @@
 				7E7EC5751BCD7D3F0098E797 /* DispatchTests.swift in Sources */,
 				7EDBA1081A87D18300AED2CE /* AppKitTests.swift in Sources */,
 				7E4E53CA1A21578700B1016C /* PlayMarker.swift in Sources */,
-				7E64D8611CD6879D00AA3DBB /* JacketTests.swift in Sources */,
+				7E64D8611CD6879D00AA3DBB /* OpticsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

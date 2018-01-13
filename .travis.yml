@@ -5,6 +5,7 @@ matrix:
       osx_image: xcode9
       script:
         - set -o pipefail
+        - swift test -Xswiftc -DDEBUG_CHANNELZ
         - xcodebuild test -sdk macosx -scheme ChannelZ | xcpretty -c
         - xcodebuild test -scheme ChannelZ -sdk iphonesimulator -destination "platform=iOS Simulator,name=iPhone X,OS=11.0" | xcpretty -c
     - os: linux
