@@ -6,7 +6,7 @@
 ////  License: MIT (or whatever)
 ////
 //
-//#if os(OSX)
+//#if os(macOS)
 //
 //import Foundation
 //import XCTest

@@ -6,7 +6,7 @@
 ////  License: MIT (or whatever)
 ////
 //
-//#if os(OSX) // NSXMLDocument is only on Mac
+//#if os(macOS) // NSXMLDocument is only on Mac
 //
 //import Foundation
 //

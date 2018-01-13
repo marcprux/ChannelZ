@@ -11,7 +11,7 @@
 import Foundation // workaround for compilation bug when compiling on iOS: «@objc attribute used without importing module 'Foundation'»
 #endif
 
-#if os(OSX)
+#if os(macOS)
 import AppKit
 
 public extension NSObjectProtocol where Self : NSController {

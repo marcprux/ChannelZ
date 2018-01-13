@@ -1590,7 +1590,6 @@ class KeyPathTests : ChannelTestCase {
             undo.channelZNotification(NSNotification.Name.NSUndoManagerDidOpenUndoGroup).receive({ _ in opened += 1 })
             undo.channelZNotification(NSNotification.Name.NSUndoManagerDidCloseUndoGroup).receive({ _ in closed += 1 })
 
-
             counter = 0
 
             XCTAssertEqual(0, counter)

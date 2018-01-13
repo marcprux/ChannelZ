@@ -6,7 +6,7 @@
 //  Copyright (c) 2015 glimpse.io. All rights reserved.
 //
 
-#if os(OSX)
+#if os(macOS)
 import XCTest
 import ChannelZ
 import CoreData
