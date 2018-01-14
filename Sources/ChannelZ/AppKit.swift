@@ -82,7 +82,7 @@ public extension NSControl { // : KeyValueChannelSupplementing {
 
         return Channel<ActionTarget, Void>(source: target, reception: { target.receivers.addReceipt($0) })
     }
-
+    
     /// Creates a binding to an intermediate NSObjectController with the given options and returns the bound channel
     @discardableResult
     public func channelZBinding<T>(value: T?, name: NSBindingName = NSBindingName.value, controller: ChannelController<T>? = nil, keyPath: String = "content", options: [NSBindingOption : AnyObject] = [:]) -> ChannelController<T> {
