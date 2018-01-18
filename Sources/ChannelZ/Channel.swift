@@ -57,8 +57,8 @@ public struct Channel<S, T> : ChannelType {
         return Channel(source: self.source, reception: reception)
     }
 
-    /// Adds a receiver item that will accept the output pulses of the channel
-    @discardableResult
+    /// Adds a receiver item that will accept the output pulses of the channel.
+    /// The receipt should be retained for later cancellation, or else events will not be received.
     public func receive<R: ReceiverType>(_ receiver: R) -> Receipt where R.Pulse == Pulse {
         return reception(receiver.receive)
     }

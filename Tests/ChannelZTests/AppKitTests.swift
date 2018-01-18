@@ -114,7 +114,7 @@ class AppKitTests : ChannelTestCase {
     }
     
 
-    func XXXtestButtonCommand() {
+    func testButtonCommand() {
         let button = NSButton()
 
         // FIXME: button never gets clicked
@@ -124,7 +124,7 @@ class AppKitTests : ChannelTestCase {
 
         var stateChanges = 0
 
-        button∞\.state ∞> { x in
+        let sub1 = button∞\.state ∞> { x in
             stateChanges += 1
 //            println("state change: \(x)")
         }
@@ -137,6 +137,8 @@ class AppKitTests : ChannelTestCase {
         button.state = NSControl.StateValue.off
         XCTAssertEqual(stateChanges, 5)
 
+        sub1.cancel()
+        
         var clicks = 0 // track the number of clicks on the button
 
         XCTAssertEqual(clicks, 0)

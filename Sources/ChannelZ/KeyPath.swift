@@ -177,18 +177,24 @@ public extension KeyValueTarget {
     }
 }
     
-public protocol KeyTransceiverType : class, TransceiverType {
-    associatedtype ObjectType: NSObject
+/// A Source for Channels of Cocoa properties that support key-value path observation/coding
+public final class KeyValueTransceiver<O: NSObject, T>: TransceiverType {
+    public typealias Element = T
+    public typealias ObjectType = O
+
+    public let keyPath: KeyPath<O, T>
+    public let optional = false
+    public let object: O
     
-    var optional: Bool { get }
-    var keyPath: KeyPath<ObjectType, Element> { get }
-    var object: ObjectType { get }
-    var queue: ReceiverQueue<Mutation<Element>> { get }
+    public init(target: KeyValueTarget<O, Element>) {
+        self.object = target.target
+        self.keyPath = target.keyPath
 
-    func get() -> Element
-}
+        // we instead create and destroy observers only when adding listeners
+//        createObserver()
+    }
 
-public extension KeyTransceiverType {
+    
     @discardableResult
     public func set(_ value: Element) -> Bool {
         if let wkp = keyPath as? WritableKeyPath {
@@ -199,67 +205,53 @@ public extension KeyTransceiverType {
             return false
         }
     }
-
+    
     /// access to the underlying source value
     public var value: Element {
         get { return get() }
         set(v) { set(v) }
     }
-
+    
     /// Sets the current value (ReceiverType implementation)
     public func receive(_ value: Element) -> Void {
         set(value)
     }
-
-    fileprivate func addReceiver(_ receiver: @escaping (Mutation<Element>) -> Void) -> Receipt {
-        // immediately issue the original value with no previous value
-        receiver(Mutation<Element>(old: Optional<Element>.none, new: get()))
-        let index = queue.addReceiver(receiver)
-        return ReceiptOf(canceler: { [weak self] in
-            self?.queue.removeReceptor(index)
-        })
-    }
-
-    public typealias StateChannel<T> = Channel<Self, Mutation<T>>
-
-    public func transceive() -> StateChannel<Element> {
-        return Channel(source: self, reception: addReceiver)
-    }
-}
-
-/// A Source for Channels of Cocoa properties that support key-value path observation/coding
-public final class KeyValueTransceiver<O: NSObject, T>: ReceiverQueueSource<Mutation<T>>, KeyTransceiverType {
-    public typealias Element = T
-    public typealias ObjectType = O
-
-    public let keyPath: KeyPath<O, T>
-    public let optional = false
-    public let object: O
-    public var queue: ReceiverQueue<Mutation<Element>> { return receivers }
-    private var observation: NSKeyValueObservation? = nil
     
-    public init(target: KeyValueTarget<O, Element>) {
-        self.object = target.target
-        self.keyPath = target.keyPath
-        super.init()
+    
+    public typealias StateChannel<T> = Channel<KeyValueTransceiver, Mutation<T>>
+    
+    public func transceive() -> StateChannel<Element> {
+        let receivers = ReceiverQueue<Mutation<Element>>()
+        var observation: NSKeyValueObservation? = nil
+        let ob = self.object
+        let kp = self.keyPath
         
-        self.observation = target.target.observe(keyPath, options: KVOOptions, changeHandler: { [weak self] (ob, change) in
-            if let this = self {
+        func addReceiver(_ receiver: @escaping (Mutation<Element>) -> Void) -> Receipt {
+            // create an observer only for the first receiver
+            observation = observation ?? ob.observe(kp, options: KVOOptions, changeHandler: { (ob, change) in
                 if let new = change.newValue {
-                    this.receivers.receive(Mutation(old: change.oldValue, new: new))
+                    receivers.receive(Mutation(old: change.oldValue, new: new))
                 } else {
                     // value was nil, which is possible when the target path is itself optional
                     // it would be better to cast the type of the receiver to queue to optional
-                    this.receivers.receive(Mutation(old: change.oldValue, new: this.get()))
+                    receivers.receive(Mutation(old: change.oldValue, new: ob[keyPath: kp]))
                 }
-            }
-        })
-            
-//        TargetObserverRegister.get(target.target).addObserver(keyPath) { [weak self] change in
-//            if let new = change.newValue {
-//                self?.receivers.receive(Mutation(old: change.oldValue, new: new))
-//            }
-//        }
+            })
+
+            // immediately issue the original value with no previous value
+            receiver(Mutation<Element>(old: Optional<Element>.none, new: get()))
+            let index = receivers.addReceiver(receiver)
+            return ReceiptOf(canceler: {
+                receivers.removeReceptor(index)
+                if receivers.count == 0 {
+                    // all receivers removed: clear the observer
+                    observation?.invalidate()
+                    observation = nil
+                }
+            })
+        }
+
+        return Channel(source: self, reception: addReceiver)
     }
 
     public func get() -> T {
