@@ -95,37 +95,37 @@ public extension NSControl { // : KeyValueChannelSupplementing {
         return controller
     }
 
-    public func supplementKeyValueChannel(forKeyPath: String, receiver: @escaping (Any?) -> ()) -> (() -> ())? {
+    public func supplementKeyValueChannel(forKeyPath: String, receiver: @escaping (Any?) -> ()) -> ReceiptObject? {
         // NSControl action events do not trigger KVO notifications, so we manually supplement any subscriptions with control events
 
         if forKeyPath == "doubleValue" {
             let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.doubleValue) })
-            return { receipt.cancel() }
+            return ReceiptObject(receipt: receipt)
         }
 
         if forKeyPath == "floatValue" {
             let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.floatValue) })
-            return { receipt.cancel() }
+            return ReceiptObject(receipt: receipt)
         }
 
         if forKeyPath == "integerValue" {
             let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.integerValue) })
-            return { receipt.cancel() }
+            return ReceiptObject(receipt: receipt)
         }
 
         if forKeyPath == "stringValue" {
             let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.stringValue) })
-            return { receipt.cancel() }
+            return ReceiptObject(receipt: receipt)
         }
 
         if forKeyPath == "attributedStringValue" {
             let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.attributedStringValue) })
-            return { receipt.cancel() }
+            return ReceiptObject(receipt: receipt)
         }
 
         if forKeyPath == "objectValue" {
             let receipt = self.channelZControl().receive({ [weak self] _ in receiver(self?.objectValue) })
-            return { receipt.cancel() }
+            return ReceiptObject(receipt: receipt)
         }
 
         return nil

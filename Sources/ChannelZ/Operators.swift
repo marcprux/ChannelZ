@@ -31,15 +31,15 @@ infix operator ∞= : AssignmentPrecedence
 
 
 /// Reads the value from the given channel's source that is sourced by an Sink implementation
-public postfix func ∞? <T, S: StateEmitterType>(c: Channel<S, T>)->S.Element { return c.source.value }
+public postfix func ∞? <T, S: StateEmitterType>(c: Channel<S, T>)->S.Value { return c.source.value }
 postfix operator ∞?
 
 
 /// Increments the value of the source of the channel; works, but only when we define one of them
-//public postfix func ++ <T, S: ReceiverType where S.Element == Int>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
-//public postfix func ++ <T, S: ReceiverType where S.Element == Int8>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
-//public postfix func ++ <T, S: ReceiverType where S.Element == Int16>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
-//public postfix func ++ <T, S: ReceiverType where S.Element == Float>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + Float(1.0) }
+//public postfix func ++ <T, S: ReceiverType where S.Value == Int>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: ReceiverType where S.Value == Int8>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: ReceiverType where S.Value == Int16>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + 1 }
+//public postfix func ++ <T, S: ReceiverType where S.Value == Float>(channel: Channel<S, T>)->Void { channel ∞= channel∞? + Float(1.0) }
 
 
 // MARK: Operators that create state channels
@@ -54,25 +54,25 @@ postfix operator ∞
 // MARK: Prefix operators 
 
 /// Creates a channel from the given state source such that emits items for every state operation
-public prefix func ∞ <S: StateEmitterType, T>(source: S)->Channel<S, T> where S.Element == T {
+public prefix func ∞ <S: StateEmitterType, T>(source: S)->Channel<S, T> where S.Value == T {
     return source.transceive().new()
 }
 
 /// Creates a distinct sieved channel from the given Equatable state source such that only state changes are emitted
 ///
 /// - See: `Channel.changes`
-public prefix func ∞= <S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T> where S.Element == T {
+public prefix func ∞= <S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T> where S.Value == T {
     return source.transceive().sieve().new()
 }
 
-prefix func ∞?=<S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T?> where S.Element: _OptionalType, T == S.Element.Wrapped {
+prefix func ∞?=<S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T?> where S.Value: _OptionalType, T == S.Value.Wrapped {
 
-    let wrappedState: Channel<S, Mutation<S.Element>> = source.transceive()
+    let wrappedState: Channel<S, Mutation<S.Value>> = source.transceive()
 
     // each of the three following statements should be equivalent, but they return subtly different results! Only the first is correct.
     let unwrappedState: Channel<S, Mutation<T?>> = wrappedState.map({ pair in Mutation(old: pair.old?.toOptional(), new: pair.new.toOptional()) })
 //    let unwrappedState: Channel<S, (old: T??, new: T?)> = wrappedState.map({ pair in (pair.old?.map({$0}), pair.new.map({$0})) })
-//    func unwrap(pair: (S.Element?, S.Element)) -> (old: T??, new: T?) { return (pair.old?.unwrap, pair.new.unwrap) }
+//    func unwrap(pair: (S.Value?, S.Value)) -> (old: T??, new: T?) { return (pair.old?.unwrap, pair.new.unwrap) }
 //    let unwrappedState: Channel<S, (old: T??, new: T?)> = wrappedState.map({ pair in unwrap(pair) })
 
     let notEqual: Channel<S, Mutation<T?>> = unwrappedState.filter({ pair in pair.old == nil || pair.old! != pair.new })
@@ -119,7 +119,7 @@ infix operator ∞=> : AssignmentPrecedence
 /// changed, the other side is updated
 /// This is the operator form of `bind`
 @discardableResult
-public func <=∞=> <S1, S2, T1, T2>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt where S1: TransceiverType, S2: TransceiverType, S1.Element == T2, S2.Element == T1, S1.Element: Equatable, S2.Element: Equatable { return r1.bind(r2) }
+public func <=∞=> <S1, S2, T1, T2>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt where S1: TransceiverType, S2: TransceiverType, S1.Value == T2, S2.Value == T1, S1.Value: Equatable, S2.Value: Equatable { return r1.bind(r2) }
 infix operator <=∞=> : AssignmentPrecedence
 
 /// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is

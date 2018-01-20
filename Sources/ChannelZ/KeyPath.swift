@@ -259,10 +259,47 @@ public final class KeyValueTransceiver<O: NSObject, T>: TransceiverType {
     }
 }
 
+/// A receipt implementation; itentical to ReceiptOf, except it extends from NSObject, and so can be used with bindings
+open class ReceiptObject: NSObject, Receipt {
+    open var cancelled: Bool { return cancelCounter.get() > 0 }
+    fileprivate let cancelCounter: Counter = 0
+    
+    let canceler: () -> ()
+    
+    public init(canceler: @escaping () -> ()) {
+        self.canceler = canceler
+    }
+    
+    /// Creates a Receipt backed by one or more other Receipts
+    public init(receipts: [Receipt]) {
+        // no receipts means that it is cancelled already
+        if receipts.count == 0 { cancelCounter.set(1) }
+        self.canceler = { for s in receipts { s.cancel() } }
+    }
+    
+    /// Creates a Receipt backed by another Receipt
+    public convenience init(receipt: Receipt) {
+        self.init(receipts: [receipt])
+    }
+    
+    /// Creates an empty cancelled Receipt
+    public convenience override init() {
+        self.init(receipts: [])
+    }
+    
+    /// Disconnects this receipt from the source observable
+    open func cancel() {
+        // only cancel the first time
+        if cancelCounter.increment() == 1 {
+            canceler()
+        }
+    }
+}
+
 /// Optional protocol for target objects to implement when they need to supplement key-value observing with additional events
 @objc public protocol KeyValueChannelSupplementing {
     /// Add additional observers for the specified keyPath, returning the unsubscriber for any supplements
-    func supplementKeyValueChannel(_ forKeyPath: String, subscription: (AnyObject?) -> ()) -> (() -> ())?
+    func supplementKeyValueChannel(_ forKeyPath: String, subscription: (AnyObject?) -> ()) -> ReceiptObject?
 }
 
 
@@ -443,8 +480,6 @@ extension NSNumber : ConduitNumericCoercible {
 /// not be received), so the `ChannelController` overrides the KVO management routines
 /// in order to handle a strongly-typed values.
 public final class ChannelController<T> : NSObject, TransceiverType {
-    public static var defaultKey: String { return "value" }
-
     public typealias State = Mutation<T?>
     private let receivers = ReceiverQueue<State>()
     // map of KVO observers
@@ -481,6 +516,10 @@ public final class ChannelController<T> : NSObject, TransceiverType {
             return self.receivers.addReceipt(rcvr)
         }
     }
+
+//    public func observe<Value>(_ keyPath: KeyPath<ChannelController<T>, Value>, options: NSKeyValueObservingOptions, changeHandler: @escaping (ChannelController<T>, NSKeyValueObservedChange<Value>) -> Void) -> NSKeyValueObservation {
+//
+//    }
 
     public override func addObserver(_ observer: NSObject, forKeyPath keyPath: String, options: NSKeyValueObservingOptions, context: UnsafeMutableRawPointer?) {
         if keyPath == self.key, let context = context {
