@@ -174,18 +174,18 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
 
     /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
     /// channel can modify sub-elements of a complex data structure
-    public func focus<X>(_ lens: Lens<Value, X>) -> FocusChannel<X> {
+    public func focus<X>(lens: Lens<Value, X>) -> FocusChannel<X> {
         return LensSource(channel: self, lens: lens).transceive()
     }
 
     /// Constructs a Lens channel using a getter and an inout setter
     public func focus<X>(_ kp: WritableKeyPath<Value, X>) -> FocusChannel<X> {
-        return focus(Lens(kp: kp))
+        return focus(lens: Lens(kp: kp))
     }
 
     /// Constructs a Lens channel using a getter and an inout setter
     public func focus<X>(get: @escaping (Value) -> X, set: @escaping (inout Value, X) -> ()) -> FocusChannel<X> {
-        return focus(Lens(get: get, set: set))
+        return focus(lens: Lens(get: get, set: set))
     }
 
 //    public func focuz<X>(_ get: @escaping (Value) -> X) -> (_ set: @escaping (inout Value, X) -> ()) -> FocusChannel<X> {
@@ -194,8 +194,22 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
 
     /// Constructs a Lens channel using a getter and a tranformation setter
     public func focus<X>(get: @escaping (Value) -> X, create: @escaping (Value, X) -> Value) -> FocusChannel<X> {
-        return focus(Lens(get: get, create: create))
+        return focus(lens: Lens(get: get, create: create))
     }
+}
+
+public extension ChannelType where Source : TransceiverType, Pulse: MutationType, Pulse.Value == Source.Value {
+
+    /// Creates an optionally casting prism focus
+    public func cast<T>(_ type: T.Type) -> FocusChannel<T?> {
+        let optionalLens = Lens<Value, T?>(get: { $0 as? T }, set: { (x: inout Value, y: T?) in
+            if let z = y as? Value {
+                x = z
+            }
+        })
+        return focus(lens: optionalLens)
+    }
+
 }
 
 public extension ChannelType where Source : LensSourceType {
@@ -233,7 +247,7 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
             updater((elements, locator.source.value), values).0
         }
 
-        let sel = focus(lens)
+        let sel = focus(lens: lens)
 
         return sel.either(locator).resource({ $0.0 }).map {
             switch $0 {
@@ -359,7 +373,7 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
             return target
         })
         
-        return focus(lens)
+        return focus(lens: lens)
     }
     
     /// Creates a prism lens channel, allowing access to a collection's mapped lens
@@ -373,7 +387,7 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
                 }
             }
         }
-        return focus(prismLens)
+        return focus(lens: prismLens)
     }
     
     /// Creates a prism lens channel from the given keypath, allowing access to a collection's mapped lens
@@ -387,7 +401,7 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
             (elements: inout Value, values: Value.SubSequence) in
             elements.replaceSubrange(range, with: Array(values))
         }
-        return focus(rangeLens)
+        return focus(lens: rangeLens)
     }
 }
 
@@ -499,7 +513,7 @@ public extension ChannelType where Source.Value : KeyIndexed, Source : Transceiv
                 return target
         })
 
-        return focus(lens)
+        return focus(lens: lens)
     }
 }
 

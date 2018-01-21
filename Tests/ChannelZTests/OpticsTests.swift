@@ -32,6 +32,8 @@ struct Person {
     var homeAddress: Address
     var workAddress: Address?
     var previousAddresses: [Address]
+    var thing: Thing?
+    
     enum Gender { case male, female }
 }
 
@@ -41,109 +43,32 @@ struct Address {
     var postalCode: String
 }
 
-extension Directory : Focusable {
-//    static let authorZ = lenZ(\.author)
-//    static let companiesZ = lenZ(\.companies)
+protocol Thing {
 }
 
-//extension ChannelType where Source.Element == Directory, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
-//    var authorZ: LensChannel<Self, Person> { return focus(Directory.authorZ) }
-//    var companiesZ: LensChannel<Self, [Company]> { return focus(Directory.companiesZ) }
-//}
-
-extension Company : Focusable {
-//    static let addressZ = lenZ(\.address)
-//    static let employeesZ = lenZ(\.employees)
-//    static let ceoIDZ = lenZ(\.ceoID)
-//    static let ctoIDZ = lenZ(\.ctoID)
+enum BinaryThing : Thing {
+    case trueThing
+    case falseThing
 }
 
-//extension ChannelType where Source.Element == Company, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
-//    var addressZ: LensChannel<Self, Address> { return focus(Company.addressZ) }
-//    var employeesZ: LensChannel<Self, [PersonID: Person]> { return focus(Company.employeesZ) }
-//    var ceoIDZ: LensChannel<Self, PersonID> { return focus(Company.ceoIDZ) }
-//    var ctoIDZ: LensChannel<Self, PersonID?> { return focus(Company.ctoIDZ) }
-//}
-
-extension Person : Focusable {
-//    static let firstNameZ = lenZ(\.firstName)
-//    static let lastNameZ = lenZ(\.lastName)
-//    static let genderZ = lenZ(\.gender)
-//    static let homeAddressZ = lenZ(\.homeAddress)
-//    static let workAddressZ = lenZ(\.workAddress)
-//    static let previousAddressesZ = lenZ(\.previousAddresses)
+extension NSNull : Thing {
 }
 
-//extension Lens {
-//    func focus<C: ChannelType>(_ channel: C) -> LensChannel<A, B> where C.Source.Element == A, C.Source : TransceiverType, C.Pulse : MutationType, C.Pulse.Element == C.Source.Element {
-//        fatalError()
-////        return channel.focus(lens: self)
-//    }
-//}
-
-//extension ChannelType where Source.Element == Person, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
-////    var XXX = Person.firstNameZ.focus(self)
-//    var firstNameZ: LensChannel<Self, String> { return focus(Person.firstNameZ) }
-//    var lastNameZ: LensChannel<Self, String> { return focus(Person.lastNameZ) }
-//    var genderZ: LensChannel<Self, Person.Gender> { return focus(Person.genderZ) }
-//    var homeAddressZ: LensChannel<Self, Address> { return focus(Person.homeAddressZ) }
-//    var workAddressZ: LensChannel<Self, Address?> { return focus(Person.workAddressZ) }
-//    var previousAddressesZ: LensChannel<Self, [Address]> { return focus(Person.previousAddressesZ) }
-//}
-
-extension Address : Focusable {
-//    static let line1Z = lenZ(\.line1)
-//    static let line2Z = lenZ(\.line2)
-//    static let postalCodeZ = lenZ(\.postalCode)
+struct StringThing : Thing, LosslessStringConvertible {
+    var description: String
+    
+    public init?(_ description: String) {
+        self.description = description
+    }
 }
 
-//extension ChannelType where Source.Element == Address, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
-//    var line1Z: LensChannel<Self, String> { return focus(Address.line1Z) }
-//    var line2Z: LensChannel<Self, String?> { return focus(Address.line2Z) }
-//    var postalCodeZ: LensChannel<Self, String> { return focus(Address.postalCodeZ) }
-//}
-
-//extension ChannelType where Source.Element == Address?, Source : TransceiverType, Pulse : MutationType, Pulse.Element == Source.Element {
-//    var line1Z: LensChannel<Self, String?> {
-//        let xxx: Lens<Address?, String> = Address.line1Z.maybe()
-//        let yyy = focus(lens: xxx)
-//        return yyy
-//    }
-////    var line1Z: LensChannel<Self, String?> { return focus(lens: Address.line1Z.maybe()) }
-////    var line2Z: LensChannel<Self, String??> { return focus(lens: Address.line2Z.maybe()) }
-////    var postalCodeZ: LensChannel<Self, String?> { return focus(lens: Address.postalCodeZ.maybe()) }
-//}
-
-extension ChannelType where Source.Value == Address?, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
-//    var line1Z: LensChannel<Self, String?> { return focus(get: { a in a?.line1 }, set: { (a: inout Address?, b: String?) in if let b = b { a?.line1 = b } }) }
-//    var line2Z: LensChannel<Self, String??> { return focus(get: { a in a?.line2 }, set: { (a: inout Address?, b: String??) in if let b = b { a?.line2 = b } }) }
-
-//    var line2Z: LensChannel<Self, String??> { return focus({ $0?.line2 }, { if let value = $1 { $0?.line2 = value }  }) }
-//    var postalCodeZ: LensChannel<Self, String?> { return focus({ $0?.postalCode }, { if let value = $1 { $0?.postalCode = value }  }) }
+class AnyThing<T> : Thing {
+    var it: T
+    
+    public init(_ it: T) {
+        self.it = it
+    }
 }
-
-
-////protocol Focusable {
-////
-////}
-////
-////extension Focusable {
-////    static func lens<B>(lens: Lens<Self, B>) -> Lens<Self, B> {
-////        return lens
-////    }
-////
-////    static func lensZ<X, Source : StateEmitterType where Source.Element == Self>(lens: Lens<Self, X>) -> Channel<Source, Mutation<Source.Element>> -> Channel<LensSource<Channel<Source, Mutation<Source.Element>>, X>, Mutation<X>> {
-////        return { channel in focus(channel)(lens) }
-////    }
-////
-////    static func focus<X, Source : StateEmitterType where Source.Element == Self>(channel: Channel<Source, Mutation<Source.Element>>) -> (Lens<Source.Element, X>) -> Channel<LensSource<Channel<Source, Mutation<Source.Element>>, X>, Mutation<X>> {
-////        return channel.focus
-////    }
-////}
-////
-////extension Person : Focusable {
-////    static let firstNameX = Person.lens(Lens({ $0.firstName }, { $0.firstName = $1 }))
-////}
 
 class OpticsTests : ChannelTestCase {
     func createModel() -> Directory {
@@ -151,7 +76,8 @@ class OpticsTests : ChannelTestCase {
                           gender: .female,
                           homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
                           workAddress: nil,
-                          previousAddresses: [])
+                          previousAddresses: [],
+                          thing: NSNull())
         
         let dir = Directory(author: bebe,
                             companies: [
@@ -160,7 +86,8 @@ class OpticsTests : ChannelTestCase {
                                                      gender: .male,
                                                      homeAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
                                                      workAddress: Address(line1: "123 Finite Loop", line2: nil, postalCode: "11223"),
-                                                     previousAddresses: [])
+                                                     previousAddresses: [],
+                                                     thing: NSNull())
                                     ],
                                         ceoID: "359414",
                                         ctoID: nil,
@@ -252,7 +179,7 @@ class OpticsTests : ChannelTestCase {
 
             var lines: [String?] = []
 
-            prevZ.index(1).focus(Lens(kp: \.line1).prism).sieve().new().receive({ lines.append($0) })
+            prevZ.index(1).focus(lens: Lens(kp: \.line1).prism).sieve().new().receive({ lines.append($0) })
             //prevZ.focus(\.[1].line1).sieve().new().receive({ lines.append($0) }) // works, but crashes when getting with no index #1
 
             XCTAssertEqual(0, bebeZ.value.previousAddresses.count)
@@ -352,8 +279,8 @@ class OpticsTests : ChannelTestCase {
 
             let doeHome = Address(line1: "123 Doe Lane", line2: nil, postalCode: "44556")
 
-            company.focus(\.employees).value["888888"] = Person(firstName: "John", lastName: "Doe", gender: .male, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
-            company.focus(\.employees).value["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .female, homeAddress: doeHome, workAddress: nil, previousAddresses: [])
+            company.focus(\.employees).value["888888"] = Person(firstName: "John", lastName: "Doe", gender: .male, homeAddress: doeHome, workAddress: nil, previousAddresses: [], thing: BinaryThing.trueThing)
+            company.focus(\.employees).value["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .female, homeAddress: doeHome, workAddress: nil, previousAddresses: [], thing: BinaryThing.trueThing)
 
             XCTAssertEqual(dirZ.value.companies.flatMap({ $0.employees.values }).count, 3)
 
@@ -413,6 +340,59 @@ class OpticsTests : ChannelTestCase {
             XCTAssertEqual(company.focus(\.employees).value["888888"]?.lastName, "D")
             XCTAssertEqual(company.focus(\.employees).value["999999"]?.lastName, "E")
             
+            // protocol-based value casting
+            do {
+                let thingZ = bebeZ.focus(\.thing)
+                let thingAsStringZ = thingZ.cast(StringThing.self)
+                let thingAsBinaryZ = thingZ.cast(BinaryThing.self)
+                let thingAsNullZ = thingZ.cast(NSNull.self)
+                let thingAsXThingZ = thingZ.cast(AnyThing<Int>.self)
+
+                thingZ.value = BinaryThing.falseThing
+                XCTAssertNil(thingAsStringZ.value)
+                XCTAssertNotNil(thingAsBinaryZ.value)
+                XCTAssertEqual(thingAsBinaryZ.value, .falseThing)
+                XCTAssertNil(thingAsNullZ.value)
+                XCTAssertNil(thingAsXThingZ.value)
+
+                thingZ.value = NSNull()
+                XCTAssertNil(thingAsStringZ.value)
+                XCTAssertNil(thingAsBinaryZ.value)
+                XCTAssertNotNil(thingAsNullZ.value)
+                XCTAssertNil(thingAsXThingZ.value)
+
+                thingZ.value = StringThing("Hello")
+                XCTAssertEqual(thingAsStringZ.value?.description, "Hello")
+                XCTAssertNil(thingAsBinaryZ.value)
+                XCTAssertNil(thingAsNullZ.value)
+                XCTAssertNil(thingAsXThingZ.value)
+
+                thingZ.value = AnyThing<Int>(5)
+                XCTAssertNil(thingAsStringZ.value)
+                XCTAssertNil(thingAsBinaryZ.value)
+                XCTAssertNil(thingAsNullZ.value)
+                XCTAssertNotNil(thingAsXThingZ.value)
+                XCTAssertEqual(thingAsXThingZ.value?.it, 5)
+
+                thingAsStringZ.value = StringThing("Goodbye")
+                XCTAssertEqual(thingAsStringZ.value?.description, "Goodbye")
+                XCTAssertNil(thingAsBinaryZ.value)
+                XCTAssertNil(thingAsNullZ.value)
+                XCTAssertNil(thingAsXThingZ.value)
+
+                thingZ.value = BinaryThing.trueThing
+                XCTAssertNil(thingAsStringZ.value)
+                XCTAssertNotNil(thingAsBinaryZ.value)
+                XCTAssertEqual(thingAsBinaryZ.value, .trueThing)
+                XCTAssertNil(thingAsNullZ.value)
+                XCTAssertNil(thingAsXThingZ.value)
+
+                thingZ.value = .none
+                XCTAssertNil(thingAsStringZ.value)
+                XCTAssertNil(thingAsBinaryZ.value)
+                XCTAssertNil(thingAsNullZ.value)
+                XCTAssertNil(thingAsXThingZ.value)
+            }
             
             do {
                 // now check indexed channels
