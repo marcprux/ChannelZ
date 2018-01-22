@@ -437,4 +437,152 @@ class OpticsTests : ChannelTestCase {
 
         }
     }
+    
+    /// Tests optical views into immutable models using channels
+    func testOpticals() {
+        
+        
+        class OpticalDirectory<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Value == Directory {
+            let optic: T
+
+            lazy var authorZ = optic.focus(\.author)
+            lazy var companiesZ = optic.focus(\.companies)
+
+            lazy var author = OpticalPerson(authorZ)
+
+            required init(_ optic: T) {
+                self.optic = optic
+            }
+
+        }
+        
+        class OpticalCompany<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Value == Company {
+            let optic: T
+            
+            lazy var employeesZ = optic.focus(\.employees)
+            lazy var ceoIDZ = optic.focus(\.ceoID)
+            lazy var ctoIDZ = optic.focus(\.ctoID)
+            lazy var addressZ = optic.focus(\.address)
+            
+            required init(_ optic: T) {
+                self.optic = optic
+            }
+        }
+        
+        class OpticalPerson<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Value == Person {
+            let optic: T
+            
+            lazy var firstNameZ = optic.focus(\.firstName)
+            lazy var lastNameZ = optic.focus(\.lastName)
+            lazy var genderZ = optic.focus(\.gender)
+            lazy var homeAddressZ = optic.focus(\.homeAddress)
+            lazy var workAddressZ = optic.focus(\.workAddress)
+            lazy var previousAddressesZ = optic.focus(\.previousAddresses)
+            lazy var thingZ = optic.focus(\.thing)
+            
+            required init(_ optic: T) {
+                self.optic = optic
+            }
+            
+            /// Shorten the first and last names to just the first initials
+            func abbreviateName() {
+                firstNameZ.value = firstNameZ.value.first.flatMap(String.init) ?? ""
+                lastNameZ.value = lastNameZ.value.first.flatMap(String.init) ?? ""
+            }
+        }
+        
+        class OpticalAddress<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Value == Address {
+            let optic: T
+            
+            lazy var line1Z = optic.focus(\.line1)
+            lazy var line2Z = optic.focus(\.line2)
+            lazy var postalCodeZ = optic.focus(\.postalCode)
+
+            required init(_ optic: T) {
+                self.optic = optic
+            }
+        }
+        
+        let dir = transceive(createModel())
+        let odir = OpticalDirectory(dir)
+
+        let um = UndoManager()
+        um.groupsByEvent = false
+        um.levelsOfUndo = Int.max
+        
+        XCTAssertEqual(odir.author.firstNameZ.value, "Beatrice")
+        XCTAssertEqual(odir.author.firstNameZ.value, odir.authorZ.value.firstName)
+        
+        // the author optical can perform state changes that will be seen by the owning opticals
+        odir.author.undoable(um) { $0.abbreviateName() }
+        
+        XCTAssertEqual(odir.author.firstNameZ.value, "B")
+        XCTAssertEqual(odir.author.firstNameZ.value, odir.optic.value.author.firstName)
+        
+        for _ in 1...10 {
+            um.undo()
+            XCTAssertEqual(odir.author.firstNameZ.value, "Beatrice")
+            XCTAssertEqual(odir.author.firstNameZ.value, odir.optic.value.author.firstName)
+
+            um.redo()
+            XCTAssertEqual(odir.author.firstNameZ.value, "B")
+            XCTAssertEqual(odir.author.firstNameZ.value, odir.optic.value.author.firstName)
+        }
+
+        odir.undoable(um) { $0.author.firstNameZ.value = "X" }
+        XCTAssertEqual(odir.author.firstNameZ.value, "X")
+        odir.undoable(um) { $0.author.firstNameZ.value = "Y" }
+        XCTAssertEqual(odir.author.firstNameZ.value, "Y")
+        odir.undoable(um) { $0.author.firstNameZ.value = "Z" }
+        XCTAssertEqual(odir.author.firstNameZ.value, "Z")
+
+        um.undo()
+        XCTAssertEqual(odir.author.firstNameZ.value, "Y")
+        um.undo()
+        XCTAssertEqual(odir.author.firstNameZ.value, "X")
+        um.undo()
+        XCTAssertEqual(odir.author.firstNameZ.value, "B")
+
+        
+        for i in 1...10 {
+            odir.author.undoable(um) { $0.firstNameZ.value = "\(i)" }
+        }
+        XCTAssertEqual(odir.author.firstNameZ.value, "10")
+
+        for i in (1...9).reversed() {
+            um.undo()
+            XCTAssertEqual(odir.author.firstNameZ.value, "\(i)")
+        }
+
+        for i in 2...10 {
+            um.redo()
+            XCTAssertEqual(odir.author.firstNameZ.value, "\(i)")
+        }
+
+    }
+
+}
+
+protocol Optical : class {
+    associatedtype T: ChannelType where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value
+
+    var optic: T { get }
+    
+    init(_ optical: T)
+}
+
+extension Optical {
+    /// Performs the given state-mutating operation in an undoable context
+    func undoable(_ um: UndoManager, actionName: String? = nil, _ f: @escaping (Self) -> ()) {
+        um.beginUndoGrouping()
+        defer { um.endUndoGrouping() }
+
+        um.registerUndo(withTarget: self, handler: { [prev = self.optic.value] (this) -> Void in
+            let cur = this.optic.value // remember the current value for re-doing
+            this.undoable(um, actionName: actionName) { this2 in this2.optic.value = cur } // recursively register how to undo the undo
+            this.optic.value = prev // when we undo, all we need to do is restore the optic's previos value
+        })
+        if let actionName = actionName { um.setActionName(actionName) }
+        f(self) // perform the action
+    }
 }

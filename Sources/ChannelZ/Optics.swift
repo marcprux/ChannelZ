@@ -170,7 +170,7 @@ public struct PrismSource<C: ChannelType, T>: LensSourceType where C.Source : Tr
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Pulse: MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
 
     /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
     /// channel can modify sub-elements of a complex data structure
@@ -198,7 +198,7 @@ public extension ChannelType where Source : TransceiverType, Pulse: MutationType
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Pulse: MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
 
     /// Creates an optionally casting prism focus
     public func cast<T>(_ type: T.Type) -> FocusChannel<T?> {
@@ -219,7 +219,7 @@ public extension ChannelType where Source : LensSourceType {
 
 // MARK: Jacket Channel extensions for Lens/Prism/Optional access
 
-public extension ChannelType where Source.Value : _WrapperType, Source : TransceiverType, Pulse: MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.Value : _WrapperType, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the result of the constructor function
@@ -234,7 +234,7 @@ public extension ChannelType where Source.Value : _WrapperType, Source : Transce
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Pulse: MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
 
     /// Given two channels that can find and update values based on the specified getters & updaters, create
     /// a `Transceiver` channel that provides access to the underlying merged elements.
@@ -405,7 +405,7 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
     }
 }
 
-public extension ChannelType where Source.Value : MutableCollection, Source : TransceiverType, Pulse: MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.Value : MutableCollection, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
@@ -425,7 +425,7 @@ public extension ChannelType where Source.Value : MutableCollection, Source : Tr
 @available(*, deprecated, message: "crashes always!")
 func todo<T>() -> T { fatalError("TODO: \(T.self)") }
 
-public extension ChannelType where Source.Value : KeyIndexed & Collection, Source.Value.Index : KeyIndexedIndexType, Source.Value.Key == Source.Value.Index.Key, Source.Value.Value == Source.Value.Index.Value, Source : TransceiverType, Pulse: MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.Value : KeyIndexed & Collection, Source.Value.Index : KeyIndexedIndexType, Source.Value.Key == Source.Value.Index.Key, Source.Value.Value == Source.Value.Index.Value, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
@@ -501,7 +501,7 @@ extension DictionaryIndex : KeyIndexedIndexType {
 
 }
 
-public extension ChannelType where Source.Value : KeyIndexed, Source : TransceiverType, Pulse: MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.Value : KeyIndexed, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
     /// Creates a state channel to the given key in the underlying `KeyIndexed` dictionary
     public func at(_ key: Value.Key) -> FocusChannel<Value.Value?> {
 

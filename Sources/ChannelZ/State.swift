@@ -46,10 +46,19 @@ public struct Mutation<T> : MutationType {
     }
 }
 
-public extension ChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.Value == Source.Value {
+/// A channel whose source and pulse are both value types and whose types are the same
+public protocol TransceiverChannelType : ChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.Value == Source.Value {
+    associatedtype Value = Source.Value
+}
+
+extension ChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.Value == Source.Value {
     /// The value for both the source and the pulse when the channel represent Valuables of the same types
     public typealias Value = Pulse.Value
 }
+
+/// Swift 4.1 TODO: conditional conformance to tranceiver type will allow us to just do "extension TransceiverChannelType" rather than the current "extension ChannelType where Source : TransceiverType, Pulse: MutationType, Pulse.Value == Source.Value"
+//extension Channel : TransceiverChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.Value == Source.Value {
+//}
 
 /// Abstraction of a source that can create a channel that emits a tuple of old & new state values,
 /// and provides readable access to the "current" underlying state.
@@ -491,8 +500,8 @@ public extension ChannelType where Pulse : _WrapperType {
 //public extension ChannelType where Source : StateEmitterType {
 //      FIXME: creates an ambiguity with the Source : TransceiverType variant
 //    /// A Channel whose source is a `StateEmitterType` can get its value directly
-//    public var $ : Source.Value {
-//        get { return source.$ }
+//    public var value : Source.Value {
+//        get { return source.value }
 //    }
 //}
 
