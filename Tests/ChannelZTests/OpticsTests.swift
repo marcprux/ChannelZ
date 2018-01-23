@@ -546,25 +546,34 @@ class OpticsTests : ChannelTestCase {
         
         let fullNames = odir.author.fullNameZ.new().trap()
         
+        let schan1 = transceive("")
+        let schan2 = transceive("")
+        schan1.link(schan2)
+        odir.author.firstNameZ.link(schan2)
+
         XCTAssertEqual(fullNames.value, "Beatrice Walter")
         XCTAssertEqual(odir.author.firstNameZ.value, "Beatrice")
         XCTAssertEqual(odir.author.firstNameZ.value, odir.authorZ.value.firstName)
         
         // the author optical can perform state changes that will be seen by the owning opticals
+        XCTAssertEqual(0, undoCounter)
         odir.author.undoable(um) { $0.abbreviateName() }
-        
+        XCTAssertEqual(1, undoCounter)
         XCTAssertEqual(odir.author.firstNameZ.value, "B")
         XCTAssertEqual(odir.author.firstNameZ.value, odir.optic.value.author.firstName)
         XCTAssertEqual(fullNames.value, "B W")
 
-        for _ in 1...10 {
+        for i in 1...10 {
             um.undo()
+            XCTAssertEqual((i*2), undoCounter)
             XCTAssertEqual(odir.author.firstNameZ.value, "Beatrice")
+            XCTAssertEqual(schan1.value, "Beatrice")
             XCTAssertEqual(odir.author.firstNameZ.value, odir.optic.value.author.firstName)
             XCTAssertEqual(fullNames.value, "Beatrice Walter")
 
             um.redo()
             XCTAssertEqual(odir.author.firstNameZ.value, "B")
+            XCTAssertEqual(schan1.value, "B")
             XCTAssertEqual(odir.author.firstNameZ.value, odir.optic.value.author.firstName)
             XCTAssertEqual(fullNames.value, "B W")
         }
@@ -601,6 +610,8 @@ class OpticsTests : ChannelTestCase {
     }
 }
 
+var undoCounter = 0
+
 public extension Optical {
     /// Performs the given state-mutating operation in an undoable context
     func undoable(_ um: UndoManager, actionName: String? = nil, _ f: @escaping (Self) -> ()) {
@@ -613,6 +624,7 @@ public extension Optical {
             this.optic.value = prev // when we undo, all we need to do is restore the optic's previos value
         })
         if let actionName = actionName { um.setActionName(actionName) }
+        undoCounter += 1
         f(self) // perform the action
     }
 }

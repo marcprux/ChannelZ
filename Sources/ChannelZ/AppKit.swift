@@ -91,7 +91,7 @@ public extension NSControl { // : KeyValueChannelSupplementing {
             options[NSBindingOption.nullPlaceholder] = options[NSBindingOption.nullPlaceholder] ?? nullValue
         }
         let controller = controller ?? ChannelController(value: value, key: keyPath)
-        self.bind(name, to: controller, withKeyPath: controller.key, options: options)
+        self.bind(name, to: controller, withKeyPath: keyPath, options: options)
         return controller
     }
 
