@@ -322,10 +322,10 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
         }
     }
     
-    /// Combines this collection state source with a channel of indices and combines them into a prism
+    /// Combines this collection state source with a channel of a single index and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be silently ignored.
-    public func indexOf<C: ChannelType>(_ index: C) -> LensChannel<FocusChannel<Value>, Value.Element?> where C.Source : TransceiverType, C.Pulse : MutationType, C.Source.Value == C.Pulse.Value, C.Source.Value == Source.Value.Index? {
+    public func index<C: ChannelType>(_ index: C) -> LensChannel<FocusChannel<Value>, Value.Element?> where C.Source : TransceiverType, C.Pulse : MutationType, C.Source.Value == C.Pulse.Value, C.Source.Value == Source.Value.Index? {
         
         // TODO: this should return FocusChannel<Value.Element?> instead of LensChannel<FocusChannel<Self.Pulse.Value>, Self.Pulse.Value.Element?>, but since we are relying on the indices function for the subselection implementation, we need to have an extra level of indirection. For example, an integer indexed indexOf currently returns:
         //   Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<[String]>, Mutation<[String]>>, [String]>, Mutation<[String]>>, String?>, Mutation<String?>>
@@ -338,21 +338,21 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
         let ichan: FocusChannel<Value> = self.indices(idx)
         
         // collection channel -> optional channel
-        let zchan: LensChannel<FocusChannel<Value>, Value.Element?> = ichan.focus(get: { c in c.first ?? .none }, set: { c, v in
+        let fchan: LensChannel<FocusChannel<Value>, Value.Element?> = ichan.focus(get: { c in c.first ?? .none }, set: { c, v in
             c.replaceSubrange(c.startIndex..<c.endIndex, with: v.flatMap({ [$0] }) ?? [])
         })
         
-        return zchan
+        return fchan
     }
     
     
     /// Creates a channel to the underlying collection type where the channel creates an optional
-    /// to a given index; setting to nil removes the index, and setting to a certain value
+    /// to a given static index; setting to nil removes the index, and setting to a certain value
     /// sets the index
     ///
     /// - Note: When setting the value of an index outside the current indices, any
     ///         intervening gaps will be filled with the duplicated value
-    public func index(_ index: Value.Index) -> FocusChannel<Value.Element?> {
+    public func indexOf(_ index: Value.Index) -> FocusChannel<Value.Element?> {
         
         let lens: Lens<Value, Value.Element?> = Lens(get: { target in
             target.indices.contains(index) ? target[index] : nil
@@ -447,29 +447,6 @@ public extension ChannelType where Source.Value : KeyIndexed & Collection, Sourc
                 return (dict, dkeys.1)
         })
     }
-
-    // FIXME: replace with identical indexed() function once crashing Swit 3 compiler bug with generic specialization is fixed
-//    private func keyedCRASHES<Join: ChannelType>(_ indices: Join) -> FocusChannel<[Self.Pulse.Value.Value?]> where Join.Source : StateEmitterType, Join.Source.Value : Sequence, Join.Source.Value.Element == Source.Value.Key, Join.Pulse : MutationType, Join.Pulse.Value == Join.Source.Value {
-//
-//        func subselect(_ dict: Pulse.Value, keys: Join.Pulse.Value) -> [Pulse.Value.Element?] {
-//
-//            var values: [Value.Value?] = []
-//            for key in keys {
-//                values.append(dict[key])
-//            }
-//            return values
-//        }
-//
-//        func update(_ vk: (dict: Value, keys: Join.Value), values: [Value.Element?]) -> (Value, Join.Value) {
-//            var dict = vk.dict
-//            for (key, value) in Swift.zip(vk.keys, values) {
-//                dict[key] = value
-//            }
-//            return (dict, vk.keys)
-//        }
-//
-//        return join(indices, finder: find, updater: update)
-//    }
 }
 
 
@@ -503,7 +480,7 @@ extension DictionaryIndex : KeyIndexedIndexType {
 
 public extension ChannelType where Source.Value : KeyIndexed, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
     /// Creates a state channel to the given key in the underlying `KeyIndexed` dictionary
-    public func at(_ key: Value.Key) -> FocusChannel<Value.Value?> {
+    public func atKey(_ key: Value.Key) -> FocusChannel<Value.Value?> {
 
         let lens: Lens<Value, Value.Value?> = Lens(get: { target in
             target[key]
@@ -515,6 +492,49 @@ public extension ChannelType where Source.Value : KeyIndexed, Source : Transceiv
 
         return focus(lens: lens)
     }
+
+//    /// Combines this collection state source with a channel of indices and combines them into a prism
+//    /// where the subselection will be issued whenever a change in either the selection or the underlying
+//    /// elements occurs; indices that are invalid or become invalid will be silently ignored.
+//    public func sub<C: ChannelType>(_ index: C) -> FocusChannel<[Value.Value]> where C.Source : TransceiverType, C.Pulse : MutationType, C.Source.Value == C.Pulse.Value, C.Source.Value == [Source.Value.Key] {
+//        return todo()
+//    }
+//
+//    /// Combines this collection state source with a channel of indices and combines them into a prism
+//    /// where the subselection will be issued whenever a change in either the selection or the underlying
+//    /// elements occurs; indices that are invalid or become invalid will be silently ignored.
+//    public func at<C: ChannelType>(_ index: C) -> FocusChannel<Value.Value?> where C.Source : TransceiverType, C.Pulse : MutationType, C.Source.Value == C.Pulse.Value, C.Source.Value == Source.Value.Key? {
+//
+////        return sub.focus(lens: Lens(get: { _ in todo() }, set: { _, _ in todo() }))
+//
+//        // TODO: this should return FocusChannel<Value.Element?> instead of LensChannel<FocusChannel<Self.Pulse.Value>, Self.Pulse.Value.Element?>, but since we are relying on the indices function for the subselection implementation, we need to have an extra level of indirection. For example, an integer indexed indexOf currently returns:
+//        //   Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<[String]>, Mutation<[String]>>, [String]>, Mutation<[String]>>, String?>, Mutation<String?>>
+//        // but it should just return:
+//        //   Channel<LensSource<Channel<ValueTransceiver<[String]>, Mutation<[String]>>, [String]>, Mutation<[String]>>
+//
+////        // optional channel -> collection channel
+////        let idx: C.FocusChannel<[Source.Value.Index]> = index.focus(get: { v in v.flatMap({ [$0] }) ?? [] }, set: { v, c in v = c.first ?? .none })
+////
+////        let ichan: FocusChannel<Value> = self.indices(idx)
+////
+////        // collection channel -> optional channel
+////        let fchan: LensChannel<FocusChannel<Value>, Value.Element?> = ichan.focus(get: { c in c.first ?? .none }, set: { c, v in
+////            c.replaceSubrange(c.startIndex..<c.endIndex, with: v.flatMap({ [$0] }) ?? [])
+////        })
+////
+////        return fchan
+//
+//        return todo()
+//    }
+
+}
+
+public protocol Optical : class {
+    associatedtype T: ChannelType where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value
+    
+    var optic: T { get }
+    
+    init(_ optical: T)
 }
 
 public extension ChannelType where Source.Value : Choose1Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {

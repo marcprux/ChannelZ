@@ -179,15 +179,15 @@ class OpticsTests : ChannelTestCase {
 
             var lines: [String?] = []
 
-            prevZ.index(1).focus(lens: Lens(kp: \.line1).prism).sieve().new().receive({ lines.append($0) })
+            prevZ.indexOf(1).focus(lens: Lens(kp: \.line1).prism).sieve().new().receive({ lines.append($0) })
             //prevZ.focus(\.[1].line1).sieve().new().receive({ lines.append($0) }) // works, but crashes when getting with no index #1
 
             XCTAssertEqual(0, bebeZ.value.previousAddresses.count)
-            prevZ.index(2).coalesce({ _ in defaddr }).focus(\.line1).value = "XYZ"
+            prevZ.indexOf(2).coalesce({ _ in defaddr }).focus(\.line1).value = "XYZ"
             XCTAssertEqual(3, bebeZ.value.previousAddresses.count)
             XCTAssertEqual(["XYZ", "XYZ", "XYZ"], bebeZ.value.previousAddresses.map({ $0.line1 }))
 
-            prevZ.index(1).coalesce({ _ in defaddr }).focus(\.line1).value = "ABC"
+            prevZ.indexOf(1).coalesce({ _ in defaddr }).focus(\.line1).value = "ABC"
             XCTAssertEqual(["XYZ", "ABC", "XYZ"], bebeZ.value.previousAddresses.map({ $0.line1 }))
 
 
@@ -264,13 +264,13 @@ class OpticsTests : ChannelTestCase {
             XCTAssertEqual(["T", "T"], line1sZ.value)
 
             var persons: [Person] = []
-            let company = dirZ.focus(\.companies).index(0).coalesce({ _ in nil as Company! })
+            let company = dirZ.focus(\.companies).indexOf(0).coalesce({ _ in nil as Company! })
 
-            company.focus(\.employees).at("359414").val().some().receive { person in
+            company.focus(\.employees).atKey("359414").val().some().receive { person in
                 persons.append(person)
             }
 
-            let empnameZ = company.focus(\.employees).at("359414").coalesce({ _ in nil as Person! }).focus(\.firstName)
+            let empnameZ = company.focus(\.employees).atKey("359414").coalesce({ _ in nil as Person! }).focus(\.firstName)
             empnameZ.value = "Marcus"
 
             XCTAssertEqual("Marcus", dirZ.value.companies.first?.employees["359414"]?.firstName)
@@ -394,8 +394,7 @@ class OpticsTests : ChannelTestCase {
                 XCTAssertNil(thingAsXThingZ.value)
             }
             
-            do {
-                // now check indexed channels
+            do { // now check indexed channels
                 let arr = transceive(["A", "B", "C"])
                 let idx = transceive([0, 1, 2])
                 let ichan = arr.indices(idx)
@@ -411,13 +410,12 @@ class OpticsTests : ChannelTestCase {
                 XCTAssertEqual([0, 1, 2, 3], idx.value)
             }
             
-            do {
-                // now check single indexed channels
+            do { // now check single indexed channels
                 let arr = transceive(["A", "B", "C"])
                 let idx = transceive(Optional<Int>.some(1))
-                
-                let ichan = arr.indexOf(idx)
-                
+
+                let ichan = arr.index(idx)
+
                 XCTAssertEqual("B", ichan.value)
                 idx.value = 2
                 XCTAssertEqual("C", ichan.value)
@@ -434,6 +432,28 @@ class OpticsTests : ChannelTestCase {
                 arr.value = ["Q"]
                 XCTAssertEqual(nil, ichan.value)
             }
+            
+//            do { // now check index channels to maps
+//                let map = transceive([0: "A", 1: "B", 2: "C"])
+//                let idx = transceive(Optional<Int>.some(1))
+//
+//                let ichan = map.at(idx)
+//                XCTAssertEqual("B", ichan.value)
+//                idx.value = 2
+//                XCTAssertEqual("C", ichan.value)
+//                idx.value = .none
+//                XCTAssertEqual(nil, ichan.value)
+//                idx.value = 0
+//                XCTAssertEqual("A", ichan.value)
+//                idx.value = 8
+//                XCTAssertEqual(nil, ichan.value)
+//                idx.value = 1
+//                XCTAssertEqual("B", ichan.value)
+//                map.value = [0: "X", 1: "Y", 2: "Z"]
+//                XCTAssertEqual("Y", ichan.value)
+//                map.value = [9: "Q"]
+//                XCTAssertEqual(nil, ichan.value)
+//            }
 
         }
     }
@@ -448,7 +468,14 @@ class OpticsTests : ChannelTestCase {
             lazy var authorZ = optic.focus(\.author)
             lazy var companiesZ = optic.focus(\.companies)
 
+            // sub-opticals
+            
             lazy var author = OpticalPerson(authorZ)
+            
+            // derived channels
+            
+            lazy var selectedCompanyIndices = transceive([Int]())
+            lazy var selectedCompanies = companiesZ.indices(selectedCompanyIndices)
 
             required init(_ optic: T) {
                 self.optic = optic
@@ -463,7 +490,11 @@ class OpticsTests : ChannelTestCase {
             lazy var ceoIDZ = optic.focus(\.ceoID)
             lazy var ctoIDZ = optic.focus(\.ctoID)
             lazy var addressZ = optic.focus(\.address)
-            
+
+            // derived channels
+
+//            lazy var ceoPerson = employeesZ.atKey(ceoIDZ)
+
             required init(_ optic: T) {
                 self.optic = optic
             }
@@ -479,6 +510,9 @@ class OpticsTests : ChannelTestCase {
             lazy var workAddressZ = optic.focus(\.workAddress)
             lazy var previousAddressesZ = optic.focus(\.previousAddresses)
             lazy var thingZ = optic.focus(\.thing)
+            
+            /// A channel that produces the current full name
+            lazy var fullNameZ = firstNameZ.combine(lastNameZ).map({ Mutation<String>(old: ($0.0.old ?? "") + " " + ($0.1.old ?? ""), new: $0.0.new + " " + $0.1.new) })
             
             required init(_ optic: T) {
                 self.optic = optic
@@ -510,6 +544,9 @@ class OpticsTests : ChannelTestCase {
         um.groupsByEvent = false
         um.levelsOfUndo = Int.max
         
+        let fullNames = odir.author.fullNameZ.new().trap()
+        
+        XCTAssertEqual(fullNames.value, "Beatrice Walter")
         XCTAssertEqual(odir.author.firstNameZ.value, "Beatrice")
         XCTAssertEqual(odir.author.firstNameZ.value, odir.authorZ.value.firstName)
         
@@ -518,15 +555,18 @@ class OpticsTests : ChannelTestCase {
         
         XCTAssertEqual(odir.author.firstNameZ.value, "B")
         XCTAssertEqual(odir.author.firstNameZ.value, odir.optic.value.author.firstName)
-        
+        XCTAssertEqual(fullNames.value, "B W")
+
         for _ in 1...10 {
             um.undo()
             XCTAssertEqual(odir.author.firstNameZ.value, "Beatrice")
             XCTAssertEqual(odir.author.firstNameZ.value, odir.optic.value.author.firstName)
+            XCTAssertEqual(fullNames.value, "Beatrice Walter")
 
             um.redo()
             XCTAssertEqual(odir.author.firstNameZ.value, "B")
             XCTAssertEqual(odir.author.firstNameZ.value, odir.optic.value.author.firstName)
+            XCTAssertEqual(fullNames.value, "B W")
         }
 
         odir.undoable(um) { $0.author.firstNameZ.value = "X" }
@@ -558,25 +598,15 @@ class OpticsTests : ChannelTestCase {
             um.redo()
             XCTAssertEqual(odir.author.firstNameZ.value, "\(i)")
         }
-
     }
-
 }
 
-protocol Optical : class {
-    associatedtype T: ChannelType where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value
-
-    var optic: T { get }
-    
-    init(_ optical: T)
-}
-
-extension Optical {
+public extension Optical {
     /// Performs the given state-mutating operation in an undoable context
     func undoable(_ um: UndoManager, actionName: String? = nil, _ f: @escaping (Self) -> ()) {
         um.beginUndoGrouping()
         defer { um.endUndoGrouping() }
-
+        
         um.registerUndo(withTarget: self, handler: { [prev = self.optic.value] (this) -> Void in
             let cur = this.optic.value // remember the current value for re-doing
             this.undoable(um, actionName: actionName) { this2 in this2.optic.value = cur } // recursively register how to undo the undo
@@ -586,3 +616,4 @@ extension Optical {
         f(self) // perform the action
     }
 }
+
