@@ -96,6 +96,16 @@ public protocol Receipt : class {
 
     /// Disconnects this receptor from the source
     func cancel()
+    
+    func makeIterator() -> IteratorOverOne<Receipt>
+
+}
+
+public extension Receipt {
+    /// Creates an iterator of receipts
+    public func makeIterator() -> IteratorOverOne<Receipt> {
+        return CollectionOfOne(self).makeIterator()
+    }
 }
 
 // A receipt implementation

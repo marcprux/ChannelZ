@@ -518,6 +518,9 @@ public extension ChannelType where Source : TransceiverType {
     }
 }
 
+//public extension ChannelType where Source : TransceiverType, Pulse : MutationType {
+//}
+
 public extension ChannelType where Source : TransceiverType {
     /// Creates a type-erased `StateEmitterType` with `AnyTransceiver` for this channel
     public func anyTransceiver() -> Channel<AnyTransceiver<Source.Value>, Pulse> {
