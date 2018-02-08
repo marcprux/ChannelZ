@@ -577,11 +577,11 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(sums.2, [0, 1, 3, 6, 10, 15, 21, 28])
         XCTAssertEqual(raws.1, Array(0...7))
 
-        XCTAssertFalse(r0.cancelled)
-        XCTAssertFalse(r1.cancelled)
-        XCTAssertFalse(r2.cancelled)
-        XCTAssertFalse(r3.cancelled)
-        XCTAssertFalse(r4.cancelled)
+        XCTAssertFalse(r0.isCancelled)
+        XCTAssertFalse(r1.isCancelled)
+        XCTAssertFalse(r2.isCancelled)
+        XCTAssertFalse(r3.isCancelled)
+        XCTAssertFalse(r4.isCancelled)
 
     }
 
@@ -696,6 +696,75 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual([2, 3, 4, 6, 6, 9], flatMapped.pullZ())
     }
 
+    func testSequencingResults() {
+        enum SequencingError : Error { case failed }
+        
+        struct T1 { let x: Int }
+        struct T2 { let x: Int }
+        struct T3 { let x: Int }
+        struct T4 { let x: Int }
+
+        let t1 = T1(x: 1)
+        let t2 = T2(x: 2)
+        let t3 = T3(x: 3)
+        let t4 = T4(x: 4)
+        
+        func go<T>(_ t: T) -> Channel<T, Result<T>> { return [Result.success(t)].channelZSequence().resource({ _ in t }) }
+        func no<T>(_ t: T) -> Channel<T, Result<T>> { return [Result.failure(SequencingError.failed)].channelZSequence().resource({ _ in t }) }
+
+        do { // try with no errors
+            let seq1: Channel<T1, (Result<T1>)> = go(t1)
+            let seq2: Channel<T1, (Result<T2>, (Result<T1>))> = seq1.then(go(t2))
+            let seq3: Channel<T1, (Result<T3>, (Result<T2>, (Result<T1>)))> = seq2.then(go(t3))
+            let seq4: Channel<T1, (Result<T4>, (Result<T3>, (Result<T2>, (Result<T1>))))> = seq3.then(go(t4))
+            
+            XCTAssertEqual(4, seq4.pullZ().first?.0.value?.x)
+            XCTAssertEqual(3, seq4.pullZ().first?.1.0.value?.x)
+            XCTAssertEqual(2, seq4.pullZ().first?.1.1.0.value?.x)
+            XCTAssertEqual(1, seq4.pullZ().first?.1.1.1.value?.x)
+        }
+        
+        do { // try with all errors
+            let seq1: Channel<T1, (Result<T1>)> = no(t1)
+            let seq2: Channel<T1, (Result<T2>, (Result<T1>))> = seq1.then(go(t2))
+            let seq3: Channel<T1, (Result<T3>, (Result<T2>, (Result<T1>)))> = seq2.then(go(t3))
+            let seq4: Channel<T1, (Result<T4>, (Result<T3>, (Result<T2>, (Result<T1>))))> = seq3.then(go(t4))
+            
+            XCTAssertNil(seq4.pullZ().first?.0.value)
+            XCTAssertNil(seq4.pullZ().first?.1.0.value)
+            XCTAssertNil(seq4.pullZ().first?.1.1.0.value)
+            XCTAssertNil(seq4.pullZ().first?.1.1.1.value)
+        }
+
+        do { // try with 1 error
+            let seq1: Channel<T1, (Result<T1>)> = go(t1)
+            let seq2: Channel<T1, (Result<T2>, (Result<T1>))> = seq1.then(no(t2))
+            let seq3: Channel<T1, (Result<T3>, (Result<T2>, (Result<T1>)))> = seq2.then(go(t3))
+            let seq4: Channel<T1, (Result<T4>, (Result<T3>, (Result<T2>, (Result<T1>))))> = seq3.then(go(t4))
+            
+            XCTAssertNil(seq4.pullZ().first?.0.value)
+            XCTAssertNil(seq4.pullZ().first?.1.0.value)
+            XCTAssertNil(seq4.pullZ().first?.1.1.0.value)
+            XCTAssertEqual(1, seq4.pullZ().first?.1.1.1.value?.x)
+        }
+
+        do { // try with 1 error
+            let seq1: Channel<T1, (Result<T1>)> = go(t1)
+            let seq2: Channel<T1, (Result<T2>, (Result<T1>))> = seq1.then(go(t2))
+            let seq3: Channel<T1, (Result<T3>, (Result<T2>, (Result<T1>)))> = seq2.then(no(t3))
+            let seq4: Channel<T1, (Result<T4>, (Result<T3>, (Result<T2>, (Result<T1>))))> = seq3.then(go(t4))
+            
+            XCTAssertNil(seq4.pullZ().first?.0.value)
+            XCTAssertNil(seq4.pullZ().first?.1.0.value)
+            XCTAssertEqual(2, seq4.pullZ().first?.1.1.0.value?.x)
+            XCTAssertEqual(1, seq4.pullZ().first?.1.1.1.value?.x)
+        }
+
+
+//        let seqy: Channel<Void, (Result<T4>, (Result<T3>, (Result<T2>, (Result<T1>))))> = go(t1).then(go(t2)).then(go(t3)).then(go(t4))
+
+    }
+
 
     func testFlatMapTransformChannel() {
         let numbers = (1...3).channelZSequence()
@@ -724,9 +793,9 @@ class ChannelTests : ChannelTestCase {
         person.fname.value = "Marc"
         person.lname.value = "Prud'hommeaux"
 
-        XCTAssertFalse(rcpt.cancelled)
+        XCTAssertFalse(rcpt.isCancelled)
         rcpt.cancel()
-        XCTAssertTrue(rcpt.cancelled)
+        XCTAssertTrue(rcpt.isCancelled)
 
         person.fname.value = "John"
         person.lname.value = "Doe"
@@ -949,9 +1018,9 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(3.0, a∞?)
         XCTAssertEqual(3.0, b∞?)
 
-        XCTAssertFalse(pipeline.cancelled)
+        XCTAssertFalse(pipeline.isCancelled)
         pipeline.cancel()
-        XCTAssertTrue(pipeline.cancelled)
+        XCTAssertTrue(pipeline.isCancelled)
 
         // cancelled pipeline shouldn't send state anymore
         a.value = 8
@@ -989,9 +1058,9 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(8.0, a∞?)
         XCTAssertEqual(UInt(8), b∞?)
 
-        XCTAssertFalse(pipeline.cancelled)
+        XCTAssertFalse(pipeline.isCancelled)
         pipeline.cancel()
-        XCTAssertTrue(pipeline.cancelled)
+        XCTAssertTrue(pipeline.isCancelled)
 
         // cancelled pipeline shouldn't send state anymore
         a.value = 1

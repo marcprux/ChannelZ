@@ -98,7 +98,7 @@ public extension StreamType {
 
 /// A TrapReceipt is a receptor to a stream that retains a number of values (default 1) when they are sent by the source
 public final class TrapReceipt<C>: Receipt where C: StreamType {
-    public var cancelled: Bool = false
+    public var isCancelled: Bool = false
     public let stream: C
 
     /// Returns the last value to be added to this trap

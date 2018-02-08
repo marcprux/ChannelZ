@@ -89,10 +89,10 @@ public final class Counter : ExpressibleByIntegerLiteral {
 
 
 /// An `Receipt` is the result of `receive`ing to a Observable or Channel
-public protocol Receipt : class {
+public protocol Receipt {
 
     /// Whether the receipt is cancelled or not
-    var cancelled: Bool { get }
+    var isCancelled: Bool { get }
 
     /// Disconnects this receptor from the source
     func cancel()
@@ -110,7 +110,7 @@ public extension Receipt {
 
 // A receipt implementation
 open class ReceiptOf: Receipt {
-    open var cancelled: Bool { return cancelCounter.get() > 0 }
+    open var isCancelled: Bool { return cancelCounter.get() > 0 }
     fileprivate let cancelCounter: Counter = 0
 
     let canceler: () -> ()

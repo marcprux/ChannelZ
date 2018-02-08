@@ -123,6 +123,14 @@ public enum Choose2<T1, T2>: Choose2Type {
     /// Second of 2
     case v2(T2)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+        
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -148,6 +156,18 @@ public enum Choose3<T1, T2, T3>: Choose3Type {
     /// Third of 3
     case v3(T3)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -188,6 +208,21 @@ public enum Choose4<T1, T2, T3, T4>: Choose4Type {
     /// Fourth of 4
     case v4(T4)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -236,6 +271,24 @@ public enum Choose5<T1, T2, T3, T4, T5>: Choose5Type {
     /// Fifth of 5
     case v5(T5)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -292,6 +345,27 @@ public enum Choose6<T1, T2, T3, T4, T5, T6>: Choose6Type {
     /// Sixth of 6
     case v6(T6)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -356,6 +430,30 @@ public enum Choose7<T1, T2, T3, T4, T5, T6, T7>: Choose7Type {
     /// Seventh of 7
     case v7(T7)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -428,6 +526,33 @@ public enum Choose8<T1, T2, T3, T4, T5, T6, T7, T8>: Choose8Type {
     /// Eighth of 8
     case v8(T8)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -508,6 +633,36 @@ public enum Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: Choose9Type {
     /// Ninth of 9
     case v9(T9)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -596,6 +751,39 @@ public enum Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: Choose10Type {
     /// Tenth of 10
     case v10(T10)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -692,6 +880,42 @@ public enum Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: Choose11Type
     /// Eleventh of 11
     case v11(T11)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    public init(t11: T11) { self = .v11(t11) }
+    public init(_ t11: T11) { self = .v11(t11) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -797,6 +1021,45 @@ public enum Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: Choose1
     /// Twelfth of 12
     case v12(T12)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    public init(t11: T11) { self = .v11(t11) }
+    public init(_ t11: T11) { self = .v11(t11) }
+    
+    public init(t12: T12) { self = .v12(t12) }
+    public init(_ t12: T12) { self = .v12(t12) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -909,6 +1172,48 @@ public enum Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: Ch
     /// Thirteenth of 13
     case v13(T13)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    public init(t11: T11) { self = .v11(t11) }
+    public init(_ t11: T11) { self = .v11(t11) }
+    
+    public init(t12: T12) { self = .v12(t12) }
+    public init(_ t12: T12) { self = .v12(t12) }
+    
+    public init(t13: T13) { self = .v13(t13) }
+    public init(_ t13: T13) { self = .v13(t13) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -1029,6 +1334,50 @@ public enum Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     /// Fourteenth of 14
     case v14(T14)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    public init(t11: T11) { self = .v11(t11) }
+    public init(_ t11: T11) { self = .v11(t11) }
+    
+    public init(t12: T12) { self = .v12(t12) }
+    public init(_ t12: T12) { self = .v12(t12) }
+    
+    public init(t13: T13) { self = .v13(t13) }
+    public init(_ t13: T13) { self = .v13(t13) }
+    
+    public init(t14: T14) { self = .v14(t14) }
+    public init(_ t14: T14) { self = .v14(t14) }
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -1157,6 +1506,54 @@ public enum Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     /// Fifteenth of 15
     case v15(T15)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    public init(t11: T11) { self = .v11(t11) }
+    public init(_ t11: T11) { self = .v11(t11) }
+    
+    public init(t12: T12) { self = .v12(t12) }
+    public init(_ t12: T12) { self = .v12(t12) }
+    
+    public init(t13: T13) { self = .v13(t13) }
+    public init(_ t13: T13) { self = .v13(t13) }
+    
+    public init(t14: T14) { self = .v14(t14) }
+    public init(_ t14: T14) { self = .v14(t14) }
+    
+    public init(t15: T15) { self = .v15(t15) }
+    public init(_ t15: T15) { self = .v15(t15) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -1293,6 +1690,57 @@ public enum Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     /// Sixteenth of 16
     case v16(T16)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    public init(t11: T11) { self = .v11(t11) }
+    public init(_ t11: T11) { self = .v11(t11) }
+    
+    public init(t12: T12) { self = .v12(t12) }
+    public init(_ t12: T12) { self = .v12(t12) }
+    
+    public init(t13: T13) { self = .v13(t13) }
+    public init(_ t13: T13) { self = .v13(t13) }
+    
+    public init(t14: T14) { self = .v14(t14) }
+    public init(_ t14: T14) { self = .v14(t14) }
+    
+    public init(t15: T15) { self = .v15(t15) }
+    public init(_ t15: T15) { self = .v15(t15) }
+    
+    public init(t16: T16) { self = .v16(t16) }
+    public init(_ t16: T16) { self = .v16(t16) }
+    
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -1437,6 +1885,59 @@ public enum Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     /// Seventeenth of 17
     case v17(T17)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    public init(t11: T11) { self = .v11(t11) }
+    public init(_ t11: T11) { self = .v11(t11) }
+    
+    public init(t12: T12) { self = .v12(t12) }
+    public init(_ t12: T12) { self = .v12(t12) }
+    
+    public init(t13: T13) { self = .v13(t13) }
+    public init(_ t13: T13) { self = .v13(t13) }
+    
+    public init(t14: T14) { self = .v14(t14) }
+    public init(_ t14: T14) { self = .v14(t14) }
+    
+    public init(t15: T15) { self = .v15(t15) }
+    public init(_ t15: T15) { self = .v15(t15) }
+    
+    public init(t16: T16) { self = .v16(t16) }
+    public init(_ t16: T16) { self = .v16(t16) }
+    
+    public init(t17: T17) { self = .v17(t17) }
+    public init(_ t17: T17) { self = .v17(t17) }
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -1590,6 +2091,62 @@ public enum Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     /// Eighteenth of 18
     case v18(T18)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    public init(t11: T11) { self = .v11(t11) }
+    public init(_ t11: T11) { self = .v11(t11) }
+    
+    public init(t12: T12) { self = .v12(t12) }
+    public init(_ t12: T12) { self = .v12(t12) }
+    
+    public init(t13: T13) { self = .v13(t13) }
+    public init(_ t13: T13) { self = .v13(t13) }
+    
+    public init(t14: T14) { self = .v14(t14) }
+    public init(_ t14: T14) { self = .v14(t14) }
+    
+    public init(t15: T15) { self = .v15(t15) }
+    public init(_ t15: T15) { self = .v15(t15) }
+    
+    public init(t16: T16) { self = .v16(t16) }
+    public init(_ t16: T16) { self = .v16(t16) }
+    
+    public init(t17: T17) { self = .v17(t17) }
+    public init(_ t17: T17) { self = .v17(t17) }
+    
+    public init(t18: T18) { self = .v18(t18) }
+    public init(_ t18: T18) { self = .v18(t18) }
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -1751,6 +2308,65 @@ public enum Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     /// Nineteenth of 19
     case v19(T19)
 
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    public init(t11: T11) { self = .v11(t11) }
+    public init(_ t11: T11) { self = .v11(t11) }
+    
+    public init(t12: T12) { self = .v12(t12) }
+    public init(_ t12: T12) { self = .v12(t12) }
+    
+    public init(t13: T13) { self = .v13(t13) }
+    public init(_ t13: T13) { self = .v13(t13) }
+    
+    public init(t14: T14) { self = .v14(t14) }
+    public init(_ t14: T14) { self = .v14(t14) }
+    
+    public init(t15: T15) { self = .v15(t15) }
+    public init(_ t15: T15) { self = .v15(t15) }
+    
+    public init(t16: T16) { self = .v16(t16) }
+    public init(_ t16: T16) { self = .v16(t16) }
+    
+    public init(t17: T17) { self = .v17(t17) }
+    public init(_ t17: T17) { self = .v17(t17) }
+    
+    public init(t18: T18) { self = .v18(t18) }
+    public init(_ t18: T18) { self = .v18(t18) }
+    
+    public init(t19: T19) { self = .v19(t19) }
+    public init(_ t19: T19) { self = .v19(t19) }
+    
+    
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 
     public var v1: T1? {
@@ -1919,6 +2535,67 @@ public enum Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     case v19(T19)
     /// Twentieth of 20
     case v20(T20)
+
+    public init(t1: T1) { self = .v1(t1) }
+    public init(_ t1: T1) { self = .v1(t1) }
+    
+    public init(t2: T2) { self = .v2(t2) }
+    public init(_ t2: T2) { self = .v2(t2) }
+    
+    public init(t3: T3) { self = .v3(t3) }
+    public init(_ t3: T3) { self = .v3(t3) }
+    
+    public init(t4: T4) { self = .v4(t4) }
+    public init(_ t4: T4) { self = .v4(t4) }
+    
+    public init(t5: T5) { self = .v5(t5) }
+    public init(_ t5: T5) { self = .v5(t5) }
+    
+    public init(t6: T6) { self = .v6(t6) }
+    public init(_ t6: T6) { self = .v6(t6) }
+    
+    public init(t7: T7) { self = .v7(t7) }
+    public init(_ t7: T7) { self = .v7(t7) }
+    
+    public init(t8: T8) { self = .v8(t8) }
+    public init(_ t8: T8) { self = .v8(t8) }
+    
+    public init(t9: T9) { self = .v9(t9) }
+    public init(_ t9: T9) { self = .v9(t9) }
+    
+    public init(t10: T10) { self = .v10(t10) }
+    public init(_ t10: T10) { self = .v10(t10) }
+    
+    public init(t11: T11) { self = .v11(t11) }
+    public init(_ t11: T11) { self = .v11(t11) }
+    
+    public init(t12: T12) { self = .v12(t12) }
+    public init(_ t12: T12) { self = .v12(t12) }
+    
+    public init(t13: T13) { self = .v13(t13) }
+    public init(_ t13: T13) { self = .v13(t13) }
+    
+    public init(t14: T14) { self = .v14(t14) }
+    public init(_ t14: T14) { self = .v14(t14) }
+    
+    public init(t15: T15) { self = .v15(t15) }
+    public init(_ t15: T15) { self = .v15(t15) }
+    
+    public init(t16: T16) { self = .v16(t16) }
+    public init(_ t16: T16) { self = .v16(t16) }
+    
+    public init(t17: T17) { self = .v17(t17) }
+    public init(_ t17: T17) { self = .v17(t17) }
+    
+    public init(t18: T18) { self = .v18(t18) }
+    public init(_ t18: T18) { self = .v18(t18) }
+    
+    public init(t19: T19) { self = .v19(t19) }
+    public init(_ t19: T19) { self = .v19(t19) }
+    
+    public init(t20: T20) { self = .v20(t20) }
+    public init(_ t20: T20) { self = .v20(t20) }
+    
 
     public var first: T1? { if case .v1(let x) = self { return x } else { return nil } }
 

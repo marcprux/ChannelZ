@@ -261,7 +261,7 @@ public final class KeyValueTransceiver<O: NSObject, T>: TransceiverType {
 
 /// A receipt implementation; itentical to ReceiptOf, except it extends from NSObject, and so can be used with bindings
 open class ReceiptObject: NSObject, Receipt {
-    open var cancelled: Bool { return cancelCounter.get() > 0 }
+    open var isCancelled: Bool { return cancelCounter.get() > 0 }
     fileprivate let cancelCounter: Counter = 0
     
     let canceler: () -> ()
