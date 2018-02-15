@@ -422,8 +422,8 @@ public extension ChannelType where Source.Value : MutableCollection, Source : Tr
 //    }
 }
 
-@available(*, deprecated, message: "crashes always!")
-func todo<T>() -> T { fatalError("TODO: \(T.self)") }
+/// Development function that pretends to return any T, but really just crashes
+@available(*, deprecated, message: "crashes always!") func todo<T>() -> T { fatalError("TODO: \(T.self)") }
 
 public extension ChannelType where Source.Value : KeyIndexed & Collection, Source.Value.Index : KeyIndexedIndexType, Source.Value.Key == Source.Value.Index.Key, Source.Value.Value == Source.Value.Index.Value, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
 

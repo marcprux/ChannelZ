@@ -51,12 +51,12 @@ public protocol TransceiverChannelType : ChannelType where Source : ValuableType
     associatedtype Value = Source.Value
 }
 
-extension ChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.Value == Source.Value {
-    /// The value for both the source and the pulse when the channel represent Valuables of the same types
-    // handy, but it crashes the Swift 4.1 compiler when accessed
-    @available(*, deprecated)
-    public typealias Value = Pulse.Value
-}
+//extension ChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.Value == Source.Value {
+//    /// The value for both the source and the pulse when the channel represent Valuables of the same types
+//    // handy, but it crashes the Swift 4.1 compiler when accessed
+//    @available(*, deprecated)
+//    public typealias Value = Pulse.Value
+//}
 
 /// Swift 4.1 TODO: conditional conformance to tranceiver type will allow us to just do "extension TransceiverChannelType" rather than the current "extension ChannelType where Source : TransceiverType, Pulse: MutationType, Pulse.Value == Source.Value"
 //extension Channel : TransceiverChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.Value == Source.Value {
