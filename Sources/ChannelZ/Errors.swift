@@ -41,7 +41,6 @@ public enum Result<Wrapped> : ResultType {
     
     /// If `self` is `ErrorType`, returns `nil`.  Otherwise, returns `f(self!)`.
     /// - See Also: `Optional.map`
-    
     public func map<U>(_ f: (Wrapped) throws -> U) rethrows -> U? {
         guard case .success(let value) = self else { return nil }
         return try f(value)
@@ -49,7 +48,6 @@ public enum Result<Wrapped> : ResultType {
 
     /// Returns `nil` if `self` is `ErrorType`, `f(self!)` otherwise.
     /// - See Also: `Optional.flatMap`
-    
     public func flatMap<U>(_ f: (Wrapped) throws -> U?) rethrows -> U? {
         guard case .success(let value) = self else { return nil }
         return try f(value)

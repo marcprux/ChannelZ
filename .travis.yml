@@ -1,6 +1,6 @@
 matrix:
   include:
-    - os: xcode9.3beta
+    - os: xcode9.2
       language: objective-c
       osx_image: xcode9
       script:
