@@ -53,6 +53,8 @@ public protocol TransceiverChannelType : ChannelType where Source : ValuableType
 
 extension ChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.Value == Source.Value {
     /// The value for both the source and the pulse when the channel represent Valuables of the same types
+    // handy, but it crashes the Swift 4.1 compiler when accessed
+    @available(*, deprecated)
     public typealias Value = Pulse.Value
 }
 

@@ -74,6 +74,12 @@ public struct Channel<S, T> : ChannelType {
     public func desource() -> Channel<Void, T> {
         return resource({ _ in Void() })
     }
+    
+    /// Erases the type of the source from this `Channel`, but retains the value.
+    public func anySource() -> Channel<Any, T> {
+        return resource({ $0 })
+    }
+
 }
 
 public extension ChannelType {

@@ -462,7 +462,7 @@ class OpticsTests : ChannelTestCase {
     func testOpticals() {
         
         
-        class OpticalDirectory<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Value == Directory {
+        class OpticalDirectory<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Pulse.Value == Directory {
             let optic: T
 
             lazy var authorZ = optic.focus(\.author)
@@ -483,7 +483,7 @@ class OpticsTests : ChannelTestCase {
 
         }
         
-        class OpticalCompany<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Value == Company {
+        class OpticalCompany<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Pulse.Value == Company {
             let optic: T
             
             lazy var employeesZ = optic.focus(\.employees)
@@ -500,7 +500,7 @@ class OpticsTests : ChannelTestCase {
             }
         }
         
-        class OpticalPerson<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Value == Person {
+        class OpticalPerson<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Pulse.Value == Person {
             let optic: T
             
             lazy var firstNameZ = optic.focus(\.firstName)
@@ -525,7 +525,7 @@ class OpticsTests : ChannelTestCase {
             }
         }
         
-        class OpticalAddress<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Value == Address {
+        class OpticalAddress<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Pulse.Value == Address {
             let optic: T
             
             lazy var line1Z = optic.focus(\.line1)

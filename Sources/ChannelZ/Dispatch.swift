@@ -22,15 +22,15 @@ public extension StreamType {
         return lifts { receive in { event in
             let rcvr = { receive(event) }
             if let delay = delay {
-		let nsecPerSec = 1000000000
-                let time = DispatchTime.now() + Double(Int64(delay * Double(nsecPerSec))) / Double(nsecPerSec)
-                if time == DispatchTime.now() { // optimize now to be async
+                if delay == 0.0 { // optimize now to be async
                     if barrier {
                         queue.async(flags: .barrier, execute: rcvr)
                     } else {
                         queue.async(execute: rcvr)
                     }
                 } else {
+                    let nsecPerSec = 1000000000
+                    let time = DispatchTime.now() + Double(Int64(delay * Double(nsecPerSec))) / Double(nsecPerSec)
                     queue.asyncAfter(deadline: time, execute: rcvr)
                 }
             } else { // nil delay means execute synchronously

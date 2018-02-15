@@ -185,17 +185,35 @@ public extension ChannelType {
     
 }
 
+/// an error occurred, so replace the next channel with a channel that does nothing but emit the same error
+private func errorChannel<S, E: ResultType>(source: S, error: Error) -> Channel<S, E> {
+    return Channel(source: source) { rcvr in
+        rcvr(E(error: error))
+        return ReceiptOf()
+    }
+}
 
 public extension ChannelType {
+    /// A function that maps from this channel's pulse to another channel type
+//    public typealias PulseChannelMap<S, T> = (Self.Pulse) -> Channel<S, T>
+
+    /// Chains one channel to the next only if the result was successful
+    public func successfully<Source2, Pulse2>(_ next: @escaping (Self.Pulse.Wrapped) -> Channel<Source2, Pulse2>) -> Channel<Self.Source, Pulse2> where Self.Pulse : ResultType, Pulse2 : ResultType {
+        return alternate(to: { next($0.value!).anySource() }, unless: { pulse in
+            if let error = pulse.error {
+                return errorChannel(source: (), error: error)
+            } else {
+                return .none // continue on to the next channel
+            }
+        }).map({ $0.0 }) // drop previous successful results, retaining only the error or more recent successful value
+    }
+
+    
     /// Chains one channel to the next only if the result was successful
     public func then<Source2, Pulse2>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Pulse2, Self.Pulse)> where Self.Pulse : ResultType, Pulse2 : ResultType {
-        return proceed(to: next, unless: { pulse in
+        return alternate(to: { _ in next }, unless: { pulse in
             if let error = pulse.error {
-                // an error occurred, so replace the next channel with a channel that does nothing but emit the same error
-                return Channel(source: next.source) { rcvr in
-                    rcvr(Pulse2(error: error))
-                    return ReceiptOf()
-                }
+                return errorChannel(source: next.source, error: error)
             } else {
                 return .none // continue on to the next channel
             }
@@ -204,26 +222,45 @@ public extension ChannelType {
 
     /// Chains one channel to the next only if the first result element of the pulse tuple was successful
     public func then<Source2, Pulse2, R: ResultType, Tuple>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Pulse2, Self.Pulse)> where Self.Pulse == (R, Tuple), Pulse2 : ResultType {
-        return proceed(to: next, unless: { pulse in
+        return alternate(to: { _ in next }, unless: { pulse in
             if let error = pulse.0.error {
-                // an error occurred, so replace the next channel with a channel that does nothing but emit the same error
-                return Channel(source: next.source) { rcvr in
-                    rcvr(Pulse2(error: error))
-                    return ReceiptOf()
-                }
+                return errorChannel(source: next.source, error: error)
             } else {
                 return .none // continue on to the next channel
             }
         })
     }
 
+//    private func alternateError<Source2, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, err: @escaping (Self.Pulse) -> Error?) -> Channel<(), (Pulse2, Self.Pulse)> where Pulse2 : ResultType {
+//        return alternate(to: to, unless: { pulse in
+//            if let error = err(pulse) {
+//                return errorChannel(source: self.source, error: error)
+//            } else {
+//                return .none // continue on to the next channel
+//            }
+//        }).desource()
+//    }
+    
     /// Proceed to flatMap the given channel unless the condition clause returns a non-null element
-    public func proceed<Source2, Pulse2>(to: Channel<Source2, Pulse2>, unless: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>?) -> Channel<Self.Source, (Pulse2, Self.Pulse)> {
+    public func alternate<Source2, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, unless: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>?) -> Channel<Self.Source, (Pulse2, Self.Pulse)> {
         let mapper: (Self.Pulse) -> Channel<Source2, (Pulse2, Self.Pulse)> = { (pulse1: Self.Pulse) in
             if let altername = unless(pulse1) {
                 return altername.map({ ($0, pulse1 )})
             } else {
-                return to.map({ ($0, pulse1 )})
+                return to(pulse1).map({ ($0, pulse1 )})
+            }
+        }
+        
+        return flatMap(mapper)
+    }
+
+    /// Proceed to flatMap the given channel unless the condition clause returns a non-null element
+    public func alternate2<Source2, Source3, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, unless: @escaping (Self.Pulse) -> Channel<Source3, Pulse2>?) -> Channel<Self.Source, (Pulse2, Self.Pulse)> {
+        let mapper: (Self.Pulse) -> Channel<Void, (Pulse2, Self.Pulse)> = { (pulse1: Self.Pulse) in
+            if let altername = unless(pulse1) {
+                return altername.map({ ($0, pulse1 )}).desource()
+            } else {
+                return to(pulse1).map({ ($0, pulse1 )}).desource()
             }
         }
         
