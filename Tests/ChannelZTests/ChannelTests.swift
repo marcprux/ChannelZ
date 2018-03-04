@@ -774,6 +774,22 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual([1.5, 2.5, 3.5, 0.75, 1.25, 1.75, 3, 5, 7, 1.5, 2.5, 3.5, 4.5, 7.5, 10.5, 2.25, 3.75, 5.25], flatMapped.pullZ())
     }
 
+    func testMergeMapTransformChannel() {
+        let numbers = (1...3).channelZSequence()
+        let quotients = { (n: Int) in [Double(n)/2.0, Double(n)/4.0].channelZSequence().resource({ _ in n }) }
+        let mergeMapped: Channel<(CountableClosedRange<Int>), Choose2<Int, Double>> = numbers.mergeMap(quotients)
+        
+        // manually collapse results; when we have Swift 4.1 conditional conformance to equatable we'll be able to skip this
+        let values: [Double] = mergeMapped.pullZ().map({
+            switch $0 {
+            case .v1(let x): return Double(x)
+            case .v2(let x): return Double(x)
+            }
+        })
+        
+        XCTAssertEqual([1.0, 0.5, 0.25, 2.0, 1.0, 0.5, 3.0, 1.5, 0.75], values)
+    }
+
     func testPropertyReceivers() {
         class Person {
             let fname = ∞=("")=∞

@@ -231,6 +231,24 @@ public extension ChannelType {
     }
 }
 
+public extension ChannelType {
+    /// Similar to flatMap, but the pulse is emitted as a Choose2 of either the initial pulse or the flattened channel result
+    public func mergeMap<U>(_ transform: @escaping (Pulse) -> Channel<Pulse, U>) -> Channel<Source, Choose2<Pulse, U>> {
+        let mapped = map(transform)
+        
+        return Channel(source: mapped.source, reception: { rcv in
+            var rcpts: [Receipt] = []
+            let rcpt = mapped.receive { (rcvrobv) in
+                rcv(.v1(rcvrobv.source)) // immediately issue a source pulse
+                let rcpt = rcvrobv.receive { (item: U) in rcv(.v2(item)) }
+                rcpts.append(rcpt)
+            }
+            rcpts.append(rcpt)
+            return ReceiptOf(receipts: rcpts)
+        })
+    }
+}
+
 public extension Channel {
 
     public func concat(_ with: Channel<Source, Pulse>) -> Channel<[Source], (Source, Pulse)> {
