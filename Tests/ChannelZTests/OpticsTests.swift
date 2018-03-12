@@ -8,6 +8,7 @@
 
 import ChannelZ
 import XCTest
+import Foundation
 
 // MARK: Optics Test Data Model
 
