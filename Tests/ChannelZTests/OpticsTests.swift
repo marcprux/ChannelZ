@@ -459,6 +459,8 @@ class OpticsTests : ChannelTestCase {
         }
     }
     
+    #if os(macOS) || os(iOS)
+
     /// Tests optical views into immutable models using channels
     @available(macOS 10.11, iOS 9.0, *) // UndoManager only available
     func testOpticals() {
@@ -610,6 +612,9 @@ class OpticsTests : ChannelTestCase {
             XCTAssertEqual(odir.author.firstNameZ.value, "\(i)")
         }
     }
+    
+    #endif // #if os(macOS) || os(iOS)
+
 }
 
 #if os(macOS) || os(iOS)
