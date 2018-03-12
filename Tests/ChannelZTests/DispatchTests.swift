@@ -11,6 +11,44 @@ import ChannelZ
 import Dispatch
 import Foundation
 
+public protocol Progressable {
+    var progress: Progress { get }
+}
+
+//extension NSObjectProtocol : Progressable where Self : ProgressReporting {
+//}
+
+extension Progress : Progressable {
+    public var progress: Progress { return self }
+}
+
+public final class Progressive<T> : Progressable {
+    public let value: T
+    public let progress: Progress
+    
+    public init(_ value: T, progress: Progress) {
+        self.value = value
+        self.progress = progress
+    }
+    
+    public convenience init(_ value: T, count: Int64) {
+        self.init(value, progress: Progress.discreteProgress(totalUnitCount: count))
+    }
+}
+
+public extension ChannelType {
+    public func progress(_ progress: Progress) -> Channel<Source, Pulse> {
+        return self.affect(progress) { (progress: Progress, pulse: Self.Pulse) in
+            // each pulse ups the completed count by 1
+            progress.becomeCurrent(withPendingUnitCount: 1)
+            progress.resignCurrent()
+            return progress // progress is a reference type
+            }.map { (progress: Progress, pulse: Self.Pulse) in
+                pulse
+        }
+    }
+}
+
 let NSEC_PER_SEC = 1000000000
 
 /// Creates an asynchronous trickle of events for the given generator
@@ -31,6 +69,33 @@ func trickleZ<G: IteratorProtocol>(_ fromx: G, _ interval: TimeInterval, queue: 
 
     tick()
     return Channel(source: from) { rcvr in receivers.addReceipt(rcvr) }
+}
+
+/// Creates an asynchronous trickle of events for the given generator
+func trickleZProgress<G: Collection>(_ fromx: G, _ interval: TimeInterval, queue: DispatchQueue = DispatchQueue.main) -> Channel<Progress, G.Element> {
+    let progress = Progress.discreteProgress(totalUnitCount: Int64(fromx.count))
+    var stopped = false
+    progress.cancellationHandler = {
+        stopped = true
+    }
+    var from = fromx.makeIterator()
+    var receivers = ReceiverQueue<G.Element>()
+    let delay = Int64(interval * TimeInterval(NSEC_PER_SEC))
+    func tick() {
+        if stopped { return }
+        queue.asyncAfter(deadline: DispatchTime.now() + Double(delay) / Double(NSEC_PER_SEC)) {
+            if stopped { return }
+            if receivers.count > 0 { // i.e., they haven't all been cancelled
+                if let next = from.next() {
+                    receivers.receive(next)
+                    tick()
+                }
+            }
+        }
+    }
+    
+    tick()
+    return Channel(source: progress) { rcvr in receivers.addReceipt(rcvr) }.progress(progress)
 }
 
 public func channelZSinkSingleReceiver<T>(_ type: T.Type) -> Channel<AnyReceiver<T>, T> {
@@ -134,7 +199,7 @@ class DispatchTests : ChannelTestCase {
         var tricklets: [(Int, Int)] = []
         let count = 10
         let channel1 = trickleZ((1...50).makeIterator(), 0.001)
-        let channel2 = trickleZ((11...20).makeIterator(), 0.005) // slower; channel1 will be buffered by zip()
+        let channel2 = trickleZ((11...20).makeIterator(), 0.05) // slower; channel1 will be buffered by zip()
         weak var xpc = expectation(description: "testTrickleZip")
         channel1.zip(channel2).receive {
             tricklets += [$0]
@@ -144,6 +209,31 @@ class DispatchTests : ChannelTestCase {
         waitForExpectations(timeout: 5, handler: { err in })
         XCTAssertEqual(count, tricklets.count)
         
+        XCTAssertEqual([1, 11, 2, 12, 3, 13, 4, 14, 5, 15, 6, 16, 7, 17, 8, 18, 9, 19, 10, 20], tricklets.map({ [$0.0, $0.1] }).flatMap({ $0 }))
+        
+    }
+
+    func testTrickleProgress() {
+        var tricklets: [Int] = []
+        let count = 50
+        let channel = trickleZProgress((1...count), 0.001)
+        weak var xpc = expectation(description: "testTrickleProgress")
+
+        channel.receive({
+            tricklets.append($0)
+            if tricklets.count >= 25 {
+                channel.source.cancel() // cancel halfway through
+                xpc?.fulfill()
+            }
+        })
+
+        XCTAssertEqual(0.0, channel.source.fractionCompleted)
+        XCTAssertFalse(channel.source.isCancelled)
+        waitForExpectations(timeout: 5, handler: { err in })
+        XCTAssertEqual(count / 2, tricklets.count)
+        XCTAssertEqual(0.5, channel.source.fractionCompleted)
+        XCTAssertTrue(channel.source.isCancelled)
+
     }
 
 //    func XXXtestDispatchChannel() {

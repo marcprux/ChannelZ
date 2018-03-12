@@ -142,7 +142,7 @@ public extension ChannelType {
 
 
     /// Adds a channel phase that is a combination around `source1` and `source2` that merges pulses
-    /// into a tuple of the latest vaues that have been received on either channel; note that that
+    /// into a tuple of the latest values that have been received on either channel; note that that
     /// latest version of each of the channels will be retained, and that no tuples will be emitted
     /// until both the channels have had at least one event. If `source1` emits 2 events followed by
     /// `source` emitting 1 event, only a tuple with `source1`'s second item will be emitted; the first
@@ -287,7 +287,7 @@ public extension ChannelType {
     /// Performs a side-effect when the channel receives a pulse. 
     /// This can be used to manage some arbitrary and hidden state regardless 
     /// of the number of receivers that are on the channel.
-    public func affect<T>(_ seed: T, affector: @escaping (T, Pulse) -> T) -> Channel<Source, (store: T, pulse: Pulse)> {
+    public func affect<T>(_ seed: @escaping @autoclosure () -> T, affector: @escaping (T, Pulse) -> T) -> Channel<Source, (store: T, pulse: Pulse)> {
 
         var state: [Int64: T] = [:] // the captured state, one pulse per receiver
         var stateIndex: Int64 = 0
@@ -295,7 +295,7 @@ public extension ChannelType {
         return Channel(source: self.source) { receiver in
             stateIndex += 1
             let index = stateIndex
-            state[index] = seed
+            state[index] = seed()
 
             let rcpt = self.receive { pulse in
                 if var stateValue = state[index] {
