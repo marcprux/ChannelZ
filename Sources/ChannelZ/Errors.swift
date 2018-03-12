@@ -152,6 +152,17 @@ public extension Result {
 
 }
 
+
+public extension Result where Wrapped : _WrapperType {
+    /// Returns the unwrapped value flatMapped to itself (e.g., converts value of String?? into String?)
+    public var flatValue: Wrapped.Wrapped? {
+        switch self {
+        case .success(let x): return x.flatMap({ $0 })
+        case .failure: return .none
+        }
+    }
+}
+
 public extension ChannelType {
 
     /// Adds a channel phase that applies the given function to each item emitted by a Channel and emits
@@ -181,6 +192,16 @@ public extension ChannelType {
         return flatMap { pulse1 in next.map { pulse2 in (pulse1, pulse2) } }
     }
     
+}
+
+/// Takes a collection of heterogeneous channels and sequences them together, resulting
+/// in a channel that emits a single array with all the values
+public func sequenceZChannels<S, T>(source: S, channels: [Channel<S, T>]) -> Channel<S, [T]> {
+    var seq: Channel<S, [T]> = [[]].channelZSequence().resource({ _ in source })
+    for channel in channels {
+        seq = seq.sequence(channel).map({ $0.0 + [$0.1] })
+    }
+    return seq
 }
 
 /// an error occurred, so replace the next channel with a channel that does nothing but emit the same error
@@ -229,6 +250,11 @@ public extension ChannelType {
         })
     }
 
+//    /// Chains one channel to the next unconditionally
+//    public func sequence<Source2, Pulse2, R: ResultType, Tuple>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Pulse2, Self.Pulse)> where Self.Pulse == (R, Tuple) {
+//        return alternate(to: { _ in next }, unless: { pulse in .none })
+//    }
+
 //    private func alternateError<Source2, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, err: @escaping (Self.Pulse) -> Error?) -> Channel<(), (Pulse2, Self.Pulse)> where Pulse2 : ResultType {
 //        return alternate(to: to, unless: { pulse in
 //            if let error = err(pulse) {
@@ -239,6 +265,7 @@ public extension ChannelType {
 //        }).desource()
 //    }
     
+
     /// Proceed to flatMap the given channel unless the condition clause returns a non-null element
     public func alternate<Source2, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, unless: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>?) -> Channel<Self.Source, (Pulse2, Self.Pulse)> {
         let mapper: (Self.Pulse) -> Channel<Source2, (Pulse2, Self.Pulse)> = { (pulse1: Self.Pulse) in
