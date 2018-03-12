@@ -765,7 +765,39 @@ class ChannelTests : ChannelTestCase {
 
     }
 
-
+    func testSequencingProgress() {
+        let channels = (1...3).map({ channelZSequence(0...$0).resource({ _ in () }) })
+        let sequence = sequenceZChannels(source: (), channels: channels)
+        let values = sequence.pullZ()
+        XCTAssertEqual([
+            0, 0, 0,
+            0, 0, 1,
+            0, 0, 2,
+            0, 0, 3,
+            0, 1, 0,
+            0, 1, 1,
+            0, 1, 2,
+            0, 1, 3,
+            0, 2, 0,
+            0, 2, 1,
+            0, 2, 2,
+            0, 2, 3,
+            1, 0, 0,
+            1, 0, 1,
+            1, 0, 2,
+            1, 0, 3,
+            1, 1, 0,
+            1, 1, 1,
+            1, 1, 2,
+            1, 1, 3,
+            1, 2, 0,
+            1, 2, 1,
+            1, 2, 2,
+            1, 2, 3
+            ], values.flatMap({ $0 }))
+        
+    }
+    
     func testFlatMapTransformChannel() {
         let numbers = (1...3).channelZSequence()
         let quotients = { (n: Int) in [Double(n)/2.0, Double(n)/4.0].channelZSequence() }

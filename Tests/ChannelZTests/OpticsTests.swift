@@ -459,6 +459,7 @@ class OpticsTests : ChannelTestCase {
     }
     
     /// Tests optical views into immutable models using channels
+    @available(macOS 10.11, iOS 9.0, *) // UndoManager only available
     func testOpticals() {
         
         
@@ -610,10 +611,13 @@ class OpticsTests : ChannelTestCase {
     }
 }
 
+#if os(macOS) || os(iOS)
+
 var undoCounter = 0
 
 public extension Optical {
     /// Performs the given state-mutating operation in an undoable context
+    @available(macOS 10.11, iOS 9.0, *)
     func undoable(_ um: UndoManager, actionName: String? = nil, _ f: @escaping (Self) -> ()) {
         um.beginUndoGrouping()
         defer { um.endUndoGrouping() }
@@ -628,4 +632,7 @@ public extension Optical {
         f(self) // perform the action
     }
 }
+
+#endif // #if os(macOS) || os(iOS)
+
 
