@@ -8,113 +8,42 @@
 
 // Swift 4 TODO: Variadic Generics: https://github.com/apple/swift/blob/master/docs/GenericsManifesto.md#variadic-generics
 
-/// One of a set number of options
-public protocol Choose1Type {
+/// One of a set number of options; simulates a union of arbitrarity arity
+public protocol ChooseNType {
     /// Returns the number of choices
     var arity: Int { get }
 
-    /// The first type in thie Choose
+    /// The first type in thie choice; also the primary type, in that it will be the subject of `firstMap`
     associatedtype T1
     var v1: T1? { get set }
 }
 
-public protocol Choose2Type : Choose1Type {
+public extension ChooseNType {
+    /// Similar to `flatMap`, except it will call the function when the element of this
+    /// type is the T1 type, and null if it is any other type (T2, T3, ...)
+    public func firstMap<U>(_ f: (T1) throws -> U?) rethrows -> U? {
+        if let value = self.v1 {
+            return try f(value)
+        } else {
+            return nil
+        }
+    }
+}
+
+/// One of at least 2 options
+public protocol Choose2Type : ChooseNType {
     associatedtype T2
     var v2: T2? { get set }
 }
 
-public protocol Choose3Type : Choose2Type {
-    associatedtype T3
-    var v3: T3? { get set }
-}
-
-public protocol Choose4Type : Choose3Type {
-    associatedtype T4
-    var v4: T4? { get set }
-}
-
-public protocol Choose5Type : Choose4Type {
-    associatedtype T5
-    var v5: T5? { get set }
-}
-
-public protocol Choose6Type : Choose5Type {
-    associatedtype T6
-    var v6: T6? { get set }
-}
-
-public protocol Choose7Type : Choose6Type {
-    associatedtype T7
-    var v7: T7? { get set }
-}
-
-public protocol Choose8Type : Choose7Type {
-    associatedtype T8
-    var v8: T8? { get set }
-}
-
-public protocol Choose9Type : Choose8Type {
-    associatedtype T9
-    var v9: T9? { get set }
-}
-
-public protocol Choose10Type : Choose9Type {
-    associatedtype T10
-    var v10: T10? { get set }
-}
-
-public protocol Choose11Type : Choose10Type {
-    associatedtype T11
-    var v11: T11? { get set }
-}
-
-public protocol Choose12Type : Choose11Type {
-    associatedtype T12
-    var v12: T12? { get set }
-}
-
-public protocol Choose13Type : Choose12Type {
-    associatedtype T13
-    var v13: T13? { get set }
-}
-
-public protocol Choose14Type : Choose13Type {
-    associatedtype T14
-    var v14: T14? { get set }
-}
-
-public protocol Choose15Type : Choose14Type {
-    associatedtype T15
-    var v15: T15? { get set }
-}
-
-public protocol Choose16Type : Choose15Type {
-    associatedtype T16
-    var v16: T16? { get set }
-}
-
-public protocol Choose17Type : Choose16Type {
-    associatedtype T17
-    var v17: T17? { get set }
-}
-
-public protocol Choose18Type : Choose17Type {
-    associatedtype T18
-    var v18: T18? { get set }
-}
-
-public protocol Choose19Type : Choose18Type {
-    associatedtype T19
-    var v19: T19? { get set }
-}
-
-public protocol Choose20Type : Choose19Type {
-    associatedtype T20
-    var v20: T20? { get set }
+/// An error that indicates that multiple errors occured when decoding the type;
+/// Each error should correspond to one of the choices for this type.
+public struct ChoiceDecodingError : Error {
+    public let errors: [Error]
 }
 
 
-/// One of 2 options
+/// One of exactly 2 options
 public enum Choose2<T1, T2>: Choose2Type {
     public var arity: Int { return 2 }
 
@@ -145,7 +74,68 @@ public enum Choose2<T1, T2>: Choose2Type {
 
 }
 
-/// One of 3 options
+public extension Choose2 where T1 == T2 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        }
+    }
+}
+
+// Swift 4.1 TODO: conditional conformance
+extension Choose2 /*: Encodable*/ where T1 : Encodable, T2 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+// Swift 4.1 TODO: conditional conformance
+extension Choose2 /*: Decodable*/ where T1 : Decodable, T2 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+// Swift 4.1 TODO: conditional conformance
+extension Choose2 /*: Equatable*/ where T1 : Equatable, T2 : Equatable {
+
+    public static func ==(lhs: Choose2<T1, T2>, rhs: Choose2<T1, T2>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+// Swift 4.1 TODO: conditional conformance
+extension Choose2 /*: Hashable*/ where T1 : Hashable, T2 : Hashable { // Swift 4.1 TODO: conditional conformance
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        }
+    }
+}
+
+/// One of at least 3 options
+public protocol Choose3Type : Choose2Type {
+    associatedtype T3
+    var v3: T3? { get set }
+}
+
+/// One of exactly 3 options
 public enum Choose3<T1, T2, T3>: Choose3Type {
     public var arity: Int { return 3 }
 
@@ -195,7 +185,24 @@ public enum Choose3<T1, T2, T3>: Choose3Type {
     }
 }
 
-/// One of 4 options
+public extension Choose3 where T1 == T2, T2 == T3 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        }
+    }
+}
+
+/// One of at least 4 options
+public protocol Choose4Type : Choose3Type {
+    associatedtype T4
+    var v4: T4? { get set }
+}
+
+/// One of exactly 4 options
 public enum Choose4<T1, T2, T3, T4>: Choose4Type {
     public var arity: Int { return 4 }
 
@@ -256,7 +263,25 @@ public enum Choose4<T1, T2, T3, T4>: Choose4Type {
     }
 }
 
-/// One of 5 options
+public extension Choose4 where T1 == T2, T2 == T3, T3 == T4 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        }
+    }
+}
+
+/// One of at least 5 options
+public protocol Choose5Type : Choose4Type {
+    associatedtype T5
+    var v5: T5? { get set }
+}
+
+/// One of exactly 5 options
 public enum Choose5<T1, T2, T3, T4, T5>: Choose5Type {
     public var arity: Int { return 5 }
 
@@ -328,7 +353,26 @@ public enum Choose5<T1, T2, T3, T4, T5>: Choose5Type {
     }
 }
 
-/// One of 6 options
+public extension Choose5 where T1 == T2, T2 == T3, T3 == T4, T4 == T5 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        }
+    }
+}
+
+/// One of at least 6 options
+public protocol Choose6Type : Choose5Type {
+    associatedtype T6
+    var v6: T6? { get set }
+}
+
+/// One of exactly 6 options
 public enum Choose6<T1, T2, T3, T4, T5, T6>: Choose6Type {
     public var arity: Int { return 6 }
 
@@ -411,7 +455,27 @@ public enum Choose6<T1, T2, T3, T4, T5, T6>: Choose6Type {
     }
 }
 
-/// One of 7 options
+public extension Choose6 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        }
+    }
+}
+
+/// One of at least 7 options
+public protocol Choose7Type : Choose6Type {
+    associatedtype T7
+    var v7: T7? { get set }
+}
+
+/// One of exactly 7 options
 public enum Choose7<T1, T2, T3, T4, T5, T6, T7>: Choose7Type {
     public var arity: Int { return 7 }
 
@@ -505,7 +569,28 @@ public enum Choose7<T1, T2, T3, T4, T5, T6, T7>: Choose7Type {
     }
 }
 
-/// One of 8 options
+public extension Choose7 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        }
+    }
+}
+
+/// One of at least 8 options
+public protocol Choose8Type : Choose7Type {
+    associatedtype T8
+    var v8: T8? { get set }
+}
+
+/// One of exactly 8 options
 public enum Choose8<T1, T2, T3, T4, T5, T6, T7, T8>: Choose8Type {
     public var arity: Int { return 8 }
 
@@ -610,7 +695,29 @@ public enum Choose8<T1, T2, T3, T4, T5, T6, T7, T8>: Choose8Type {
     }
 }
 
-/// One of 9 options
+public extension Choose8 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        }
+    }
+}
+
+/// One of at least 9 options
+public protocol Choose9Type : Choose8Type {
+    associatedtype T9
+    var v9: T9? { get set }
+}
+
+/// One of exactly 9 options
 public enum Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: Choose9Type {
     public var arity: Int { return 9 }
 
@@ -726,7 +833,30 @@ public enum Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: Choose9Type {
     }
 }
 
-/// One of 10 options
+public extension Choose9 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        }
+    }
+}
+
+/// One of at least 10 options
+public protocol Choose10Type : Choose9Type {
+    associatedtype T10
+    var v10: T10? { get set }
+}
+
+/// One of exactly 10 options
 public enum Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: Choose10Type {
     public var arity: Int { return 10 }
 
@@ -853,7 +983,31 @@ public enum Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: Choose10Type {
     }
 }
 
-/// One of 11 options
+public extension Choose10 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        }
+    }
+}
+
+/// One of at least 11 options
+public protocol Choose11Type : Choose10Type {
+    associatedtype T11
+    var v11: T11? { get set }
+}
+
+/// One of exactly 11 options
 public enum Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: Choose11Type {
     public var arity: Int { return 11 }
 
@@ -991,8 +1145,32 @@ public enum Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>: Choose11Type
     }
 }
 
+public extension Choose11 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        case .v11(let x): return x
+        }
+    }
+}
 
-/// One of 12 options
+/// One of at least 12 options
+public protocol Choose12Type : Choose11Type {
+    associatedtype T12
+    var v12: T12? { get set }
+}
+
+/// One of exactly 12 options
 public enum Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: Choose12Type {
     public var arity: Int { return 12 }
 
@@ -1141,7 +1319,33 @@ public enum Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>: Choose1
     }
 }
 
-/// One of 13 options
+public extension Choose12 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11, T11 == T12 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        case .v11(let x): return x
+        case .v12(let x): return x
+        }
+    }
+}
+
+/// One of at least 13 options
+public protocol Choose13Type : Choose12Type {
+    associatedtype T13
+    var v13: T13? { get set }
+}
+
+/// One of exactly 13 options
 public enum Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: Choose13Type {
     public var arity: Int { return 13 }
 
@@ -1301,7 +1505,34 @@ public enum Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>: Ch
     }
 }
 
-/// One of 14 options
+public extension Choose13 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11, T11 == T12, T12 == T13 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        case .v11(let x): return x
+        case .v12(let x): return x
+        case .v13(let x): return x
+        }
+    }
+}
+
+/// One of at least 14 options
+public protocol Choose14Type : Choose13Type {
+    associatedtype T14
+    var v14: T14? { get set }
+}
+
+/// One of exactly 14 options
 public enum Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>: Choose14Type {
     public var arity: Int { return 14 }
 
@@ -1471,7 +1702,35 @@ public enum Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     }
 }
 
-/// One of 15 options
+public extension Choose14 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11, T11 == T12, T12 == T13, T13 == T14 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        case .v11(let x): return x
+        case .v12(let x): return x
+        case .v13(let x): return x
+        case .v14(let x): return x
+        }
+    }
+}
+
+/// One of at least 15 options
+public protocol Choose15Type : Choose14Type {
+    associatedtype T15
+    var v15: T15? { get set }
+}
+
+/// One of exactly 15 options
 public enum Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>: Choose15Type {
     public var arity: Int { return 15 }
 
@@ -1653,7 +1912,36 @@ public enum Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     }
 }
 
-/// One of 16 options
+public extension Choose15 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11, T11 == T12, T12 == T13, T13 == T14, T14 == T15 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        case .v11(let x): return x
+        case .v12(let x): return x
+        case .v13(let x): return x
+        case .v14(let x): return x
+        case .v15(let x): return x
+        }
+    }
+}
+
+/// One of at least 16 options
+public protocol Choose16Type : Choose15Type {
+    associatedtype T16
+    var v16: T16? { get set }
+}
+
+/// One of exactly 16 options
 public enum Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>: Choose16Type {
     public var arity: Int { return 16 }
 
@@ -1846,7 +2134,37 @@ public enum Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     }
 }
 
-/// One of 17 options
+public extension Choose16 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11, T11 == T12, T12 == T13, T13 == T14, T14 == T15, T15 == T16 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        case .v11(let x): return x
+        case .v12(let x): return x
+        case .v13(let x): return x
+        case .v14(let x): return x
+        case .v15(let x): return x
+        case .v16(let x): return x
+        }
+    }
+}
+
+/// One of at least 17 options
+public protocol Choose17Type : Choose16Type {
+    associatedtype T17
+    var v17: T17? { get set }
+}
+
+/// One of exactly 17 options
 public enum Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>: Choose17Type {
     public var arity: Int { return 17 }
 
@@ -2049,8 +2367,38 @@ public enum Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     }
 }
 
+public extension Choose17 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11, T11 == T12, T12 == T13, T13 == T14, T14 == T15, T15 == T16, T16 == T17 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        case .v11(let x): return x
+        case .v12(let x): return x
+        case .v13(let x): return x
+        case .v14(let x): return x
+        case .v15(let x): return x
+        case .v16(let x): return x
+        case .v17(let x): return x
+        }
+    }
+}
 
-/// One of 18 options
+/// One of at least 18 options
+public protocol Choose18Type : Choose17Type {
+    associatedtype T18
+    var v18: T18? { get set }
+}
+
+/// One of exactly 18 options
 public enum Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>: Choose18Type {
     public var arity: Int { return 18 }
 
@@ -2264,8 +2612,39 @@ public enum Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     }
 }
 
+public extension Choose18 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11, T11 == T12, T12 == T13, T13 == T14, T14 == T15, T15 == T16, T16 == T17, T17 == T18 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        case .v11(let x): return x
+        case .v12(let x): return x
+        case .v13(let x): return x
+        case .v14(let x): return x
+        case .v15(let x): return x
+        case .v16(let x): return x
+        case .v17(let x): return x
+        case .v18(let x): return x
+        }
+    }
+}
 
-/// One of 19 options
+/// One of at least 19 options
+public protocol Choose19Type : Choose18Type {
+    associatedtype T19
+    var v19: T19? { get set }
+}
+
+/// One of exactly 19 options
 public enum Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>: Choose19Type {
     public var arity: Int { return 19 }
 
@@ -2490,8 +2869,40 @@ public enum Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     }
 }
 
+public extension Choose19 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11, T11 == T12, T12 == T13, T13 == T14, T14 == T15, T15 == T16, T16 == T17, T17 == T18, T18 == T19 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        case .v11(let x): return x
+        case .v12(let x): return x
+        case .v13(let x): return x
+        case .v14(let x): return x
+        case .v15(let x): return x
+        case .v16(let x): return x
+        case .v17(let x): return x
+        case .v18(let x): return x
+        case .v19(let x): return x
+        }
+    }
+}
 
-/// One of 20 options
+/// One of at least 20 options
+public protocol Choose20Type : Choose19Type {
+    associatedtype T20
+    var v20: T20? { get set }
+}
+
+/// One of exactly 20 options
 public enum Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>: Choose20Type {
     public var arity: Int { return 20 }
 
@@ -2722,6 +3133,152 @@ public enum Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
         case .v18(let v): return .v1(.v1(.v2(v)))
         case .v19(let v): return .v1(.v2(v))
         case .v20(let v): return .v2(v)
+        }
+    }
+}
+
+public extension Choose20 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11, T11 == T12, T12 == T13, T13 == T14, T14 == T15, T15 == T16, T16 == T17, T17 == T18, T18 == T19, T19 == T20 {
+    /// When a ChooseN type wraps the same value types, returns the single value
+    public var value: T1 {
+        switch self {
+        case .v1(let x): return x
+        case .v2(let x): return x
+        case .v3(let x): return x
+        case .v4(let x): return x
+        case .v5(let x): return x
+        case .v6(let x): return x
+        case .v7(let x): return x
+        case .v8(let x): return x
+        case .v9(let x): return x
+        case .v10(let x): return x
+        case .v11(let x): return x
+        case .v12(let x): return x
+        case .v13(let x): return x
+        case .v14(let x): return x
+        case .v15(let x): return x
+        case .v16(let x): return x
+        case .v17(let x): return x
+        case .v18(let x): return x
+        case .v19(let x): return x
+        case .v20(let x): return x
+        }
+    }
+
+}
+
+// Swift 4.1 TODO: conditional conformance
+extension Choose20 /*: Encodable*/ where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable, T13 : Encodable, T14 : Encodable, T15 : Encodable, T16 : Encodable, T17 : Encodable, T18 : Encodable, T19 : Encodable, T20 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        case .v11(let x): try x.encode(to: encoder)
+        case .v12(let x): try x.encode(to: encoder)
+        case .v13(let x): try x.encode(to: encoder)
+        case .v14(let x): try x.encode(to: encoder)
+        case .v15(let x): try x.encode(to: encoder)
+        case .v16(let x): try x.encode(to: encoder)
+        case .v17(let x): try x.encode(to: encoder)
+        case .v18(let x): try x.encode(to: encoder)
+        case .v19(let x): try x.encode(to: encoder)
+        case .v20(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+// Swift 4.1 TODO: conditional conformance
+extension Choose20 /*: Decodable*/ where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable, T13 : Decodable, T14 : Decodable, T15 : Decodable, T16 : Decodable, T17 : Decodable, T18 : Decodable, T19 : Decodable, T20 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v11(T11(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v12(T12(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v13(T13(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v14(T14(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v15(T15(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v16(T16(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v17(T17(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v18(T18(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v19(T19(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v20(T20(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+// Swift 4.1 TODO: conditional conformance
+extension Choose20 /*: Equatable*/ where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable, T13 : Equatable, T14 : Equatable, T15 : Equatable, T16 : Equatable, T17 : Equatable, T18 : Equatable, T19 : Equatable, T20 : Equatable {
+
+    public static func ==(lhs: Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>, rhs: Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        case (.v11(let a), .v11(let b)): return a == b
+        case (.v12(let a), .v12(let b)): return a == b
+        case (.v13(let a), .v13(let b)): return a == b
+        case (.v14(let a), .v14(let b)): return a == b
+        case (.v15(let a), .v15(let b)): return a == b
+        case (.v16(let a), .v16(let b)): return a == b
+        case (.v17(let a), .v17(let b)): return a == b
+        case (.v18(let a), .v18(let b)): return a == b
+        case (.v19(let a), .v19(let b)): return a == b
+        case (.v20(let a), .v20(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+// Swift 4.1 TODO: conditional conformance
+extension Choose20 /*: Hashable*/ where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable, T13 : Hashable, T14 : Hashable, T15 : Hashable, T16 : Hashable, T17 : Hashable, T18 : Hashable, T19 : Hashable, T20 : Hashable { // Swift 4.1 TODO: conditional conformance
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
+        case .v11(let x): return x.hashValue
+        case .v12(let x): return x.hashValue
+        case .v13(let x): return x.hashValue
+        case .v14(let x): return x.hashValue
+        case .v15(let x): return x.hashValue
+        case .v16(let x): return x.hashValue
+        case .v17(let x): return x.hashValue
+        case .v18(let x): return x.hashValue
+        case .v19(let x): return x.hashValue
+        case .v20(let x): return x.hashValue
         }
     }
 }

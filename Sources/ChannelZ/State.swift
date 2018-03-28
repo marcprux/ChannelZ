@@ -167,12 +167,10 @@ public protocol _WrapperType {
 
     /// If `self == nil`, returns `nil`.  Otherwise, returns `f(self!)`.
     /// - See Also: `Optional.map`
-    
     func map<U>(_ f: (Wrapped) throws -> U) rethrows -> U?
 
     /// Returns `nil` if `self` is `nil`, `f(self!)` otherwise.
     /// - See Also: `Optional.flatMap`
-    
     func flatMap<U>(_ f: (Wrapped) throws -> U?) rethrows -> U?
 }
 

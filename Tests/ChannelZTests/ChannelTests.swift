@@ -1524,6 +1524,25 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual([3, 4, 5, 6, 7, 8, 9], values.2)
     }
 
+    func testChooseConformity() throws {
+        typealias StringOrInt = Choose2<String, Int>
+
+        XCTAssertTrue(StringOrInt("x") == StringOrInt("x"))
+        XCTAssertFalse(StringOrInt("x") == StringOrInt("y"))
+        XCTAssertFalse(StringOrInt(1) == StringOrInt("y"))
+        XCTAssertFalse(StringOrInt(1) == StringOrInt(2))
+        XCTAssertTrue(StringOrInt(3) == StringOrInt(3))
+
+        XCTAssertTrue(StringOrInt("x").hashValue == StringOrInt("x").hashValue)
+        XCTAssertFalse(StringOrInt("x").hashValue == StringOrInt("y").hashValue)
+        XCTAssertFalse(StringOrInt(1).hashValue == StringOrInt("y").hashValue)
+        XCTAssertFalse(StringOrInt(1).hashValue == StringOrInt(2).hashValue)
+        XCTAssertTrue(StringOrInt(3).hashValue == StringOrInt(3).hashValue)
+
+//        let encoder = JSONEncoder()
+//        XCTAssertEqual("[\"x\"]", String(data: try encoder.encode([StringOrInt("x")]), encoding: .utf8))
+    }
+
     public static var allTests = [
         ("testAnalogousSequenceFunctions", testAnalogousSequenceFunctions),
         ("testZipImplementations", testZipImplementations),
@@ -1564,5 +1583,6 @@ class ChannelTests : ChannelTestCase {
         ("testMultipleReceiversOnPropertyChannel", testMultipleReceiversOnPropertyChannel),
         ("testMultipleReceiversOnSievedPropertyChannel", testMultipleReceiversOnSievedPropertyChannel),
         ("testDropWithMultipleReceivers", testDropWithMultipleReceivers),
+        ("testChooseConformity", testChooseConformity),
         ]
 }

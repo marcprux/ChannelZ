@@ -537,7 +537,7 @@ public protocol Optical : class {
     init(_ optical: T)
 }
 
-public extension ChannelType where Source.Value : Choose1Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.Value : ChooseNType, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
     /// Channel for the first option of N choices
     public var v1Z: FocusChannel<Pulse.Value.T1?> {
         return focus(get: { (x: Pulse.Value) in x.v1 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T1?) in x.v1 = y })
