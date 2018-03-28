@@ -47,7 +47,7 @@ class ChannelTestCase : XCTestCase {
             XCTAssertEqual(0, ChannelZ.ChannelZReentrantReceptions.get(), "unexpected reentrant receptions detected")
             ChannelZ.ChannelZReentrantReceptions.set(0)
         #else
-            XCTFail("Why are you running tests with debugging off?")
+            XCTFail("ChannelZ debugging must be enabled for tests – e.g.: swift test -Xswiftc -DDEBUG_CHANNELZ")
         #endif
     }
 }

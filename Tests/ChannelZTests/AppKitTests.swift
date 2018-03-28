@@ -441,7 +441,7 @@ class AppKitTests : ChannelTestCase {
             // ChannelZ.ChannelZNotificationObserverCount = 0
 
         #else
-            XCTFail("Why are you running tests with debugging off?")
+            XCTFail("ChannelZ debugging must be enabled for tests – e.g.: swift test -Xswiftc -DDEBUG_CHANNELZ")
         #endif
     }
 

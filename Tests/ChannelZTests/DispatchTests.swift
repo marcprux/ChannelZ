@@ -20,6 +20,16 @@ public protocol Progressable {
 
 extension Progress : Progressable {
     public var progress: Progress { return self }
+
+    public class func discrete(_ count: Int64) -> Progress {
+        if #available(iOS 9, OSX 10.11, watchOS 2, *) {
+            return Progress.discreteProgress(totalUnitCount: Int64(count))
+        } else {
+            let progress = Progress(parent: nil)
+            progress.totalUnitCount = count
+            return progress
+        }
+    }
 }
 
 public final class Progressive<T> : Progressable {
@@ -32,7 +42,7 @@ public final class Progressive<T> : Progressable {
     }
     
     public convenience init(_ value: T, count: Int64) {
-        self.init(value, progress: Progress.discreteProgress(totalUnitCount: count))
+        self.init(value, progress: Progress.discrete(count))
     }
 }
 
@@ -73,7 +83,7 @@ func trickleZ<G: IteratorProtocol>(_ fromx: G, _ interval: TimeInterval, queue: 
 
 /// Creates an asynchronous trickle of events for the given generator
 func trickleZProgress<G: Collection>(_ fromx: G, _ interval: TimeInterval, queue: DispatchQueue = DispatchQueue.main) -> Channel<Progress, G.Element> {
-    let progress = Progress.discreteProgress(totalUnitCount: Int64(fromx.count))
+    let progress = Progress.discrete(Int64(fromx.count))
     var stopped = false
     progress.cancellationHandler = {
         stopped = true
