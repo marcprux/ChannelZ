@@ -1130,21 +1130,21 @@ class ChannelTests : ChannelTestCase {
         do {
             let c1: Channel<ValueTransceiver<String>, Int?> = transceive("X").map({ _ in 2 as Int? })
             let c2: Channel<ValueTransceiver<Int?>, String> = transceive(1 as Int?).map({ _ in "X" })
-            c1.bind(c2)
+//            c1.bind(c2)
             c1.bindPulseToOptionalPulse(c2)
         }
 
         do {
             let c1: Channel<ValueTransceiver<String?>, Int> = transceive("X" as String?).map({ _ in 2 })
             let c2: Channel<ValueTransceiver<Int>, String?> = transceive(1).map({ _ in "X" as String? })
-            c1.bind(c2)
+//            c1.bind(c2)
             c1.bindOptionalPulseToPulse(c2)
         }
 
         do {
             let c1: Channel<ValueTransceiver<String?>, Int?> = transceive("X" as String?).map({ _ in 2 as Int? })
             let c2: Channel<ValueTransceiver<Int?>, String?> = transceive(1 as Int?).map({ _ in "X" })
-            c1.bind(c2)
+//            c1.bind(c2)
             c1.bindOptionalPulseToOptionalPulse(c2)
         }
     }
@@ -1154,28 +1154,28 @@ class ChannelTests : ChannelTestCase {
         do {
             let c1: Channel<ValueTransceiver<String>, Mutation<Int>> = transceive("X").map({ _ in Mutation(old: 1, new: 2) })
             let c2: Channel<ValueTransceiver<Int>, Mutation<String>> = transceive(1).map({ _ in Mutation(old: "", new: "X") })
-            c1.link(c2)
+//            c1.link(c2)
             c1.linkStateToState(c2)
         }
 
         do {
             let c1: Channel<ValueTransceiver<String>, Mutation<Int?>> = transceive("X").map({ _ in Mutation(old: 1 as Int??, new: 2 as Int?) })
             let c2: Channel<ValueTransceiver<Int?>, Mutation<String>> = transceive(1 as Int?).map({ _ in Mutation(old: "", new: "X") })
-            c1.link(c2)
+//            c1.link(c2)
             c1.linkStateToOptionalState(c2)
         }
 
         do {
             let c1: Channel<ValueTransceiver<String?>, Mutation<Int>> = transceive("X" as String?).map({ _ in Mutation(old: 1, new: 2) })
             let c2: Channel<ValueTransceiver<Int>, Mutation<String?>> = transceive(1).map({ _ in Mutation(old: "" as String??, new: "X" as String?) })
-            c1.link(c2)
+//            c1.link(c2)
             c1.linkOptionalStateToState(c2)
         }
 
         do {
             let c1: Channel<ValueTransceiver<String?>, Mutation<Int?>> = transceive("X" as String?).map({ _ in Mutation(old: 1 as Int??, new: 2 as Int?) })
             let c2: Channel<ValueTransceiver<Int?>, Mutation<String?>> = transceive(1 as Int?).map({ _ in Mutation(old: "" as String??, new: "X" as String?) })
-            c1.link(c2)
+//            c1.link(c2)
             c1.linkOptionalStateToOptionalState(c2)
         }
     }
@@ -1527,11 +1527,11 @@ class ChannelTests : ChannelTestCase {
     func testChooseConformity() throws {
         typealias StringOrInt = Choose2<String, Int>
 
-        XCTAssertTrue(StringOrInt("x") == StringOrInt("x"))
+        XCTAssertEqual(StringOrInt("x"), StringOrInt("x"))
         XCTAssertFalse(StringOrInt("x") == StringOrInt("y"))
         XCTAssertFalse(StringOrInt(1) == StringOrInt("y"))
         XCTAssertFalse(StringOrInt(1) == StringOrInt(2))
-        XCTAssertTrue(StringOrInt(3) == StringOrInt(3))
+        XCTAssertEqual(StringOrInt(3), StringOrInt(3))
 
         XCTAssertTrue(StringOrInt("x").hashValue == StringOrInt("x").hashValue)
         XCTAssertFalse(StringOrInt("x").hashValue == StringOrInt("y").hashValue)
@@ -1539,8 +1539,12 @@ class ChannelTests : ChannelTestCase {
         XCTAssertFalse(StringOrInt(1).hashValue == StringOrInt(2).hashValue)
         XCTAssertTrue(StringOrInt(3).hashValue == StringOrInt(3).hashValue)
 
-//        let encoder = JSONEncoder()
-//        XCTAssertEqual("[\"x\"]", String(data: try encoder.encode([StringOrInt("x")]), encoding: .utf8))
+        let encoder = JSONEncoder()
+        XCTAssertEqual("[\"x\"]", String(data: try encoder.encode([StringOrInt("x")]), encoding: .utf8))
+        XCTAssertEqual("[456]", String(data: try encoder.encode([StringOrInt(456)]), encoding: .utf8))
+
+        XCTAssertEqual([StringOrInt(1), StringOrInt(2)], [StringOrInt(1), StringOrInt(2)])
+        XCTAssertEqual([StringOrInt(1), StringOrInt(2), StringOrInt(2)] as Set<StringOrInt>, [StringOrInt(1), StringOrInt(2)])
     }
 
     public static var allTests = [

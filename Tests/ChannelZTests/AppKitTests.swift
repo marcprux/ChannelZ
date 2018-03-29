@@ -354,72 +354,72 @@ class AppKitTests : ChannelTestCase {
             XCTAssertEqual(87, controller.value, "control should have been unbound")
         }
 
-        do { // bind to string
-            let textField = NSTextField()
-
-            contentView.addSubview(textField)
-            defer { textField.removeFromSuperview() }
-
-            let controller = textField.channelZBinding(value: "ABC")
-            let enabled = textField.channelZBinding(value: true, name: .enabled)
-            let hidden = textField.channelZBinding(value: false, name: .hidden)
-
-            controller.value = "XYZ"
-            XCTAssertEqual("XYZ", textField.stringValue, "text field should mirror controller binding")
-            XCTAssertEqual("XYZ" as NSObject, textField.objectValue as? NSObject, "text field should show null binding")
-            XCTAssertEqual(nil, textField.placeholderString, "placeholder should not be set unless content is nil")
-
-            controller.value = nil
-            XCTAssertEqual(nil, textField.objectValue as? NSObject)
-            XCTAssertEqual("", textField.stringValue)
-            XCTAssertEqual("ABC", textField.placeholderString, "placeholder should be set when content is nil")
-
-            XCTAssertEqual(true, textField.isEnabled)
-            enabled.value = false
-            XCTAssertEqual(false, textField.isEnabled)
-            enabled.value = true
-            XCTAssertEqual(true, textField.isEnabled)
-
-            XCTAssertEqual(false, textField.isHidden)
-            hidden.value = true
-            XCTAssertEqual(true, textField.isHidden)
-            hidden.value = false
-            XCTAssertEqual(false, textField.isHidden)
-
-            // now make it so enabled and hidden are bound to opposite valies, so that
-            // when the control is disabled it is hidden and when the control is hidden it is disabled
-//            enabled.transceiveChanges().map(!).bind(hidden.transceiveChanges().map(!))
-            enabled.transceiveChanges().map({ $0.flatMap(!) }).bind(hidden.transceiveChanges().map({ $0.flatMap(!) }))
-
-            enabled.value = false
-            XCTAssertEqual(false, textField.isEnabled)
-            XCTAssertEqual(true, textField.isHidden)
-
-            enabled.value = true
-            XCTAssertEqual(true, textField.isEnabled)
-            XCTAssertEqual(false, textField.isHidden)
-
-            hidden.value = true
-            XCTAssertEqual(true, textField.isHidden)
-            XCTAssertEqual(false, textField.isEnabled)
-
-            hidden.value = false
-            XCTAssertEqual(false, textField.isHidden)
-            XCTAssertEqual(true, textField.isEnabled)
-
-
-            // “If you change the value of an item in the user interface programmatically, for example sending an NSTextField a setStringValue: message, the model is not updated with the new value.”
-            // “This is the expected behavior. Instead you should change the model object using a key-value-observing compliant manner.”
-
-//            textField.stringValue = "ABC"
-//            XCTAssertEqual("ABC", controller.$, "text field should be seem in controller")
-
-
-//            stepper.unbind(NSValueBinding)
+//        do { // bind to string
+//            let textField = NSTextField()
 //
-//            textField.stringValue = "000"
-//            XCTAssertEqual("ABC", controller.$, "text field should have been unbound")
-        }
+//            contentView.addSubview(textField)
+//            defer { textField.removeFromSuperview() }
+//
+//            let controller = textField.channelZBinding(value: "ABC")
+//            let enabled = textField.channelZBinding(value: true, name: .enabled)
+//            let hidden = textField.channelZBinding(value: false, name: .hidden)
+//
+//            controller.value = "XYZ"
+//            XCTAssertEqual("XYZ", textField.stringValue, "text field should mirror controller binding")
+//            XCTAssertEqual("XYZ" as NSObject, textField.objectValue as? NSObject, "text field should show null binding")
+//            XCTAssertEqual(nil, textField.placeholderString, "placeholder should not be set unless content is nil")
+//
+//            controller.value = nil
+//            XCTAssertEqual(nil, textField.objectValue as? NSObject)
+//            XCTAssertEqual("", textField.stringValue)
+//            XCTAssertEqual("ABC", textField.placeholderString, "placeholder should be set when content is nil")
+//
+//            XCTAssertEqual(true, textField.isEnabled)
+//            enabled.value = false
+//            XCTAssertEqual(false, textField.isEnabled)
+//            enabled.value = true
+//            XCTAssertEqual(true, textField.isEnabled)
+//
+//            XCTAssertEqual(false, textField.isHidden)
+//            hidden.value = true
+//            XCTAssertEqual(true, textField.isHidden)
+//            hidden.value = false
+//            XCTAssertEqual(false, textField.isHidden)
+//
+//            // now make it so enabled and hidden are bound to opposite valies, so that
+//            // when the control is disabled it is hidden and when the control is hidden it is disabled
+////            enabled.transceiveChanges().map(!).bind(hidden.transceiveChanges().map(!))
+//            enabled.transceiveChanges().map({ $0.flatMap(!) }).bind(hidden.transceiveChanges().map({ $0.flatMap(!) }))
+//
+//            enabled.value = false
+//            XCTAssertEqual(false, textField.isEnabled)
+//            XCTAssertEqual(true, textField.isHidden)
+//
+//            enabled.value = true
+//            XCTAssertEqual(true, textField.isEnabled)
+//            XCTAssertEqual(false, textField.isHidden)
+//
+//            hidden.value = true
+//            XCTAssertEqual(true, textField.isHidden)
+//            XCTAssertEqual(false, textField.isEnabled)
+//
+//            hidden.value = false
+//            XCTAssertEqual(false, textField.isHidden)
+//            XCTAssertEqual(true, textField.isEnabled)
+//
+//
+//            // “If you change the value of an item in the user interface programmatically, for example sending an NSTextField a setStringValue: message, the model is not updated with the new value.”
+//            // “This is the expected behavior. Instead you should change the model object using a key-value-observing compliant manner.”
+//
+////            textField.stringValue = "ABC"
+////            XCTAssertEqual("ABC", controller.$, "text field should be seem in controller")
+//
+//
+////            stepper.unbind(NSValueBinding)
+////
+////            textField.stringValue = "000"
+////            XCTAssertEqual("ABC", controller.$, "text field should have been unbound")
+//        }
 
     }
 

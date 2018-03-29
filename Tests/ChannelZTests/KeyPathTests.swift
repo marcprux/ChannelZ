@@ -1814,7 +1814,7 @@ class KeyPathTests : ChannelTestCase {
         XCTAssertEqual(nil, state1.num1)
         XCTAssertEqual(2, state2.num1)
 
-        let rcvr = i1.bind(i2)
+        let rcvr = i1.bindOptionalPulseToPulse(i2)
 //        let rcvr = i2.bind(i1)
 
         XCTAssertEqual(nil, state1.num1)

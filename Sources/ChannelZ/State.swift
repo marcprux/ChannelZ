@@ -449,7 +449,7 @@ public extension StateEmitterType where Value : Equatable {
 
 public extension StreamType where Pulse : MutationType, Pulse.Value : _WrapperType, Pulse.Value.Wrapped : Equatable {
     /// Filters the channel for only changed optional instances of the underlying `Mutation`
-    public func sieve() -> Self {
+    public func sieveCompact() -> Self {
         return sieve(optionalTypeNotEqual)
     }
 }
@@ -459,7 +459,7 @@ public extension ChannelType where Pulse : MutationType, Pulse.Value : _WrapperT
     ///
     /// - See Also: `changes(predicate:)`
     public func changes() -> Channel<Source, Pulse.Value> {
-        return sieve().new()
+        return sieveCompact().new()
     }
 }
 

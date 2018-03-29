@@ -84,8 +84,7 @@ public extension Choose2 where T1 == T2 {
     }
 }
 
-// Swift 4.1 TODO: conditional conformance
-extension Choose2 /*: Encodable*/ where T1 : Encodable, T2 : Encodable {
+extension Choose2 : Encodable where T1 : Encodable, T2 : Encodable {
 
     public func encode(to encoder: Encoder) throws {
         switch self {
@@ -95,8 +94,7 @@ extension Choose2 /*: Encodable*/ where T1 : Encodable, T2 : Encodable {
     }
 }
 
-// Swift 4.1 TODO: conditional conformance
-extension Choose2 /*: Decodable*/ where T1 : Decodable, T2 : Decodable {
+extension Choose2 : Decodable where T1 : Decodable, T2 : Decodable {
 
     public init(from decoder: Decoder) throws {
         var errors: [Error] = []
@@ -106,8 +104,7 @@ extension Choose2 /*: Decodable*/ where T1 : Decodable, T2 : Decodable {
     }
 }
 
-// Swift 4.1 TODO: conditional conformance
-extension Choose2 /*: Equatable*/ where T1 : Equatable, T2 : Equatable {
+extension Choose2 : Equatable where T1 : Equatable, T2 : Equatable {
 
     public static func ==(lhs: Choose2<T1, T2>, rhs: Choose2<T1, T2>) -> Bool {
         switch (lhs, rhs) {
@@ -118,8 +115,7 @@ extension Choose2 /*: Equatable*/ where T1 : Equatable, T2 : Equatable {
     }
 }
 
-// Swift 4.1 TODO: conditional conformance
-extension Choose2 /*: Hashable*/ where T1 : Hashable, T2 : Hashable { // Swift 4.1 TODO: conditional conformance
+extension Choose2 : Hashable where T1 : Hashable, T2 : Hashable {
 
     public var hashValue: Int {
         switch self {
@@ -192,6 +188,51 @@ public extension Choose3 where T1 == T2, T2 == T3 {
         case .v1(let x): return x
         case .v2(let x): return x
         case .v3(let x): return x
+        }
+    }
+}
+
+extension Choose3 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose3 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose3 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable {
+
+    public static func ==(lhs: Choose3<T1, T2, T3>, rhs: Choose3<T1, T2, T3>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose3 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
         }
     }
 }
@@ -271,6 +312,55 @@ public extension Choose4 where T1 == T2, T2 == T3, T3 == T4 {
         case .v2(let x): return x
         case .v3(let x): return x
         case .v4(let x): return x
+        }
+    }
+}
+
+extension Choose4 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose4 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose4 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable {
+
+    public static func ==(lhs: Choose4<T1, T2, T3, T4>, rhs: Choose4<T1, T2, T3, T4>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose4 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
         }
     }
 }
@@ -362,6 +452,59 @@ public extension Choose5 where T1 == T2, T2 == T3, T3 == T4, T4 == T5 {
         case .v3(let x): return x
         case .v4(let x): return x
         case .v5(let x): return x
+        }
+    }
+}
+
+extension Choose5 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose5 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose5 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable {
+
+    public static func ==(lhs: Choose5<T1, T2, T3, T4, T5>, rhs: Choose5<T1, T2, T3, T4, T5>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose5 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
         }
     }
 }
@@ -465,6 +608,63 @@ public extension Choose6 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6 
         case .v4(let x): return x
         case .v5(let x): return x
         case .v6(let x): return x
+        }
+    }
+}
+
+extension Choose6 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose6 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose6 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable {
+
+    public static func ==(lhs: Choose6<T1, T2, T3, T4, T5, T6>, rhs: Choose6<T1, T2, T3, T4, T5, T6>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose6 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
         }
     }
 }
@@ -580,6 +780,67 @@ public extension Choose7 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6,
         case .v5(let x): return x
         case .v6(let x): return x
         case .v7(let x): return x
+        }
+    }
+}
+
+extension Choose7 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose7 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose7 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable {
+
+    public static func ==(lhs: Choose7<T1, T2, T3, T4, T5, T6, T7>, rhs: Choose7<T1, T2, T3, T4, T5, T6, T7>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose7 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
         }
     }
 }
@@ -707,6 +968,71 @@ public extension Choose8 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6,
         case .v6(let x): return x
         case .v7(let x): return x
         case .v8(let x): return x
+        }
+    }
+}
+
+extension Choose8 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose8 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose8 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable {
+
+    public static func ==(lhs: Choose8<T1, T2, T3, T4, T5, T6, T7, T8>, rhs: Choose8<T1, T2, T3, T4, T5, T6, T7, T8>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose8 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
         }
     }
 }
@@ -846,6 +1172,75 @@ public extension Choose9 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6,
         case .v7(let x): return x
         case .v8(let x): return x
         case .v9(let x): return x
+        }
+    }
+}
+
+extension Choose9 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose9 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose9 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable {
+
+    public static func ==(lhs: Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>, rhs: Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose9 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
         }
     }
 }
@@ -997,6 +1392,79 @@ public extension Choose10 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
         case .v8(let x): return x
         case .v9(let x): return x
         case .v10(let x): return x
+        }
+    }
+}
+
+extension Choose10 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose10 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose10 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable {
+
+    public static func ==(lhs: Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>, rhs: Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose10 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
         }
     }
 }
@@ -1160,6 +1628,83 @@ public extension Choose11 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
         case .v9(let x): return x
         case .v10(let x): return x
         case .v11(let x): return x
+        }
+    }
+}
+
+extension Choose11 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        case .v11(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose11 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v11(T11(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose11 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable {
+
+    public static func ==(lhs: Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>, rhs: Choose11<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        case (.v11(let a), .v11(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose11 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
+        case .v11(let x): return x.hashValue
         }
     }
 }
@@ -1338,6 +1883,89 @@ public extension Choose12 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
         }
     }
 }
+
+
+extension Choose12 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        case .v11(let x): try x.encode(to: encoder)
+        case .v12(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose12 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v11(T11(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v12(T12(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose12 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable {
+
+    public static func ==(lhs: Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>, rhs: Choose12<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        case (.v11(let a), .v11(let b)): return a == b
+        case (.v12(let a), .v12(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose12 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
+        case .v11(let x): return x.hashValue
+        case .v12(let x): return x.hashValue
+        }
+    }
+}
+
 
 /// One of at least 13 options
 public protocol Choose13Type : Choose12Type {
@@ -1522,6 +2150,91 @@ public extension Choose13 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
         case .v11(let x): return x
         case .v12(let x): return x
         case .v13(let x): return x
+        }
+    }
+}
+
+extension Choose13 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable, T13 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        case .v11(let x): try x.encode(to: encoder)
+        case .v12(let x): try x.encode(to: encoder)
+        case .v13(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose13 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable, T13 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v11(T11(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v12(T12(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v13(T13(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose13 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable, T13 : Equatable {
+
+    public static func ==(lhs: Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>, rhs: Choose13<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        case (.v11(let a), .v11(let b)): return a == b
+        case (.v12(let a), .v12(let b)): return a == b
+        case (.v13(let a), .v13(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose13 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable, T13 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
+        case .v11(let x): return x.hashValue
+        case .v12(let x): return x.hashValue
+        case .v13(let x): return x.hashValue
         }
     }
 }
@@ -1720,6 +2433,96 @@ public extension Choose14 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
         case .v12(let x): return x
         case .v13(let x): return x
         case .v14(let x): return x
+        }
+    }
+}
+
+
+extension Choose14 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable, T13 : Encodable, T14 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        case .v11(let x): try x.encode(to: encoder)
+        case .v12(let x): try x.encode(to: encoder)
+        case .v13(let x): try x.encode(to: encoder)
+        case .v14(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose14 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable, T13 : Decodable, T14 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v11(T11(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v12(T12(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v13(T13(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v14(T14(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose14 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable, T13 : Equatable, T14 : Equatable {
+
+    public static func ==(lhs: Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>, rhs: Choose14<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        case (.v11(let a), .v11(let b)): return a == b
+        case (.v12(let a), .v12(let b)): return a == b
+        case (.v13(let a), .v13(let b)): return a == b
+        case (.v14(let a), .v14(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose14 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable, T13 : Hashable, T14 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
+        case .v11(let x): return x.hashValue
+        case .v12(let x): return x.hashValue
+        case .v13(let x): return x.hashValue
+        case .v14(let x): return x.hashValue
         }
     }
 }
@@ -1931,6 +2734,99 @@ public extension Choose15 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
         case .v13(let x): return x
         case .v14(let x): return x
         case .v15(let x): return x
+        }
+    }
+}
+
+extension Choose15 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable, T13 : Encodable, T14 : Encodable, T15 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        case .v11(let x): try x.encode(to: encoder)
+        case .v12(let x): try x.encode(to: encoder)
+        case .v13(let x): try x.encode(to: encoder)
+        case .v14(let x): try x.encode(to: encoder)
+        case .v15(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose15 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable, T13 : Decodable, T14 : Decodable, T15 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v11(T11(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v12(T12(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v13(T13(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v14(T14(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v15(T15(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose15 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable, T13 : Equatable, T14 : Equatable, T15 : Equatable {
+
+    public static func ==(lhs: Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>, rhs: Choose15<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        case (.v11(let a), .v11(let b)): return a == b
+        case (.v12(let a), .v12(let b)): return a == b
+        case (.v13(let a), .v13(let b)): return a == b
+        case (.v14(let a), .v14(let b)): return a == b
+        case (.v15(let a), .v15(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose15 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable, T13 : Hashable, T14 : Hashable, T15 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
+        case .v11(let x): return x.hashValue
+        case .v12(let x): return x.hashValue
+        case .v13(let x): return x.hashValue
+        case .v14(let x): return x.hashValue
+        case .v15(let x): return x.hashValue
         }
     }
 }
@@ -2154,6 +3050,103 @@ public extension Choose16 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
         case .v14(let x): return x
         case .v15(let x): return x
         case .v16(let x): return x
+        }
+    }
+}
+
+extension Choose16 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable, T13 : Encodable, T14 : Encodable, T15 : Encodable, T16 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        case .v11(let x): try x.encode(to: encoder)
+        case .v12(let x): try x.encode(to: encoder)
+        case .v13(let x): try x.encode(to: encoder)
+        case .v14(let x): try x.encode(to: encoder)
+        case .v15(let x): try x.encode(to: encoder)
+        case .v16(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose16 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable, T13 : Decodable, T14 : Decodable, T15 : Decodable, T16 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v11(T11(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v12(T12(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v13(T13(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v14(T14(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v15(T15(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v16(T16(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose16 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable, T13 : Equatable, T14 : Equatable, T15 : Equatable, T16 : Equatable {
+
+    public static func ==(lhs: Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>, rhs: Choose16<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        case (.v11(let a), .v11(let b)): return a == b
+        case (.v12(let a), .v12(let b)): return a == b
+        case (.v13(let a), .v13(let b)): return a == b
+        case (.v14(let a), .v14(let b)): return a == b
+        case (.v15(let a), .v15(let b)): return a == b
+        case (.v16(let a), .v16(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose16 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable, T13 : Hashable, T14 : Hashable, T15 : Hashable, T16 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
+        case .v11(let x): return x.hashValue
+        case .v12(let x): return x.hashValue
+        case .v13(let x): return x.hashValue
+        case .v14(let x): return x.hashValue
+        case .v15(let x): return x.hashValue
+        case .v16(let x): return x.hashValue
         }
     }
 }
@@ -2388,6 +3381,107 @@ public extension Choose17 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
         case .v15(let x): return x
         case .v16(let x): return x
         case .v17(let x): return x
+        }
+    }
+}
+
+extension Choose17 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable, T13 : Encodable, T14 : Encodable, T15 : Encodable, T16 : Encodable, T17 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        case .v11(let x): try x.encode(to: encoder)
+        case .v12(let x): try x.encode(to: encoder)
+        case .v13(let x): try x.encode(to: encoder)
+        case .v14(let x): try x.encode(to: encoder)
+        case .v15(let x): try x.encode(to: encoder)
+        case .v16(let x): try x.encode(to: encoder)
+        case .v17(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose17 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable, T13 : Decodable, T14 : Decodable, T15 : Decodable, T16 : Decodable, T17 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v11(T11(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v12(T12(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v13(T13(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v14(T14(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v15(T15(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v16(T16(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v17(T17(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose17 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable, T13 : Equatable, T14 : Equatable, T15 : Equatable, T16 : Equatable, T17 : Equatable {
+
+    public static func ==(lhs: Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>, rhs: Choose17<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        case (.v11(let a), .v11(let b)): return a == b
+        case (.v12(let a), .v12(let b)): return a == b
+        case (.v13(let a), .v13(let b)): return a == b
+        case (.v14(let a), .v14(let b)): return a == b
+        case (.v15(let a), .v15(let b)): return a == b
+        case (.v16(let a), .v16(let b)): return a == b
+        case (.v17(let a), .v17(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose17 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable, T13 : Hashable, T14 : Hashable, T15 : Hashable, T16 : Hashable, T17 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
+        case .v11(let x): return x.hashValue
+        case .v12(let x): return x.hashValue
+        case .v13(let x): return x.hashValue
+        case .v14(let x): return x.hashValue
+        case .v15(let x): return x.hashValue
+        case .v16(let x): return x.hashValue
+        case .v17(let x): return x.hashValue
         }
     }
 }
@@ -2638,6 +3732,111 @@ public extension Choose18 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
     }
 }
 
+extension Choose18 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable, T13 : Encodable, T14 : Encodable, T15 : Encodable, T16 : Encodable, T17 : Encodable, T18 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        case .v11(let x): try x.encode(to: encoder)
+        case .v12(let x): try x.encode(to: encoder)
+        case .v13(let x): try x.encode(to: encoder)
+        case .v14(let x): try x.encode(to: encoder)
+        case .v15(let x): try x.encode(to: encoder)
+        case .v16(let x): try x.encode(to: encoder)
+        case .v17(let x): try x.encode(to: encoder)
+        case .v18(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose18 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable, T13 : Decodable, T14 : Decodable, T15 : Decodable, T16 : Decodable, T17 : Decodable, T18 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v11(T11(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v12(T12(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v13(T13(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v14(T14(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v15(T15(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v16(T16(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v17(T17(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v18(T18(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose18 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable, T13 : Equatable, T14 : Equatable, T15 : Equatable, T16 : Equatable, T17 : Equatable, T18 : Equatable {
+
+    public static func ==(lhs: Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>, rhs: Choose18<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        case (.v11(let a), .v11(let b)): return a == b
+        case (.v12(let a), .v12(let b)): return a == b
+        case (.v13(let a), .v13(let b)): return a == b
+        case (.v14(let a), .v14(let b)): return a == b
+        case (.v15(let a), .v15(let b)): return a == b
+        case (.v16(let a), .v16(let b)): return a == b
+        case (.v17(let a), .v17(let b)): return a == b
+        case (.v18(let a), .v18(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose18 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable, T13 : Hashable, T14 : Hashable, T15 : Hashable, T16 : Hashable, T17 : Hashable, T18 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
+        case .v11(let x): return x.hashValue
+        case .v12(let x): return x.hashValue
+        case .v13(let x): return x.hashValue
+        case .v14(let x): return x.hashValue
+        case .v15(let x): return x.hashValue
+        case .v16(let x): return x.hashValue
+        case .v17(let x): return x.hashValue
+        case .v18(let x): return x.hashValue
+        }
+    }
+}
+
 /// One of at least 19 options
 public protocol Choose19Type : Choose18Type {
     associatedtype T19
@@ -2869,6 +4068,7 @@ public enum Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
     }
 }
 
+
 public extension Choose19 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10, T10 == T11, T11 == T12, T12 == T13, T13 == T14, T14 == T15, T15 == T16, T16 == T17, T17 == T18, T18 == T19 {
     /// When a ChooseN type wraps the same value types, returns the single value
     public var value: T1 {
@@ -2892,6 +4092,116 @@ public extension Choose19 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
         case .v17(let x): return x
         case .v18(let x): return x
         case .v19(let x): return x
+        }
+    }
+}
+
+
+extension Choose19 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable, T13 : Encodable, T14 : Encodable, T15 : Encodable, T16 : Encodable, T17 : Encodable, T18 : Encodable, T19 : Encodable {
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .v1(let x): try x.encode(to: encoder)
+        case .v2(let x): try x.encode(to: encoder)
+        case .v3(let x): try x.encode(to: encoder)
+        case .v4(let x): try x.encode(to: encoder)
+        case .v5(let x): try x.encode(to: encoder)
+        case .v6(let x): try x.encode(to: encoder)
+        case .v7(let x): try x.encode(to: encoder)
+        case .v8(let x): try x.encode(to: encoder)
+        case .v9(let x): try x.encode(to: encoder)
+        case .v10(let x): try x.encode(to: encoder)
+        case .v11(let x): try x.encode(to: encoder)
+        case .v12(let x): try x.encode(to: encoder)
+        case .v13(let x): try x.encode(to: encoder)
+        case .v14(let x): try x.encode(to: encoder)
+        case .v15(let x): try x.encode(to: encoder)
+        case .v16(let x): try x.encode(to: encoder)
+        case .v17(let x): try x.encode(to: encoder)
+        case .v18(let x): try x.encode(to: encoder)
+        case .v19(let x): try x.encode(to: encoder)
+        }
+    }
+}
+
+extension Choose19 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable, T13 : Decodable, T14 : Decodable, T15 : Decodable, T16 : Decodable, T17 : Decodable, T18 : Decodable, T19 : Decodable {
+
+    public init(from decoder: Decoder) throws {
+        var errors: [Error] = []
+        do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v11(T11(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v12(T12(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v13(T13(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v14(T14(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v15(T15(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v16(T16(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v17(T17(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v18(T18(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v19(T19(from: decoder)); return } catch { errors.append(error) }
+        throw ChoiceDecodingError(errors: errors)
+    }
+}
+
+extension Choose19 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable, T13 : Equatable, T14 : Equatable, T15 : Equatable, T16 : Equatable, T17 : Equatable, T18 : Equatable, T19 : Equatable {
+
+    public static func ==(lhs: Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>, rhs: Choose19<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19>) -> Bool {
+        switch (lhs, rhs) {
+        case (.v1(let a), .v1(let b)): return a == b
+        case (.v2(let a), .v2(let b)): return a == b
+        case (.v3(let a), .v3(let b)): return a == b
+        case (.v4(let a), .v4(let b)): return a == b
+        case (.v5(let a), .v5(let b)): return a == b
+        case (.v6(let a), .v6(let b)): return a == b
+        case (.v7(let a), .v7(let b)): return a == b
+        case (.v8(let a), .v8(let b)): return a == b
+        case (.v9(let a), .v9(let b)): return a == b
+        case (.v10(let a), .v10(let b)): return a == b
+        case (.v11(let a), .v11(let b)): return a == b
+        case (.v12(let a), .v12(let b)): return a == b
+        case (.v13(let a), .v13(let b)): return a == b
+        case (.v14(let a), .v14(let b)): return a == b
+        case (.v15(let a), .v15(let b)): return a == b
+        case (.v16(let a), .v16(let b)): return a == b
+        case (.v17(let a), .v17(let b)): return a == b
+        case (.v18(let a), .v18(let b)): return a == b
+        case (.v19(let a), .v19(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+extension Choose19 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable, T13 : Hashable, T14 : Hashable, T15 : Hashable, T16 : Hashable, T17 : Hashable, T18 : Hashable, T19 : Hashable {
+
+    public var hashValue: Int {
+        switch self {
+        case .v1(let x): return x.hashValue
+        case .v2(let x): return x.hashValue
+        case .v3(let x): return x.hashValue
+        case .v4(let x): return x.hashValue
+        case .v5(let x): return x.hashValue
+        case .v6(let x): return x.hashValue
+        case .v7(let x): return x.hashValue
+        case .v8(let x): return x.hashValue
+        case .v9(let x): return x.hashValue
+        case .v10(let x): return x.hashValue
+        case .v11(let x): return x.hashValue
+        case .v12(let x): return x.hashValue
+        case .v13(let x): return x.hashValue
+        case .v14(let x): return x.hashValue
+        case .v15(let x): return x.hashValue
+        case .v16(let x): return x.hashValue
+        case .v17(let x): return x.hashValue
+        case .v18(let x): return x.hashValue
+        case .v19(let x): return x.hashValue
         }
     }
 }
@@ -3166,8 +4476,7 @@ public extension Choose20 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6
 
 }
 
-// Swift 4.1 TODO: conditional conformance
-extension Choose20 /*: Encodable*/ where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable, T13 : Encodable, T14 : Encodable, T15 : Encodable, T16 : Encodable, T17 : Encodable, T18 : Encodable, T19 : Encodable, T20 : Encodable {
+extension Choose20 : Encodable where T1 : Encodable, T2 : Encodable, T3 : Encodable, T4 : Encodable, T5 : Encodable, T6 : Encodable, T7 : Encodable, T8 : Encodable, T9 : Encodable, T10 : Encodable, T11 : Encodable, T12 : Encodable, T13 : Encodable, T14 : Encodable, T15 : Encodable, T16 : Encodable, T17 : Encodable, T18 : Encodable, T19 : Encodable, T20 : Encodable {
 
     public func encode(to encoder: Encoder) throws {
         switch self {
@@ -3195,8 +4504,7 @@ extension Choose20 /*: Encodable*/ where T1 : Encodable, T2 : Encodable, T3 : En
     }
 }
 
-// Swift 4.1 TODO: conditional conformance
-extension Choose20 /*: Decodable*/ where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable, T13 : Decodable, T14 : Decodable, T15 : Decodable, T16 : Decodable, T17 : Decodable, T18 : Decodable, T19 : Decodable, T20 : Decodable {
+extension Choose20 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodable, T4 : Decodable, T5 : Decodable, T6 : Decodable, T7 : Decodable, T8 : Decodable, T9 : Decodable, T10 : Decodable, T11 : Decodable, T12 : Decodable, T13 : Decodable, T14 : Decodable, T15 : Decodable, T16 : Decodable, T17 : Decodable, T18 : Decodable, T19 : Decodable, T20 : Decodable {
 
     public init(from decoder: Decoder) throws {
         var errors: [Error] = []
@@ -3224,8 +4532,7 @@ extension Choose20 /*: Decodable*/ where T1 : Decodable, T2 : Decodable, T3 : De
     }
 }
 
-// Swift 4.1 TODO: conditional conformance
-extension Choose20 /*: Equatable*/ where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable, T13 : Equatable, T14 : Equatable, T15 : Equatable, T16 : Equatable, T17 : Equatable, T18 : Equatable, T19 : Equatable, T20 : Equatable {
+extension Choose20 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable, T11 : Equatable, T12 : Equatable, T13 : Equatable, T14 : Equatable, T15 : Equatable, T16 : Equatable, T17 : Equatable, T18 : Equatable, T19 : Equatable, T20 : Equatable {
 
     public static func ==(lhs: Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>, rhs: Choose20<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20>) -> Bool {
         switch (lhs, rhs) {
@@ -3254,8 +4561,7 @@ extension Choose20 /*: Equatable*/ where T1 : Equatable, T2 : Equatable, T3 : Eq
     }
 }
 
-// Swift 4.1 TODO: conditional conformance
-extension Choose20 /*: Hashable*/ where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable, T13 : Hashable, T14 : Hashable, T15 : Hashable, T16 : Hashable, T17 : Hashable, T18 : Hashable, T19 : Hashable, T20 : Hashable { // Swift 4.1 TODO: conditional conformance
+extension Choose20 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable, T11 : Hashable, T12 : Hashable, T13 : Hashable, T14 : Hashable, T15 : Hashable, T16 : Hashable, T17 : Hashable, T18 : Hashable, T19 : Hashable, T20 : Hashable {
 
     public var hashValue: Int {
         switch self {

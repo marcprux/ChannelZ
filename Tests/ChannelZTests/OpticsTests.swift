@@ -145,6 +145,9 @@ class OpticsTests : ChannelTestCase {
 //            }
 
             let defaddr = Address(line1: "", line2: nil, postalCode: "")
+            let defperson = Person(firstName: "", lastName: "", gender: .male, homeAddress: defaddr, workAddress: nil, previousAddresses: [], thing: nil)
+            let defcompany = Company(employees: [:], ceoID: "", ctoID: nil, address: defaddr)
+
             bebeZ.focus(\.workAddress).coalesce({ _ in defaddr }).focus(\.line1).value = "AAA"
 //            bebeZ.focus(\.workAddress?.line1).value = "AAA"
             bebeZ.focus(\.workAddress).coalesce({ _ in defaddr }).focus(\.line2).value = "BBB"
@@ -161,7 +164,8 @@ class OpticsTests : ChannelTestCase {
 //            bebeZ.focus(\.homeAddress).bind(bebeZ.focus(\.workAddress))
             
             a1.bind(a2) // works from home
-            b1.bind(b2) // works from home
+            b1.bindOptionalPulseToPulse(b2)
+//            b1.bind(b2) // works from home
 
             bebeZ.value.workAddress?.line1 = "XXX"
             XCTAssertEqual("XXX", bebeZ.value.homeAddress.line1)
@@ -192,7 +196,7 @@ class OpticsTests : ChannelTestCase {
             XCTAssertEqual(["XYZ", "ABC", "XYZ"], bebeZ.value.previousAddresses.map({ $0.line1 }))
 
 
-            XCTAssertEqual(["XYZ", "ABC"].flatMap({ $0 }), lines.flatMap({ $0 }))
+            XCTAssertEqual(["XYZ", "ABC"].compactMap({ $0 }), lines.compactMap({ $0 }))
 
             let line1sZ = prevZ.prism(\.line1)
 
@@ -265,13 +269,13 @@ class OpticsTests : ChannelTestCase {
             XCTAssertEqual(["T", "T"], line1sZ.value)
 
             var persons: [Person] = []
-            let company = dirZ.focus(\.companies).indexOf(0).coalesce({ _ in nil as Company! })
+            let company = dirZ.focus(\.companies).indexOf(0).coalesce({ _ in defcompany })
 
             company.focus(\.employees).atKey("359414").val().some().receive { person in
                 persons.append(person)
             }
 
-            let empnameZ = company.focus(\.employees).atKey("359414").coalesce({ _ in nil as Person! }).focus(\.firstName)
+            let empnameZ = company.focus(\.employees).atKey("359414").coalesce({ _ in defperson }).focus(\.firstName)
             empnameZ.value = "Marcus"
 
             XCTAssertEqual("Marcus", dirZ.value.companies.first?.employees["359414"]?.firstName)
@@ -298,17 +302,17 @@ class OpticsTests : ChannelTestCase {
             XCTAssertEqual(3, company.focus(\.employees).value.count)
 
             XCTAssertEqual(2, empseltrap.caught.count)
-            XCTAssertEqual(["Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
+            XCTAssertEqual(["Doe"], empseltrap.value?.new.compactMap({ $0 }) ?? [])
 
             keysChannel.value += ["NaN", "999999"]
             XCTAssertEqual(3, empseltrap.caught.count)
-            XCTAssertEqual(["Doe", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
+            XCTAssertEqual(["Doe", "Doe"], empseltrap.value?.new.compactMap({ $0 }) ?? [])
 
             empselZ.value = ["A", "B"] // missing key won't be updated
             XCTAssertEqual(4, empseltrap.caught.count)
             XCTAssertEqual(3, company.focus(\.employees).value.count)
 
-            XCTAssertEqual(["A", "Doe"], empseltrap.value?.new.flatMap({ $0 }) ?? [])
+            XCTAssertEqual(["A", "Doe"], empseltrap.value?.new.compactMap({ $0 }) ?? [])
 
             empselZ.value = ["X", "Y", "Z"]
             XCTAssertEqual(5, empseltrap.caught.count)

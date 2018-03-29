@@ -314,7 +314,7 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
         return subselect(indices) { (seq, idx, val) in
             if seq.indices.contains(idx) {
                 var s = seq
-                s.replaceSubrange(idx...idx, with: CollectionOfOne(val).flatMap({ $0 }))
+                s.replaceSubrange(idx...idx, with: CollectionOfOne(val).compactMap({ $0 }))
                 return s
             } else {
                 return seq
