@@ -461,6 +461,13 @@ public extension ChannelType where Pulse : MutationType, Pulse.Value : _WrapperT
     public func changes() -> Channel<Source, Pulse.Value> {
         return sieveCompact().new()
     }
+
+    /// Adds a channel phase that emits pulses only when the optional equatable pulses are not equal.
+    ///
+    /// - See Also: `changes(predicate:)`
+    public func changesCompact() -> Channel<Source, Pulse.Value> {
+        return sieveCompact().new()
+    }
 }
 
 public extension StateEmitterType where Value : _WrapperType, Value.Wrapped : Equatable {
