@@ -423,7 +423,7 @@ public extension ChannelType where Source.Value : MutableCollection, Source : Tr
 }
 
 /// Development function that pretends to return any T, but really just crashes
-@available(*, deprecated, message: "crashes always!") func todo<T>() -> T { fatalError("TODO: \(T.self)") }
+@available(*, deprecated, message: "crashes always!") func die<T>() -> T { fatalError("DIE: \(T.self)") }
 
 public extension ChannelType where Source.Value : KeyIndexed & Collection, Source.Value.Index : KeyIndexedIndexType, Source.Value.Key == Source.Value.Index.Key, Source.Value.Value == Source.Value.Index.Value, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
 
@@ -497,7 +497,7 @@ public extension ChannelType where Source.Value : KeyIndexed, Source : Transceiv
 //    /// where the subselection will be issued whenever a change in either the selection or the underlying
 //    /// elements occurs; indices that are invalid or become invalid will be silently ignored.
 //    public func sub<C: ChannelType>(_ index: C) -> FocusChannel<[Value.Value]> where C.Source : TransceiverType, C.Pulse : MutationType, C.Source.Value == C.Pulse.Value, C.Source.Value == [Source.Value.Key] {
-//        return todo()
+//        return die()
 //    }
 //
 //    /// Combines this collection state source with a channel of indices and combines them into a prism
@@ -505,7 +505,7 @@ public extension ChannelType where Source.Value : KeyIndexed, Source : Transceiv
 //    /// elements occurs; indices that are invalid or become invalid will be silently ignored.
 //    public func at<C: ChannelType>(_ index: C) -> FocusChannel<Value.Value?> where C.Source : TransceiverType, C.Pulse : MutationType, C.Source.Value == C.Pulse.Value, C.Source.Value == Source.Value.Key? {
 //
-////        return sub.focus(lens: Lens(get: { _ in todo() }, set: { _, _ in todo() }))
+////        return sub.focus(lens: Lens(get: { _ in die() }, set: { _, _ in dieg() }))
 //
 //        // TODO: this should return FocusChannel<Value.Element?> instead of LensChannel<FocusChannel<Self.Pulse.Value>, Self.Pulse.Value.Element?>, but since we are relying on the indices function for the subselection implementation, we need to have an extra level of indirection. For example, an integer indexed indexOf currently returns:
 //        //   Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<[String]>, Mutation<[String]>>, [String]>, Mutation<[String]>>, String?>, Mutation<String?>>
@@ -524,7 +524,7 @@ public extension ChannelType where Source.Value : KeyIndexed, Source : Transceiv
 ////
 ////        return fchan
 //
-//        return todo()
+//        return die()
 //    }
 
 }
