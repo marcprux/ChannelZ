@@ -270,7 +270,7 @@ public func concatZ<S, T>(_ channels: [Channel<S, T>]) -> Channel<[S], (S, T)> {
 /// Note: this operation does not retain the sub-sources, since it can merge a heterogeneously-sourced series of channels
 public func flattenZ<S1, S2, T>(_ channel: Channel<S1, Channel<S2, T>>) -> Channel<S1, T> {
     return Channel<S1, T>(source: channel.source, reception: { (rcv: @escaping (T) -> Void) -> Receipt in
-        var rcpts: [Receipt] = []
+        var rcpts: [Receipt] = [] // FIXME: a crash has been observed here; we are not synchronizing access to this array
         let rcpt = channel.receive { (rcvrobv: Channel<S2, T>) in
             let rcpt = rcvrobv.receive { (item: T) in rcv(item) }
             rcpts.append(rcpt)
