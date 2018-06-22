@@ -115,15 +115,27 @@ open class ReceiptOf: Receipt {
 
     let canceler: () -> ()
 
-    public init(canceler: @escaping () -> ()) {
+    public init(canceler: @escaping () -> () = { }) {
         self.canceler = canceler
     }
 
+    /// Disconnects this receipt from the source observable
+    open func cancel() {
+        // only cancel the first time
+        if cancelCounter.increment() == 1 {
+            canceler()
+        }
+    }
+}
+
+// A thread-safe multi-receipt implementation
+open class MultiReceipt: Receipt {
+    private let queue = DispatchQueue(label: "ReceiptOfQueue", attributes: .concurrent)
+    private var receipts: [Receipt] = []
+
     /// Creates a Receipt backed by one or more other Receipts
     public init(receipts: [Receipt]) {
-        // no receipts means that it is cancelled already
-        if receipts.count == 0 { cancelCounter.set(1) }
-        self.canceler = { for s in receipts { s.cancel() } }
+        addReceipts(receipts)
     }
 
     /// Creates a Receipt backed by another Receipt
@@ -136,14 +148,29 @@ open class ReceiptOf: Receipt {
         self.init(receipts: [])
     }
 
+    public func addReceipts(_ receipts: [Receipt]) {
+        queue.async(flags: .barrier) { self.receipts.append(contentsOf: receipts) }
+    }
+
     /// Disconnects this receipt from the source observable
     open func cancel() {
-        // only cancel the first time
-        if cancelCounter.increment() == 1 {
-            canceler()
+        queue.sync {
+            for receipt in self.receipts {
+                receipt.cancel()
+            }
         }
     }
+
+    public var isCancelled: Bool {
+        var cancelled: Bool = true
+        queue.sync {
+            cancelled = self.receipts.filter({ $0.isCancelled == false }).isEmpty
+        }
+        return cancelled
+
+    }
 }
+
 
 /// How many levels of re-entrancy are permitted when flowing state observations
 public var ChannelZReentrancyLimit: Int = 1

@@ -120,7 +120,7 @@ public extension ChannelType {
     /// - Returns: An stateless Channel that emits pulses from `self` and `with`
     public func merge<C2: ChannelType>(_ with: C2) -> Channel<(Source, C2.Source), Pulse> where C2.Pulse == Pulse {
         return Channel<(Source, C2.Source), Pulse>(source: (self.source, with.source)) { f in
-            return ReceiptOf(receipts: [self.receive(f), with.receive(f)])
+            return MultiReceipt(receipts: [self.receive(f), with.receive(f)])
         }
     }
 
@@ -136,7 +136,7 @@ public extension ChannelType {
         return Channel<(Source, C2.Source), Choose2<Pulse, C2.Pulse>>(source: (self.source, other.source)) { (rcvr: @escaping ((Choose2<Pulse, C2.Pulse>) -> Void)) in
             let rcpt1 = self.receive { rcvr(.v1($0)) }
             let rcpt2 = other.receive { rcvr(.v2($0)) }
-            return ReceiptOf(receipts: [rcpt1, rcpt2])
+            return MultiReceipt(receipts: [rcpt1, rcpt2])
         }
     }
 
@@ -157,6 +157,7 @@ public extension ChannelType {
     /// - Returns: A stateful Channel that emits the item of both `self` or `other`.
     public func combine<C2: ChannelType>(_ other: C2) -> Channel<(Self.Source, C2.Source), (Pulse, C2.Pulse)> {
         typealias Buffer = (v1: Optional<Pulse>, v2: Optional<C2.Pulse>)
+        typealias Ret = (Pulse, C2.Pulse)
 
         return either(other)
             .affect(Buffer(nil, nil)) { (prev, pulse) in
@@ -166,8 +167,8 @@ public extension ChannelType {
                 }
             }
             .map { (prev, _) in prev } // drop the current pulse; it is stored in the state
-            .filter { prev in prev.v1 != nil && prev.v2 != nil }
-            .map { prev in (prev.v1!, prev.v2!) } // force unwrap: the filter prevents nils
+            .filter { (prev: Buffer) in prev.v1 != nil && prev.v2 != nil }
+            .map { (prev: Buffer) -> Ret in (prev.v1!, prev.v2!) } // force unwrap: the filter prevents nils
     }
 
     /// Adds a channel phase formed from this Channel and another Channel by combining
@@ -237,14 +238,14 @@ public extension ChannelType {
         let mapped = map(transform)
         
         return Channel(source: mapped.source, reception: { rcv in
-            var rcpts: [Receipt] = []
+            let mr = MultiReceipt()
             let rcpt = mapped.receive { (rcvrobv) in
                 rcv(.v1(rcvrobv.source)) // immediately issue a source pulse
                 let rcpt = rcvrobv.receive { (item: U) in rcv(.v2(item)) }
-                rcpts.append(rcpt)
+                mr.addReceipts([rcpt])
             }
-            rcpts.append(rcpt)
-            return ReceiptOf(receipts: rcpts)
+            mr.addReceipts([rcpt])
+            return mr
         })
     }
 }
@@ -261,7 +262,7 @@ public extension Channel {
 /// note that the source is incuded in a tuple with the pulse in order to identify which source emitted the pulse
 public func concatZ<S, T>(_ channels: [Channel<S, T>]) -> Channel<[S], (S, T)> {
     return Channel<[S], (S, T)>(source: channels.map({ c in c.source })) { f in
-        return ReceiptOf(receipts: channels.map({ c in c.map({ e in (c.source, e) }).receive(f) }))
+        return MultiReceipt(receipts: channels.map({ c in c.map({ e in (c.source, e) }).receive(f) }))
     }
 }
 
@@ -270,13 +271,13 @@ public func concatZ<S, T>(_ channels: [Channel<S, T>]) -> Channel<[S], (S, T)> {
 /// Note: this operation does not retain the sub-sources, since it can merge a heterogeneously-sourced series of channels
 public func flattenZ<S1, S2, T>(_ channel: Channel<S1, Channel<S2, T>>) -> Channel<S1, T> {
     return Channel<S1, T>(source: channel.source, reception: { (rcv: @escaping (T) -> Void) -> Receipt in
-        var rcpts: [Receipt] = [] // FIXME: a crash has been observed here; we are not synchronizing access to this array
+        let mr = MultiReceipt()
         let rcpt = channel.receive { (rcvrobv: Channel<S2, T>) in
             let rcpt = rcvrobv.receive { (item: T) in rcv(item) }
-            rcpts.append(rcpt)
+            mr.addReceipts([rcpt])
         }
-        rcpts.append(rcpt)
-        return ReceiptOf(receipts: rcpts)
+        mr.addReceipts([rcpt])
+        return mr
     })
 }
 
