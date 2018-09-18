@@ -284,8 +284,11 @@ class OpticsTests : ChannelTestCase {
 
             let doeHome = Address(line1: "123 Doe Lane", line2: nil, postalCode: "44556")
 
-            company.focus(\.employees).value["888888"] = Person(firstName: "John", lastName: "Doe", gender: .male, homeAddress: doeHome, workAddress: nil, previousAddresses: [], thing: BinaryThing.trueThing)
-            company.focus(\.employees).value["999999"] = Person(firstName: "Jane", lastName: "Doe", gender: .female, homeAddress: doeHome, workAddress: nil, previousAddresses: [], thing: BinaryThing.trueThing)
+            let emps = company.focus(\.employees)
+            let emp888888 = Person(firstName: "John", lastName: "Doe", gender: .male, homeAddress: doeHome, workAddress: nil, previousAddresses: [], thing: BinaryThing.trueThing)
+            let emp999999 = Person(firstName: "Jane", lastName: "Doe", gender: .female, homeAddress: doeHome, workAddress: nil, previousAddresses: [], thing: BinaryThing.trueThing)
+            emps.value["888888"] = emp888888
+            emps.value["999999"] = emp999999
 
             XCTAssertEqual(dirZ.value.companies.flatMap({ $0.employees.values }).count, 3)
 

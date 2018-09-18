@@ -384,7 +384,13 @@ class ChannelTests : ChannelTestCase {
 
         // observable concatenation
         // the equivalent of ReactiveX's Range
-        let merged = (channelZSequence(1...3) + channelZSequence(3...5) + channelZSequence(2...6)).trap(1000)
+        // this works, but type inference is slow, so we help it along below
+        let merged: TrapReceipt<(Channel<((ClosedRange<Int>, ClosedRange<Int>), ClosedRange<Int>), Int>)> = (channelZSequence(1...3) + channelZSequence(3...5) + channelZSequence(2...6)).trap(1000)
+//        let m1 = channelZSequence(1...3)
+//        let m2 = m1 + channelZSequence(3...5)
+//        let m3 = m2 + channelZSequence(2...6)
+//        let merged = m3.trap(1000)
+
         XCTAssertEqual(merged.caught, [1, 2, 3, 3, 4, 5, 2, 3, 4, 5, 6])
 
         // the equivalent of ReactiveX's Repeat
@@ -463,7 +469,7 @@ class ChannelTests : ChannelTestCase {
             }
         }
 
-        stream.schedule(in: RunLoop.current, forMode: RunLoopMode.defaultRunLoopMode)
+        stream.schedule(in: RunLoop.current, forMode: RunLoop.Mode.default)
         stream.open()
 
         waitForExpectations(timeout: 1, handler: { _ in })

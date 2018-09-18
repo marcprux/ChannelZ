@@ -467,7 +467,7 @@ func channelZFile(_ path: String, queue: DispatchQueue = DispatchQueue.global(qo
             dchan?.close()
             receivers.receive(.closed)
         } else if data != nil {
-            data?.enumerateBytes(block: { (buffer, offset, stop) in
+            data?.enumerateBytes({ (buffer, offset, stop) in
                 receivers.receive(.data(Array(buffer)))
             })
         }
