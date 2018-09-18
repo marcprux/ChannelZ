@@ -826,7 +826,7 @@ class KeyPathTests : ChannelTestCase {
         XCTAssert(state.num1 === state.num2, "binding to nil")
         XCTAssertNil(state.num2)
 
-        state.num1 = NSNumber(value: arc4random() as UInt32)
+        state.num1 = NSNumber(value: UInt32.random(in: 0...UInt32.max))
         XCTAssert(state.num1 === state.num2, "binding to random")
         XCTAssertNotNil(state.num2)
 

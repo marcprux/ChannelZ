@@ -90,23 +90,12 @@ private func feedZ<T, U, S>(_ input: [T], setup: (Channel<ValueTransceiver<T>, T
     defer { r2.cancel() }
 
     for value in input.dropFirst() { channel.source.receive(value) }
-    switch rnd(3) {
+    switch Int.random(in: 0...2) {
     case 0: return outputs.0
     case 1: return outputs.1
     case 2: return outputs.2
     default: fatalError("bad random number")
     }
-}
-
-func rnd(_ i: UInt32) -> UInt32 {
-    #if os(Linux)
-        srandom(UInt32(time(nil)))
-        let rnd = UInt32(random() % Int(i))
-    #else
-        let rnd = arc4random_uniform(3)
-    #endif
-
-    return rnd
 }
 
 // Just run the function on the static sequence; the immediate form of feedZ
@@ -400,7 +389,7 @@ class ChannelTests : ChannelTestCase {
 
     func testMergedUnreceive() {
         func coinFlip() -> Void? {
-            if rnd(100) > 50 {
+            if Bool.random() == true {
                 return Void()
             } else {
                 return nil

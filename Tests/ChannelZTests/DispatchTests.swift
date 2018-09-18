@@ -375,17 +375,6 @@ class DispatchTests : ChannelTestCase {
 //        XCTAssertEqual(vcount, items) // make sure the pulse contained all the items
 //    }
 
-    func rnd(_ i: UInt32) -> UInt32 {
-        #if os(Linux)
-            srandom(UInt32(time(nil)))
-            let rnd = UInt32(random() % Int(i))
-        #else
-            let rnd = arc4random_uniform(i)
-        #endif
-    
-        return rnd
-    }
-
     func testDispatchFile() throws {
         weak var xpc = expectation(description: #function)
 
@@ -393,7 +382,7 @@ class DispatchTests : ChannelTestCase {
 
         var data = Data()
         
-        var high = Int(rnd(1024)) + 10
+        var high = Int.random(in: 10...2034)
         high = 35 // => decoding error
 //        high = 3 // => decoding error
 //        high = 37
