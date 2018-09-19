@@ -10,7 +10,7 @@ import Foundation
 
 
 /// Dynamically convert between the given numeric types, getting past Swift's inability to statically cast between numbers
-public func convertNumericType<From : ConduitNumericCoercible, To : ConduitNumericCoercible>(_ from: From) -> To {
+@inlinable public func convertNumericType<From : ConduitNumericCoercible, To : ConduitNumericCoercible>(_ from: From) -> To {
     // try both sides of the convertables so this can be extended by other types (such as NSNumber)
     return To.fromConduitNumericCoercible(from) ?? from.toConduitNumericCoercible() ?? from as! To
 }
@@ -24,7 +24,7 @@ public protocol ConduitNumericCoercible {
 
 
 extension Bool : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Bool? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Bool? {
         if let value = value as? Bool { return self.init(value) }
         else if let value = value as? Int8 { return self.init(value != 0) }
         else if let value = value as? UInt8 { return self.init(value != 0) }
@@ -41,7 +41,7 @@ extension Bool : ConduitNumericCoercible {
         else { return value as? Bool }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self) as? T }
         else if T.self is Int8.Type { return Int8(self ? 1 : 0) as? T }
         else if T.self is UInt8.Type { return UInt8(self ? 1 : 0) as? T }
@@ -61,7 +61,7 @@ extension Bool : ConduitNumericCoercible {
 
 
 extension Int8 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int8? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int8? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -78,7 +78,7 @@ extension Int8 : ConduitNumericCoercible {
         else { return value as? Int8 }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -97,7 +97,7 @@ extension Int8 : ConduitNumericCoercible {
 }
 
 extension UInt8 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt8? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt8? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(abs(value)) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -114,7 +114,7 @@ extension UInt8 : ConduitNumericCoercible {
         else { return value as? UInt8 }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -133,7 +133,7 @@ extension UInt8 : ConduitNumericCoercible {
 }
 
 extension Int16 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int16? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int16? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -150,7 +150,7 @@ extension Int16 : ConduitNumericCoercible {
         else { return value as? Int16 }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -169,7 +169,7 @@ extension Int16 : ConduitNumericCoercible {
 }
 
 extension UInt16 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt16? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt16? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(abs(value)) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -186,7 +186,7 @@ extension UInt16 : ConduitNumericCoercible {
         else { return value as? UInt16 }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -205,7 +205,7 @@ extension UInt16 : ConduitNumericCoercible {
 }
 
 extension Int32 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int32? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int32? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -222,7 +222,7 @@ extension Int32 : ConduitNumericCoercible {
         else { return value as? Int32 }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -241,7 +241,7 @@ extension Int32 : ConduitNumericCoercible {
 }
 
 extension UInt32 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt32? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt32? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(abs(value)) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -258,7 +258,7 @@ extension UInt32 : ConduitNumericCoercible {
         else { return value as? UInt32 }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -277,7 +277,7 @@ extension UInt32 : ConduitNumericCoercible {
 }
 
 extension Int : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -294,7 +294,7 @@ extension Int : ConduitNumericCoercible {
         else { return value as? Int }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -313,7 +313,7 @@ extension Int : ConduitNumericCoercible {
 }
 
 extension UInt : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(abs(value)) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -330,7 +330,7 @@ extension UInt : ConduitNumericCoercible {
         else { return value as? UInt }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -349,7 +349,7 @@ extension UInt : ConduitNumericCoercible {
 }
 
 extension Int64 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int64? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Int64? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -366,7 +366,7 @@ extension Int64 : ConduitNumericCoercible {
         else { return value as? Int64 }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -385,7 +385,7 @@ extension Int64 : ConduitNumericCoercible {
 }
 
 extension UInt64 : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt64? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> UInt64? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(abs(value)) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -402,7 +402,7 @@ extension UInt64 : ConduitNumericCoercible {
         else { return value as? UInt64 }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -421,7 +421,7 @@ extension UInt64 : ConduitNumericCoercible {
 }
 
 extension Float : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Float? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Float? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -438,7 +438,7 @@ extension Float : ConduitNumericCoercible {
         else { return value as? Float }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }
@@ -457,7 +457,7 @@ extension Float : ConduitNumericCoercible {
 }
 
 extension Double : ConduitNumericCoercible {
-    public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Double? {
+    @inlinable public static func fromConduitNumericCoercible(_ value: ConduitNumericCoercible) -> Double? {
         if let value = value as? Bool { return self.init(value ? 1 : 0) }
         else if let value = value as? Int8 { return self.init(value) }
         else if let value = value as? UInt8 { return self.init(value) }
@@ -474,7 +474,7 @@ extension Double : ConduitNumericCoercible {
         else { return value as? Double }
     }
 
-    public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
+    @inlinable public func toConduitNumericCoercible<T : ConduitNumericCoercible>() -> T? {
         if T.self is Bool.Type { return Bool(self != 0) as? T }
         else if T.self is Int8.Type { return Int8(self) as? T }
         else if T.self is UInt8.Type { return UInt8(self) as? T }

@@ -241,7 +241,7 @@ public final class ReceiverQueue<T> : ReceiverType {
 }
 
 open class ReceiverQueueSource<T> {
-    let receivers = ReceiverQueue<T>()
+    @usableFromInline let receivers = ReceiverQueue<T>()
 }
 
 /// A Lock used for synchronizing access to the receiver queue
