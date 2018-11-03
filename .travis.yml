@@ -15,10 +15,11 @@ matrix:
       sudo: required
       dist: trusty
       install:
+        - export SWIFT=swift-${SWIFT_VERSION}-RELEASE-ubuntu14.04
         - wget -q -O - https://swift.org/keys/all-keys.asc | gpg --import -
-        - wget https://swift.org/builds/swift-${SWIFT_VERSION}-release/ubuntu1404/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-ubuntu14.04.tar.gz
-        - tar xzf swift-${SWIFT_VERSION}-RELEASE-ubuntu14.04.tar.gz
-        - export PATH=${PWD}/swift-${SWIFT_VERSION}-RELEASE-ubuntu14.04/usr/bin:"${PATH}"
+        - wget https://swift.org/builds/swift-${SWIFT_VERSION}-release/ubuntu1404/swift-${SWIFT_VERSION}-RELEASE/${SWIFT}.tar.gz
+        - tar xzf ${SWIFT}.tar.gz
+        - export PATH=${PWD}/${SWIFT}/usr/bin:"${PATH}"
       script:
         - swift test -Xswiftc -DDEBUG_CHANNELZ
 
