@@ -102,8 +102,8 @@ extension Choose2 : Decodable where T1 : Decodable, T2 : Decodable {
 
     @inlinable public init(from decoder: Decoder) throws {
         var errors: [Error] = []
-        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         throw ChoiceDecodingError(errors: errors)
     }
 }
@@ -211,9 +211,9 @@ extension Choose3 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
 
     @inlinable public init(from decoder: Decoder) throws {
         var errors: [Error] = []
-        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
         throw ChoiceDecodingError(errors: errors)
     }
 }
@@ -336,10 +336,10 @@ extension Choose4 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
 
     @inlinable public init(from decoder: Decoder) throws {
         var errors: [Error] = []
-        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
         throw ChoiceDecodingError(errors: errors)
     }
 }
@@ -477,11 +477,11 @@ extension Choose5 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
 
     @inlinable public init(from decoder: Decoder) throws {
         var errors: [Error] = []
-        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
         throw ChoiceDecodingError(errors: errors)
     }
 }
@@ -634,12 +634,12 @@ extension Choose6 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
 
     @inlinable public init(from decoder: Decoder) throws {
         var errors: [Error] = []
-        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
         throw ChoiceDecodingError(errors: errors)
     }
 }
@@ -807,13 +807,13 @@ extension Choose7 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
 
     @inlinable public init(from decoder: Decoder) throws {
         var errors: [Error] = []
-        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
         throw ChoiceDecodingError(errors: errors)
     }
 }
@@ -996,14 +996,14 @@ extension Choose8 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
 
     @inlinable public init(from decoder: Decoder) throws {
         var errors: [Error] = []
-        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
         throw ChoiceDecodingError(errors: errors)
     }
 }
@@ -1201,15 +1201,15 @@ extension Choose9 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
 
     @inlinable public init(from decoder: Decoder) throws {
         var errors: [Error] = []
-        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
         throw ChoiceDecodingError(errors: errors)
     }
 }
@@ -1422,16 +1422,16 @@ extension Choose10 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decoda
 
     @inlinable public init(from decoder: Decoder) throws {
         var errors: [Error] = []
-        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
-        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
+        do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
         throw ChoiceDecodingError(errors: errors)
     }
 }
