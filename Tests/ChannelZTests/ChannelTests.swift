@@ -1542,6 +1542,29 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual([StringOrInt(1), StringOrInt(2), StringOrInt(2)] as Set<StringOrInt>, [StringOrInt(1), StringOrInt(2)])
     }
 
+    /// Tests that the `defaulted` var of Optional, Array, Dictionary, and Set all work as expected
+    func testDefaulting() {
+        var stuff: Array<Set<[String]>> = []
+        XCTAssertEqual(stuff, [])
+        stuff.defaultedLast.defaultedAny = ["Foo"]
+        XCTAssertEqual(stuff, [[["Foo"]]])
+        stuff.defaultedFirst.defaultedAny = ["Bar"]
+        XCTAssertEqual(stuff, [[["Bar"]]])
+        stuff[defaulted: 4].defaultedAny.append("Baz")
+        XCTAssertEqual(stuff, [[["Bar"]], [], [], [], [["Baz"]]])
+        stuff[defaulted: 0].defaultedAny.insert("ABC", at: 0)
+        stuff[defaulted: 2] = [["123"]]
+        stuff[defaulted: 4].defaultedAny.append("XYZ")
+        XCTAssertEqual(stuff, [[["ABC", "Bar"]], [], [["123"]], [], [["Baz", "XYZ"]]])
+
+        var optdbl: Optional<Double> = nil
+        XCTAssertEqual(optdbl, nil)
+        optdbl[defaulting: 1.1] += 1.1
+        XCTAssertEqual(optdbl, 2.2)
+        optdbl[defaulting: 0] += 5.5
+        XCTAssertEqual(optdbl, 7.7)
+    }
+
     public static var allTests = [
         ("testAnalogousSequenceFunctions", testAnalogousSequenceFunctions),
         ("testZipImplementations", testZipImplementations),
@@ -1583,5 +1606,6 @@ class ChannelTests : ChannelTestCase {
         ("testMultipleReceiversOnSievedPropertyChannel", testMultipleReceiversOnSievedPropertyChannel),
         ("testDropWithMultipleReceivers", testDropWithMultipleReceivers),
         ("testChooseConformity", testChooseConformity),
+        ("testDefaulting", testDefaulting),
         ]
 }

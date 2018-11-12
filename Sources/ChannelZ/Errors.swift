@@ -14,7 +14,7 @@ public protocol ResultType : _WrapperType, Choose2Type {
     var error: Error? { get }
     
     /// Returns `f(value)` if this is `.success`, otherwise returns `.failure`
-    func flatMapSuccess<U>(f: (Wrapped) throws -> U) -> Result<U>
+    func successMap<U>(_ f: (Wrapped) throws -> U) -> Result<U>
 
     var choose2: Choose2<Wrapped, Error> { get }
     var result: Result<Wrapped> { get }
@@ -104,7 +104,7 @@ public extension Result {
     @inlinable public var error: Error? { return v2 }
 
     /// Returns `f(value)` if this is `.success`, otherwise returns `.failure`
-    @inlinable public func flatMapSuccess<U>(f: (Wrapped) throws -> U) -> Result<U> {
+    @inlinable public func successMap<U>(_ f: (Wrapped) throws -> U) -> Result<U> {
         switch self {
         case .success(let v):
             do {
@@ -118,10 +118,10 @@ public extension Result {
     }
     
     /// Returns `f(value)` if this is `.success`, otherwise returns `.failure`
-    /// This is an alias for flatMapSuccess, which has a different name to disambiguate
+    /// This is an alias for successMap, which has a different name to disambiguate
     /// from _WrapperType.flatMap's implicit handling of optionals
     @inlinable public func flatMap<U>(f: (Wrapped) throws -> U) -> Result<U> {
-        return flatMapSuccess(f: f)
+        return successMap(f)
     }
 
     /// Unwraps the given `.success` value or throws the `.failure` error

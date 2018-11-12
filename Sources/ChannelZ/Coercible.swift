@@ -9,6 +9,89 @@
 import Foundation
 
 
+/// A defaultable type is a type that can be initialized with no arguments and a default value
+public protocol Defaultable {
+    init(defaulting: ())
+}
+
+public extension _WrapperType {
+    /// Returns the wrapped value or the defaulting value if the wrapped value if nil
+    public subscript(defaulting constructor: @autoclosure () -> Wrapped) -> Wrapped {
+        get { return self.flatMap({ $0 }) ?? constructor() }
+        set { self = Self(newValue) }
+    }
+}
+
+public extension _WrapperType where Wrapped : Defaultable {
+    /// Returns the current value of the wrapped instance or, if nul, instantiates a default value
+    public var defaulted: Wrapped {
+        get { return self[defaulting: .init(defaulting: ())] }
+        set { self = Self(newValue) }
+    }
+}
+
+public extension RangeReplaceableCollection where Element : Defaultable {
+    public var defaultedFirst: Element {
+        get { return self.first[defaulting: .init(defaulting: ())] }
+        set { self = Self([newValue] + dropFirst()) }
+    }
+
+    public subscript(defaulted index: Index) -> Element {
+        get { return indices.contains(index) ? self[index] : .init(defaulting: ()) }
+
+        set {
+            // fill in the intervening indeices with the default value
+            while !indices.contains(index) {
+                append(.init(defaulting: ()))
+            }
+            // set the target index item
+            replaceSubrange(index...index, with: [newValue])
+        }
+    }
+}
+
+public extension RangeReplaceableCollection where Self : BidirectionalCollection, Element : Defaultable {
+    public var defaultedLast: Element {
+        get { return self.last[defaulting: .init(defaulting: ())] }
+        set { self = Self(dropLast() + [newValue]) }
+    }
+}
+
+public extension Set where Element : Defaultable {
+    public var defaultedAny: Element {
+        get { return self.first ?? .init(defaulting: ()) }
+        set { self = Set(dropFirst() + [newValue]) }
+    }
+}
+
+extension ExpressibleByNilLiteral {
+    /// An `ExpressibleByNilLiteral` conforms to `Defaultable` by nil initialization
+    public init(defaulting: ()) { self.init(nilLiteral: ()) }
+}
+
+extension ExpressibleByArrayLiteral {
+    /// An `ExpressibleByArrayLiteral` conforms to `Defaultable` by empty array initialization
+    public init(defaulting: ()) { self.init() }
+}
+
+extension ExpressibleByDictionaryLiteral {
+    /// An `ExpressibleByDictionaryLiteral` conforms to `Defaultable` by empty dictionary initialization
+    public init(defaulting: ()) { self.init() }
+}
+
+extension Optional : Defaultable { } // inherits initializer from ExpressibleByNilLiteral
+extension Set : Defaultable { } // inherits initializer from ExpressibleByArrayLiteral
+extension Array : Defaultable { } // inherits initializer from ExpressibleByArrayLiteral
+extension Dictionary : Defaultable { } // inherit initializer from ExpressibleByDictionaryLiteral
+
+extension EmptyCollection : Defaultable { public init(defaulting: ()) { self.init() } }
+
+public extension Defaultable where Self : Equatable {
+    /// Returns true if this instance is the same as the defaulted value
+    public var isDefaultedValue: Bool { return self == Self.init(defaulting: ()) }
+}
+
+
 /// Dynamically convert between the given numeric types, getting past Swift's inability to statically cast between numbers
 @inlinable public func convertNumericType<From : ConduitNumericCoercible, To : ConduitNumericCoercible>(_ from: From) -> To {
     // try both sides of the convertables so this can be extended by other types (such as NSNumber)
