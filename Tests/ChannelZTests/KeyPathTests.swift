@@ -1383,7 +1383,8 @@ class KeyPathTests : ChannelTestCase {
         #endif
     }
 
-    func XXXtestDetachedReceiver() { // FIXME: fails only in Treavis run: /Users/travis/build/glimpseio/ChannelZ/Tests/ChannelZTests/KeyPathTests.swift:1392: error: -[ChannelZTests.KeyPathTests testDetachedReceiver] : failed: caught "NSInternalInconsistencyException", "An instance 0x7f852d040760 of class ChannelZTests.StatefulObject was deallocated while key value observers were still registered with it. Current observation info: <NSKeyValueObservationInfo 0x7f852b5ab320> (
+    func testDetachedReceiver() {
+        // fails in Travis run: /Users/travis/build/glimpseio/ChannelZ/Tests/ChannelZTests/KeyPathTests.swift:1392: error: -[ChannelZTests.KeyPathTests testDetachedReceiver] : failed: caught "NSInternalInconsistencyException", "An instance 0x7f852d040760 of class ChannelZTests.StatefulObject was deallocated while key value observers were still registered with it. Current observation info: <NSKeyValueObservationInfo 0x7f852b5ab320> (
         var subscription: Receipt?
         autoreleasepool {
             let state = StatefulObject()
@@ -1391,7 +1392,7 @@ class KeyPathTests : ChannelTestCase {
             XCTAssertEqual(1, StatefulObjectCount)
         }
 
-        XCTAssertEqual(0, StatefulObjectCount)
+        XCTAssertEqual(0, StatefulObjectCount) // the object should not be retained by the subscription
         subscription!.cancel() // ensure that the subscription doesn't try to access a bad pointer
     }
     
@@ -1694,25 +1695,55 @@ class KeyPathTests : ChannelTestCase {
         
     }
 
-    /// Test reentrancy guards for conduits that would never achieve equilibrium
+
     func testKVOReentrancy() {
+        KVOReentrancyTest(limit: ChannelZReentrancyLimit)
+        // disabled so this doesn't muck up parallel testing
+//        let limit = ChannelZReentrancyLimit
+//        defer { ChannelZReentrancyLimit = limit } // defer
+//        for lim in limit...limit+11 {
+//            ChannelZReentrancyLimit = lim
+//            KVOReentrancyTest(limit: lim)
+//        }
+    }
+
+    /// Test reentrancy guards for conduits that would never achieve equilibrium
+    func KVOReentrancyTest(limit: Int) {
         // we expect the ChannelZReentrantReceptions to be incremented; clear it so we don't fail in tearDown
+        ChannelZ.ChannelZReentrantReceptions.set(0)
         defer { ChannelZ.ChannelZReentrantReceptions.set(0) }
 
         let state1 = StatefulObject()
         let state2 = StatefulObject()
 
         // note that since we allow 1 re-entrant pass, we're going to be set to X+(off * 2)
-//        let off = 10
-        (state1∞\.int).map({ $0 + 10 }).conduit(state2∞\.int)
+        let delta = (3...100).randomElement()!
+        // link stat1.int to state2.int with an offset mapping
+        let receipt = (state1∞\.int).map({ $0 + delta }).conduit(state2∞\.int)
 
-        state1.int += 1
-//        XCTAssertEqual(state1.int, 1 + (off * 2))
-//        XCTAssertEqual(state2.int, 1 + (off * 2))
+        // we've observed intermittent crashes here…
+        withExtendedLifetime(receipt) {
+            XCTAssertEqual(0, ChannelZReentrantReceptions.get())
+            let inc = (3...100).randomElement()!
+            state1.int += inc
+            XCTAssertEqual(1, ChannelZReentrantReceptions.get())
+            XCTAssertEqual(state1.int, inc + ((limit + 2) * delta))
+            XCTAssertEqual(state2.int, inc + ((limit + 2) * delta))
+        }
+        receipt.cancel()
 
-        state2.int += 1
-//        XCTAssertEqual(state1.int, 2 + (off * 3))
-//        XCTAssertEqual(state2.int, 2 + (off * 4))
+        state1.int = 0
+        state2.int = 0
+
+        let receipt2 = (state1∞\.int).map({ $0 + delta }).conduit(state2∞\.int)
+        withExtendedLifetime(receipt2) {
+            let inc = (3...100).randomElement()!
+            state2.int += inc
+            XCTAssertEqual(2, ChannelZReentrantReceptions.get())
+            XCTAssertEqual(state1.int, inc + ((limit + 1) * delta)) // different from above because state1 is the dominant side
+            XCTAssertEqual(state2.int, inc + ((limit + 2) * delta))
+        }
+        receipt2.cancel()
     }
 
     func testKVOConduit() {

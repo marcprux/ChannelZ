@@ -211,7 +211,7 @@ public final class ReceiverQueue<T> : ReceiverType {
 
     public func reentrantChannelReception(_ element: Any) {
         #if DEBUG_CHANNELZ
-            print("ChannelZ reentrant channel short-circuit; break on \(#function) to debug", type(of: element))
+            //print("ChannelZ reentrant channel short-circuit; break on \(#function) to debug", type(of: element))
             ChannelZReentrantReceptions.increment()
         #endif
     }
