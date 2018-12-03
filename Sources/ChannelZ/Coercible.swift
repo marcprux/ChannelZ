@@ -82,6 +82,7 @@ extension ExpressibleByDictionaryLiteral {
 extension Optional : Defaultable { } // inherits initializer from ExpressibleByNilLiteral
 extension Set : Defaultable { } // inherits initializer from ExpressibleByArrayLiteral
 extension Array : Defaultable { } // inherits initializer from ExpressibleByArrayLiteral
+extension ContiguousArray : Defaultable { } // inherits initializer from ExpressibleByArrayLiteral
 extension Dictionary : Defaultable { } // inherit initializer from ExpressibleByDictionaryLiteral
 
 extension EmptyCollection : Defaultable { public init(defaulting: ()) { self.init() } }
@@ -91,13 +92,22 @@ public extension Defaultable where Self : Equatable {
     public var isDefaultedValue: Bool { return self == Self.init(defaulting: ()) }
 }
 
+/// Zips the two sequence together using `zip`, but first pads the shorter of the
+/// sequences with the defaultable init so that they are both the same length
+@inlinable public func zipWithPadding<Sequence1, Sequence2>(_ sequence1: Sequence1, _ sequence2: Sequence2) -> Zip2Sequence<[Sequence1.Element], [Sequence2.Element]> where Sequence1 : Sequence, Sequence1.Element : Defaultable, Sequence2 : Sequence, Sequence2.Element : Defaultable {
+    var s1 = Array(sequence1)
+    var s2 = Array(sequence2)
+    while s1.count < s2.count { s1.append(.init(defaulting: ())) }
+    while s2.count < s1.count { s2.append(.init(defaulting: ())) }
+    return zip(s1, s2)
+}
+
 
 /// Dynamically convert between the given numeric types, getting past Swift's inability to statically cast between numbers
 @inlinable public func convertNumericType<From : ConduitNumericCoercible, To : ConduitNumericCoercible>(_ from: From) -> To {
     // try both sides of the convertables so this can be extended by other types (such as NSNumber)
     return To.fromConduitNumericCoercible(from) ?? from.toConduitNumericCoercible() ?? from as! To
 }
-
 
 /// Implemented by numeric types that can be coerced into other numeric types
 public protocol ConduitNumericCoercible {

@@ -152,7 +152,6 @@ public extension Result {
 
 }
 
-
 public extension Result where Wrapped : _WrapperType {
     /// Returns the unwrapped value flatMapped to itself (e.g., converts value of String?? into String?)
     @inlinable public var flatValue: Wrapped.Wrapped? {
@@ -294,3 +293,55 @@ public extension ChannelType {
 
 }
 
+
+// MARK: Foundation Extensions
+
+import Foundation
+
+/// A very simple codeable wrapper around an error message; coding
+/// will lose any custom behavior of the error subclass
+private struct CodableError : Error, Codable, Hashable {
+    private let errorMessage: String
+
+    init(error: Error) {
+        self.errorMessage = (error as NSError).localizedDescription
+    }
+}
+
+extension Result : Encodable where Wrapped : Encodable {
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .success(let wrapped): try wrapped.encode(to: encoder)
+        case .failure(let error): try CodableError(error: error).encode(to: encoder)
+        }
+    }
+}
+
+extension Result : Decodable where Wrapped : Decodable {
+    public init(from decoder: Decoder) throws {
+        switch try Choose2<Wrapped, CodableError>(from: decoder) {
+        case .v1(let value): self = .success(value)
+        case .v2(let error): self = .failure(error)
+        }
+    }
+}
+
+extension Result : Equatable where Wrapped : Equatable {
+    public static func == (lhs: Result<Wrapped>, rhs: Result<Wrapped>) -> Bool {
+        switch (lhs, rhs) {
+        case let (.success(v1), .success(v2)): return v1 == v2
+        case let (.failure(e1), .failure(e2)): return (e1 as NSError) == (e2 as NSError)
+        default: return false
+        }
+    }
+
+}
+
+extension Result : Hashable where Wrapped : Hashable {
+    public var hashValue: Int {
+        switch self {
+        case .success(let wrapped): return wrapped.hashValue
+        case .failure(let error): return (error as NSError).hashValue
+        }
+    }
+}
