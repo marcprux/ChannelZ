@@ -89,7 +89,18 @@ extension EmptyCollection : Defaultable { public init(defaulting: ()) { self.ini
 
 public extension Defaultable where Self : Equatable {
     /// Returns true if this instance is the same as the defaulted value
-    public var isDefaultedValue: Bool { return self == Self.init(defaulting: ()) }
+    public var isDefaultedValue: Bool {
+        return self == Self.init(defaulting: ())
+    }
+
+    /// Assign this to the specified value unless it is already set, in which
+    /// case it is defaulted to the default value. For example:
+    /// ob.optionalString.toggleDefault("foo") will set the optionalString?
+    /// variable to "foo", or, if it was already "foo", will clear it.
+    public mutating func toggleDefault(_ value: Self) {
+        self = self == value ? .init(defaulting: ()) : value
+    }
+
 }
 
 /// Zips the two sequence together using `zip`, but first pads the shorter of the
