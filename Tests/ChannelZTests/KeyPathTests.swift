@@ -72,14 +72,14 @@ class KeyPathTests : ChannelTestCase {
 
 //            nsob.reqnsstr = "a"
 //            nsob.reqnsstr = "c"
-            stringz.value = "a"
-            stringz.value = "c"
+            stringz.rawValue = "a"
+            stringz.rawValue = "c"
             XCTAssertEqual(2, strs.count)
 
-            stringz.value = "d"
+            stringz.rawValue = "d"
             XCTAssertEqual(3, strs.count)
 
-            stringz.value = "d"
+            stringz.rawValue = "d"
             XCTAssertEqual(3, strs.count) // change to self shouldn't up the count
 
             withExtendedLifetime(nsob) { }
@@ -113,7 +113,7 @@ class KeyPathTests : ChannelTestCase {
         XCTAssertEqual(2, counts.1)
         XCTAssertEqual(2, counts.2)
 
-        prop.value = 456
+        prop.rawValue = 456
         XCTAssertEqual(3, counts.0)
         XCTAssertEqual(3, counts.1)
         XCTAssertEqual(3, counts.2)
@@ -248,21 +248,21 @@ class KeyPathTests : ChannelTestCase {
         changeCount = 0 // clear any initial assignations
         XCTAssertEqual(0, changeCount)
 
-        intChannel.value += 1
+        intChannel.rawValue += 1
         XCTAssertEqual(2, changeCount)
 
-        intChannel.value = 1 // no change
+        intChannel.rawValue = 1 // no change
         XCTAssertEqual(2, changeCount)
 
-        intChannel.value += 1
+        intChannel.rawValue += 1
         XCTAssertEqual(4, changeCount)
 
         r1.cancel()
-        intChannel.value += 1
+        intChannel.rawValue += 1
         XCTAssertEqual(5, changeCount)
 
         r2.cancel()
-        intChannel.value += 1
+        intChannel.rawValue += 1
         XCTAssertEqual(5, changeCount)
     }
 

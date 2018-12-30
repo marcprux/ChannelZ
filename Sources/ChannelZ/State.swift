@@ -53,7 +53,7 @@ public struct Mutation<T> : MutationType {
 }
 
 /// A channel whose source and pulse are both value types and whose types are the same
-public protocol TransceiverChannelType : ChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.RawValue == Source.RawValue {
+public protocol TransceiverChannelType : ChannelType where Source : RawRepresentable, Pulse : RawRepresentable, Pulse.RawValue == Source.RawValue {
     associatedtype RawValue = Source.RawValue
 }
 
@@ -90,8 +90,7 @@ public protocol StateReceiverType : ReceiverType {
 /// A transceiver is a type that can transmit & receive some `Mutation` pulses via respective
 /// adoption of the `StateEmitterType` and `StateReveiver` protocols.
 public protocol TransceiverType : StateEmitterType, StateReceiverType {
-    /// The underlying state value of this source; so named because it is an
-    /// anonymous parameter, analagous to a closure's anonymous $0, $1, etc. parameters
+    /// The underlying state value of this source
     var rawValue: RawValue { get nonmutating set }
 }
 
@@ -251,9 +250,9 @@ extension _WrapperType {
         channelZPropertyValue(values.0).anyTransceiver(),
         channelZPropertyValue(values.1).anyTransceiver()
     )
-    func update(_ x: Any) { channel.value = constructor(
-        source.0.value,
-        source.1.value
+    func update(_ x: Any) { channel.rawValue = constructor(
+        source.0.rawValue,
+        source.1.rawValue
         )
     }
     source.0.receive(update)
@@ -275,10 +274,10 @@ extension _WrapperType {
         channelZPropertyValue(values.1).anyTransceiver(),
         channelZPropertyValue(values.2).anyTransceiver()
     )
-    func update(_ x: Any) { channel.value = constructor(
-        source.0.value,
-        source.1.value,
-        source.2.value
+    func update(_ x: Any) { channel.rawValue = constructor(
+        source.0.rawValue,
+        source.1.rawValue,
+        source.2.rawValue
         )
     }
     source.0.receive(update)
@@ -303,11 +302,11 @@ extension _WrapperType {
         channelZPropertyValue(values.2).anyTransceiver(),
         channelZPropertyValue(values.3).anyTransceiver()
     )
-    func update(_ x: Any) { channel.value = constructor(
-        source.0.value,
-        source.1.value,
-        source.2.value,
-        source.3.value
+    func update(_ x: Any) { channel.rawValue = constructor(
+        source.0.rawValue,
+        source.1.rawValue,
+        source.2.rawValue,
+        source.3.rawValue
         )
     }
     source.0.receive(update)
@@ -520,7 +519,7 @@ public extension ChannelType where Pulse : _WrapperType {
 
 public extension ChannelType where Source : TransceiverType {
     /// A Channel whose source is a `TransceiverType` can get and set its value directly without mutating the channel
-    @inlinable public var value : Source.RawValue {
+    @inlinable public var rawValue : Source.RawValue {
         get { return source.rawValue }
         nonmutating set { source.rawValue = newValue }
     }

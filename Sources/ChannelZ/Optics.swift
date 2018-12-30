@@ -127,8 +127,8 @@ public struct LensSource<C: ChannelType, T>: LensSourceType where C.Source : Tra
     }
 
     @inlinable public var rawValue: T {
-        get { return lens.get(channel.value) }
-        nonmutating set { channel.value = lens.set(channel.value, newValue) }
+        get { return lens.get(channel.rawValue) }
+        nonmutating set { channel.rawValue = lens.set(channel.rawValue, newValue) }
     }
 
     /// Creates a state tranceiver to the focus of this lens, allowing the access and modification
@@ -162,8 +162,8 @@ public struct PrismSource<C: ChannelType, T>: LensSourceType where C.Source : Tr
     }
 
     @inlinable public var rawValue: T {
-        get { return lens.get(channel.value) }
-        nonmutating set { channel.value = lens.set(channel.value, newValue) }
+        get { return lens.get(channel.rawValue) }
+        nonmutating set { channel.rawValue = lens.set(channel.rawValue, newValue) }
     }
 
     /// Creates a state tranceiver to the focus of this lens, allowing the access and modification
