@@ -352,15 +352,15 @@ class KeyPathTests : ChannelTestCase {
 
 
         XCTAssertEqual(0, changeCount)
-        XCTAssertNotEqual(5, x.source.value)
+        XCTAssertNotEqual(5, x.source.rawValue)
 
         x ∞= 5
-        XCTAssertEqual(5, x.source.value)
+        XCTAssertEqual(5, x.source.rawValue)
         XCTAssertEqual(1, changeCount)
 
 
         x ∞= 5
-        XCTAssertEqual(5, x.source.value)
+        XCTAssertEqual(5, x.source.rawValue)
         XCTAssertEqual(1, changeCount)
 
         x ∞= 6
@@ -465,7 +465,7 @@ class KeyPathTests : ChannelTestCase {
         c.receive { _ in changes += 1 }
 
         XCTAssertEqual(1, changes)
-        assertChanges(changes, c ∞= c.source.value + 1)
+        assertChanges(changes, c ∞= c.source.rawValue + 1)
         assertChanges(changes, c ∞= 2)
         assertChanges(changes, c ∞= 2)
         assertChanges(changes, c ∞= 9)
@@ -484,7 +484,7 @@ class KeyPathTests : ChannelTestCase {
         c.receive { _ in changes += 1 }
 
         XCTAssertEqual(1, changes)
-        assertChanges(changes, c ∞= c.source.value + 1)
+        assertChanges(changes, c ∞= c.source.rawValue + 1)
         assertRemains(changes, c ∞= 2)
         assertRemains(changes, c ∞= 2)
         assertChanges(changes, c ∞= 9)

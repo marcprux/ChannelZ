@@ -207,7 +207,7 @@ public final class KeyValueTransceiver<O: NSObject, T>: TransceiverType {
     }
     
     /// access to the underlying source value
-    public var value: Element {
+    public var rawValue: Element {
         get { return get() }
         set(v) { set(v) }
     }
@@ -486,20 +486,20 @@ public final class ChannelController<T> : NSObject, TransceiverType {
     private var observers = Dictionary<ChannelControllerObserverKey, [Receipt]>()
 
     public let key: String
-    public var value: T? {
+    public var rawValue: T? {
         willSet {
             willChangeValue(forKey: key)
         }
 
         didSet(old) {
             didChangeValue(forKey: key)
-            receivers.receive(Mutation(old: old, new: value))
+            receivers.receive(Mutation(old: old, new: rawValue))
         }
     }
 
 
     public init(value: T?, key: String = "value") {
-        self.value = value
+        self.rawValue = value
         self.key = key
     }
 
@@ -507,12 +507,12 @@ public final class ChannelController<T> : NSObject, TransceiverType {
         self.init(value: rawValue)
     }
 
-    public func receive(_ x: T?) { value = x }
+    public func receive(_ x: T?) { rawValue = x }
 
     public func transceive() -> Channel<ChannelController<T>, State> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
-            rcvr(State(old: Optional<T>.none, new: self.value))
+            rcvr(State(old: Optional<T>.none, new: self.rawValue))
             return self.receivers.addReceipt(rcvr)
         }
     }
@@ -619,7 +619,7 @@ public final class ChannelController<T> : NSObject, TransceiverType {
 
     public override func value(forKey key: String) -> Any? {
         if key == self.key {
-            return self.value as? NSObject
+            return self.rawValue as? NSObject
         } else {
             return super.value(forKey: key)
         }
@@ -627,7 +627,7 @@ public final class ChannelController<T> : NSObject, TransceiverType {
 
     public override func value(forKeyPath keyPath: String) -> Any? {
         if keyPath == self.key {
-            return self.value as? NSObject
+            return self.rawValue as? NSObject
         } else {
             return super.value(forKeyPath: keyPath)
         }
@@ -636,9 +636,9 @@ public final class ChannelController<T> : NSObject, TransceiverType {
     public override func setValue(_ value: Any?, forKey key: String) {
         if key == self.key {
             if let value = value as? T {
-                self.value = value
+                self.rawValue = value
             } else {
-                self.value = nil
+                self.rawValue = nil
             }
         } else {
             super.setValue(value, forKey: key)
@@ -648,9 +648,9 @@ public final class ChannelController<T> : NSObject, TransceiverType {
     public override func setValue(_ value: Any?, forKeyPath keyPath: String) {
         if keyPath == self.key {
             if let value = value as? T {
-                self.value = value
+                self.rawValue = value
             } else {
-                self.value = nil
+                self.rawValue = nil
             }
         } else {
             super.setValue(value, forKeyPath: keyPath)

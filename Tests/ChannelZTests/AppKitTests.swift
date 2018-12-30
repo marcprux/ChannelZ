@@ -304,54 +304,54 @@ class AppKitTests : ChannelTestCase {
         do { // bind to double
             let controller = stepper.channelZBinding(value: 0.0)
 
-            controller.value = 3.2
+            controller.rawValue = 3.2
             XCTAssertEqual(3.2, stepper.doubleValue, "stepper should mirror controller binding")
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(2.2, controller.value, "stepper decrement should be seen in controller")
+            XCTAssertEqual(2.2, controller.rawValue, "stepper decrement should be seen in controller")
 
             stepper.unbind(NSBindingName.value)
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(2.2, controller.value, "control should have been unbound")
+            XCTAssertEqual(2.2, controller.rawValue, "control should have been unbound")
         }
 
         do { // bind to int
             let controller = stepper.channelZBinding(value: 3)
 
-            controller.value = 4
+            controller.rawValue = 4
             XCTAssertEqual(4, stepper.integerValue, "stepper should mirror controller binding")
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(3, controller.value, "stepper decrement should be seem in controller")
+            XCTAssertEqual(3, controller.rawValue, "stepper decrement should be seem in controller")
 
             stepper.unbind(NSBindingName.value)
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(3, controller.value, "control should have been unbound")
+            XCTAssertEqual(3, controller.rawValue, "control should have been unbound")
         }
 
         do { // bind to int?
             let controller = stepper.channelZBinding(value: 44)
 
             stepper.maxValue = 88
-            controller.value = 4
+            controller.rawValue = 4
             XCTAssertEqual(4, stepper.integerValue, "stepper should mirror controller binding")
 
-            controller.value = nil
+            controller.rawValue = nil
             XCTAssertEqual(44, stepper.integerValue, "stepper should treat nil as NSNullPlaceholderBindingOption")
 
-            controller.value = 99
+            controller.rawValue = 99
             XCTAssertEqual(88, stepper.integerValue, "stepper should pin to max")
-            XCTAssertEqual(99, controller.value, "controller should hold set value")
+            XCTAssertEqual(99, controller.rawValue, "controller should hold set value")
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(87, controller.value, "stepper decrement should be seem in controller")
+            XCTAssertEqual(87, controller.rawValue, "stepper decrement should be seem in controller")
 
             stepper.unbind(NSBindingName.value)
 
             stepper.performClick(nil) // decrement
-            XCTAssertEqual(87, controller.value, "control should have been unbound")
+            XCTAssertEqual(87, controller.rawValue, "control should have been unbound")
         }
 
 //        do { // bind to string

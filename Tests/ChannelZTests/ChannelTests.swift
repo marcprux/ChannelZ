@@ -517,7 +517,7 @@ class ChannelTests : ChannelTestCase {
         }
 
         for num in [1, 2, 1, 2, 2, 2, 3, 3, 4] {
-            numberz.source.value = num
+            numberz.source.rawValue = num
         }
 
         XCTAssertEqual([1, 2, 1, 2, 3, 4], items)
@@ -861,22 +861,22 @@ class ChannelTests : ChannelTestCase {
 
         let rcpt = ∞propa <=∞=> ∞propb
 
-        XCTAssertEqual("A", propa.value)
-        XCTAssertEqual("A", propb.value)
+        XCTAssertEqual("A", propa.rawValue)
+        XCTAssertEqual("A", propb.rawValue)
 
-        propa.value = "X"
-        XCTAssertEqual("X", propa.value)
-        XCTAssertEqual("X", propb.value)
+        propa.rawValue = "X"
+        XCTAssertEqual("X", propa.rawValue)
+        XCTAssertEqual("X", propb.rawValue)
 
-        propb.value = "Y"
-        XCTAssertEqual("Y", propa.value)
-        XCTAssertEqual("Y", propb.value)
+        propb.rawValue = "Y"
+        XCTAssertEqual("Y", propa.rawValue)
+        XCTAssertEqual("Y", propb.rawValue)
 
         rcpt.cancel()
 
-        propa.value = "Z"
-        XCTAssertEqual("Z", propa.value)
-        XCTAssertEqual("Y", propb.value, "cancelled receiver should not have channeled the value")
+        propa.rawValue = "Z"
+        XCTAssertEqual("Z", propa.rawValue)
+        XCTAssertEqual("Y", propb.rawValue, "cancelled receiver should not have channeled the value")
     }
 
     func testConversionChannels() {
@@ -885,22 +885,22 @@ class ChannelTests : ChannelTestCase {
 
         let rcpt = propa.map({ Double($0) }) <=∞=> propb.map({ Int($0) })
 
-        XCTAssertEqual(0, propa.source.value)
-        XCTAssertEqual(0.0, propb.source.value)
+        XCTAssertEqual(0, propa.source.rawValue)
+        XCTAssertEqual(0.0, propb.source.rawValue)
 
-        propa.source.value += 1
-        XCTAssertEqual(1, propa.source.value)
-        XCTAssertEqual(1.0, propb.source.value)
+        propa.source.rawValue += 1
+        XCTAssertEqual(1, propa.source.rawValue)
+        XCTAssertEqual(1.0, propb.source.rawValue)
 
-        propb.source.value += 1.2
-        XCTAssertEqual(2, propa.source.value)
-        XCTAssertEqual(2.0, propb.source.value, "rounded value should have been mapped back")
+        propb.source.rawValue += 1.2
+        XCTAssertEqual(2, propa.source.rawValue)
+        XCTAssertEqual(2.0, propb.source.rawValue, "rounded value should have been mapped back")
 
         rcpt.cancel()
 
-        propa.source.value -= 1
-        XCTAssertEqual(1, propa.source.value)
-        XCTAssertEqual(2.0, propb.source.value, "cancelled receiver should not have channeled the value")
+        propa.source.rawValue -= 1
+        XCTAssertEqual(1, propa.source.rawValue)
+        XCTAssertEqual(2.0, propb.source.rawValue, "cancelled receiver should not have channeled the value")
     }
 
     func testUnstableChannels() {
@@ -913,25 +913,25 @@ class ChannelTests : ChannelTestCase {
 
         let rcpt = propb.map({ $0 + 1 }) <=∞=> propa
 
-        XCTAssertEqual(1, propa.source.value)
-        XCTAssertEqual(1, propb.source.value)
+        XCTAssertEqual(1, propa.source.rawValue)
+        XCTAssertEqual(1, propb.source.rawValue)
 
         // these values are all contingent on the setting of ChannelZReentrancyLimit
         XCTAssertEqual(1, ChannelZReentrancyLimit)
 
-        propa.source.value += 1
-        XCTAssertEqual(4, propa.source.value)
-        XCTAssertEqual(3, propb.source.value)
+        propa.source.rawValue += 1
+        XCTAssertEqual(4, propa.source.rawValue)
+        XCTAssertEqual(3, propb.source.rawValue)
 
-        propb.source.value += 1
-        XCTAssertEqual(6, propa.source.value)
-        XCTAssertEqual(6, propb.source.value)
+        propb.source.rawValue += 1
+        XCTAssertEqual(6, propa.source.rawValue)
+        XCTAssertEqual(6, propb.source.rawValue)
 
         rcpt.cancel()
 
-        propa.source.value -= 1
-        XCTAssertEqual(5, propa.source.value)
-        XCTAssertEqual(6, propb.source.value, "cancelled receiver should not have channeled the value")
+        propa.source.rawValue -= 1
+        XCTAssertEqual(5, propa.source.rawValue)
+        XCTAssertEqual(6, propb.source.rawValue, "cancelled receiver should not have channeled the value")
 
     }
 
@@ -955,11 +955,11 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(1, ints)
         XCTAssertEqual(1, strs)
 
-        a.source.value += 1
+        a.source.rawValue += 1
         XCTAssertEqual(2, ints)
         XCTAssertEqual(1, strs)
 
-        b.source.value = "x"
+        b.source.rawValue = "x"
         XCTAssertEqual(2, ints)
         XCTAssertEqual(2, strs)
 
@@ -989,7 +989,7 @@ class ChannelTests : ChannelTestCase {
         let subscription = f ∞> { _ in changes += 1 }
 
         XCTAssertEqual(1, changes)
-        assertChanges(changes, x.value = (x.source.value + 1))
+        assertChanges(changes, x.value = (x.source.rawValue + 1))
         assertChanges(changes, x.value = (3))
         assertRemains(changes, x.value = (3))
         assertChanges(changes, x.value = (9))
@@ -1013,7 +1013,7 @@ class ChannelTests : ChannelTestCase {
         let fya: Receipt = yf ∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(1, changes)
-        assertChanges(changes, x.value = (!x.source.value))
+        assertChanges(changes, x.value = (!x.source.rawValue))
         assertChanges(changes, x.value = (true))
         assertRemains(changes, x.value = (true))
         assertChanges(changes, x.value = (false))
@@ -1037,7 +1037,7 @@ class ChannelTests : ChannelTestCase {
         let fya: Receipt = yf ∞> { (x: String) in changes += 1 }
 
         XCTAssertEqual(1, changes)
-        assertChanges(changes, x.value = (x.source.value + 1))
+        assertChanges(changes, x.value = (x.source.rawValue + 1))
         assertRemains(changes, x.value = (2))
         assertRemains(changes, x.value = (2))
         assertChanges(changes, x.value = (9))

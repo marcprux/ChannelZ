@@ -112,21 +112,21 @@ public protocol LensSourceType : TransceiverType {
 ///
 /// The associated lens is used both for getting/setting the source state directly as well
 /// as modifying the old/new state pulse values. A lens can be thought of as a 2-way `map` for state values.
-public struct LensSource<C: ChannelType, T>: LensSourceType where C.Source : TransceiverType, C.Pulse : MutationType, C.Pulse.Value == C.Source.Value {
+public struct LensSource<C: ChannelType, T>: LensSourceType where C.Source : TransceiverType, C.Pulse : MutationType, C.Pulse.RawValue == C.Source.RawValue {
     public typealias Owner = C
     public let channel: C
-    public let lens: Lens<C.Source.Value, T>
+    public let lens: Lens<C.Source.RawValue, T>
 
-    @usableFromInline init(channel: C, lens: Lens<C.Source.Value, T>) {
+    @usableFromInline init(channel: C, lens: Lens<C.Source.RawValue, T>) {
         self.channel = channel
         self.lens = lens
     }
 
     @inlinable public func receive(_ x: T) {
-        self.value = x
+        self.rawValue = x
     }
 
-    @inlinable public var value: T {
+    @inlinable public var rawValue: T {
         get { return lens.get(channel.value) }
         nonmutating set { channel.value = lens.set(channel.value, newValue) }
     }
@@ -141,9 +141,9 @@ public struct LensSource<C: ChannelType, T>: LensSourceType where C.Source : Tra
 }
 
 /// A `LensChannel` simplifies the type of a channel over a mutating LensSource
-public typealias LensChannel<C: ChannelType, X> = Channel<LensSource<C, X>, Mutation<X>> where C.Source : TransceiverType, C.Pulse : MutationType, C.Pulse.Value == C.Source.Value
+public typealias LensChannel<C: ChannelType, X> = Channel<LensSource<C, X>, Mutation<X>> where C.Source : TransceiverType, C.Pulse : MutationType, C.Pulse.RawValue == C.Source.RawValue
 
-public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// A channel that focused from the current channel through to the given pulse type
     public typealias FocusChannel<X> = LensChannel<Self, X>
 }
@@ -151,17 +151,17 @@ public extension ChannelType where Source : TransceiverType, Pulse : MutationTyp
 /// A Prism on a state channel, which can be used create a property channel on a specific
 /// piece of the source state; a LensSource itself does not manage any receivers, but instead
 /// relies on the source of the underlying channel.
-public struct PrismSource<C: ChannelType, T>: LensSourceType where C.Source : TransceiverType, C.Pulse : MutationType, C.Pulse.Value == C.Source.Value {
+public struct PrismSource<C: ChannelType, T>: LensSourceType where C.Source : TransceiverType, C.Pulse : MutationType, C.Pulse.RawValue == C.Source.RawValue {
     public typealias Owner = C
     public let channel: C
-    public let lens: Lens<C.Source.Value, T>
+    public let lens: Lens<C.Source.RawValue, T>
     public typealias Pulse = T
 
     @inlinable public func receive(_ x: T) {
-        self.value = x
+        self.rawValue = x
     }
 
-    @inlinable public var value: T {
+    @inlinable public var rawValue: T {
         get { return lens.get(channel.value) }
         nonmutating set { channel.value = lens.set(channel.value, newValue) }
     }
@@ -175,21 +175,21 @@ public struct PrismSource<C: ChannelType, T>: LensSourceType where C.Source : Tr
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
 
     /// A pure channel (whose element is the same as the source) can be lensed such that a derivative
     /// channel can modify sub-elements of a complex data structure
-    @inlinable public func focus<X>(lens: Lens<Pulse.Value, X>) -> FocusChannel<X> {
+    @inlinable public func focus<X>(lens: Lens<Pulse.RawValue, X>) -> FocusChannel<X> {
         return LensSource(channel: self, lens: lens).transceive()
     }
 
     /// Constructs a Lens channel using a getter and an inout setter
-    @inlinable public func focus<X>(_ kp: WritableKeyPath<Pulse.Value, X>) -> FocusChannel<X> {
+    @inlinable public func focus<X>(_ kp: WritableKeyPath<Pulse.RawValue, X>) -> FocusChannel<X> {
         return focus(lens: Lens(kp: kp))
     }
 
     /// Constructs a Lens channel using a getter and an inout setter
-    @inlinable public func focus<X>(get: @escaping (Pulse.Value) -> X, set: @escaping (inout Pulse.Value, X) -> ()) -> FocusChannel<X> {
+    @inlinable public func focus<X>(get: @escaping (Pulse.RawValue) -> X, set: @escaping (inout Pulse.RawValue, X) -> ()) -> FocusChannel<X> {
         return focus(lens: Lens(get: get, set: set))
     }
 
@@ -198,17 +198,17 @@ public extension ChannelType where Source : TransceiverType, Pulse : MutationTyp
 //    }
 
     /// Constructs a Lens channel using a getter and a tranformation setter
-    @inlinable public func focus<X>(get: @escaping (Pulse.Value) -> X, create: @escaping (Pulse.Value, X) -> Pulse.Value) -> FocusChannel<X> {
+    @inlinable public func focus<X>(get: @escaping (Pulse.RawValue) -> X, create: @escaping (Pulse.RawValue, X) -> Pulse.RawValue) -> FocusChannel<X> {
         return focus(lens: Lens(get: get, create: create))
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
 
     /// Creates an optionally casting prism focus
     @inlinable public func cast<T>(_ type: T.Type) -> FocusChannel<T?> {
-        let optionalLens = Lens<Pulse.Value, T?>(get: { $0 as? T }, set: { (x: inout Pulse.Value, y: T?) in
-            if let z = y as? Pulse.Value {
+        let optionalLens = Lens<Pulse.RawValue, T?>(get: { $0 as? T }, set: { (x: inout Pulse.RawValue, y: T?) in
+            if let z = y as? Pulse.RawValue {
                 x = z
             }
         })
@@ -224,32 +224,32 @@ public extension ChannelType where Source : LensSourceType {
 
 // MARK: Jacket Channel extensions for Lens/Prism/Optional access
 
-public extension ChannelType where Source.Value : _WrapperType, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : _WrapperType, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the result of the constructor function
-    @inlinable public func coalesce(_ template: @escaping (Self) -> Pulse.Value.Wrapped) -> FocusChannel<Pulse.Value.Wrapped> {
-        return focus(get: { $0.flatMap({ $0 }) ?? template(self) }, create: { (_, value) in Source.Value(value) })
+    @inlinable public func coalesce(_ template: @escaping (Self) -> Pulse.RawValue.Wrapped) -> FocusChannel<Pulse.RawValue.Wrapped> {
+        return focus(get: { $0.flatMap({ $0 }) ?? template(self) }, create: { (_, value) in Source.RawValue(value) })
     }
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the constant of the value; alias for `coalesce`
-    @inlinable public func coalesce(_ value: Pulse.Value.Wrapped) -> FocusChannel<Pulse.Value.Wrapped> {
+    @inlinable public func coalesce(_ value: Pulse.RawValue.Wrapped) -> FocusChannel<Pulse.RawValue.Wrapped> {
         return coalesce({ _ in value })
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
 
     /// Given two channels that can find and update values based on the specified getters & updaters, create
     /// a `Transceiver` channel that provides access to the underlying merged elements.
-    @inlinable public func join<T, Join: ChannelType>(_ locator: Join, finder: @escaping (Self.Pulse.Value, Join.Pulse.Value) -> T, updater: @escaping ((Self.Pulse.Value, Join.Pulse.Value), T) -> (Self.Pulse.Value, Join.Pulse.Value)) -> FocusChannel<T> where Join.Source : StateEmitterType, Join.Pulse : MutationType, Join.Pulse.Value == Join.Source.Value {
+    @inlinable public func join<T, Join: ChannelType>(_ locator: Join, finder: @escaping (Self.Pulse.RawValue, Join.Pulse.RawValue) -> T, updater: @escaping ((Self.Pulse.RawValue, Join.Pulse.RawValue), T) -> (Self.Pulse.RawValue, Join.Pulse.RawValue)) -> FocusChannel<T> where Join.Source : StateEmitterType, Join.Pulse : MutationType, Join.Pulse.RawValue == Join.Source.RawValue {
 
         // the selection lens value is a prism over the current selection and the current elements
-        let lens = Lens<Pulse.Value, T>(get: { elements in
-            finder(elements, locator.source.value)
+        let lens = Lens<Pulse.RawValue, T>(get: { elements in
+            finder(elements, locator.source.rawValue)
         }) { (elements, values) in
-            updater((elements, locator.source.value), values).0
+            updater((elements, locator.source.rawValue), values).0
         }
 
         let sel = focus(lens: lens)
@@ -259,21 +259,21 @@ public extension ChannelType where Source : TransceiverType, Pulse : MutationTyp
             case .v1(let v): // change in elements
                 return v // the raw values are already resolved by the lens
             case .v2(let i): // change in locator; need to perform another lookup
-                return Mutation(old: i.old.flatMap({ finder(self.source.value, $0) }), new: finder(self.source.value, i.new))
+                return Mutation(old: i.old.flatMap({ finder(self.source.rawValue, $0) }), new: finder(self.source.rawValue, i.new))
             }
         }
     }
 }
 
-public extension ChannelType where Source.Value : RangeReplaceableCollection, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : RangeReplaceableCollection, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
 
     /// Combines this sequence state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be silently ignored.
-    @inlinable public func match<Join: ChannelType>(_ locator: Join, setter: @escaping (Pulse.Value, Pulse.Value.Index, Pulse.Value.Element?) -> Pulse.Value, getter: @escaping (Pulse.Value, Pulse.Value.Index) -> Pulse.Value.Element?) -> FocusChannel<Pulse.Value> where Join.Source : StateEmitterType, Join.Pulse.Value : Sequence, Join.Pulse.Value.Element == Pulse.Value.Index, Join.Pulse : MutationType, Join.Pulse.Value == Join.Source.Value {
+    @inlinable public func match<Join: ChannelType>(_ locator: Join, setter: @escaping (Pulse.RawValue, Pulse.RawValue.Index, Pulse.RawValue.Element?) -> Pulse.RawValue, getter: @escaping (Pulse.RawValue, Pulse.RawValue.Index) -> Pulse.RawValue.Element?) -> FocusChannel<Pulse.RawValue> where Join.Source : StateEmitterType, Join.Pulse.RawValue : Sequence, Join.Pulse.RawValue.Element == Pulse.RawValue.Index, Join.Pulse : MutationType, Join.Pulse.RawValue == Join.Source.RawValue {
 
-        typealias Output = Pulse.Value
-        typealias Query = (input: Pulse.Value, indices: Join.Pulse.Value)
+        typealias Output = Pulse.RawValue
+        typealias Query = (input: Pulse.RawValue, indices: Join.Pulse.RawValue)
 
         func query(_ query: Query) -> Output {
             var elements = Output()
@@ -301,7 +301,7 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be silently ignored.
-    @inlinable public func subselect<C: ChannelType>(_ locator: C, setter: @escaping (Pulse.Value, Pulse.Value.Index, Pulse.Value.Element?) -> Pulse.Value) -> FocusChannel<Pulse.Value> where C.Source : StateEmitterType, C.Pulse.Value : Sequence, C.Pulse.Value.Element == Pulse.Value.Index, C.Pulse : MutationType, C.Pulse.Value == C.Source.Value {
+    @inlinable public func subselect<C: ChannelType>(_ locator: C, setter: @escaping (Pulse.RawValue, Pulse.RawValue.Index, Pulse.RawValue.Element?) -> Pulse.RawValue) -> FocusChannel<Pulse.RawValue> where C.Source : StateEmitterType, C.Pulse.RawValue : Sequence, C.Pulse.RawValue.Element == Pulse.RawValue.Index, C.Pulse : MutationType, C.Pulse.RawValue == C.Source.RawValue {
 
         return match(locator, setter: setter) { collection, index in
             if collection.indices.contains(index) {
@@ -315,7 +315,7 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be silently ignored.
-    @inlinable public func indices<C: ChannelType>(_ indices: C) -> FocusChannel<Pulse.Value> where C.Source : StateEmitterType, C.Source.Value : Sequence, C.Source.Value.Element == Source.Value.Index, C.Pulse : MutationType, C.Pulse.Value == C.Source.Value {
+    @inlinable public func indices<C: ChannelType>(_ indices: C) -> FocusChannel<Pulse.RawValue> where C.Source : StateEmitterType, C.Source.RawValue : Sequence, C.Source.RawValue.Element == Source.RawValue.Index, C.Pulse : MutationType, C.Pulse.RawValue == C.Source.RawValue {
         return subselect(indices) { (seq, idx, val) in
             if seq.indices.contains(idx) {
                 var s = seq
@@ -330,7 +330,7 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
     /// Combines this collection state source with a channel of a single index and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be silently ignored.
-    @inlinable public func index<C: ChannelType>(_ index: C) -> LensChannel<FocusChannel<Pulse.Value>, Pulse.Value.Element?> where C.Source : TransceiverType, C.Pulse : MutationType, C.Source.Value == C.Pulse.Value, C.Source.Value == Source.Value.Index? {
+    @inlinable public func index<C: ChannelType>(_ index: C) -> LensChannel<FocusChannel<Pulse.RawValue>, Pulse.RawValue.Element?> where C.Source : TransceiverType, C.Pulse : MutationType, C.Source.RawValue == C.Pulse.RawValue, C.Source.RawValue == Source.RawValue.Index? {
         
         // TODO: this should return FocusChannel<Value.Element?> instead of LensChannel<FocusChannel<Self.Pulse.Value>, Self.Pulse.Value.Element?>, but since we are relying on the indices function for the subselection implementation, we need to have an extra level of indirection. For example, an integer indexed indexOf currently returns:
         //   Channel<LensSource<Channel<LensSource<Channel<ValueTransceiver<[String]>, Mutation<[String]>>, [String]>, Mutation<[String]>>, String?>, Mutation<String?>>
@@ -338,12 +338,12 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
         //   Channel<LensSource<Channel<ValueTransceiver<[String]>, Mutation<[String]>>, [String]>, Mutation<[String]>>
         
         // optional channel -> collection channel
-        let idx: C.FocusChannel<[Source.Value.Index]> = index.focus(get: { v in v.flatMap({ [$0] }) ?? [] }, set: { v, c in v = c.first ?? .none })
+        let idx: C.FocusChannel<[Source.RawValue.Index]> = index.focus(get: { v in v.flatMap({ [$0] }) ?? [] }, set: { v, c in v = c.first ?? .none })
         
-        let ichan: FocusChannel<Pulse.Value> = self.indices(idx)
+        let ichan: FocusChannel<Pulse.RawValue> = self.indices(idx)
         
         // collection channel -> optional channel
-        let fchan: LensChannel<FocusChannel<Pulse.Value>, Pulse.Value.Element?> = ichan.focus(get: { c in c.first ?? .none }, set: { c, v in
+        let fchan: LensChannel<FocusChannel<Pulse.RawValue>, Pulse.RawValue.Element?> = ichan.focus(get: { c in c.first ?? .none }, set: { c, v in
             c.replaceSubrange(c.startIndex..<c.endIndex, with: v.flatMap({ [$0] }) ?? [])
         })
         
@@ -357,9 +357,9 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
     ///
     /// - Note: When setting the value of an index outside the current indices, any
     ///         intervening gaps will be filled with the duplicated value
-    @inlinable public func indexOf(_ index: Pulse.Value.Index) -> FocusChannel<Pulse.Value.Element?> {
+    @inlinable public func indexOf(_ index: Pulse.RawValue.Index) -> FocusChannel<Pulse.RawValue.Element?> {
         
-        let lens: Lens<Pulse.Value, Pulse.Value.Element?> = Lens(get: { target in
+        let lens: Lens<Pulse.RawValue, Pulse.RawValue.Element?> = Lens(get: { target in
             target.indices.contains(index) ? target[index] : nil
         }, create: { (target, item) in
             var target = target
@@ -382,9 +382,9 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
     }
     
     /// Creates a prism lens channel, allowing access to a collection's mapped lens
-    @inlinable public func prism<T>(_ lens: Lens<Pulse.Value.Element, T>) -> FocusChannel<[T]> {
-        let prismLens = Lens<Pulse.Value, [T]>(get: { $0.map(lens.get) }) {
-            (elements: inout Pulse.Value, values: [T]) in
+    @inlinable public func prism<T>(_ lens: Lens<Pulse.RawValue.Element, T>) -> FocusChannel<[T]> {
+        let prismLens = Lens<Pulse.RawValue, [T]>(get: { $0.map(lens.get) }) {
+            (elements: inout Pulse.RawValue, values: [T]) in
             var vals = values.makeIterator()
             for i in elements.indices {
                 if let val = vals.next() {
@@ -396,21 +396,21 @@ public extension ChannelType where Source.Value : RangeReplaceableCollection, So
     }
     
     /// Creates a prism lens channel from the given keypath, allowing access to a collection's mapped lens
-    @inlinable public func prism<T>(_ kp: WritableKeyPath<Pulse.Value.Element, T>) -> FocusChannel<[T]> {
+    @inlinable public func prism<T>(_ kp: WritableKeyPath<Pulse.RawValue.Element, T>) -> FocusChannel<[T]> {
         return prism(Lens(kp: kp))
     }
     
     /// Returns an accessor to the collection's range of elements
-    @inlinable public func range(_ range: ClosedRange<Pulse.Value.Index>) -> FocusChannel<Pulse.Value.SubSequence> {
-        let rangeLens = Lens<Pulse.Value, Pulse.Value.SubSequence>(get: { $0[range] }) {
-            (elements: inout Pulse.Value, values: Pulse.Value.SubSequence) in
+    @inlinable public func range(_ range: ClosedRange<Pulse.RawValue.Index>) -> FocusChannel<Pulse.RawValue.SubSequence> {
+        let rangeLens = Lens<Pulse.RawValue, Pulse.RawValue.SubSequence>(get: { $0[range] }) {
+            (elements: inout Pulse.RawValue, values: Pulse.RawValue.SubSequence) in
             elements.replaceSubrange(range, with: Array(values))
         }
         return focus(lens: rangeLens)
     }
 }
 
-public extension ChannelType where Source.Value : MutableCollection, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : MutableCollection, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
@@ -430,16 +430,16 @@ public extension ChannelType where Source.Value : MutableCollection, Source : Tr
 /// Development function that pretends to return any T, but really just crashes
 @available(*, deprecated, message: "crashes always!") func die<T>() -> T { fatalError("DIE: \(T.self)") }
 
-public extension ChannelType where Source.Value : KeyIndexed & Collection, Source.Value.Index : KeyIndexedIndexType, Source.Value.Key == Source.Value.Index.Key, Source.Value.Value == Source.Value.Index.Value, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : KeyIndexed & Collection, Source.RawValue.Index : KeyIndexedIndexType, Source.RawValue.Key == Source.RawValue.Index.Key, Source.RawValue.Value == Source.RawValue.Index.Value, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
 
     /// Combines this collection state source with a channel of indices and combines them into a prism
     /// where the subselection will be issued whenever a change in either the selection or the underlying
     /// elements occurs; indices that are invalid or become invalid will be represented by nil in the
     /// pulsed collection; nulling out individual members of existant keys will have no effect.
-    @inlinable public func keyed<S: Sequence>(_ indices: TransceiverChannel<S>) -> FocusChannel<[Pulse.Value.Value?]> where S.Iterator.Element == Pulse.Value.Key {
+    @inlinable public func keyed<S: Sequence>(_ indices: TransceiverChannel<S>) -> FocusChannel<[Pulse.RawValue.Value?]> where S.Iterator.Element == Pulse.RawValue.Key {
 
         return join(indices, finder: { dict, keys in
-            var values: [Pulse.Value.Value?] = []
+            var values: [Pulse.RawValue.Value?] = []
             for key in keys {
                 values.append(dict[key])
             }
@@ -483,11 +483,11 @@ extension DictionaryIndex : KeyIndexedIndexType {
 
 }
 
-public extension ChannelType where Source.Value : KeyIndexed, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : KeyIndexed, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Creates a state channel to the given key in the underlying `KeyIndexed` dictionary
-    @inlinable public func atKey(_ key: Pulse.Value.Key) -> FocusChannel<Pulse.Value.Value?> {
+    @inlinable public func atKey(_ key: Pulse.RawValue.Key) -> FocusChannel<Pulse.RawValue.Value?> {
 
-        let lens: Lens<Pulse.Value, Pulse.Value.Value?> = Lens(get: { target in
+        let lens: Lens<Pulse.RawValue, Pulse.RawValue.Value?> = Lens(get: { target in
             target[key]
             }, create: { (target, item) in
                 var target = target
@@ -535,79 +535,79 @@ public extension ChannelType where Source.Value : KeyIndexed, Source : Transceiv
 }
 
 public protocol Optical : class {
-    associatedtype T: ChannelType where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value
+    associatedtype T: ChannelType where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.RawValue == T.Source.RawValue
     
     var optic: T { get }
     
     init(_ optical: T)
 }
 
-public extension ChannelType where Source.Value : ChooseNType, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : ChooseNType, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Channel for the first option of N choices
-    @inlinable public var v1Z: FocusChannel<Pulse.Value.T1?> {
-        return focus(get: { (x: Pulse.Value) in x.v1 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T1?) in x.v1 = y })
+    @inlinable public var v1Z: FocusChannel<Pulse.RawValue.T1?> {
+        return focus(get: { (x: Pulse.RawValue) in x.v1 }, set: { (x: inout Pulse.RawValue, y: Pulse.RawValue.T1?) in x.v1 = y })
     }
 }
 
-public extension ChannelType where Source.Value : Choose2Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : Choose2Type, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Channel for the second option of N choices
-    @inlinable public var v2Z: FocusChannel<Pulse.Value.T2?> {
-        return focus(get: { $0.v2 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T2?) in x.v2 = y })
+    @inlinable public var v2Z: FocusChannel<Pulse.RawValue.T2?> {
+        return focus(get: { $0.v2 }, set: { (x: inout Pulse.RawValue, y: Pulse.RawValue.T2?) in x.v2 = y })
     }
 }
 
-public extension ChannelType where Source.Value : Choose3Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : Choose3Type, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Channel for the third option of N choices
-    @inlinable public var v3Z: FocusChannel<Pulse.Value.T3?> {
-        return focus(get: { $0.v3 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T3?) in x.v3 = y })
+    @inlinable public var v3Z: FocusChannel<Pulse.RawValue.T3?> {
+        return focus(get: { $0.v3 }, set: { (x: inout Pulse.RawValue, y: Pulse.RawValue.T3?) in x.v3 = y })
     }
 }
 
-public extension ChannelType where Source.Value : Choose4Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : Choose4Type, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Channel for the fourth option of N choices
-    @inlinable public var v4Z: FocusChannel<Pulse.Value.T4?> {
-        return focus(get: { $0.v4 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T4?) in x.v4 = y })
+    @inlinable public var v4Z: FocusChannel<Pulse.RawValue.T4?> {
+        return focus(get: { $0.v4 }, set: { (x: inout Pulse.RawValue, y: Pulse.RawValue.T4?) in x.v4 = y })
     }
 }
 
-public extension ChannelType where Source.Value : Choose5Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : Choose5Type, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Channel for the fifth option of N choices
-    @inlinable public var v5Z: FocusChannel<Pulse.Value.T5?> {
-        return focus(get: { $0.v5 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T5?) in x.v5 = y })
+    @inlinable public var v5Z: FocusChannel<Pulse.RawValue.T5?> {
+        return focus(get: { $0.v5 }, set: { (x: inout Pulse.RawValue, y: Pulse.RawValue.T5?) in x.v5 = y })
     }
 }
 
-public extension ChannelType where Source.Value : Choose6Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : Choose6Type, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Channel for the sixth option of N choices
-    @inlinable public var v6Z: FocusChannel<Pulse.Value.T6?> {
-        return focus(get: { $0.v6 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T6?) in x.v6 = y })
+    @inlinable public var v6Z: FocusChannel<Pulse.RawValue.T6?> {
+        return focus(get: { $0.v6 }, set: { (x: inout Pulse.RawValue, y: Pulse.RawValue.T6?) in x.v6 = y })
     }
 }
 
-public extension ChannelType where Source.Value : Choose7Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : Choose7Type, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Channel for the seventh option of N choices
-    @inlinable public var v7Z: FocusChannel<Pulse.Value.T7?> {
-        return focus(get: { $0.v7 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T7?) in x.v7 = y })
+    @inlinable public var v7Z: FocusChannel<Pulse.RawValue.T7?> {
+        return focus(get: { $0.v7 }, set: { (x: inout Pulse.RawValue, y: Pulse.RawValue.T7?) in x.v7 = y })
     }
 }
 
-public extension ChannelType where Source.Value : Choose8Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : Choose8Type, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Channel for the eighth option of N choices
-    @inlinable public var v8Z: FocusChannel<Pulse.Value.T8?> {
-        return focus(get: { $0.v8 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T8?) in x.v8 = y })
+    @inlinable public var v8Z: FocusChannel<Pulse.RawValue.T8?> {
+        return focus(get: { $0.v8 }, set: { (x: inout Pulse.RawValue, y: Pulse.RawValue.T8?) in x.v8 = y })
     }
 }
 
-public extension ChannelType where Source.Value : Choose9Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : Choose9Type, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Channel for the ninth option of N choices
-    @inlinable public var v9Z: FocusChannel<Pulse.Value.T9?> {
-        return focus(get: { $0.v9 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T9?) in x.v9 = y })
+    @inlinable public var v9Z: FocusChannel<Pulse.RawValue.T9?> {
+        return focus(get: { $0.v9 }, set: { (x: inout Pulse.RawValue, y: Pulse.RawValue.T9?) in x.v9 = y })
     }
 }
 
-public extension ChannelType where Source.Value : Choose10Type, Source : TransceiverType, Pulse : MutationType, Pulse.Value == Source.Value {
+public extension ChannelType where Source.RawValue : Choose10Type, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Channel for the tenth option of N choices
-    @inlinable public var v10Z: FocusChannel<Pulse.Value.T10?> {
-        return focus(get: { $0.v10 }, set: { (x: inout Pulse.Value, y: Pulse.Value.T10?) in x.v10 = y })
+    @inlinable public var v10Z: FocusChannel<Pulse.RawValue.T10?> {
+        return focus(get: { $0.v10 }, set: { (x: inout Pulse.RawValue, y: Pulse.RawValue.T10?) in x.v10 = y })
     }
 }

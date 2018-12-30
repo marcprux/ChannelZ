@@ -6,11 +6,13 @@
 //  Copyright © 2016 glimpse.io. All rights reserved.
 //
 
-/// A `ValuableType` simply encapsulates a value
+/// A `ValuableType` simply encapsulates a value; it is a superset of RawRepresentable, but does not require a constructor
 public protocol ValuableType {
-    associatedtype Value
-    var value: Value { get }
+    associatedtype RawValue
+    var rawValue: RawValue { get }
 }
+
+//public typealias ValuableType = RawRepresentable
 
 /// A MutationType is an encapsulation of state over time, such that a pulse has
 /// an `old` value (optionally none for the initial state pulse) and a `new` value,
@@ -20,35 +22,39 @@ public protocol ValuableType {
 /// since there is no equatability requirement for the underlying type.
 ///
 /// - See Also: `Channel.sieve`
-public protocol MutationType : ValuableType {
+public protocol MutationType : ValuableType, RawRepresentable {
     /// The previous value of the state; can be `.None` when there is no previous state (e.g., when it is the initial pulse being emitted)
-    var old: Value? { get }
+    var old: RawValue? { get }
     /// The new value of the state
-    var new: Value { get }
+    var new: RawValue { get }
 }
 
 public extension MutationType {
-    @inlinable public var value: Value { return new }
+    @inlinable public var rawValue: RawValue { return new }
 }
 
-/// A Mutation encapsulates a state change from an old value to a new value
+/// A Mutation encapsulates a state change from an (optional) old value to a (required) new value
 public struct Mutation<T> : MutationType {
-    public typealias Value = T
+    public typealias RawValue = T
     
     /// The previous value of the state; can be `.None` when there is no previous state (e.g., when it is the initial pulse being emitted)
-    public let old: Value?
+    public let old: RawValue?
     /// The new value of the state
-    public let new: Value
+    public let new: RawValue
 
-    @inlinable public init(old: Value?, new: Value) {
+    @inlinable public init(old: RawValue?, new: RawValue) {
         self.old = old
         self.new = new
+    }
+
+    public init(rawValue: T) {
+        self.init(old: nil, new: rawValue)
     }
 }
 
 /// A channel whose source and pulse are both value types and whose types are the same
-public protocol TransceiverChannelType : ChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.Value == Source.Value {
-    associatedtype Value = Source.Value
+public protocol TransceiverChannelType : ChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.RawValue == Source.RawValue {
+    associatedtype RawValue = Source.RawValue
 }
 
 //extension ChannelType where Source : ValuableType, Pulse : ValuableType, Pulse.Value == Source.Value {
@@ -67,7 +73,7 @@ public protocol TransceiverChannelType : ChannelType where Source : ValuableType
 public protocol StateEmitterType : ValuableType {
 
     /// Creates a Channel from this source that will emit mutations of the old & and state values whenever a state operation occurs
-    func transceive() -> Channel<Self, Mutation<Value>>
+    func transceive() -> Channel<Self, Mutation<RawValue>>
 }
 
 /// Simple protocol that permits accessing the value of the underlying source type as
@@ -86,33 +92,33 @@ public protocol StateReceiverType : ReceiverType {
 public protocol TransceiverType : StateEmitterType, StateReceiverType {
     /// The underlying state value of this source; so named because it is an
     /// anonymous parameter, analagous to a closure's anonymous $0, $1, etc. parameters
-    var value: Value { get nonmutating set }
+    var rawValue: RawValue { get nonmutating set }
 }
 
 /// A ValueTransceiver wraps any type to make it act as a `Channel` where changes to the underlying
 /// value can be observed as `Mutatation` pulses (provided that changes are made via the
 /// ValueTransceiver's setter).
-public final class ValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, TransceiverType, ValuableType {
+public final class ValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, TransceiverType, ValuableType, RawRepresentable {
     public typealias State = Mutation<T>
 
     /// The underlying value for this tranceiver
-    public var value: T {
+    public var rawValue: T {
         didSet(old) {
-            receivers.receive(Mutation(old: old, new: value))
+            receivers.receive(Mutation(old: old, new: rawValue))
         }
     }
 
-    @inlinable public init(_ value: T) { self.value = value }
+    @inlinable public init(_ value: T) { self.rawValue = value }
 
     /// Initializer for RawRepresentable
-    @inlinable public init(rawValue: T) { self.value = rawValue }
+    @inlinable public init(rawValue: T) { self.rawValue = rawValue }
 
-    @inlinable public func receive(_ x: T) { value = x }
+    @inlinable public func receive(_ x: T) { rawValue = x }
 
     @inlinable public func transceive() -> TransceiverChannel<T> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
-            rcvr(State(old: Optional<T>.none, new: self.value))
+            rcvr(State(old: Optional<T>.none, new: self.rawValue))
             return self.receivers.addReceipt(rcvr)
         }
     }
@@ -127,14 +133,14 @@ public struct AnyTransceiver<T> : TransceiverType {
     @usableFromInline let valueset: (T) -> Void
     @usableFromInline let channler: () -> Channel<Void, Mutation<T>>
 
-    @inlinable public var value: T {
+    @inlinable public var rawValue: T {
         get { return valueget() }
         nonmutating set { receive(newValue) }
     }
 
-    @inlinable public init<S>(_ source: S) where S: TransceiverType, S.Value == T {
-        valueget = { source.value }
-        valueset = { source.value = $0 }
+    @inlinable public init<S>(_ source: S) where S: TransceiverType, S.RawValue == T {
+        valueget = { source.rawValue }
+        valueset = { source.rawValue = $0 }
         channler = { source.transceive().desource() }
     }
 
@@ -384,7 +390,7 @@ public extension ChannelType {
 
 public extension StreamType where Pulse : MutationType {
     /// Filters the channel for only changed instances of the underlying `Mutation`
-    @inlinable public func sieve(_ changed: @escaping (Pulse.Value, Pulse.Value) -> Bool) -> Self {
+    @inlinable public func sieve(_ changed: @escaping (Pulse.RawValue, Pulse.RawValue) -> Bool) -> Self {
         return filter { state in
             // the initial state assignment is always fresh
             guard let old = state.old else { return true }
@@ -404,7 +410,7 @@ public extension ChannelType where Pulse : MutationType {
     /// - Parameter predicate: a function that evaluates the current item against the previous item
     ///
     /// - Returns: A stateless Channel that emits the the pulses that pass the predicate
-    @inlinable public func stateFilter(_ predicate: @escaping (_ previous: Pulse.Value, _ current: Pulse.Value) -> Bool) -> Self {
+    @inlinable public func stateFilter(_ predicate: @escaping (_ previous: Pulse.RawValue, _ current: Pulse.RawValue) -> Bool) -> Self {
         return sieve(predicate)
     }
 
@@ -418,43 +424,43 @@ public extension ChannelType where Pulse : MutationType {
     /// - Parameter predicate: a function that evaluates the current item against the previous item
     ///
     /// - Returns: A stateless Channel that emits the the pulses that pass the predicate
-    @inlinable public func changes(_ predicate: @escaping (_ previous: Pulse.Value, _ current: Pulse.Value) -> Bool) -> Channel<Source, Pulse.Value> {
+    @inlinable public func changes(_ predicate: @escaping (_ previous: Pulse.RawValue, _ current: Pulse.RawValue) -> Bool) -> Channel<Source, Pulse.RawValue> {
         return stateFilter(predicate).new()
     }
 
 }
 
-public extension StreamType where Pulse : MutationType, Pulse.Value : Equatable {
+public extension StreamType where Pulse : MutationType, Pulse.RawValue : Equatable {
     /// Filters the channel for only changed instances of the underlying `Mutation`
     @inlinable public func sieve() -> Self {
         return sieve(!=)
     }
 }
 
-public extension ChannelType where Pulse : MutationType, Pulse.Value : Equatable {
+public extension ChannelType where Pulse : MutationType, Pulse.RawValue : Equatable {
     /// Adds a channel phase that emits pulses only when the equatable pulses are not equal.
     ///
     /// - See Also: `changes(predicate:)`
-    @inlinable public func changes() -> Channel<Source, Pulse.Value> {
+    @inlinable public func changes() -> Channel<Source, Pulse.RawValue> {
         return sieve().new()
     }
 }
 
-public extension StateEmitterType where Value : Equatable {
+public extension StateEmitterType where RawValue : Equatable {
     /// Creates a a channel to all changed values for equatable elements
-    @inlinable public func transceiveChanges() -> Channel<Self, Value> {
+    @inlinable public func transceiveChanges() -> Channel<Self, RawValue> {
         return transceive().changes()
     }
 }
 
-public extension StreamType where Pulse : MutationType, Pulse.Value : _WrapperType, Pulse.Value.Wrapped : Equatable {
+public extension StreamType where Pulse : MutationType, Pulse.RawValue : _WrapperType, Pulse.RawValue.Wrapped : Equatable {
     /// Filters the channel for only changed optional instances of the underlying `Mutation`
     @inlinable public func sieveCompact() -> Self {
         return sieve(optionalTypeNotEqual)
     }
 }
 
-public extension ChannelType where Pulse : MutationType, Pulse.Value : _WrapperType, Pulse.Value.Wrapped : Equatable {
+public extension ChannelType where Pulse : MutationType, Pulse.RawValue : _WrapperType, Pulse.RawValue.Wrapped : Equatable {
 //    /// Adds a channel phase that emits pulses only when the optional equatable pulses are not equal.
 //    ///
 //    /// - See Also: `changes(predicate:)`
@@ -465,33 +471,33 @@ public extension ChannelType where Pulse : MutationType, Pulse.Value : _WrapperT
     /// Adds a channel phase that emits pulses only when the optional equatable pulses are not equal.
     ///
     /// - See Also: `changes(predicate:)`
-    public func changesCompact() -> Channel<Source, Pulse.Value> {
+    public func changesCompact() -> Channel<Source, Pulse.RawValue> {
         return sieveCompact().new()
     }
 }
 
-public extension StateEmitterType where Value : _WrapperType, Value.Wrapped : Equatable {
+public extension StateEmitterType where RawValue : _WrapperType, RawValue.Wrapped : Equatable {
     /// Creates a a channel to all changed values for optional equatable elements
-    func transceiveChanges() -> Channel<Self, Value> {
+    func transceiveChanges() -> Channel<Self, RawValue> {
         return transceive().changesCompact()
     }
 }
 
 public extension ChannelType where Pulse : ValuableType {
     /// Maps to the `new` value of the `Mutation` element
-    @inlinable public func val() -> Channel<Source, Pulse.Value> {
-        return map({ $0.value })
+    @inlinable public func raw() -> Channel<Source, Pulse.RawValue> {
+        return map({ $0.rawValue })
     }
 }
 
 public extension ChannelType where Pulse : MutationType {
     /// Maps to the `new` value of the `Mutation` element
-    @inlinable public func new() -> Channel<Source, Pulse.Value> {
-        return val() // the value of a MutationType is the new() field
+    @inlinable public func new() -> Channel<Source, Pulse.RawValue> {
+        return raw() // the value of a MutationType is the new() field
     }
 
     /// Maps to the `old` value of the `Mutation` element
-    @inlinable public func old() -> Channel<Source, Pulse.Value?> {
+    @inlinable public func old() -> Channel<Source, Pulse.RawValue?> {
         return map({ $0.old })
     }
 
@@ -514,14 +520,14 @@ public extension ChannelType where Pulse : _WrapperType {
 
 public extension ChannelType where Source : TransceiverType {
     /// A Channel whose source is a `TransceiverType` can get and set its value directly without mutating the channel
-    @inlinable public var value : Source.Value {
-        get { return source.value }
-        nonmutating set { source.value = newValue }
+    @inlinable public var value : Source.RawValue {
+        get { return source.rawValue }
+        nonmutating set { source.rawValue = newValue }
     }
 
     /// Re-maps a state channel by transforming the source with the given get/set mapping functions
-    @inlinable public func stateMap<X>(get: @escaping (Source.Value) -> X, set: @escaping (X) -> Source.Value) -> Channel<AnyTransceiver<X>, Pulse> {
-        return resource { source in AnyTransceiver(get: { get(source.value) }, set: { source.value = set($0) }, channeler: { source.transceive().desource().map { state in Mutation(old: state.old.flatMap(get), new: get(state.new)) } }) }
+    @inlinable public func stateMap<X>(get: @escaping (Source.RawValue) -> X, set: @escaping (X) -> Source.RawValue) -> Channel<AnyTransceiver<X>, Pulse> {
+        return resource { source in AnyTransceiver(get: { get(source.rawValue) }, set: { source.rawValue = set($0) }, channeler: { source.transceive().desource().map { state in Mutation(old: state.old.flatMap(get), new: get(state.new)) } }) }
     }
 }
 
@@ -530,20 +536,20 @@ public extension ChannelType where Source : TransceiverType {
 
 public extension ChannelType where Source : TransceiverType {
     /// Creates a type-erased `StateEmitterType` with `AnyTransceiver` for this channel
-    @inlinable public func anyTransceiver() -> Channel<AnyTransceiver<Source.Value>, Pulse> {
+    @inlinable public func anyTransceiver() -> Channel<AnyTransceiver<Source.RawValue>, Pulse> {
         return resource(AnyTransceiver.init)
     }
 
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Value == Pulse {
+public extension ChannelType where Source : TransceiverType, Source.RawValue == Pulse {
     /// For a channel whose underlying state matches the pulse types, perform a `stateMap` and a `map` with the same `get` transform
-    @inlinable public func restate<X>(get: @escaping (Source.Value) -> X, set: @escaping (X) -> Source.Value) -> Channel<AnyTransceiver<X>, X> {
+    @inlinable public func restate<X>(get: @escaping (Source.RawValue) -> X, set: @escaping (X) -> Source.RawValue) -> Channel<AnyTransceiver<X>, X> {
         return stateMap(get: get, set: set).map(get)
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Pulse: _OptionalType, Source.Value == Pulse, Pulse.Wrapped: Hashable {
+public extension ChannelType where Source : TransceiverType, Pulse: _OptionalType, Source.RawValue == Pulse, Pulse.Wrapped: Hashable {
     @inlinable public func restateMapping<U: Hashable, S: Sequence>(_ mapping: S) -> Channel<AnyTransceiver<U?>, U?> where S.Iterator.Element == (Pulse, U?) {
         var getMapping: [Pulse.Wrapped: U] = [:]
         var setMapping: [U: Pulse] = [:]
@@ -592,9 +598,9 @@ public extension ChannelType where Source : TransceiverType {
     /// Creates a two-way conduit between two `Channel`s whose source is a `TransceiverType`,
     /// such that when either side is changed the other side is updated provided the filter is satisifed
     @discardableResult
-    @inlinable public func conjoin<C2: ChannelType>(_ to: C2, filterLeft: @escaping (Self.Pulse, C2.Source.Value) -> Bool, filterRight: @escaping (Self.Source.Value, Self.Source.Value) -> Bool) -> Receipt where C2.Pulse == Source.Value, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse {
-        let filtered1 = self.filter({ filterLeft($0, to.source.value) })
-        let filtered2 = to.filter({ filterRight($0, self.source.value) })
+    @inlinable public func conjoin<C2: ChannelType>(_ to: C2, filterLeft: @escaping (Self.Pulse, C2.Source.RawValue) -> Bool, filterRight: @escaping (Self.Source.RawValue, Self.Source.RawValue) -> Bool) -> Receipt where C2.Pulse == Source.RawValue, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse {
+        let filtered1 = self.filter({ filterLeft($0, to.source.rawValue) })
+        let filtered2 = to.filter({ filterRight($0, self.source.rawValue) })
         
         // return filtered1.conduit(filtered2) // FIXME: types don't line up for some reason
 
@@ -607,11 +613,11 @@ public extension ChannelType where Source : TransceiverType {
 
 // MARK: Binding variants with pulse output
 
-public extension ChannelType where Source : TransceiverType, Source.Value : Equatable, Pulse : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.RawValue : Equatable, Pulse : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not equal.
     @discardableResult
-    @inlinable public func bindPulseToPulse<C2: ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.Value, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse {
+    @inlinable public func bindPulseToPulse<C2: ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.RawValue, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse {
         return conjoin(to, filterLeft: !=, filterRight: !=)
     }
 
@@ -620,16 +626,16 @@ public extension ChannelType where Source : TransceiverType, Source.Value : Equa
     ///
     /// See Also: `bindPulseToPulse`
     @discardableResult
-    @inlinable public func bind<C2: ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.Value, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse {
+    @inlinable public func bind<C2: ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.RawValue, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse {
         return bindPulseToPulse(to)
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Value : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.RawValue : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal.
     @discardableResult
-    @inlinable public func bindPulseToOptionalPulse<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.Value, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse {
+    @inlinable public func bindPulseToOptionalPulse<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.RawValue, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse {
         return conjoin(to, filterLeft: optionalTypeNotEqual, filterRight: !=)
     }
 
@@ -638,17 +644,17 @@ public extension ChannelType where Source : TransceiverType, Source.Value : Equa
     ///
     /// See Also: `bindPulseToOptionalPulse`
     @discardableResult
-    @inlinable public func bind<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.Value, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse {
+    @inlinable public func bind<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.RawValue, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse {
         return bindPulseToOptionalPulse(to)
     }
 
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Value : _WrapperType, Source.Value.Wrapped : Equatable, Pulse : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.RawValue : _WrapperType, Source.RawValue.Wrapped : Equatable, Pulse : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal.
     @discardableResult
-    @inlinable public func bindOptionalPulseToPulse<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.Value, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse {
+    @inlinable public func bindOptionalPulseToPulse<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.RawValue, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse {
         return conjoin(to, filterLeft: !=, filterRight: optionalTypeNotEqual)
     }
 
@@ -657,16 +663,16 @@ public extension ChannelType where Source : TransceiverType, Source.Value : _Wra
     ///
     /// See Also: `bindOptionalPulseToPulse`
     @discardableResult
-    @inlinable public func bind<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.Value, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse {
+    @inlinable public func bind<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.RawValue, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse {
         return bindOptionalPulseToPulse(to)
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Value : _WrapperType, Source.Value.Wrapped : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.RawValue : _WrapperType, Source.RawValue.Wrapped : Equatable, Pulse : _WrapperType, Pulse.Wrapped : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal.
     @discardableResult
-    @inlinable public func bindOptionalPulseToOptionalPulse<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.Value, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse {
+    @inlinable public func bindOptionalPulseToOptionalPulse<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.RawValue, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse {
         return conjoin(to, filterLeft: optionalTypeNotEqual, filterRight: optionalTypeNotEqual)
     }
 
@@ -675,7 +681,7 @@ public extension ChannelType where Source : TransceiverType, Source.Value : _Wra
     ///
     /// See Also: `bindOptionalPulseToOptionalPulse`
     @discardableResult
-    @inlinable public func bind<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.Value, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse {
+    @inlinable public func bind<C2 : ChannelType>(_ to: C2) -> Receipt where C2.Pulse == Self.Source.RawValue, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse {
         return bindOptionalPulseToOptionalPulse(to)
     }
 }
@@ -683,11 +689,11 @@ public extension ChannelType where Source : TransceiverType, Source.Value : _Wra
 
 // MARK: Binding variants with Mutation output
 
-public extension ChannelType where Source : TransceiverType, Source.Value : Equatable, Pulse : MutationType, Pulse.Value : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.RawValue : Equatable, Pulse : MutationType, Pulse.RawValue : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not equal.
     @discardableResult
-    @inlinable public func linkStateToState<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse.Value, C2.Pulse : MutationType, C2.Pulse.Value == Self.Source.Value {
+    @inlinable public func linkStateToState<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse.RawValue, C2.Pulse : MutationType, C2.Pulse.RawValue == Self.Source.RawValue {
         return self.changes(!=).conjoin(to.changes(!=), filterLeft: !=, filterRight: !=)
     }
 
@@ -696,16 +702,16 @@ public extension ChannelType where Source : TransceiverType, Source.Value : Equa
     ///
     /// See Also: `linkStateToState`
     @discardableResult
-    @inlinable public func link<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse.Value, C2.Pulse : MutationType, C2.Pulse.Value == Self.Source.Value {
+    @inlinable public func link<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse.RawValue, C2.Pulse : MutationType, C2.Pulse.RawValue == Self.Source.RawValue {
         return linkStateToState(to)
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Value : Equatable, Pulse : MutationType, Pulse.Value : _WrapperType, Pulse.Value.Wrapped : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.RawValue : Equatable, Pulse : MutationType, Pulse.RawValue : _WrapperType, Pulse.RawValue.Wrapped : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal.
     @discardableResult
-    @inlinable public func linkStateToOptionalState<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse.Value, C2.Pulse : MutationType, C2.Pulse.Value == Self.Source.Value {
+    @inlinable public func linkStateToOptionalState<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse.RawValue, C2.Pulse : MutationType, C2.Pulse.RawValue == Self.Source.RawValue {
         return self.changesCompact().conjoin(to.changes(!=), filterLeft: optionalTypeNotEqual, filterRight: !=)
     }
 
@@ -714,16 +720,16 @@ public extension ChannelType where Source : TransceiverType, Source.Value : Equa
     ///
     /// See Also: `linkStateToOptionalState`
     @discardableResult
-    @inlinable public func link<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse.Value, C2.Pulse : MutationType, C2.Pulse.Value == Self.Source.Value {
+    @inlinable public func link<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse.RawValue, C2.Pulse : MutationType, C2.Pulse.RawValue == Self.Source.RawValue {
         return linkStateToOptionalState(to)
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Value : _WrapperType, Source.Value.Wrapped : Equatable, Pulse : MutationType, Pulse.Value : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.RawValue : _WrapperType, Source.RawValue.Wrapped : Equatable, Pulse : MutationType, Pulse.RawValue : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal.
     @discardableResult
-    @inlinable public func linkOptionalStateToState<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse.Value, C2.Pulse : MutationType, C2.Pulse.Value == Self.Source.Value {
+    @inlinable public func linkOptionalStateToState<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse.RawValue, C2.Pulse : MutationType, C2.Pulse.RawValue == Self.Source.RawValue {
         return self.changes(!=).conjoin(to.changesCompact(), filterLeft: !=, filterRight: optionalTypeNotEqual)
     }
 
@@ -732,16 +738,16 @@ public extension ChannelType where Source : TransceiverType, Source.Value : _Wra
     /// 
     /// See Also: `linkOptionalStateToState`
     @discardableResult
-    @inlinable public func link<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse.Value, C2.Pulse : MutationType, C2.Pulse.Value == Self.Source.Value {
+    @inlinable public func link<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse.RawValue, C2.Pulse : MutationType, C2.Pulse.RawValue == Self.Source.RawValue {
         return linkOptionalStateToState(to)
     }
 }
 
-public extension ChannelType where Source : TransceiverType, Source.Value : _WrapperType, Source.Value.Wrapped : Equatable, Pulse : MutationType, Pulse.Value : _WrapperType, Pulse.Value.Wrapped : Equatable {
+public extension ChannelType where Source : TransceiverType, Source.RawValue : _WrapperType, Source.RawValue.Wrapped : Equatable, Pulse : MutationType, Pulse.RawValue : _WrapperType, Pulse.RawValue.Wrapped : Equatable {
     /// Creates a two-way binding between two `Channel`s whose source is a `StateEmitterType`, such that when either side is
     /// changed, the other side is updated when they are not optionally equal.
     @discardableResult
-    @inlinable public func linkOptionalStateToOptionalState<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse.Value, C2.Pulse : MutationType, C2.Pulse.Value == Self.Source.Value {
+    @inlinable public func linkOptionalStateToOptionalState<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse.RawValue, C2.Pulse : MutationType, C2.Pulse.RawValue == Self.Source.RawValue {
         return self.changesCompact().conjoin(to.changesCompact(), filterLeft: optionalTypeNotEqual, filterRight: optionalTypeNotEqual)
     }
 
@@ -750,7 +756,7 @@ public extension ChannelType where Source : TransceiverType, Source.Value : _Wra
     ///
     /// See Also: `linkOptionalStateToOptionalState`
     @discardableResult
-    @inlinable public func link<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.Value == Self.Pulse.Value, C2.Pulse : MutationType, C2.Pulse.Value == Self.Source.Value {
+    @inlinable public func link<C2>(_ to: C2) -> Receipt where C2 : ChannelType, C2.Source : TransceiverType, C2.Source.RawValue == Self.Pulse.RawValue, C2.Pulse : MutationType, C2.Pulse.RawValue == Self.Source.RawValue {
         return linkOptionalStateToOptionalState(to)
     }
 }

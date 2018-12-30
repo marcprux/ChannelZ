@@ -271,7 +271,7 @@ class OpticsTests : ChannelTestCase {
             var persons: [Person] = []
             let company = dirZ.focus(\.companies).indexOf(0).coalesce({ _ in defcompany })
 
-            company.focus(\.employees).atKey("359414").val().some().receive { person in
+            company.focus(\.employees).atKey("359414").raw().some().receive { person in
                 persons.append(person)
             }
 
@@ -473,7 +473,7 @@ class OpticsTests : ChannelTestCase {
     func testOpticals() {
         
         
-        class OpticalDirectory<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Pulse.Value == Directory {
+        class OpticalDirectory<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.RawValue == T.Source.RawValue, T.Pulse.RawValue == Directory {
             let optic: T
 
             lazy var authorZ = optic.focus(\.author)
@@ -494,7 +494,7 @@ class OpticsTests : ChannelTestCase {
 
         }
         
-        class OpticalCompany<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Pulse.Value == Company {
+        class OpticalCompany<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.RawValue == T.Source.RawValue, T.Pulse.RawValue == Company {
             let optic: T
             
             lazy var employeesZ = optic.focus(\.employees)
@@ -511,7 +511,7 @@ class OpticsTests : ChannelTestCase {
             }
         }
         
-        class OpticalPerson<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Pulse.Value == Person {
+        class OpticalPerson<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.RawValue == T.Source.RawValue, T.Pulse.RawValue == Person {
             let optic: T
             
             lazy var firstNameZ = optic.focus(\.firstName)
@@ -536,7 +536,7 @@ class OpticsTests : ChannelTestCase {
             }
         }
         
-        class OpticalAddress<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.Value == T.Source.Value, T.Pulse.Value == Address {
+        class OpticalAddress<T: ChannelType>: Optical where T.Source : TransceiverType, T.Pulse : MutationType, T.Pulse.RawValue == T.Source.RawValue, T.Pulse.RawValue == Address {
             let optic: T
             
             lazy var line1Z = optic.focus(\.line1)

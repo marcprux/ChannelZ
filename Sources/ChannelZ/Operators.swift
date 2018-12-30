@@ -31,7 +31,7 @@ infix operator ∞= : AssignmentPrecedence
 
 
 /// Reads the value from the given channel's source that is sourced by an Sink implementation
-@inlinable public postfix func ∞? <T, S: StateEmitterType>(c: Channel<S, T>)->S.Value { return c.source.value }
+@inlinable public postfix func ∞? <T, S: StateEmitterType>(c: Channel<S, T>)->S.RawValue { return c.source.rawValue }
 postfix operator ∞?
 
 
@@ -54,20 +54,20 @@ postfix operator ∞
 // MARK: Prefix operators 
 
 /// Creates a channel from the given state source such that emits items for every state operation
-@inlinable public prefix func ∞ <S: StateEmitterType, T>(source: S)->Channel<S, T> where S.Value == T {
+@inlinable public prefix func ∞ <S: StateEmitterType, T>(source: S)->Channel<S, T> where S.RawValue == T {
     return source.transceive().new()
 }
 
 /// Creates a distinct sieved channel from the given Equatable state source such that only state changes are emitted
 ///
 /// - See: `Channel.changes`
-@inlinable public prefix func ∞= <S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T> where S.Value == T {
+@inlinable public prefix func ∞= <S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T> where S.RawValue == T {
     return source.transceive().sieve().new()
 }
 
-@usableFromInline prefix func ∞?=<S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T?> where S.Value: _OptionalType, T == S.Value.Wrapped {
+@usableFromInline prefix func ∞?=<S: StateEmitterType, T: Equatable>(source: S) -> Channel<S, T?> where S.RawValue: _OptionalType, T == S.RawValue.Wrapped {
 
-    let wrappedState: Channel<S, Mutation<S.Value>> = source.transceive()
+    let wrappedState: Channel<S, Mutation<S.RawValue>> = source.transceive()
 
     // each of the three following statements should be equivalent, but they return subtly different results! Only the first is correct.
     let unwrappedState: Channel<S, Mutation<T?>> = wrappedState.map({ pair in Mutation(old: pair.old?.toOptional(), new: pair.new.toOptional()) })
@@ -119,7 +119,7 @@ infix operator ∞=> : AssignmentPrecedence
 /// changed, the other side is updated
 /// This is the operator form of `bind`
 @discardableResult
-@inlinable public func <=∞=> <S1, S2, T1, T2>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt where S1: TransceiverType, S2: TransceiverType, S1.Value == T2, S2.Value == T1, S1.Value: Equatable, S2.Value: Equatable { return r1.bind(r2) }
+@inlinable public func <=∞=> <S1, S2, T1, T2>(r1: Channel<S1, T1>, r2: Channel<S2, T2>)->Receipt where S1: TransceiverType, S2: TransceiverType, S1.RawValue == T2, S2.RawValue == T1, S1.RawValue: Equatable, S2.RawValue: Equatable { return r1.bind(r2) }
 infix operator <=∞=> : AssignmentPrecedence
 
 /// Creates a two-way conduit betweek two `Channel`s whose source is an `Equatable` `Sink`, such that when either side is
