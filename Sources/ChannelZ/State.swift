@@ -427,6 +427,13 @@ public extension ChannelType where Pulse : MutationType {
         return stateFilter(predicate).new()
     }
 
+    /// Passes the Mutation through a mapping of the KeyPath
+    @inlinable public func key<U>(path: KeyPath<Pulse.RawValue, U>) -> Channel<Source, Mutation<U>> {
+        return map { pulse in
+            Mutation(old: pulse.old?[keyPath: path], new: pulse.new[keyPath: path])
+        }
+    }
+
 }
 
 public extension StreamType where Pulse : MutationType, Pulse.RawValue : Equatable {
@@ -483,7 +490,7 @@ public extension StateEmitterType where RawValue : _WrapperType, RawValue.Wrappe
 }
 
 public extension ChannelType where Pulse : ValuableType {
-    /// Maps to the `new` value of the `Mutation` element
+    /// Maps to the `rawValue` value of the `Mutation` element
     @inlinable public func raw() -> Channel<Source, Pulse.RawValue> {
         return map({ $0.rawValue })
     }

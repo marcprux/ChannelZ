@@ -17,7 +17,6 @@
 		7E43C2CF1A1073CA003747B6 /* Receivers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2CE1A1073CA003747B6 /* Receivers.swift */; };
 		7E43C2D31A1075D0003747B6 /* AppKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D21A1075D0003747B6 /* AppKit.swift */; };
 		7E43C2D71A10763D003747B6 /* UIKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E43C2D61A10763D003747B6 /* UIKit.swift */; };
-		7E4E53CA1A21578700B1016C /* PlayMarker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4E53C91A21578700B1016C /* PlayMarker.swift */; };
 		7E55BE741CB2018D0035281A /* Stream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E55BE731CB2018D0035281A /* Stream.swift */; };
 		7E64D8611CD6879D00AA3DBB /* OpticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E64D8601CD6879D00AA3DBB /* OpticsTests.swift */; };
 		7E7E35461A152CCD00777D72 /* CoreData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7E35451A152CCD00777D72 /* CoreData.swift */; };
@@ -60,7 +59,6 @@
 		7E43C2D21A1075D0003747B6 /* AppKit.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppKit.swift; sourceTree = "<group>"; };
 		7E43C2D61A10763D003747B6 /* UIKit.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIKit.swift; sourceTree = "<group>"; };
 		7E4CA3BD1A1D605F00F34E41 /* ChannelZMac.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = ChannelZMac.playground; sourceTree = "<group>"; };
-		7E4E53C91A21578700B1016C /* PlayMarker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlayMarker.swift; sourceTree = "<group>"; };
 		7E4E53CB1A21749F00B1016C /* Introduction.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = Introduction.playground; sourceTree = "<group>"; };
 		7E55BE731CB2018D0035281A /* Stream.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Stream.swift; sourceTree = "<group>"; };
 		7E64D8601CD6879D00AA3DBB /* OpticsTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OpticsTests.swift; sourceTree = "<group>"; };
@@ -150,7 +148,6 @@
 				7EDBA1071A87D18300AED2CE /* AppKitTests.swift */,
 				7EDBA1091A87D18C00AED2CE /* UIKitTests.swift */,
 				7EE45E211A210FFE00E9AB52 /* PlayMarkerTests.swift */,
-				7E4E53C91A21578700B1016C /* PlayMarker.swift */,
 				7E64D8601CD6879D00AA3DBB /* OpticsTests.swift */,
 			);
 			name = ChannelZTests;
@@ -305,7 +302,6 @@
 				7E2AB9BF1A83C21A00AFBD4F /* KeyPathTests.swift in Sources */,
 				7E7EC5751BCD7D3F0098E797 /* DispatchTests.swift in Sources */,
 				7EDBA1081A87D18300AED2CE /* AppKitTests.swift in Sources */,
-				7E4E53CA1A21578700B1016C /* PlayMarker.swift in Sources */,
 				7E64D8611CD6879D00AA3DBB /* OpticsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

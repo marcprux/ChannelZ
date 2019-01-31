@@ -90,7 +90,7 @@ public extension NSControl { // : KeyValueChannelSupplementing {
         if let nullValue = value as? NSObject {
             options[NSBindingOption.nullPlaceholder] = options[NSBindingOption.nullPlaceholder] ?? nullValue
         }
-        let controller = controller ?? ChannelController(value: value, key: keyPath)
+        let controller = controller ?? ChannelController(value: nil, key: keyPath)
         self.bind(name, to: controller, withKeyPath: keyPath, options: options)
         return controller
     }
