@@ -79,13 +79,20 @@ extension ExpressibleByDictionaryLiteral {
     public init(defaulting: ()) { self.init() }
 }
 
-extension Optional : Defaultable { } // inherits initializer from ExpressibleByNilLiteral
+//extension Optional : Defaultable { } // inherits initializer from ExpressibleByNilLiteral
 extension Set : Defaultable { } // inherits initializer from ExpressibleByArrayLiteral
 extension Array : Defaultable { } // inherits initializer from ExpressibleByArrayLiteral
 extension ContiguousArray : Defaultable { } // inherits initializer from ExpressibleByArrayLiteral
 extension Dictionary : Defaultable { } // inherit initializer from ExpressibleByDictionaryLiteral
 
 extension EmptyCollection : Defaultable { public init(defaulting: ()) { self.init() } }
+
+/// An optional is defaultable when its wrapped instance is defaultable
+extension Optional : Defaultable where Wrapped : Defaultable {
+    public init(defaulting: ()) {
+        self = .some(Wrapped.init(defaulting: ()))
+    }
+}
 
 public extension Defaultable where Self : Equatable {
     /// Returns true if this instance is the same as the defaulted value
