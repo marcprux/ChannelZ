@@ -471,6 +471,8 @@ extension NSNumber : ConduitNumericCoercible {
 
 // MARK: ChannelController implementation
 
+public typealias BindingChannel<T> = Channel<ChannelController<T>, Mutation<T?>>
+
 /// A strongly-typed KVO-compatible type that contains a single value.
 /// 
 /// Values are always optional since Foundation always permits nil to exist in place of an object reference.

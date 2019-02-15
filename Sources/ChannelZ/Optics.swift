@@ -183,7 +183,7 @@ public extension ChannelType where Source : TransceiverType, Pulse : MutationTyp
         return LensSource(channel: self, lens: lens).transceive()
     }
 
-    /// Constructs a Lens channel using a getter and an inout setter
+    /// Constructs a Lens channel using the given `WritableKeyPath` that is used as the getter/setter
     @inlinable public func focus<X>(_ kp: WritableKeyPath<Pulse.RawValue, X>) -> FocusChannel<X> {
         return focus(lens: Lens(kp: kp))
     }
