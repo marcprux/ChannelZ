@@ -183,7 +183,7 @@ public final class ReceiverQueue<T> : ReceiverType {
     public typealias Receptor = (T) -> ()
     public let maxdepth: Int
 
-    fileprivate var receivers: [(index: Int64, receptor: Receptor)] = []
+    fileprivate var receivers: ContiguousArray<(index: Int64, receptor: Receptor)> = []
     fileprivate let entrancy: Counter = 0
     fileprivate let receptorIndex: Counter = 0
 
