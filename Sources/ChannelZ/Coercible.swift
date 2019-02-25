@@ -11,7 +11,15 @@ import Foundation
 
 /// A defaultable type is a type that can be initialized with no arguments and a default value
 public protocol Defaultable {
+    /// Instantiate a new instance of this default value.
     init(defaulting: ())
+
+    /// A single instance of the default value, which may be shared for pure value types.
+    static var defaultValue: Self { get }
+}
+
+public extension Defaultable {
+    public static var defaultValue: Self { return .init(defaulting: ()) }
 }
 
 public extension _WrapperType {
@@ -23,26 +31,26 @@ public extension _WrapperType {
 }
 
 public extension _WrapperType where Wrapped : Defaultable {
-    /// Returns the current value of the wrapped instance or, if nul, instantiates a default value
+    /// Returns the current value of the wrapped instance or, if nil, instantiates a default value
     public var defaulted: Wrapped {
-        get { return self[defaulting: .init(defaulting: ())] }
+        get { return self[defaulting: .defaultValue] }
         set { self = Self(newValue) }
     }
 }
 
 public extension RangeReplaceableCollection where Element : Defaultable {
     public var defaultedFirst: Element {
-        get { return self.first[defaulting: .init(defaulting: ())] }
+        get { return self.first[defaulting: .defaultValue] }
         set { self = Self([newValue] + dropFirst()) }
     }
 
     public subscript(defaulted index: Index) -> Element {
-        get { return indices.contains(index) ? self[index] : .init(defaulting: ()) }
+        get { return indices.contains(index) ? self[index] : .defaultValue }
 
         set {
             // fill in the intervening indeices with the default value
             while !indices.contains(index) {
-                append(.init(defaulting: ()))
+                append(.defaultValue)
             }
             // set the target index item
             replaceSubrange(index...index, with: [newValue])
@@ -52,14 +60,14 @@ public extension RangeReplaceableCollection where Element : Defaultable {
 
 public extension RangeReplaceableCollection where Self : BidirectionalCollection, Element : Defaultable {
     public var defaultedLast: Element {
-        get { return self.last[defaulting: .init(defaulting: ())] }
+        get { return self.last[defaulting: .defaultValue] }
         set { self = Self(dropLast() + [newValue]) }
     }
 }
 
 public extension Set where Element : Defaultable {
     public var defaultedAny: Element {
-        get { return self.first ?? .init(defaulting: ()) }
+        get { return self.first ?? .defaultValue }
         set { self = Set(dropFirst() + [newValue]) }
     }
 }
@@ -90,14 +98,14 @@ extension EmptyCollection : Defaultable { public init(defaulting: ()) { self.ini
 /// An optional is defaultable when its wrapped instance is defaultable
 extension Optional : Defaultable where Wrapped : Defaultable {
     public init(defaulting: ()) {
-        self = .some(Wrapped.init(defaulting: ()))
+        self = .some(.defaultValue)
     }
 }
 
 public extension Defaultable where Self : Equatable {
     /// Returns true if this instance is the same as the defaulted value
     public var isDefaultedValue: Bool {
-        return self == Self.init(defaulting: ())
+        return self == .defaultValue
     }
 
     /// Assign this to the specified value unless it is already set, in which
@@ -105,7 +113,7 @@ public extension Defaultable where Self : Equatable {
     /// ob.optionalString.toggleDefault("foo") will set the optionalString?
     /// variable to "foo", or, if it was already "foo", will clear it.
     public mutating func toggleDefault(_ value: Self) {
-        self = self == value ? .init(defaulting: ()) : value
+        self = self == value ? .defaultValue : value
     }
 
 }
@@ -115,8 +123,8 @@ public extension Defaultable where Self : Equatable {
 @inlinable public func zipWithPadding<Sequence1, Sequence2>(_ sequence1: Sequence1, _ sequence2: Sequence2) -> Zip2Sequence<[Sequence1.Element], [Sequence2.Element]> where Sequence1 : Sequence, Sequence1.Element : Defaultable, Sequence2 : Sequence, Sequence2.Element : Defaultable {
     var s1 = Array(sequence1)
     var s2 = Array(sequence2)
-    while s1.count < s2.count { s1.append(.init(defaulting: ())) }
-    while s2.count < s1.count { s2.append(.init(defaulting: ())) }
+    while s1.count < s2.count { s1.append(.defaultValue) }
+    while s2.count < s1.count { s2.append(.defaultValue) }
     return zip(s1, s2)
 }
 
