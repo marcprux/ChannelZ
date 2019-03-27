@@ -265,29 +265,32 @@ public final class NoLock : Lock {
 }
 
 /// A `Lock` implementation that uses an `os_unfair_lock`
-//public final class SpinLock : Lock {
-//    var spinLock = os_unfair_lock_s()
-//
-//    public func lock() {
-//        os_unfair_lock_lock(&spinLock)
-//    }
-//
-//    public func unlock() {
-//        os_unfair_lock_unlock(&spinLock)
-//    }
-//
-//    public func withLock<T>(_ f: () throws -> T) rethrows -> T {
-//        os_unfair_lock_lock(&spinLock)
-//        defer { os_unfair_lock_unlock(&spinLock) }
-//        return try f()
-//    }
-//
-//    public func tryLock<T>(_ f: () throws -> T) rethrows -> T? {
-//        if !os_unfair_lock_trylock(&spinLock) { return nil }
-//        defer { os_unfair_lock_unlock(&spinLock) }
-//        return try f()
-//    }
-//}
+public final class SpinLock : Lock {
+    public var spinLock = os_unfair_lock_s()
+
+    public init() {
+    }
+
+    @inlinable public func lock() {
+        os_unfair_lock_lock(&spinLock)
+    }
+
+    @inlinable public func unlock() {
+        os_unfair_lock_unlock(&spinLock)
+    }
+
+    @inlinable public func withLock<T>(_ f: () throws -> T) rethrows -> T {
+        os_unfair_lock_lock(&spinLock)
+        defer { os_unfair_lock_unlock(&spinLock) }
+        return try f()
+    }
+
+    @inlinable public func tryLock<T>(_ f: () throws -> T) rethrows -> T? {
+        if !os_unfair_lock_trylock(&spinLock) { return nil }
+        defer { os_unfair_lock_unlock(&spinLock) }
+        return try f()
+    }
+}
 
 /// A `Lock` implementation that uses a `pthread_mutex_t`
 public final class ReentrantLock : Lock {
