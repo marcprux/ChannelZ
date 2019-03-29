@@ -90,7 +90,7 @@ public extension ChannelType {
     /// - Parameter receptor: The functon that transforms one receiver to another
     ///
     /// - Returns: The new Channel
-    @inlinable public func lift<Pulse2>(_ receptor: @escaping (@escaping (Pulse2) -> Void) -> ((Pulse) -> Void)) -> Channel<Source, Pulse2> {
+    @inlinable func lift<Pulse2>(_ receptor: @escaping (@escaping (Pulse2) -> Void) -> ((Pulse) -> Void)) -> Channel<Source, Pulse2> {
         return Channel<Source, Pulse2>(source: source) { receiver in self.receive(receptor(receiver)) }
     }
 
@@ -99,7 +99,7 @@ public extension ChannelType {
     /// - Parameter transform: a function to apply to each item emitted by the Channel
     ///
     /// - Returns: A stateless Channel that emits the pulses from the source Channel, transformed by the given function
-    @inlinable public func map<U>(_ transform: @escaping (Pulse) -> U) -> Channel<Source, U> {
+    @inlinable func map<U>(_ transform: @escaping (Pulse) -> U) -> Channel<Source, U> {
         return lift { receive in { item in receive(transform(item)) } }
     }
 }
@@ -118,7 +118,7 @@ public extension ChannelType {
     /// - Parameter with: a Channel to be merged
     ///
     /// - Returns: An stateless Channel that emits pulses from `self` and `with`
-    @inlinable public func merge<C2: ChannelType>(_ with: C2) -> Channel<(Source, C2.Source), Pulse> where C2.Pulse == Pulse {
+    @inlinable func merge<C2: ChannelType>(_ with: C2) -> Channel<(Source, C2.Source), Pulse> where C2.Pulse == Pulse {
         return Channel<(Source, C2.Source), Pulse>(source: (self.source, with.source)) { f in
             return MultiReceipt(receipts: [self.receive(f), with.receive(f)])
         }
@@ -132,7 +132,7 @@ public extension ChannelType {
     /// - Parameter other: the Channel to either with
     ///
     /// - Returns: A stateless Channel that emits the item of either `self` or `other`.
-    @inlinable public func either<C2: ChannelType>(_ other: C2) -> Channel<(Source, C2.Source), Choose2<Pulse, C2.Pulse>> {
+    @inlinable func either<C2: ChannelType>(_ other: C2) -> Channel<(Source, C2.Source), Choose2<Pulse, C2.Pulse>> {
         return Channel<(Source, C2.Source), Choose2<Pulse, C2.Pulse>>(source: (self.source, other.source)) { (rcvr: @escaping ((Choose2<Pulse, C2.Pulse>) -> Void)) in
             let rcpt1 = self.receive { rcvr(.v1($0)) }
             let rcpt2 = other.receive { rcvr(.v2($0)) }
@@ -155,7 +155,7 @@ public extension ChannelType {
     /// - Parameter other: the Channel to combine with
     ///
     /// - Returns: A stateful Channel that emits the item of both `self` or `other`.
-    @inlinable public func combine<C2: ChannelType>(_ other: C2) -> Channel<(Self.Source, C2.Source), (Pulse, C2.Pulse)> {
+    @inlinable func combine<C2: ChannelType>(_ other: C2) -> Channel<(Self.Source, C2.Source), (Pulse, C2.Pulse)> {
         typealias Buffer = (v1: Optional<Pulse>, v2: Optional<C2.Pulse>)
         typealias Ret = (Pulse, C2.Pulse)
 
@@ -181,7 +181,7 @@ public extension ChannelType {
     ///     exceeds capacity, earlier pulses will be dropped silently
     ///
     /// - Returns: A stateful Channel that pairs up values from `self` and `with` Channels.
-    @inlinable public func zip<C2: ChannelType>(_ with: C2, capacity: (Int, Int) = (Int.max, Int.max)) -> Channel<(Self.Source, C2.Source), (Pulse, C2.Pulse)> {
+    @inlinable func zip<C2: ChannelType>(_ with: C2, capacity: (Int, Int) = (Int.max, Int.max)) -> Channel<(Self.Source, C2.Source), (Pulse, C2.Pulse)> {
         typealias ZipBuffer = (store: ([Pulse], [C2.Pulse]), flush: (Pulse, C2.Pulse)?)
 
         return self.either(with)
@@ -227,14 +227,14 @@ public extension ChannelType {
     /// - Returns: An effected Channel that emits the result of applying the transformation function to each
     ///         item emitted by the source Channel and merging the results of the Channels
     ///         obtained from this transformation.
-    @inlinable public func flatMap<S2, U>(_ transform: @escaping (Pulse) -> Channel<S2, U>) -> Channel<Source, U> {
+    @inlinable func flatMap<S2, U>(_ transform: @escaping (Pulse) -> Channel<S2, U>) -> Channel<Source, U> {
         return flattenZ(map(transform))
     }
 }
 
 public extension ChannelType {
     /// Similar to flatMap, but the pulse is emitted as a Choose2 of either the initial pulse or the flattened channel result
-    @inlinable public func mergeMap<U>(_ transform: @escaping (Pulse) -> Channel<Pulse, U>) -> Channel<Source, Choose2<Pulse, U>> {
+    @inlinable func mergeMap<U>(_ transform: @escaping (Pulse) -> Channel<Pulse, U>) -> Channel<Source, Choose2<Pulse, U>> {
         let mapped = map(transform)
         
         return Channel(source: mapped.source, reception: { rcv in
@@ -252,7 +252,7 @@ public extension ChannelType {
 
 public extension Channel {
 
-    @inlinable public func concat(_ with: Channel<Source, Pulse>) -> Channel<[Source], (Source, Pulse)> {
+    @inlinable func concat(_ with: Channel<Source, Pulse>) -> Channel<[Source], (Source, Pulse)> {
         return concatZ([self, with])
     }
 
@@ -288,7 +288,7 @@ public extension ChannelType {
     /// Performs a side-effect when the channel receives a pulse. 
     /// This can be used to manage some arbitrary and hidden state regardless 
     /// of the number of receivers that are on the channel.
-    @inlinable public func affect<T>(_ seed: @escaping @autoclosure () -> T, affector: @escaping (T, Pulse) -> T) -> Channel<Source, (store: T, pulse: Pulse)> {
+    @inlinable func affect<T>(_ seed: @escaping @autoclosure () -> T, affector: @escaping (T, Pulse) -> T) -> Channel<Source, (store: T, pulse: Pulse)> {
 
         var state: [Int64: T] = [:] // the captured state, one pulse per receiver
         var stateIndex: Int64 = 0
@@ -319,7 +319,7 @@ public extension ChannelType {
     ///
     /// - Parameter initial: the initial accumulated value
     /// - Parameter combine: the accumulator function that will return the accumulation
-    @inlinable public func reduce<T>(_ initial: T, combine: @escaping (T, Pulse) -> T) -> Channel<Source, T> {
+    @inlinable func reduce<T>(_ initial: T, combine: @escaping (T, Pulse) -> T) -> Channel<Source, T> {
         return affect(initial, affector: combine).map { (reduction, _) in reduction }
     }
 
@@ -330,7 +330,7 @@ public extension ChannelType {
     /// Analogous to `SequenceType.enumerate` and `EnumerateGenerator`
     ///
     /// - Returns: A stateful Channel that emits a tuple with the pulse's index
-    @inlinable public func enumerate() -> Channel<Source, (index: Int, pulse: Pulse)> {
+    @inlinable func enumerate() -> Channel<Source, (index: Int, pulse: Pulse)> {
         return affect(-1) { (index, pulse) in index + 1 }.map { (index: $0, pulse: $1) }
     }
 
@@ -344,7 +344,7 @@ public extension ChannelType {
     ///   accumulated value to be emitted and cleared
     ///
     /// - Returns: A stateful Channel that buffers its accumulated pulses until the terminator predicate passes
-    @inlinable public func partition<U>(_ initial: U, includePartitions: Bool = true, isPartition: @escaping (U, Pulse) -> Bool, combine: @escaping (U, Pulse) -> U) -> Channel<Source, U> {
+    @inlinable func partition<U>(_ initial: U, includePartitions: Bool = true, isPartition: @escaping (U, Pulse) -> Bool, combine: @escaping (U, Pulse) -> U) -> Channel<Source, U> {
         typealias Buffer = (store: U, flush: U?)
 
         func bufferer(_ buffer: Buffer, item: Pulse) -> Buffer {
@@ -365,7 +365,7 @@ public extension ChannelType {
     /// - Parameter predicate: that will cause the accumulated pulses to be pulsed
     ///
     /// - Returns: A stateful Channel that maintains an accumulation of pulses
-    @inlinable public func accumulate(includePartitions: Bool = true, predicate: @escaping ([Pulse], Pulse) -> Bool) -> Channel<Source, [Pulse]> {
+    @inlinable func accumulate(includePartitions: Bool = true, predicate: @escaping ([Pulse], Pulse) -> Bool) -> Channel<Source, [Pulse]> {
         return partition([], includePartitions: includePartitions, isPartition: predicate) { (accumulation, pulse) in accumulation + [pulse] }
     }
 
@@ -375,7 +375,7 @@ public extension ChannelType {
     /// - Parameter predicate: that will cause the accumulated pulses to be pulsed
     ///
     /// - Returns: A stateful Channel that maintains an accumulation of pulses
-    @inlinable public func split(_ maxSplit: Int = Int.max, allowEmptySlices: Bool = false, isSeparator: @escaping (Pulse) -> Bool) -> Channel<Source, [Pulse]> {
+    @inlinable func split(_ maxSplit: Int = Int.max, allowEmptySlices: Bool = false, isSeparator: @escaping (Pulse) -> Bool) -> Channel<Source, [Pulse]> {
         let channel = accumulate(includePartitions: allowEmptySlices) { (buffer, pulse) in isSeparator(pulse) }
             .filter({ allowEmptySlices || !$0.isEmpty })
             .map({ allowEmptySlices ? $0.filter { !isSeparator($0) } : $0 })
@@ -393,7 +393,7 @@ public extension ChannelType {
     /// - Parameter count: the size of the buffer
     ///
     /// - Returns: A stateful Channel that buffers its pulses until it the buffer reaches `count`
-    @inlinable public func buffer(_ limit: Int) -> Channel<Source, [Pulse]> {
+    @inlinable func buffer(_ limit: Int) -> Channel<Source, [Pulse]> {
         return accumulate { a, x in a.count >= limit-1 }
     }
 
@@ -402,7 +402,7 @@ public extension ChannelType {
     /// - Parameter count: the number of pulses to skip before emitting pulses
     ///
     /// - Returns: A stateful Channel that drops the first `count` pulses.
-    @inlinable public func dropFirst(_ n: Int = 1) -> Channel<Source, Pulse> {
+    @inlinable func dropFirst(_ n: Int = 1) -> Channel<Source, Pulse> {
         return enumerate().filter { $0.index >= n }.map { $0.pulse }
     }
 
@@ -411,7 +411,7 @@ public extension ChannelType {
     /// - Parameter count: the number of pulses to skip before emitting pulses
     ///
     /// - Returns: A stateful Channel that drops the first `count` pulses.
-    @inlinable public func prefix(_ maxLength: Int) -> Channel<Source, Pulse> {
+    @inlinable func prefix(_ maxLength: Int) -> Channel<Source, Pulse> {
         return enumerate().filter { $0.index < maxLength }.map { $0.pulse }
     }
 }

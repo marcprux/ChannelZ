@@ -21,7 +21,7 @@ public protocol ChooseNType {
 public extension ChooseNType {
     /// Similar to `flatMap`, except it will call the function when the element of this
     /// type is the T1 type, and null if it is any other type (T2, T3, ...)
-    @inlinable public func firstMap<U>(_ f: (T1) throws -> U?) rethrows -> U? {
+    @inlinable func firstMap<U>(_ f: (T1) throws -> U?) rethrows -> U? {
         if let value = self.v1 {
             return try f(value)
         } else {
@@ -38,7 +38,7 @@ public protocol Choose2Type : ChooseNType {
 
 /// An error that indicates that multiple errors occured when decoding the type;
 /// Each error should correspond to one of the choices for this type.
-public struct ChoiceDecodingError : Error {
+public struct ChoiceDecodingError<T: ChooseNType> : Error {
     public let errors: [Error]
 
     public init(errors: [Error]) {
@@ -80,7 +80,7 @@ public enum Choose2<T1, T2>: Choose2Type {
 
 public extension Choose2 where T1 == T2 {
     /// When a ChooseN type wraps the same value types, returns the single value
-    @inlinable public var value: T1 {
+    @inlinable var value: T1 {
         switch self {
         case .v1(let x): return x
         case .v2(let x): return x
@@ -104,30 +104,13 @@ extension Choose2 : Decodable where T1 : Decodable, T2 : Decodable {
         var errors: [Error] = []
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
-        throw ChoiceDecodingError(errors: errors)
+        throw ChoiceDecodingError<Choose2>(errors: errors)
     }
 }
 
-extension Choose2 : Equatable where T1 : Equatable, T2 : Equatable {
+extension Choose2 : Equatable where T1 : Equatable, T2 : Equatable { }
 
-    @inlinable public static func ==(lhs: Choose2<T1, T2>, rhs: Choose2<T1, T2>) -> Bool {
-        switch (lhs, rhs) {
-        case (.v1(let a), .v1(let b)): return a == b
-        case (.v2(let a), .v2(let b)): return a == b
-        default: return false
-        }
-    }
-}
-
-extension Choose2 : Hashable where T1 : Hashable, T2 : Hashable {
-
-    @inlinable public var hashValue: Int {
-        switch self {
-        case .v1(let x): return x.hashValue
-        case .v2(let x): return x.hashValue
-        }
-    }
-}
+extension Choose2 : Hashable where T1 : Hashable, T2 : Hashable { }
 
 /// One of at least 3 options
 public protocol Choose3Type : Choose2Type {
@@ -187,7 +170,7 @@ public enum Choose3<T1, T2, T3>: Choose3Type {
 
 public extension Choose3 where T1 == T2, T2 == T3 {
     /// When a ChooseN type wraps the same value types, returns the single value
-    @inlinable public var value: T1 {
+    @inlinable var value: T1 {
         switch self {
         case .v1(let x): return x
         case .v2(let x): return x
@@ -214,32 +197,13 @@ extension Choose3 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
         do { self = try .v1(T1(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
-        throw ChoiceDecodingError(errors: errors)
+        throw ChoiceDecodingError<Choose3>(errors: errors)
     }
 }
 
-extension Choose3 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable {
+extension Choose3 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable { }
 
-    @inlinable public static func ==(lhs: Choose3<T1, T2, T3>, rhs: Choose3<T1, T2, T3>) -> Bool {
-        switch (lhs, rhs) {
-        case (.v1(let a), .v1(let b)): return a == b
-        case (.v2(let a), .v2(let b)): return a == b
-        case (.v3(let a), .v3(let b)): return a == b
-        default: return false
-        }
-    }
-}
-
-extension Choose3 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable {
-
-    @inlinable public var hashValue: Int {
-        switch self {
-        case .v1(let x): return x.hashValue
-        case .v2(let x): return x.hashValue
-        case .v3(let x): return x.hashValue
-        }
-    }
-}
+extension Choose3 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable { }
 
 /// One of at least 4 options
 public protocol Choose4Type : Choose3Type {
@@ -310,7 +274,7 @@ public enum Choose4<T1, T2, T3, T4>: Choose4Type {
 
 public extension Choose4 where T1 == T2, T2 == T3, T3 == T4 {
     /// When a ChooseN type wraps the same value types, returns the single value
-    @inlinable public var value: T1 {
+    @inlinable var value: T1 {
         switch self {
         case .v1(let x): return x
         case .v2(let x): return x
@@ -340,34 +304,13 @@ extension Choose4 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
         do { self = try .v2(T2(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
-        throw ChoiceDecodingError(errors: errors)
+        throw ChoiceDecodingError<Choose4>(errors: errors)
     }
 }
 
-extension Choose4 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable {
+extension Choose4 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable { }
 
-    @inlinable public static func ==(lhs: Choose4<T1, T2, T3, T4>, rhs: Choose4<T1, T2, T3, T4>) -> Bool {
-        switch (lhs, rhs) {
-        case (.v1(let a), .v1(let b)): return a == b
-        case (.v2(let a), .v2(let b)): return a == b
-        case (.v3(let a), .v3(let b)): return a == b
-        case (.v4(let a), .v4(let b)): return a == b
-        default: return false
-        }
-    }
-}
-
-extension Choose4 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable {
-
-    @inlinable public var hashValue: Int {
-        switch self {
-        case .v1(let x): return x.hashValue
-        case .v2(let x): return x.hashValue
-        case .v3(let x): return x.hashValue
-        case .v4(let x): return x.hashValue
-        }
-    }
-}
+extension Choose4 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable { }
 
 /// One of at least 5 options
 public protocol Choose5Type : Choose4Type {
@@ -449,7 +392,7 @@ public enum Choose5<T1, T2, T3, T4, T5>: Choose5Type {
 
 public extension Choose5 where T1 == T2, T2 == T3, T3 == T4, T4 == T5 {
     /// When a ChooseN type wraps the same value types, returns the single value
-    @inlinable public var value: T1 {
+    @inlinable var value: T1 {
         switch self {
         case .v1(let x): return x
         case .v2(let x): return x
@@ -482,36 +425,13 @@ extension Choose5 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
         do { self = try .v3(T3(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
-        throw ChoiceDecodingError(errors: errors)
+        throw ChoiceDecodingError<Choose5>(errors: errors)
     }
 }
 
-extension Choose5 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable {
+extension Choose5 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable { }
 
-    @inlinable public static func ==(lhs: Choose5<T1, T2, T3, T4, T5>, rhs: Choose5<T1, T2, T3, T4, T5>) -> Bool {
-        switch (lhs, rhs) {
-        case (.v1(let a), .v1(let b)): return a == b
-        case (.v2(let a), .v2(let b)): return a == b
-        case (.v3(let a), .v3(let b)): return a == b
-        case (.v4(let a), .v4(let b)): return a == b
-        case (.v5(let a), .v5(let b)): return a == b
-        default: return false
-        }
-    }
-}
-
-extension Choose5 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable {
-
-    @inlinable public var hashValue: Int {
-        switch self {
-        case .v1(let x): return x.hashValue
-        case .v2(let x): return x.hashValue
-        case .v3(let x): return x.hashValue
-        case .v4(let x): return x.hashValue
-        case .v5(let x): return x.hashValue
-        }
-    }
-}
+extension Choose5 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable { }
 
 /// One of at least 6 options
 public protocol Choose6Type : Choose5Type {
@@ -604,7 +524,7 @@ public enum Choose6<T1, T2, T3, T4, T5, T6>: Choose6Type {
 
 public extension Choose6 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6 {
     /// When a ChooseN type wraps the same value types, returns the single value
-    public var value: T1 {
+    var value: T1 {
         switch self {
         case .v1(let x): return x
         case .v2(let x): return x
@@ -640,38 +560,13 @@ extension Choose6 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
         do { self = try .v4(T4(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
-        throw ChoiceDecodingError(errors: errors)
+        throw ChoiceDecodingError<Choose6>(errors: errors)
     }
 }
 
-extension Choose6 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable {
+extension Choose6 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable { }
 
-    @inlinable public static func ==(lhs: Choose6<T1, T2, T3, T4, T5, T6>, rhs: Choose6<T1, T2, T3, T4, T5, T6>) -> Bool {
-        switch (lhs, rhs) {
-        case (.v1(let a), .v1(let b)): return a == b
-        case (.v2(let a), .v2(let b)): return a == b
-        case (.v3(let a), .v3(let b)): return a == b
-        case (.v4(let a), .v4(let b)): return a == b
-        case (.v5(let a), .v5(let b)): return a == b
-        case (.v6(let a), .v6(let b)): return a == b
-        default: return false
-        }
-    }
-}
-
-extension Choose6 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable {
-
-    @inlinable public var hashValue: Int {
-        switch self {
-        case .v1(let x): return x.hashValue
-        case .v2(let x): return x.hashValue
-        case .v3(let x): return x.hashValue
-        case .v4(let x): return x.hashValue
-        case .v5(let x): return x.hashValue
-        case .v6(let x): return x.hashValue
-        }
-    }
-}
+extension Choose6 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable { }
 
 /// One of at least 7 options
 public protocol Choose7Type : Choose6Type {
@@ -775,7 +670,7 @@ public enum Choose7<T1, T2, T3, T4, T5, T6, T7>: Choose7Type {
 
 public extension Choose7 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7 {
     /// When a ChooseN type wraps the same value types, returns the single value
-    @inlinable public var value: T1 {
+    @inlinable var value: T1 {
         switch self {
         case .v1(let x): return x
         case .v2(let x): return x
@@ -814,40 +709,13 @@ extension Choose7 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
         do { self = try .v5(T5(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
-        throw ChoiceDecodingError(errors: errors)
+        throw ChoiceDecodingError<Choose7>(errors: errors)
     }
 }
 
-extension Choose7 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable {
+extension Choose7 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable { }
 
-    @inlinable public static func ==(lhs: Choose7<T1, T2, T3, T4, T5, T6, T7>, rhs: Choose7<T1, T2, T3, T4, T5, T6, T7>) -> Bool {
-        switch (lhs, rhs) {
-        case (.v1(let a), .v1(let b)): return a == b
-        case (.v2(let a), .v2(let b)): return a == b
-        case (.v3(let a), .v3(let b)): return a == b
-        case (.v4(let a), .v4(let b)): return a == b
-        case (.v5(let a), .v5(let b)): return a == b
-        case (.v6(let a), .v6(let b)): return a == b
-        case (.v7(let a), .v7(let b)): return a == b
-        default: return false
-        }
-    }
-}
-
-extension Choose7 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable {
-
-    @inlinable public var hashValue: Int {
-        switch self {
-        case .v1(let x): return x.hashValue
-        case .v2(let x): return x.hashValue
-        case .v3(let x): return x.hashValue
-        case .v4(let x): return x.hashValue
-        case .v5(let x): return x.hashValue
-        case .v6(let x): return x.hashValue
-        case .v7(let x): return x.hashValue
-        }
-    }
-}
+extension Choose7 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable { }
 
 /// One of at least 8 options
 public protocol Choose8Type : Choose7Type {
@@ -962,7 +830,7 @@ public enum Choose8<T1, T2, T3, T4, T5, T6, T7, T8>: Choose8Type {
 
 public extension Choose8 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8 {
     /// When a ChooseN type wraps the same value types, returns the single value
-    @inlinable public var value: T1 {
+    @inlinable var value: T1 {
         switch self {
         case .v1(let x): return x
         case .v2(let x): return x
@@ -1004,42 +872,13 @@ extension Choose8 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
         do { self = try .v6(T6(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
-        throw ChoiceDecodingError(errors: errors)
+        throw ChoiceDecodingError<Choose8>(errors: errors)
     }
 }
 
-extension Choose8 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable {
+extension Choose8 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable { }
 
-    @inlinable public static func ==(lhs: Choose8<T1, T2, T3, T4, T5, T6, T7, T8>, rhs: Choose8<T1, T2, T3, T4, T5, T6, T7, T8>) -> Bool {
-        switch (lhs, rhs) {
-        case (.v1(let a), .v1(let b)): return a == b
-        case (.v2(let a), .v2(let b)): return a == b
-        case (.v3(let a), .v3(let b)): return a == b
-        case (.v4(let a), .v4(let b)): return a == b
-        case (.v5(let a), .v5(let b)): return a == b
-        case (.v6(let a), .v6(let b)): return a == b
-        case (.v7(let a), .v7(let b)): return a == b
-        case (.v8(let a), .v8(let b)): return a == b
-        default: return false
-        }
-    }
-}
-
-extension Choose8 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable {
-
-    @inlinable public var hashValue: Int {
-        switch self {
-        case .v1(let x): return x.hashValue
-        case .v2(let x): return x.hashValue
-        case .v3(let x): return x.hashValue
-        case .v4(let x): return x.hashValue
-        case .v5(let x): return x.hashValue
-        case .v6(let x): return x.hashValue
-        case .v7(let x): return x.hashValue
-        case .v8(let x): return x.hashValue
-        }
-    }
-}
+extension Choose8 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable { }
 
 /// One of at least 9 options
 public protocol Choose9Type : Choose8Type {
@@ -1165,7 +1004,7 @@ public enum Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>: Choose9Type {
 
 public extension Choose9 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9 {
     /// When a ChooseN type wraps the same value types, returns the single value
-    @inlinable public var value: T1 {
+    @inlinable var value: T1 {
         switch self {
         case .v1(let x): return x
         case .v2(let x): return x
@@ -1210,44 +1049,13 @@ extension Choose9 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decodab
         do { self = try .v7(T7(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
-        throw ChoiceDecodingError(errors: errors)
+        throw ChoiceDecodingError<Choose9>(errors: errors)
     }
 }
 
-extension Choose9 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable {
+extension Choose9 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable { }
 
-    @inlinable public static func ==(lhs: Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>, rhs: Choose9<T1, T2, T3, T4, T5, T6, T7, T8, T9>) -> Bool {
-        switch (lhs, rhs) {
-        case (.v1(let a), .v1(let b)): return a == b
-        case (.v2(let a), .v2(let b)): return a == b
-        case (.v3(let a), .v3(let b)): return a == b
-        case (.v4(let a), .v4(let b)): return a == b
-        case (.v5(let a), .v5(let b)): return a == b
-        case (.v6(let a), .v6(let b)): return a == b
-        case (.v7(let a), .v7(let b)): return a == b
-        case (.v8(let a), .v8(let b)): return a == b
-        case (.v9(let a), .v9(let b)): return a == b
-        default: return false
-        }
-    }
-}
-
-extension Choose9 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable {
-
-    @inlinable public var hashValue: Int {
-        switch self {
-        case .v1(let x): return x.hashValue
-        case .v2(let x): return x.hashValue
-        case .v3(let x): return x.hashValue
-        case .v4(let x): return x.hashValue
-        case .v5(let x): return x.hashValue
-        case .v6(let x): return x.hashValue
-        case .v7(let x): return x.hashValue
-        case .v8(let x): return x.hashValue
-        case .v9(let x): return x.hashValue
-        }
-    }
-}
+extension Choose9 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable { }
 
 /// One of at least 10 options
 public protocol Choose10Type : Choose9Type {
@@ -1384,7 +1192,7 @@ public enum Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>: Choose10Type {
 
 public extension Choose10 where T1 == T2, T2 == T3, T3 == T4, T4 == T5, T5 == T6, T6 == T7, T7 == T8, T8 == T9, T9 == T10 {
     /// When a ChooseN type wraps the same value types, returns the single value
-    @inlinable public var value: T1 {
+    @inlinable var value: T1 {
         switch self {
         case .v1(let x): return x
         case .v2(let x): return x
@@ -1432,46 +1240,13 @@ extension Choose10 : Decodable where T1 : Decodable, T2 : Decodable, T3 : Decoda
         do { self = try .v8(T8(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v9(T9(from: decoder)); return } catch { errors.append(error) }
         do { self = try .v10(T10(from: decoder)); return } catch { errors.append(error) }
-        throw ChoiceDecodingError(errors: errors)
+        throw ChoiceDecodingError<Choose10>(errors: errors)
     }
 }
 
-extension Choose10 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable {
+extension Choose10 : Equatable where T1 : Equatable, T2 : Equatable, T3 : Equatable, T4 : Equatable, T5 : Equatable, T6 : Equatable, T7 : Equatable, T8 : Equatable, T9 : Equatable, T10 : Equatable { }
 
-    @inlinable public static func ==(lhs: Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>, rhs: Choose10<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>) -> Bool {
-        switch (lhs, rhs) {
-        case (.v1(let a), .v1(let b)): return a == b
-        case (.v2(let a), .v2(let b)): return a == b
-        case (.v3(let a), .v3(let b)): return a == b
-        case (.v4(let a), .v4(let b)): return a == b
-        case (.v5(let a), .v5(let b)): return a == b
-        case (.v6(let a), .v6(let b)): return a == b
-        case (.v7(let a), .v7(let b)): return a == b
-        case (.v8(let a), .v8(let b)): return a == b
-        case (.v9(let a), .v9(let b)): return a == b
-        case (.v10(let a), .v10(let b)): return a == b
-        default: return false
-        }
-    }
-}
-
-extension Choose10 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable {
-
-    @inlinable public var hashValue: Int {
-        switch self {
-        case .v1(let x): return x.hashValue
-        case .v2(let x): return x.hashValue
-        case .v3(let x): return x.hashValue
-        case .v4(let x): return x.hashValue
-        case .v5(let x): return x.hashValue
-        case .v6(let x): return x.hashValue
-        case .v7(let x): return x.hashValue
-        case .v8(let x): return x.hashValue
-        case .v9(let x): return x.hashValue
-        case .v10(let x): return x.hashValue
-        }
-    }
-}
+extension Choose10 : Hashable where T1 : Hashable, T2 : Hashable, T3 : Hashable, T4 : Hashable, T5 : Hashable, T6 : Hashable, T7 : Hashable, T8 : Hashable, T9 : Hashable, T10 : Hashable { }
 
 
 // MARK - Channel either with flatten operation: |

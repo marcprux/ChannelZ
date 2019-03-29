@@ -79,7 +79,7 @@ public struct AnyReceiver<Pulse> : ReceiverType {
 /// Utilites for creating the special trap receipt (useful for testing)
 public extension StreamType {
     /// Adds a receiver that will retain a certain number of values
-    @inlinable public func trap(_ capacity: Int = 1) -> TrapReceipt<Self> {
+    @inlinable func trap(_ capacity: Int = 1) -> TrapReceipt<Self> {
         return TrapReceipt(stream: self, capacity: capacity)
     }
 }
@@ -91,7 +91,7 @@ public extension StreamType {
     ///
     /// - Returns: A `Receipt`, which can be used to later `cancel` reception
     @discardableResult
-    @inlinable public func receive(_ receiver: @escaping (Pulse) -> Void) -> Receipt {
+    @inlinable func receive(_ receiver: @escaping (Pulse) -> Void) -> Receipt {
         return receive(AnyReceiver(receiver))
     }
 }
@@ -143,7 +143,7 @@ public extension StreamType {
     /// - Parameter receptor: The functon that transforms one receiver to another
     ///
     /// - Returns: The new stream
-    @inlinable public func lifts(_ receptor: @escaping (@escaping (Pulse) -> Void) -> ((Pulse) -> Void)) -> Self {
+    @inlinable func lifts(_ receptor: @escaping (@escaping (Pulse) -> Void) -> ((Pulse) -> Void)) -> Self {
         return phase { self.receive(receptor($0)) }
     }
 
@@ -153,7 +153,7 @@ public extension StreamType {
     ///   returning `true` if they pass the filter
     ///
     /// - Returns: A stateless stream that emits only those pulses in the original stream that the filter evaluates as `true`
-    @inlinable public func filter(_ predicate: @escaping (Pulse) -> Bool) -> Self {
+    @inlinable func filter(_ predicate: @escaping (Pulse) -> Bool) -> Self {
         return lifts { receive in { item in if predicate(item) { receive(item) } } }
     }
 
@@ -162,7 +162,7 @@ public extension StreamType {
     /// In ReactiveX parlance, this convert this `observable` stream from `cold` to `hot`
     ///
     /// - Returns: A stream that drops any pulses that are emitted upon a receiver being added
-    @inlinable public func subsequent() -> Self {
+    @inlinable func subsequent() -> Self {
         return phase { receiver in
             var immediate = true
             let receipt = self.receive { item in if !immediate { receiver(item) } }

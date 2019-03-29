@@ -97,13 +97,13 @@ public protocol Receipt {
     /// Disconnects this receptor from the source
     func cancel()
     
-    func makeIterator() -> IteratorOverOne<Receipt>
+    func makeIterator() -> CollectionOfOne<Receipt>.Iterator
 
 }
 
 public extension Receipt {
     /// Creates an iterator of receipts
-    public func makeIterator() -> IteratorOverOne<Receipt> {
+    func makeIterator() -> CollectionOfOne<Receipt>.Iterator {
         return CollectionOfOne(self).makeIterator()
     }
 }
@@ -260,34 +260,6 @@ public final class NoLock : Lock {
     }
 
     public func withLock<T>(_ f: () throws -> T) rethrows -> T {
-        return try f()
-    }
-}
-
-/// A `Lock` implementation that uses an `os_unfair_lock`
-public final class SpinLock : Lock {
-    public var spinLock = os_unfair_lock_s()
-
-    public init() {
-    }
-
-    @inlinable public func lock() {
-        os_unfair_lock_lock(&spinLock)
-    }
-
-    @inlinable public func unlock() {
-        os_unfair_lock_unlock(&spinLock)
-    }
-
-    @inlinable public func withLock<T>(_ f: () throws -> T) rethrows -> T {
-        os_unfair_lock_lock(&spinLock)
-        defer { os_unfair_lock_unlock(&spinLock) }
-        return try f()
-    }
-
-    @inlinable public func tryLock<T>(_ f: () throws -> T) rethrows -> T? {
-        if !os_unfair_lock_trylock(&spinLock) { return nil }
-        defer { os_unfair_lock_unlock(&spinLock) }
         return try f()
     }
 }

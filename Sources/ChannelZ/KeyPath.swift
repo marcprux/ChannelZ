@@ -169,7 +169,7 @@ public struct KeyValueTarget<O: NSObject, T> {
 }
     
 public extension KeyValueTarget {
-    public init(target: O, keyPath: KeyPath<O, T>, path: String? = nil) {
+    init(target: O, keyPath: KeyPath<O, T>, path: String? = nil) {
         self.target = target
         self.initialValue = target[keyPath: keyPath]
         self.keyPath = keyPath
@@ -665,7 +665,9 @@ private struct ChannelControllerObserverKey : Hashable {
     var context: UnsafeMutableRawPointer
     weak var observer: NSObject?
 
-    fileprivate var hashValue: Int { return context.hashValue }
+    public func hash(into hasher: inout Hasher) {
+        context.hash(into: &hasher)
+    }    
 }
 
 private func ==(lhs: ChannelControllerObserverKey, rhs: ChannelControllerObserverKey) -> Bool {

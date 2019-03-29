@@ -47,7 +47,7 @@ public final class Progressive<T> : Progressable {
 }
 
 public extension ChannelType {
-    public func progress(_ progress: Progress) -> Channel<Source, Pulse> {
+    func progress(_ progress: Progress) -> Channel<Source, Pulse> {
         return self.affect(progress) { (progress: Progress, pulse: Self.Pulse) in
             // each pulse ups the completed count by 1
             progress.becomeCurrent(withPendingUnitCount: 1)
@@ -314,8 +314,8 @@ class DispatchTests : ChannelTestCase {
         XCTAssertEqual(fibcount * channelCount, fibs.count)
 
         func dedupe<S: Sequence, T: Equatable>(_ seq: S) -> Array<T> where T == S.Iterator.Element {
-            let reduced = seq.reduce(Array<T>()) { (array, item) in
-                return array + (item == array.last ? [] : [item])
+            let reduced: [T] = seq.reduce(Array<T>()) { (array: Array<T>, item: T) -> [T] in
+                return array + (item == array.last ? Array<T>() : [item]) as Array<T>
             }
             return reduced
         }

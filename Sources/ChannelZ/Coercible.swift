@@ -19,12 +19,12 @@ public protocol Defaultable {
 }
 
 public extension Defaultable {
-    public static var defaultValue: Self { return .init(defaulting: ()) }
+    static var defaultValue: Self { return .init(defaulting: ()) }
 }
 
 public extension _WrapperType {
     /// Returns the wrapped value or the defaulting value if the wrapped value if nil
-    public subscript(defaulting constructor: @autoclosure () -> Wrapped) -> Wrapped {
+    subscript(defaulting constructor: @autoclosure () -> Wrapped) -> Wrapped {
         get { return self.flatMap({ $0 }) ?? constructor() }
         set { self = Self(newValue) }
     }
@@ -32,19 +32,19 @@ public extension _WrapperType {
 
 public extension _WrapperType where Wrapped : Defaultable {
     /// Returns the current value of the wrapped instance or, if nil, instantiates a default value
-    public var defaulted: Wrapped {
+    var defaulted: Wrapped {
         get { return self[defaulting: .defaultValue] }
         set { self = Self(newValue) }
     }
 }
 
 public extension RangeReplaceableCollection where Element : Defaultable {
-    public var defaultedFirst: Element {
+    var defaultedFirst: Element {
         get { return self.first[defaulting: .defaultValue] }
         set { self = Self([newValue] + dropFirst()) }
     }
 
-    public subscript(defaulted index: Index) -> Element {
+    subscript(defaulted index: Index) -> Element {
         get { return indices.contains(index) ? self[index] : .defaultValue }
 
         set {
@@ -59,14 +59,14 @@ public extension RangeReplaceableCollection where Element : Defaultable {
 }
 
 public extension RangeReplaceableCollection where Self : BidirectionalCollection, Element : Defaultable {
-    public var defaultedLast: Element {
+    var defaultedLast: Element {
         get { return self.last[defaulting: .defaultValue] }
         set { self = Self(dropLast() + [newValue]) }
     }
 }
 
 public extension Set where Element : Defaultable {
-    public var defaultedAny: Element {
+    var defaultedAny: Element {
         get { return self.first ?? .defaultValue }
         set { self = Set(dropFirst() + [newValue]) }
     }
@@ -104,7 +104,7 @@ extension Optional : Defaultable where Wrapped : Defaultable {
 
 public extension Defaultable where Self : Equatable {
     /// Returns true if this instance is the same as the defaulted value
-    public var isDefaultedValue: Bool {
+    var isDefaultedValue: Bool {
         return self == .defaultValue
     }
 
@@ -112,7 +112,7 @@ public extension Defaultable where Self : Equatable {
     /// case it is defaulted to the default value. For example:
     /// ob.optionalString.toggleDefault("foo") will set the optionalString?
     /// variable to "foo", or, if it was already "foo", will clear it.
-    public mutating func toggleDefault(_ value: Self) {
+    mutating func toggleDefault(_ value: Self) {
         self = self == value ? .defaultValue : value
     }
 

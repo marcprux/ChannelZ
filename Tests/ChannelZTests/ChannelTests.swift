@@ -692,27 +692,32 @@ class ChannelTests : ChannelTestCase {
     }
 
     func testSequencingResults() {
-        enum SequencingError : Error { case failed }
+        enum E : Error { case failed }
         
         struct T1 { let x: Int }
         struct T2 { let x: Int }
         struct T3 { let x: Int }
         struct T4 { let x: Int }
 
+        typealias RT1 = Result<T1, E>
+        typealias RT2 = Result<T2, E>
+        typealias RT3 = Result<T3, E>
+        typealias RT4 = Result<T4, E>
+
         let t1 = T1(x: 1)
         let t2 = T2(x: 2)
         let t3 = T3(x: 3)
         let t4 = T4(x: 4)
         
-        func go<T>(_ t: T) -> Channel<T, Result<T>> { return [Result.success(t)].channelZSequence().resource({ _ in t }) }
-        func no<T>(_ t: T) -> Channel<T, Result<T>> { return [Result.failure(SequencingError.failed)].channelZSequence().resource({ _ in t }) }
+        func go<T>(_ t: T) -> Channel<T, Result<T, E>> { return [Result.success(t)].channelZSequence().resource({ _ in t }) }
+        func no<T>(_ t: T) -> Channel<T, Result<T, E>> { return [Result.failure(E.failed)].channelZSequence().resource({ _ in t }) }
 
         do { // try with no errors
-            let seq1: Channel<T1, (Result<T1>)> = go(t1)
-            let seq2: Channel<T1, (Result<T2>, (Result<T1>))> = seq1.then(go(t2))
-            let seq3: Channel<T1, (Result<T3>, (Result<T2>, (Result<T1>)))> = seq2.then(go(t3))
-            let seq4: Channel<T1, (Result<T4>, (Result<T3>, (Result<T2>, (Result<T1>))))> = seq3.then(go(t4))
-            
+            let seq1: Channel<T1, (RT1)> = go(t1)
+            let seq2: Channel<T1, (RT2, (RT1))> = seq1.then(go(t2))
+            let seq3: Channel<T1, (RT3, (RT2, (RT1)))> = seq2.then(go(t3))
+            let seq4: Channel<T1, (RT4, (RT3, (RT2, (RT1))))> = seq3.then(go(t4))
+
             XCTAssertEqual(4, seq4.pullZ().first?.0.value?.x)
             XCTAssertEqual(3, seq4.pullZ().first?.1.0.value?.x)
             XCTAssertEqual(2, seq4.pullZ().first?.1.1.0.value?.x)
@@ -720,10 +725,10 @@ class ChannelTests : ChannelTestCase {
         }
         
         do { // try with all errors
-            let seq1: Channel<T1, (Result<T1>)> = no(t1)
-            let seq2: Channel<T1, (Result<T2>, (Result<T1>))> = seq1.then(go(t2))
-            let seq3: Channel<T1, (Result<T3>, (Result<T2>, (Result<T1>)))> = seq2.then(go(t3))
-            let seq4: Channel<T1, (Result<T4>, (Result<T3>, (Result<T2>, (Result<T1>))))> = seq3.then(go(t4))
+            let seq1: Channel<T1, (RT1)> = no(t1)
+            let seq2: Channel<T1, (RT2, (RT1))> = seq1.then(go(t2))
+            let seq3: Channel<T1, (RT3, (RT2, (RT1)))> = seq2.then(go(t3))
+            let seq4: Channel<T1, (RT4, (RT3, (RT2, (RT1))))> = seq3.then(go(t4))
             
             XCTAssertNil(seq4.pullZ().first?.0.value)
             XCTAssertNil(seq4.pullZ().first?.1.0.value)
@@ -732,10 +737,10 @@ class ChannelTests : ChannelTestCase {
         }
 
         do { // try with 1 error
-            let seq1: Channel<T1, (Result<T1>)> = go(t1)
-            let seq2: Channel<T1, (Result<T2>, (Result<T1>))> = seq1.then(no(t2))
-            let seq3: Channel<T1, (Result<T3>, (Result<T2>, (Result<T1>)))> = seq2.then(go(t3))
-            let seq4: Channel<T1, (Result<T4>, (Result<T3>, (Result<T2>, (Result<T1>))))> = seq3.then(go(t4))
+            let seq1: Channel<T1, (RT1)> = go(t1)
+            let seq2: Channel<T1, (RT2, (RT1))> = seq1.then(no(t2))
+            let seq3: Channel<T1, (RT3, (RT2, (RT1)))> = seq2.then(go(t3))
+            let seq4: Channel<T1, (RT4, (RT3, (RT2, (RT1))))> = seq3.then(go(t4))
             
             XCTAssertNil(seq4.pullZ().first?.0.value)
             XCTAssertNil(seq4.pullZ().first?.1.0.value)
@@ -744,10 +749,10 @@ class ChannelTests : ChannelTestCase {
         }
 
         do { // try with 1 error
-            let seq1: Channel<T1, (Result<T1>)> = go(t1)
-            let seq2: Channel<T1, (Result<T2>, (Result<T1>))> = seq1.then(go(t2))
-            let seq3: Channel<T1, (Result<T3>, (Result<T2>, (Result<T1>)))> = seq2.then(no(t3))
-            let seq4: Channel<T1, (Result<T4>, (Result<T3>, (Result<T2>, (Result<T1>))))> = seq3.then(go(t4))
+            let seq1: Channel<T1, (RT1)> = go(t1)
+            let seq2: Channel<T1, (RT2, (RT1))> = seq1.then(go(t2))
+            let seq3: Channel<T1, (RT3, (RT2, (RT1)))> = seq2.then(no(t3))
+            let seq4: Channel<T1, (RT4, (RT3, (RT2, (RT1))))> = seq3.then(go(t4))
             
             XCTAssertNil(seq4.pullZ().first?.0.value)
             XCTAssertNil(seq4.pullZ().first?.1.0.value)

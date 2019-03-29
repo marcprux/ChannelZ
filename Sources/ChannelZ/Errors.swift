@@ -6,57 +6,88 @@
 //  Copyright © 2016 glimpse.io. All rights reserved.
 //
 
-public protocol ResultType : _WrapperType, Choose2Type {
+/// A result tyoe that can accept any error type
+public typealias ResultOf<T> = Result<T, Error>
+
+public protocol ResultType : _WrapperType {
+    associatedtype Failure : Error
+
     /// Returns the value for `.success` or nil if this is a `.failure`
     var value: Wrapped? { get }
-    
-    /// Returns the error for `.failure` or nil if this is a `.success`
-    var error: Error? { get }
-    
-    /// Returns `f(value)` if this is `.success`, otherwise returns `.failure`
-    func successMap<U>(_ f: (Wrapped) throws -> U) -> Result<U>
 
-    var choose2: Choose2<Wrapped, Error> { get }
-    var result: Result<Wrapped> { get }
-    
+    /// Returns the error for `.failure` or nil if this is a `.success`
+    var error: Failure? { get }
+
     /// Must be able to initialize with an error
-    init(error: Error)
+    init(error: Failure)
+
+    /// Convert this type into a concrete result
+    var asResult: Result<Wrapped, Failure> { get }
+
+    /// Convert this type into a type-erased error result
+    var asErrorResult: ResultOf<Wrapped> { get }
 }
 
-public enum Result<Wrapped> : ResultType {
-    case success(Wrapped)
-    case failure(Error)
+extension Result : ResultType {
+    public typealias Wrapped = Success
 
-    @inlinable public init(_ some: Wrapped) {
+    public init(_ some: Success) {
         self = .success(some)
     }
 
-    @inlinable public init(error: Error) {
+    public init(error: Failure) {
         self = .failure(error)
     }
-    
-    @inlinable public var result: Result<Wrapped> {
+
+    @inlinable public var value: Success? {
+        switch self {
+        case .success(let x): return .some(x)
+        case .failure: return .none
+        }
+    }
+
+    @inlinable public var error: Failure? {
+        switch self {
+        case .success: return .none
+        case .failure(let x): return .some(x)
+        }
+    }
+
+    @inlinable public var asResult: Result<Success, Failure> {
         return self
     }
-    
-    /// If `self` is `ErrorType`, returns `nil`.  Otherwise, returns `f(self!)`.
-    /// - See Also: `Optional.map`
-    @inlinable public func map<U>(_ f: (Wrapped) throws -> U) rethrows -> U? {
+
+    @inlinable public var asErrorResult: ResultOf<Success> {
+        return self.mapError({ $0 })
+    }
+
+    @available(*, deprecated, renamed: "mapSuccess")
+    public func map<U>(_ f: (Success) throws -> U) rethrows -> U? {
         guard case .success(let value) = self else { return nil }
         return try f(value)
     }
 
-    /// Returns `nil` if `self` is `ErrorType`, `f(self!)` otherwise.
-    /// - See Also: `Optional.flatMap`
-    @inlinable public func flatMap<U>(_ f: (Wrapped) throws -> U?) rethrows -> U? {
+    public func mapSuccess<U>(_ f: (Success) throws -> U) rethrows -> U? {
         guard case .success(let value) = self else { return nil }
         return try f(value)
     }
+
+    @available(*, deprecated, renamed: "flatMapSuccess")
+    public func flatMap<U>(_ f: (Success) throws -> U?) rethrows -> U? {
+        guard case .success(let value) = self else { return nil }
+        return try f(value)
+    }
+
+    public func flatMapSuccess<U>(_ f: (Success) throws -> U?) rethrows -> U? {
+        guard case .success(let value) = self else { return nil }
+        return try f(value)
+    }
+
 }
 
 extension Result : Choose2Type {
 
-    @inlinable public var choose2: Choose2<Wrapped, Error> {
+    @inlinable public var choose2: Choose2<Wrapped, Failure> {
         switch self {
         case .success(let value): return .v1(value)
         case .failure(let error): return .v2(error)
@@ -69,7 +100,7 @@ extension Result : Choose2Type {
     /// The first type in thie OneOf if the `Wrapped` value
     @inlinable public var v1: Wrapped? {
         get {
-            return flatMap({ $0 })
+            return flatMapSuccess({ $0 })
         }
 
         set(x) {
@@ -80,7 +111,7 @@ extension Result : Choose2Type {
     }
 
     /// The first type in thie OneOf if the `Error` value
-    @inlinable public var v2: Error? {
+    @inlinable public var v2: Failure? {
         get {
             switch self {
             case .failure(let x): return x
@@ -96,65 +127,10 @@ extension Result : Choose2Type {
     }
 }
 
-public extension Result {
-    /// Returns the value for `.success` or nil if this is a `.failure`
-    @inlinable public var value: Wrapped? { return v1 }
-
-    /// Returns the error for `.failure` or nil if this is a `.success`
-    @inlinable public var error: Error? { return v2 }
-
-    /// Returns `f(value)` if this is `.success`, otherwise returns `.failure`
-    @inlinable public func successMap<U>(_ f: (Wrapped) throws -> U) -> Result<U> {
-        switch self {
-        case .success(let v):
-            do {
-                return try .success(f(v))
-            } catch {
-                return .failure(error)
-            }
-        case .failure(let e):
-            return .failure(e)
-        }
-    }
-    
-    /// Returns `f(value)` if this is `.success`, otherwise returns `.failure`
-    /// This is an alias for successMap, which has a different name to disambiguate
-    /// from _WrapperType.flatMap's implicit handling of optionals
-    @inlinable public func flatMap<U>(f: (Wrapped) throws -> U) -> Result<U> {
-        return successMap(f)
-    }
-
-    /// Unwraps the given `.success` value or throws the `.failure` error
-    @inlinable public func force() throws -> Wrapped {
-        switch self {
-        case .success(let v): return v
-        case .failure(let e): throw e
-        }
-    }
-
-    /// Constructs a `Result` with `.success` of the function's return, or `.failure` if the function throws
-    @inlinable public init(f: () throws -> Wrapped) {
-        do {
-            self = .success(try f())
-        } catch {
-            self = .failure(error)
-        }
-    }
-    
-    /// Constructs a `Result` with `.success` of the function's return, or `.failure` if the function throws
-    @inlinable public init(invoking: @autoclosure () throws -> Wrapped) {
-        do {
-            self = .success(try invoking())
-        } catch {
-            self = .failure(error)
-        }
-    }
-
-}
 
 public extension Result where Wrapped : _WrapperType {
     /// Returns the unwrapped value flatMapped to itself (e.g., converts value of String?? into String?)
-    @inlinable public var flatValue: Wrapped.Wrapped? {
+    @inlinable var flatValue: Wrapped.Wrapped? {
         switch self {
         case .success(let x): return x.flatMap({ $0 })
         case .failure: return .none
@@ -170,7 +146,7 @@ public extension ChannelType {
     /// - Parameter transform: a function to apply to each item emitted by the Channel
     ///
     /// - Returns: A stateless Channel that emits the pulses from the source Channel, transformed by the given function
-    @inlinable public func map<U>(_ transform: @escaping (Pulse) throws -> U) -> Channel<Source, Result<U>> {
+    @inlinable func map<U>(_ transform: @escaping (Pulse) throws -> U) -> Channel<Source, ResultOf<U>> {
         return lift { receive in
             { item in
                 do {
@@ -187,7 +163,7 @@ public extension ChannelType {
 public extension ChannelType {
     /// Calls flatMap on the given channel and then aggregates the results of the two channels.
     /// This can be used to execute an arbitrary sequence of operations on a channel.
-    @inlinable public func sequence<Source2, Pulse2>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Self.Pulse, Pulse2)> {
+    @inlinable func sequence<Source2, Pulse2>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Self.Pulse, Pulse2)> {
         return flatMap { pulse1 in next.map { pulse2 in (pulse1, pulse2) } }
     }
     
@@ -204,9 +180,9 @@ public extension ChannelType {
 }
 
 /// an error occurred, so replace the next channel with a channel that does nothing but emit the same error
-@usableFromInline func errorChannel<S, E: ResultType>(source: S, error: Error) -> Channel<S, E> {
+@usableFromInline func errorChannel<S, R: ResultType>(source: S, error: R.Failure) -> Channel<S, R> {
     return Channel(source: source) { rcvr in
-        rcvr(E(error: error))
+        rcvr(R(error: error))
         return ReceiptOf()
     }
 }
@@ -216,7 +192,7 @@ public extension ChannelType {
 //    public typealias PulseChannelMap<S, T> = (Self.Pulse) -> Channel<S, T>
 
     /// Chains one channel to the next only if the result was successful
-    @inlinable public func successfully<Source2, Pulse2>(_ next: @escaping (Self.Pulse.Wrapped) -> Channel<Source2, Pulse2>) -> Channel<Self.Source, Pulse2> where Self.Pulse : ResultType, Pulse2 : ResultType {
+    @inlinable func successfully<Source2, Pulse2>(_ next: @escaping (Self.Pulse.Wrapped) -> Channel<Source2, Pulse2>) -> Channel<Self.Source, Pulse2> where Self.Pulse : ResultType, Pulse2 : ResultType, Self.Pulse.Failure == Pulse2.Failure {
         return alternate(to: { next($0.value!).anySource() }, unless: { pulse in
             if let error = pulse.error {
                 return errorChannel(source: (), error: error)
@@ -228,7 +204,7 @@ public extension ChannelType {
 
     
     /// Chains one channel to the next only if the result was successful
-    @inlinable public func then<Source2, Pulse2>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Pulse2, Self.Pulse)> where Self.Pulse : ResultType, Pulse2 : ResultType {
+    @inlinable func then<Source2, Pulse2>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Pulse2, Self.Pulse)> where Self.Pulse : ResultType, Pulse2 : ResultType, Self.Pulse.Failure == Pulse2.Failure {
         return alternate(to: { _ in next }, unless: { pulse in
             if let error = pulse.error {
                 return errorChannel(source: next.source, error: error)
@@ -239,7 +215,7 @@ public extension ChannelType {
     }
 
     /// Chains one channel to the next only if the first result element of the pulse tuple was successful
-    @inlinable public func then<Source2, Pulse2, R: ResultType, Tuple>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Pulse2, Self.Pulse)> where Self.Pulse == (R, Tuple), Pulse2 : ResultType {
+    @inlinable func then<Source2, Pulse2, R: ResultType, Tuple>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Pulse2, Self.Pulse)> where Self.Pulse == (R, Tuple), Pulse2 : ResultType, R.Failure == Pulse2.Failure {
         return alternate(to: { _ in next }, unless: { pulse in
             if let error = pulse.0.error {
                 return errorChannel(source: next.source, error: error)
@@ -249,24 +225,8 @@ public extension ChannelType {
         })
     }
 
-//    /// Chains one channel to the next unconditionally
-//    public func sequence<Source2, Pulse2, R: ResultType, Tuple>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Pulse2, Self.Pulse)> where Self.Pulse == (R, Tuple) {
-//        return alternate(to: { _ in next }, unless: { pulse in .none })
-//    }
-
-//    private func alternateError<Source2, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, err: @escaping (Self.Pulse) -> Error?) -> Channel<(), (Pulse2, Self.Pulse)> where Pulse2 : ResultType {
-//        return alternate(to: to, unless: { pulse in
-//            if let error = err(pulse) {
-//                return errorChannel(source: self.source, error: error)
-//            } else {
-//                return .none // continue on to the next channel
-//            }
-//        }).desource()
-//    }
-    
-
     /// Proceed to flatMap the given channel unless the condition clause returns a non-null element
-    @inlinable public func alternate<Source2, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, unless: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>?) -> Channel<Self.Source, (Pulse2, Self.Pulse)> {
+    @inlinable func alternate<Source2, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, unless: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>?) -> Channel<Self.Source, (Pulse2, Self.Pulse)> {
         let mapper: (Self.Pulse) -> Channel<Source2, (Pulse2, Self.Pulse)> = { (pulse1: Self.Pulse) in
             if let altername = unless(pulse1) {
                 return altername.map({ ($0, pulse1 )})
@@ -279,7 +239,7 @@ public extension ChannelType {
     }
 
     /// Proceed to flatMap the given channel unless the condition clause returns a non-null element
-    @inlinable public func alternate2<Source2, Source3, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, unless: @escaping (Self.Pulse) -> Channel<Source3, Pulse2>?) -> Channel<Self.Source, (Pulse2, Self.Pulse)> {
+    @inlinable func alternate2<Source2, Source3, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, unless: @escaping (Self.Pulse) -> Channel<Source3, Pulse2>?) -> Channel<Self.Source, (Pulse2, Self.Pulse)> {
         let mapper: (Self.Pulse) -> Channel<Void, (Pulse2, Self.Pulse)> = { (pulse1: Self.Pulse) in
             if let altername = unless(pulse1) {
                 return altername.map({ ($0, pulse1 )}).desource()
@@ -308,40 +268,20 @@ private struct CodableError : Error, Codable, Hashable {
     }
 }
 
-extension Result : Encodable where Wrapped : Encodable {
+extension Result : Encodable where Success : Encodable, Failure : Encodable {
     public func encode(to encoder: Encoder) throws {
         switch self {
-        case .success(let wrapped): try wrapped.encode(to: encoder)
-        case .failure(let error): try CodableError(error: error).encode(to: encoder)
+        case .success(let value): try value.encode(to: encoder)
+        case .failure(let error): try error.encode(to: encoder)
         }
     }
 }
 
-extension Result : Decodable where Wrapped : Decodable {
+extension Result : Decodable where Success : Decodable, Failure : Decodable {
     public init(from decoder: Decoder) throws {
-        switch try Choose2<Wrapped, CodableError>(from: decoder) {
+        switch try Choose2<Success, Failure>(from: decoder) {
         case .v1(let value): self = .success(value)
         case .v2(let error): self = .failure(error)
-        }
-    }
-}
-
-extension Result : Equatable where Wrapped : Equatable {
-    public static func == (lhs: Result<Wrapped>, rhs: Result<Wrapped>) -> Bool {
-        switch (lhs, rhs) {
-        case let (.success(v1), .success(v2)): return v1 == v2
-        case let (.failure(e1), .failure(e2)): return (e1 as NSError) == (e2 as NSError)
-        default: return false
-        }
-    }
-
-}
-
-extension Result : Hashable where Wrapped : Hashable {
-    public var hashValue: Int {
-        switch self {
-        case .success(let wrapped): return wrapped.hashValue
-        case .failure(let error): return (error as NSError).hashValue
         }
     }
 }

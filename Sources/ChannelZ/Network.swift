@@ -16,7 +16,7 @@ public extension InputStream {
     /// for stream events
     ///
     /// - Parameter bufferLength: The maximum size of the buffer that will be filled
-    public func channelZStream(_ bufferLength: Int = 1024) -> Channel<ChannelStreamDelegate, InputStreamEvent> {
+    func channelZStream(_ bufferLength: Int = 1024) -> Channel<ChannelStreamDelegate, InputStreamEvent> {
         precondition(bufferLength > 0, "buffer size must be greater than zero")
         let receivers = ReceiverQueue<InputStreamEvent>()
 

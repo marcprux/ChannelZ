@@ -17,7 +17,7 @@ import AppKit
 public extension NSObjectProtocol where Self : NSController {
     /// Creates a channel for the given controller path, accounting for the `NSObjectController` limitation that
     /// change values are not provided with KVO observation
-    public func channelZControllerPath<T>(_ keyPath: KeyPath<Self, T>) -> Channel<KeyValueTransceiver<Self, T>, Mutation<T?>> {
+    func channelZControllerPath<T>(_ keyPath: KeyPath<Self, T>) -> Channel<KeyValueTransceiver<Self, T>, Mutation<T?>> {
         let channel = channelZKeyState(keyPath)
 
         // KVO on an object controller drops the value: 
@@ -70,7 +70,7 @@ public extension NSObjectProtocol where Self : NSController {
 
 public extension NSControl { // : KeyValueChannelSupplementing {
 
-    public func channelZControl() -> Channel<ActionTarget, Void> {
+    func channelZControl() -> Channel<ActionTarget, Void> {
         if self.target != nil && !(self.target is ActionTarget) {
             fatalError("controlz event handling overrides existing target/action for control; if this is really what you want to do, explicitly nil the target & action of the control")
         }
@@ -85,7 +85,7 @@ public extension NSControl { // : KeyValueChannelSupplementing {
     
     /// Creates a binding to an intermediate NSObjectController with the given options and returns the bound channel
     @discardableResult
-    public func channelZBinding<T>(value: T?, name: NSBindingName = NSBindingName.value, controller: ChannelController<T>? = nil, keyPath: String = "content", options: [NSBindingOption : Any] = [:]) -> ChannelController<T> {
+    func channelZBinding<T>(value: T?, name: NSBindingName = NSBindingName.value, controller: ChannelController<T>? = nil, keyPath: String = "content", options: [NSBindingOption : Any] = [:]) -> ChannelController<T> {
         var options = options
         if let nullValue = value as? NSObject {
             options[NSBindingOption.nullPlaceholder] = options[NSBindingOption.nullPlaceholder] ?? nullValue
@@ -95,7 +95,7 @@ public extension NSControl { // : KeyValueChannelSupplementing {
         return controller
     }
 
-    public func supplementKeyValueChannel(forKeyPath: String, receiver: @escaping (Any?) -> ()) -> ReceiptObject? {
+    func supplementKeyValueChannel(forKeyPath: String, receiver: @escaping (Any?) -> ()) -> ReceiptObject? {
         // NSControl action events do not trigger KVO notifications, so we manually supplement any subscriptions with control events
 
         if forKeyPath == "doubleValue" {
@@ -134,7 +134,7 @@ public extension NSControl { // : KeyValueChannelSupplementing {
 
 public extension NSMenuItem {
 
-    public func channelZMenu() -> Channel<ActionTarget, Void> {
+    func channelZMenu() -> Channel<ActionTarget, Void> {
 
         if self.target != nil && !(self.target is ActionTarget) {
             fatalError("controlz event handling overrides existing target/action for menu item; if this is really what you want to do, explicitly nil the target & action of the control")

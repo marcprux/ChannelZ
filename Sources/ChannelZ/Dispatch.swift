@@ -11,14 +11,13 @@ import Dispatch
 /// DispatchWorkItem already contains isCancelled and cancel()
 extension DispatchWorkItem : Receipt { }
 
-
 public extension StreamType {
     /// Instructs the observable to emit its items on the specified `queue` with an optional `time` delay and write `barrier`
     ///
     /// - Parameter queue: the queue on which to execute
     /// - Parameter delay: the amount of time to delay in seconds, or if nil (the default) execute synchronously
     /// - Parameter barrier: whether to dispatch with a barrier
-    public func dispatch(_ queue: DispatchQueue, delay: Double? = 0.0, barrier: Bool = false) -> Self {
+    func dispatch(_ queue: DispatchQueue, delay: Double? = 0.0, barrier: Bool = false) -> Self {
         return lifts { receive in { event in
             let rcvr = { receive(event) }
             if let delay = delay {
@@ -47,7 +46,7 @@ public extension StreamType {
     /// Instructs the observable to synchronize on the specified `lockQueue` when emitting items
     ///
     /// - Parameter queue: The GDC queue to synchronize on
-    public func sync(_ queue: DispatchQueue) -> Self {
+    func sync(_ queue: DispatchQueue) -> Self {
         return lifts { receive in
             { event in
                 queue.sync {
@@ -81,7 +80,7 @@ public extension ChannelType where Source : ReceiverType {
     /// as replacing the receiver source with a locked receiver source.
     ///
     /// - Parameter queue: The GDC queue to synchronize on
-    public func syncSource(_ queue: DispatchQueue) -> Channel<DispatchSource<Source>, Pulse> {
+    func syncSource(_ queue: DispatchQueue) -> Channel<DispatchSource<Source>, Pulse> {
         return resource({ DispatchSource(source: $0, queue: queue) })
     }
 }
