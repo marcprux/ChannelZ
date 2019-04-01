@@ -92,6 +92,7 @@ extension NSArray : ObservableCollection {
         case .insertion: return (.added(indices: indices ?? [], new: new as? NSArray ?? []))
         case .removal: return (.removed(indices: indices ?? [], old: old as? NSArray ?? []))
         case .replacement: return (.replaced(indices: indices ?? [], old: old as? NSArray ?? [], new: new as? NSArray ?? []))
+        @unknown default: fatalError("unhandled case")
         }
     }
 
@@ -121,6 +122,7 @@ extension NSOrderedSet : ObservableCollection {
         case .insertion: return (.added(indices: indices ?? [], new: new as? NSArray ?? []))
         case .removal: return (.removed(indices: indices ?? [], old: old as? NSArray ?? []))
         case .replacement: return (.replaced(indices: indices ?? [], old: old as? NSArray ?? [], new: new as? NSArray ?? []))
+        @unknown default: fatalError("unhandled case")
         }
     }
 
@@ -148,6 +150,7 @@ extension NSSet : ObservableCollection {
         case .insertion: return (.added(new as? NSSet ?? []))
         case .removal: return (.removed(old as? NSSet ?? []))
         case .replacement: fatalError("should never happen")
+        @unknown default: fatalError("unhandled case")
         }
     }
 
