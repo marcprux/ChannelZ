@@ -9,11 +9,12 @@
 /// A result tyoe that can accept any error type
 public typealias ResultOf<T> = Result<T, Error>
 
-public protocol ResultType : _WrapperType {
+public protocol ResultType {
+    associatedtype Success
     associatedtype Failure : Error
 
     /// Returns the value for `.success` or nil if this is a `.failure`
-    var value: Wrapped? { get }
+    var value: Success? { get }
 
     /// Returns the error for `.failure` or nil if this is a `.success`
     var error: Failure? { get }
@@ -22,15 +23,13 @@ public protocol ResultType : _WrapperType {
     init(error: Failure)
 
     /// Convert this type into a concrete result
-    var asResult: Result<Wrapped, Failure> { get }
+    var asResult: Result<Success, Failure> { get }
 
     /// Convert this type into a type-erased error result
-    var asErrorResult: ResultOf<Wrapped> { get }
+    var asErrorResult: ResultOf<Success> { get }
 }
 
 extension Result : ResultType {
-    public typealias Wrapped = Success
-
     public init(_ some: Success) {
         self = .success(some)
     }
@@ -61,19 +60,7 @@ extension Result : ResultType {
         return self.mapError({ $0 })
     }
 
-    @available(*, deprecated, renamed: "mapSuccess")
-    public func map<U>(_ f: (Success) throws -> U) rethrows -> U? {
-        guard case .success(let value) = self else { return nil }
-        return try f(value)
-    }
-
     public func mapSuccess<U>(_ f: (Success) throws -> U) rethrows -> U? {
-        guard case .success(let value) = self else { return nil }
-        return try f(value)
-    }
-
-    @available(*, deprecated, renamed: "flatMapSuccess")
-    public func flatMap<U>(_ f: (Success) throws -> U?) rethrows -> U? {
         guard case .success(let value) = self else { return nil }
         return try f(value)
     }
@@ -87,7 +74,7 @@ extension Result : ResultType {
 
 extension Result : Choose2Type {
 
-    @inlinable public var choose2: Choose2<Wrapped, Failure> {
+    @inlinable public var choose2: Choose2<Success, Failure> {
         switch self {
         case .success(let value): return .v1(value)
         case .failure(let error): return .v2(error)
@@ -98,7 +85,7 @@ extension Result : Choose2Type {
     @inlinable public var arity: Int { return 2 }
 
     /// The first type in thie OneOf if the `Wrapped` value
-    @inlinable public var v1: Wrapped? {
+    @inlinable public var v1: Success? {
         get {
             return flatMapSuccess({ $0 })
         }
@@ -128,12 +115,23 @@ extension Result : Choose2Type {
 }
 
 
-public extension Result where Wrapped : _WrapperType {
+public extension Result where Success : _WrapperType {
     /// Returns the unwrapped value flatMapped to itself (e.g., converts value of String?? into String?)
-    @inlinable var flatValue: Wrapped.Wrapped? {
+    @inlinable var flatValue: Success.Wrapped? {
         switch self {
         case .success(let x): return x.flatMap({ $0 })
         case .failure: return .none
+        }
+    }
+}
+
+public extension Result {
+    /// Takes a Result<Result<X, E>, E> and flattens it to a Result<X, E>
+    func flatten<T>() -> Result<T, Failure> where Success == Result<T, Failure> {
+        switch self {
+        case .failure(let x): return .failure(x)
+        case .success(.failure(let x)): return .failure(x)
+        case .success(.success(let x)): return .success(x)
         }
     }
 }
@@ -192,7 +190,7 @@ public extension ChannelType {
 //    public typealias PulseChannelMap<S, T> = (Self.Pulse) -> Channel<S, T>
 
     /// Chains one channel to the next only if the result was successful
-    @inlinable func successfully<Source2, Pulse2>(_ next: @escaping (Self.Pulse.Wrapped) -> Channel<Source2, Pulse2>) -> Channel<Self.Source, Pulse2> where Self.Pulse : ResultType, Pulse2 : ResultType, Self.Pulse.Failure == Pulse2.Failure {
+    @inlinable func successfully<Source2, Pulse2>(_ next: @escaping (Self.Pulse.Success) -> Channel<Source2, Pulse2>) -> Channel<Self.Source, Pulse2> where Self.Pulse : ResultType, Pulse2 : ResultType, Self.Pulse.Failure == Pulse2.Failure {
         return alternate(to: { next($0.value!).anySource() }, unless: { pulse in
             if let error = pulse.error {
                 return errorChannel(source: (), error: error)
