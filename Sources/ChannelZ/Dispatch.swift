@@ -11,6 +11,7 @@ import Dispatch
 /// DispatchWorkItem already contains isCancelled and cancel()
 extension DispatchWorkItem : Receipt { }
 
+
 public extension StreamType {
     /// Instructs the observable to emit its items on the specified `queue` with an optional `time` delay and write `barrier`
     ///
