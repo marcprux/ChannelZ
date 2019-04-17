@@ -246,13 +246,18 @@ open class ReceiverQueueSource<T> {
 
 /// A Lock used for synchronizing access to the receiver queue
 public protocol Lock {
+    init()
     func lock()
     func unlock()
     func withLock<T>(_ f: () throws -> T) rethrows -> T
+    var isReentrant: Bool { get }
 }
 
 /// A no-op `Lock` implementation
 public final class NoLock : Lock {
+    public init() {
+    }
+
     public func lock() {
     }
 
@@ -262,6 +267,8 @@ public final class NoLock : Lock {
     public func withLock<T>(_ f: () throws -> T) rethrows -> T {
         return try f()
     }
+
+    public var isReentrant: Bool { return true }
 }
 
 /// A `Lock` implementation that uses a `pthread_mutex_t`
@@ -274,7 +281,16 @@ public final class ReentrantLock : Lock {
     #else
     public typealias PTHREAD_ATTR_TYPE = Int32
     #endif
-    
+
+    public convenience init() {
+        self.init(attr: PTHREAD_MUTEX_RECURSIVE)
+    }
+
+    public var isReentrant: Bool {
+        // pthread_mutexattr_gettype(<#T##UnsafePointer<pthread_mutexattr_t>#>, <#T##UnsafeMutablePointer<Int32>#>)
+        return true
+    }
+
     public init(attr: PTHREAD_ATTR_TYPE = PTHREAD_MUTEX_RECURSIVE) {
         pthread_mutexattr_init(&mutexAttr)
         pthread_mutexattr_settype(&mutexAttr, Int32(attr))
