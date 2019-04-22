@@ -290,33 +290,39 @@ public final class ReentrantLock : Lock {
     }
 
     @inlinable public var isReentrant: Bool {
-        // pthread_mutexattr_gettype(<#T##UnsafePointer<pthread_mutexattr_t>#>, <#T##UnsafeMutablePointer<Int32>#>)
-        return true
+        var attr: Int32 = PTHREAD_MUTEX_DEFAULT
+        assertSuccess(pthread_mutexattr_gettype(&mutexAttr, &attr))
+        return attr == PTHREAD_MUTEX_RECURSIVE
     }
 
     @inlinable public init(attr: PTHREAD_ATTR_TYPE = PTHREAD_MUTEX_RECURSIVE) {
-        pthread_mutexattr_init(&mutexAttr)
-        pthread_mutexattr_settype(&mutexAttr, Int32(attr))
-        pthread_mutex_init(&mutex, &mutexAttr)
+        assertSuccess(pthread_mutexattr_init(&mutexAttr))
+        assertSuccess(pthread_mutexattr_settype(&mutexAttr, Int32(attr)))
+        assertSuccess(pthread_mutex_init(&mutex, &mutexAttr))
     }
 
     deinit {
-        pthread_mutex_destroy(&mutex)
-        pthread_mutexattr_destroy(&mutexAttr)
+        assertSuccess(pthread_mutex_destroy(&mutex))
+        assertSuccess(pthread_mutexattr_destroy(&mutexAttr))
     }
 
     @inlinable public func lock() {
-        pthread_mutex_lock(&self.mutex)
+        assertSuccess(pthread_mutex_lock(&self.mutex))
     }
 
     @inlinable public func unlock() {
-        pthread_mutex_unlock(&self.mutex)
+        assertSuccess(pthread_mutex_unlock(&self.mutex))
     }
 
     @inlinable public func withLock<T>(_ f: () throws -> T) rethrows -> T {
-        pthread_mutex_lock(&self.mutex)
-        defer { pthread_mutex_unlock(&self.mutex) }
+        assertSuccess(pthread_mutex_lock(&self.mutex))
+        defer { assertSuccess(pthread_mutex_unlock(&self.mutex)) }
         return try f()
+    }
+
+    @inlinable func assertSuccess(_ f: @autoclosure () -> Int32) {
+        let success = f()
+        assert(success == 0, "critical error – pthread call failed \(success)")
     }
 }
 
@@ -328,7 +334,7 @@ public final class UnfairLock : Lock {
     }
 
     @inlinable public var isReentrant: Bool {
-        return true
+        return false
     }
 
     @inlinable public func lock() {
