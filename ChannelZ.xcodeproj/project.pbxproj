@@ -370,7 +370,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_SWIFT_FLAGS = "-DDEBUG_CHANNELZ -Xfrontend -warn-long-expression-type-checking=250";
+				OTHER_SWIFT_FLAGS = "-DDEBUG_CHANNELZ -Xfrontend -warn-long-expression-type-checking=1000";
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator watchos tvos";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
