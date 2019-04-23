@@ -100,6 +100,8 @@ public protocol TransceiverType : StateEmitterType, StateReceiverType {
 public final class ValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, TransceiverType, ValuableType, RawRepresentable {
     public typealias State = Mutation<T>
 
+    // Note: not @inlinable because of a swift compiler crash in Release configuration
+
     /// The underlying value for this tranceiver
     public var rawValue: T {
         didSet(old) {
@@ -107,14 +109,14 @@ public final class ValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, Transc
         }
     }
 
-    @inlinable public init(_ value: T) { self.rawValue = value }
+    public init(_ value: T) { self.rawValue = value }
 
     /// Initializer for RawRepresentable
-    @inlinable public init(rawValue: T) { self.rawValue = rawValue }
+    public init(rawValue: T) { self.rawValue = rawValue }
 
-    @inlinable public func receive(_ x: T) { rawValue = x }
+    public func receive(_ x: T) { rawValue = x }
 
-    @inlinable public func transceive() -> TransceiverChannel<T> {
+    public func transceive() -> TransceiverChannel<T> {
         return Channel(source: self) { rcvr in
             // immediately issue the original value with no previous value
             rcvr(State(old: Optional<T>.none, new: self.rawValue))
