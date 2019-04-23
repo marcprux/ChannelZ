@@ -290,14 +290,14 @@ public final class ReentrantLock : Lock {
     }
 
     @inlinable public var isReentrant: Bool {
-        var attr: PTHREAD_ATTR_TYPE = PTHREAD_MUTEX_DEFAULT
+        var attr: Int32 = PTHREAD_MUTEX_DEFAULT
         assertSuccess(pthread_mutexattr_gettype(&mutexAttr, &attr))
         return attr == PTHREAD_MUTEX_RECURSIVE
     }
 
-    @inlinable public init(attr: PTHREAD_ATTR_TYPE = PTHREAD_MUTEX_RECURSIVE) {
+    @inlinable public init(attr: Int32 = PTHREAD_MUTEX_RECURSIVE) {
         assertSuccess(pthread_mutexattr_init(&mutexAttr))
-        assertSuccess(pthread_mutexattr_settype(&mutexAttr, PTHREAD_ATTR_TYPE(attr)))
+        assertSuccess(pthread_mutexattr_settype(&mutexAttr, Int32(attr)))
         assertSuccess(pthread_mutex_init(&mutex, &mutexAttr))
     }
 
