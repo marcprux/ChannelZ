@@ -320,7 +320,7 @@ public final class ReentrantLock : Lock {
         return try f()
     }
 
-    @inlinable func assertSuccess(_ f: @autoclosure () -> PTHREAD_ATTR_TYPE) {
+    @inlinable func assertSuccess(_ f: @autoclosure () -> Int32) {
         let success = f()
         assert(success == 0, "critical error – pthread call failed \(success)")
     }
