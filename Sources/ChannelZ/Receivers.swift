@@ -290,7 +290,7 @@ public final class ReentrantLock : Lock {
     }
 
     @inlinable public var isReentrant: Bool {
-        var attr: Int32 = PTHREAD_MUTEX_DEFAULT
+        var attr: PTHREAD_ATTR_TYPE = PTHREAD_MUTEX_DEFAULT
         assertSuccess(pthread_mutexattr_gettype(&mutexAttr, &attr))
         return attr == PTHREAD_MUTEX_RECURSIVE
     }
@@ -320,7 +320,7 @@ public final class ReentrantLock : Lock {
         return try f()
     }
 
-    @inlinable func assertSuccess(_ f: @autoclosure () -> Int32) {
+    @inlinable func assertSuccess(_ f: @autoclosure () -> PTHREAD_ATTR_TYPE) {
         let success = f()
         assert(success == 0, "critical error – pthread call failed \(success)")
     }
