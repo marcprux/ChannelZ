@@ -14,10 +14,8 @@ public protocol LensType {
     associatedtype A
     associatedtype B
 
-    func set(_ target: A, _ value: B) -> A
-
+    func set(_ target: inout A, _ value: B)
     func get(_ target: A) -> B
-
 }
 
 public extension LensType {
@@ -25,26 +23,27 @@ public extension LensType {
     ///
     /// - See Also: `ChannelType.prism`
     @inlinable var prism : Lens<A?, B?> {
-        return Lens<A?, B?>(get: { $0.flatMap(self.get) }, create: { (whole, part) in
-            if let whole = whole, let part = part {
-                return self.set(whole, part)
-            } else {
-                return whole
+        return Lens<A?, B?>(get: { $0.flatMap(self.get) }, set: { (whole, part) in
+            if var wholeActual = whole, let part = part {
+                self.set(&wholeActual, part)
+                whole = wholeActual
             }
         })
     }
 
     /// Maps this lens to a new lens with the given pair of recripocal functions.
     @inlinable func map<C>(_ getmap: @escaping (B) -> C, _ setmap: @escaping (C) -> B) -> Lens<A, C> {
-        return Lens(get: { getmap(self.get($0)) }, create: { self.set($0, setmap($1)) })
+        return Lens(get: { getmap(self.get($0)) }, set: {
+            self.set(&$0, setmap($1))
+        })
     }
 }
 
 public extension LensType where B : _OptionalType {
 
-    /// Maps this lens to a new lens with the given pair of recripocal functions that operate on optional types.
+    /// Maps this lens to a new lens with the given pair of reciprocal functions that operate on optional types.
     @inlinable func flatMap<C>(_ getmap: @escaping (B.Wrapped) -> C, _ setmap: @escaping (C) -> B.Wrapped) -> Lens<A, C?> {
-        return Lens(get: { a in self.get(a).flatMap(getmap) }, create: { a, c in self.set(a, c.flatMap(setmap).map(B.init) ?? nil) })
+        return Lens(get: { a in self.get(a).flatMap(getmap) }, set: { a, c in self.set(&a, c.flatMap(setmap).map(B.init) ?? nil) })
     }
 }
 
@@ -56,29 +55,38 @@ public extension LensType where B : _OptionalType {
 /// See Also: https://github.com/apple/swift/blob/master/docs/GenericsManifesto.md#higher-kinded-types
 public struct Lens<A, B> : LensType {
     @usableFromInline let getter: (A) -> B
-    @usableFromInline let setter: (A, B) -> A
-
-    @inlinable public init(get: @escaping (A) -> B, create: @escaping (A, B) -> A) {
-        self.getter = get
-        self.setter = create
-    }
+    @usableFromInline let setter: (inout A, B) -> ()
 
     @inlinable public init(get: @escaping (A) -> B, set: @escaping (inout A, B) -> ()) {
         self.getter = get
-        self.setter = { var copy = $0; set(&copy, $1); return copy }
+        self.setter = set
     }
 
     @inlinable public init(kp: WritableKeyPath<A, B>) {
         self.getter = { $0[keyPath: kp] }
-        self.setter = { var copy = $0; copy[keyPath: kp] = $1; return copy }
+        self.setter = { $0[keyPath: kp] = $1 }
     }
 
-    @inlinable public func set(_ target: A, _ value: B) -> A {
-        return setter(target, value)
+    @inlinable public func set(_ target: inout A, _ value: B) {
+        return setter(&target, value)
     }
 
     @inlinable public func get(_ target: A) -> B {
         return getter(target)
+    }
+}
+
+/// A `WritableKeyPath` is fundamentally a `Lens`
+extension WritableKeyPath : LensType {
+    public typealias A = Root
+    public typealias B = Value
+
+    public func get(_ target: A) -> B {
+        return target[keyPath: self]
+    }
+
+    public func set(_ target: inout A, _ value: B) {
+        target[keyPath: self] = value
     }
 }
 
@@ -128,7 +136,7 @@ public struct LensSource<C: ChannelType, T>: LensSourceType where C.Source : Tra
 
     @inlinable public var rawValue: T {
         get { return lens.get(channel.rawValue) }
-        nonmutating set { channel.rawValue = lens.set(channel.rawValue, newValue) }
+        nonmutating set { lens.set(&channel.rawValue, newValue) }
     }
 
     /// Creates a state tranceiver to the focus of this lens, allowing the access and modification
@@ -163,7 +171,7 @@ public struct PrismSource<C: ChannelType, T>: LensSourceType where C.Source : Tr
 
     @inlinable public var rawValue: T {
         get { return lens.get(channel.rawValue) }
-        nonmutating set { channel.rawValue = lens.set(channel.rawValue, newValue) }
+        nonmutating set { lens.set(&channel.rawValue, newValue) }
     }
 
     /// Creates a state tranceiver to the focus of this lens, allowing the access and modification
@@ -191,15 +199,6 @@ public extension ChannelType where Source : TransceiverType, Pulse : MutationTyp
     /// Constructs a Lens channel using a getter and an inout setter
     @inlinable func focus<X>(get: @escaping (Pulse.RawValue) -> X, set: @escaping (inout Pulse.RawValue, X) -> ()) -> FocusChannel<X> {
         return focus(lens: Lens(get: get, set: set))
-    }
-
-//    @inlinable func focuz<X>(_ get: @escaping (Value) -> X) -> (_ set: @escaping (inout Value, X) -> ()) -> FocusChannel<X> {
-//        return { self.focus(lens: Lens(get, $0)) }
-//    }
-
-    /// Constructs a Lens channel using a getter and a tranformation setter
-    @inlinable func focus<X>(get: @escaping (Pulse.RawValue) -> X, create: @escaping (Pulse.RawValue, X) -> Pulse.RawValue) -> FocusChannel<X> {
-        return focus(lens: Lens(get: get, create: create))
     }
 }
 
@@ -229,7 +228,7 @@ public extension ChannelType where Source.RawValue : _WrapperType, Source : Tran
     /// Converts an optional state channel into a non-optional one by replacing nil elements
     /// with the result of the constructor function
     @inlinable func coalesce(_ template: @escaping (Self) -> Pulse.RawValue.Wrapped) -> FocusChannel<Pulse.RawValue.Wrapped> {
-        return focus(get: { $0.flatMap({ $0 }) ?? template(self) }, create: { (_, value) in Source.RawValue(value) })
+        return focus(get: { $0.flatMap({ $0 }) ?? template(self) }, set: { $0 = Source.RawValue($1) })
     }
 
     /// Converts an optional state channel into a non-optional one by replacing nil elements
@@ -248,9 +247,9 @@ public extension ChannelType where Source : TransceiverType, Pulse : MutationTyp
         // the selection lens value is a prism over the current selection and the current elements
         let lens = Lens<Pulse.RawValue, T>(get: { elements in
             finder(elements, locator.source.rawValue)
-        }) { (elements, values) in
-            updater((elements, locator.source.rawValue), values).0
-        }
+        }, set: { (elements, values) in
+            elements = updater((elements, locator.source.rawValue), values).0
+        })
 
         let sel = focus(lens: lens)
 
@@ -358,11 +357,9 @@ public extension ChannelType where Source.RawValue : RangeReplaceableCollection,
     /// - Note: When setting the value of an index outside the current indices, any
     ///         intervening gaps will be filled with the duplicated value
     @inlinable func indexOf(_ index: Pulse.RawValue.Index) -> FocusChannel<Pulse.RawValue.Element?> {
-        
         let lens: Lens<Pulse.RawValue, Pulse.RawValue.Element?> = Lens(get: { target in
             target.indices.contains(index) ? target[index] : nil
-        }, create: { (target, item) in
-            var target = target
+        }, set: { (target, item) in
             if let item = item {
                 while !target.indices.contains(index) {
                     // fill in the gaps
@@ -375,7 +372,6 @@ public extension ChannelType where Source.RawValue : RangeReplaceableCollection,
                     target.remove(at: index)
                 }
             }
-            return target
         })
         
         return focus(lens: lens)
@@ -385,11 +381,10 @@ public extension ChannelType where Source.RawValue : RangeReplaceableCollection,
     @inlinable func prism<T>(_ lens: Lens<Pulse.RawValue.Element, T>) -> FocusChannel<[T]> {
         let prismLens = Lens<Pulse.RawValue, [T]>(get: { $0.map(lens.get) }) {
             (elements: inout Pulse.RawValue, values: [T]) in
-            var vals = values.makeIterator()
-            for i in elements.indices {
-                if let val = vals.next() {
-                    elements.replaceSubrange(i...i, with: [lens.set(elements[i], val)])
-                }
+            for (i, val) in Swift.zip(elements.indices, values.makeIterator()) {
+                var e = elements[i]
+                lens.set(&e, val)
+                elements.replaceSubrange(i...i, with: [e])
             }
         }
         return focus(lens: prismLens)
@@ -428,7 +423,7 @@ public extension ChannelType where Source.RawValue : MutableCollection, Source :
 }
 
 /// Development function that pretends to return any T, but really just crashes
-@available(*, deprecated, message: "crashes always!") func die<T>() -> T { fatalError("DIE: \(T.self)") }
+//@available(*, deprecated, message: "crashes always!") func die<T>() -> T { fatalError("DIE: \(T.self)") }
 
 public extension ChannelType where Source.RawValue : KeyIndexed & Collection, Source.RawValue.Index : KeyIndexedIndexType, Source.RawValue.Key == Source.RawValue.Index.Key, Source.RawValue.Value == Source.RawValue.Index.Value, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
 
@@ -486,15 +481,7 @@ extension DictionaryIndex : KeyIndexedIndexType {
 public extension ChannelType where Source.RawValue : KeyIndexed, Source : TransceiverType, Pulse : MutationType, Pulse.RawValue == Source.RawValue {
     /// Creates a state channel to the given key in the underlying `KeyIndexed` dictionary
     @inlinable func atKey(_ key: Pulse.RawValue.Key) -> FocusChannel<Pulse.RawValue.Value?> {
-
-        let lens: Lens<Pulse.RawValue, Pulse.RawValue.Value?> = Lens(get: { target in
-            target[key]
-            }, create: { (target, item) in
-                var target = target
-                target[key] = item
-                return target
-        })
-
+        let lens: Lens<Pulse.RawValue, Pulse.RawValue.Value?> = Lens(get: { $0[key] }, set: { $0[key] = $1 })
         return focus(lens: lens)
     }
 
