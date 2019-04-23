@@ -326,6 +326,7 @@ public final class ReentrantLock : Lock {
     }
 }
 
+#if !(os(Linux))
 /// A `Lock` implementation that uses an `os_unfair_lock`
 @available(macOS 10.12, iOS 10.0, *)
 public final class UnfairLock : Lock {
@@ -358,3 +359,5 @@ public final class UnfairLock : Lock {
         return try f()
     }
 }
+#endif
+
