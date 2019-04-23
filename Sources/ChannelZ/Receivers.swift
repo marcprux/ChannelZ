@@ -327,6 +327,7 @@ public final class ReentrantLock : Lock {
 }
 
 /// A `Lock` implementation that uses an `os_unfair_lock`
+@available(macOS 10.12, *)
 public final class UnfairLock : Lock {
     public var unfairLock = os_unfair_lock_s()
 
