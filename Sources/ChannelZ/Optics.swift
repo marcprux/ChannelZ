@@ -81,11 +81,11 @@ extension WritableKeyPath : LensType {
     public typealias A = Root
     public typealias B = Value
 
-    public func get(_ target: A) -> B {
+    @inlinable public func get(_ target: A) -> B {
         return target[keyPath: self]
     }
 
-    public func set(_ target: inout A, _ value: B) {
+    @inlinable public func set(_ target: inout A, _ value: B) {
         target[keyPath: self] = value
     }
 }
