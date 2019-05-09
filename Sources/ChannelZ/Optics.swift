@@ -78,14 +78,11 @@ public struct Lens<A, B> : LensType {
 
 /// A `WritableKeyPath` is fundamentally a `Lens`
 extension WritableKeyPath : LensType {
-    public typealias A = Root
-    public typealias B = Value
-
-    @inlinable public func get(_ target: A) -> B {
+    @inlinable public func get(_ target: Root) -> Value {
         return target[keyPath: self]
     }
 
-    @inlinable public func set(_ target: inout A, _ value: B) {
+    @inlinable public func set(_ target: inout Root, _ value: Value) {
         target[keyPath: self] = value
     }
 }

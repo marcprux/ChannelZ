@@ -28,6 +28,15 @@ public extension _WrapperType {
         get { return self.flatMap({ $0 }) ?? constructor() }
         set { self = Self(newValue) }
     }
+
+    /// Returns the wrapped value or the defaulting value if the wrapped value if nil.
+    /// This is functionally simialy to the `defaulting` subscript, except the value
+    /// is provided rather than deferred through an autoclosure, which allows this
+    /// subscription to be used as a stored `KeyPath` (provided that `Wrapped` is hashable).
+    subscript(withDefault defaultValue: Wrapped) -> Wrapped {
+        get { return self[defaulting: defaultValue] }
+        set { self = Self(newValue) }
+    }
 }
 
 public extension _WrapperType where Wrapped : Defaultable {
