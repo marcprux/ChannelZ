@@ -11,19 +11,19 @@
 
 /// A van Laarhoven Lens type
 public protocol LensType {
-    associatedtype A
-    associatedtype B
+    associatedtype Root
+    associatedtype Value
 
-    func set(_ target: inout A, _ value: B)
-    func get(_ target: A) -> B
+    func set(_ target: inout Root, _ value: Value)
+    func get(_ target: Root) -> Value
 }
 
 public extension LensType {
     /// Converts this lens to an optional prism that allows lossy getting/setting of optional values
     ///
     /// - See Also: `ChannelType.prism`
-    @inlinable var prism : Lens<A?, B?> {
-        return Lens<A?, B?>(get: { $0.flatMap(self.get) }, set: { (whole, part) in
+    @inlinable var prism : Lens<Root?, Value?> {
+        return Lens<Root?, Value?>(get: { $0.flatMap(self.get) }, set: { (whole, part) in
             if var wholeActual = whole, let part = part {
                 self.set(&wholeActual, part)
                 whole = wholeActual
@@ -32,18 +32,18 @@ public extension LensType {
     }
 
     /// Maps this lens to a new lens with the given pair of recripocal functions.
-    @inlinable func map<C>(_ getmap: @escaping (B) -> C, _ setmap: @escaping (C) -> B) -> Lens<A, C> {
+    @inlinable func map<X>(_ getmap: @escaping (Value) -> X, _ setmap: @escaping (X) -> Value) -> Lens<Root, X> {
         return Lens(get: { getmap(self.get($0)) }, set: {
             self.set(&$0, setmap($1))
         })
     }
 }
 
-public extension LensType where B : _OptionalType {
+public extension LensType where Value : _OptionalType {
 
     /// Maps this lens to a new lens with the given pair of reciprocal functions that operate on optional types.
-    @inlinable func flatMap<C>(_ getmap: @escaping (B.Wrapped) -> C, _ setmap: @escaping (C) -> B.Wrapped) -> Lens<A, C?> {
-        return Lens(get: { a in self.get(a).flatMap(getmap) }, set: { a, c in self.set(&a, c.flatMap(setmap).map(B.init) ?? nil) })
+    @inlinable func flatMap<X>(_ getmap: @escaping (Value.Wrapped) -> X, _ setmap: @escaping (X) -> Value.Wrapped) -> Lens<Root, X?> {
+        return Lens(get: { a in self.get(a).flatMap(getmap) }, set: { a, c in self.set(&a, c.flatMap(setmap).map(Value.init) ?? nil) })
     }
 }
 
@@ -53,27 +53,45 @@ public extension LensType where B : _OptionalType {
 /// conditional creation for complex immutable state structures.
 ///
 /// See Also: https://github.com/apple/swift/blob/master/docs/GenericsManifesto.md#higher-kinded-types
-public struct Lens<A, B> : LensType {
-    @usableFromInline let getter: (A) -> B
-    @usableFromInline let setter: (inout A, B) -> ()
+public struct Lens<Root, Value> : LensType {
+    @usableFromInline let getter: (Root) -> Value
+    @usableFromInline let setter: (inout Root, Value) -> ()
 
-    @inlinable public init(get: @escaping (A) -> B, set: @escaping (inout A, B) -> ()) {
+    @inlinable public init(get: @escaping (Root) -> Value, set: @escaping (inout Root, Value) -> ()) {
         self.getter = get
         self.setter = set
     }
 
-    @inlinable public init(kp: WritableKeyPath<A, B>) {
-        self.getter = { $0[keyPath: kp] }
-        self.setter = { $0[keyPath: kp] = $1 }
-    }
-
-    @inlinable public func set(_ target: inout A, _ value: B) {
+    @inlinable public func set(_ target: inout Root, _ value: Value) {
         return setter(&target, value)
     }
 
-    @inlinable public func get(_ target: A) -> B {
+    @inlinable public func get(_ target: Root) -> Value {
         return getter(target)
     }
+}
+
+/// A `Lens` that retains the index path of `A`'s collection that was used to arrive at `B`;
+/// an `IndexedLens` can be used to provide enough information for an item to be removed
+/// from an owning collection.
+public struct IndexedLens<Root, C: MutableCollection> : LensType where C.Index : Hashable {
+    public typealias Value = C.Element
+    /// The keypath to the owning collection
+    public let kp: WritableKeyPath<Root, C>
+    /// The index of the target item in the owning collection
+    public let index: C.Index
+
+    @inlinable public init(kp: WritableKeyPath<Root, C>, index: C.Index) {
+        self.kp = kp
+        self.index = index
+    }
+
+    /// The keypath to the item itself
+    public var keyPath: WritableKeyPath<Root, Value> { return kp.appending(path: \.[index]) }
+
+    public func get(_ target: Root) -> Value { return target[keyPath: self.keyPath] }
+
+    public func set(_ target: inout Root, _ value: Value) { target[keyPath: self.keyPath] = value }
 }
 
 /// A `WritableKeyPath` is fundamentally a `Lens`
@@ -84,6 +102,14 @@ extension WritableKeyPath : LensType {
 
     @inlinable public func set(_ target: inout Root, _ value: Value) {
         target[keyPath: self] = value
+    }
+}
+
+public extension Lens {
+    /// Constructs a `Lens` from a `WritableKeyPath`
+    @inlinable init(kp: WritableKeyPath<Root, Value>) {
+        self.getter = { $0[keyPath: kp] }
+        self.setter = { $0[keyPath: kp] = $1 }
     }
 }
 
