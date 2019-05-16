@@ -236,19 +236,6 @@ public extension ChannelType {
         return flatMap(mapper)
     }
 
-    /// Proceed to flatMap the given channel unless the condition clause returns a non-null element
-    @inlinable func alternate2<Source2, Source3, Pulse2>(to: @escaping (Self.Pulse) -> Channel<Source2, Pulse2>, unless: @escaping (Self.Pulse) -> Channel<Source3, Pulse2>?) -> Channel<Self.Source, (Pulse2, Self.Pulse)> {
-        let mapper: (Self.Pulse) -> Channel<Void, (Pulse2, Self.Pulse)> = { (pulse1: Self.Pulse) in
-            if let altername = unless(pulse1) {
-                return altername.map({ ($0, pulse1 )}).desource()
-            } else {
-                return to(pulse1).map({ ($0, pulse1 )}).desource()
-            }
-        }
-        
-        return flatMap(mapper)
-    }
-
 }
 
 

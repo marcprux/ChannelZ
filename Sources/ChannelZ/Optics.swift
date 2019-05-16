@@ -113,23 +113,6 @@ public extension Lens {
     }
 }
 
-/// A `Focusable` instance is able focus on individual properties of the model
-public protocol Focusable {
-}
-
-public extension Focusable {
-    /// Takes a setter & getter for a property of this instance and returns a lens than encapsulates the action
-    @inlinable static func lenZ<T>(_ get: @escaping (Self) -> T, _ set: @escaping (inout Self, T) -> Void) -> Lens<Self, T> {
-        return Lens(get: get, set: set)
-    }
-    
-    /// Takes a writeable keypath for a property of this instance and returns a lens than encapsulates the action
-    @inlinable static func lenZ<T>(_ kp: WritableKeyPath<Self, T>) -> Lens<Self, T> {
-        return Lens(kp: kp)
-    }
-}
-
-
 public protocol LensSourceType : TransceiverType {
     associatedtype Owner : ChannelType
 

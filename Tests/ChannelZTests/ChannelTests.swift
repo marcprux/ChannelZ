@@ -430,6 +430,230 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(9, count)
     }
 
+    func testCoercibles() {
+        XCTAssertEqual(true, Bool.fromConduitNumericCoercible(true)?.toConduitNumericCoercible())
+
+        do {
+            let x = Int8(1)
+            XCTAssertEqual(x, Int8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Double.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Float.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+        }
+
+        do {
+            let x = UInt8(1)
+            XCTAssertEqual(x, Int8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Double.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Float.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+        }
+
+        do {
+            let x = Int16(1)
+            XCTAssertEqual(x, Int8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Double.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Float.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+        }
+
+        do {
+            let x = UInt16(1)
+            XCTAssertEqual(x, Int8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Double.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Float.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+        }
+
+        do {
+            let x = Int32(1)
+            XCTAssertEqual(x, Int8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Double.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Float.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+        }
+
+        do {
+            let x = UInt32(1)
+            XCTAssertEqual(x, Int8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Double.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Float.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+        }
+
+        do {
+            let x = Int64(1)
+            XCTAssertEqual(x, Int8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Double.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Float.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+        }
+
+        do {
+            let x = UInt64(1)
+            XCTAssertEqual(x, Int8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Double.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Float.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+        }
+
+        do {
+            let x = Float(1)
+            XCTAssertEqual(x, Int8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Double.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Float.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+        }
+
+        do {
+            let x = Double(1)
+            XCTAssertEqual(x, Int8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt8.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt16.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt32.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Int64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, UInt64.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Double.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+            XCTAssertEqual(x, Float.fromConduitNumericCoercible(x)?.toConduitNumericCoercible())
+        }
+
+    }
+
+    func testChooseTypes() {
+        func verifyOnlyFirstSet2<T: Choose2Type>(_ value: T) {
+            XCTAssertNil(value.v2)
+        }
+
+        func verifyOnlyFirstSet3<T: Choose3Type>(_ value: T) {
+            verifyOnlyFirstSet2(value)
+            XCTAssertNil(value.v3)
+        }
+
+        func verifyOnlyFirstSet4<T: Choose4Type>(_ value: T) {
+            verifyOnlyFirstSet3(value)
+            XCTAssertNil(value.v4)
+        }
+
+        func verifyOnlyFirstSet5<T: Choose5Type>(_ value: T) {
+            verifyOnlyFirstSet4(value)
+            XCTAssertNil(value.v5)
+        }
+
+        func verifyOnlyFirstSet6<T: Choose6Type>(_ value: T) {
+            verifyOnlyFirstSet5(value)
+            XCTAssertNil(value.v6)
+        }
+
+        func verifyOnlyFirstSet7<T: Choose7Type>(_ value: T) {
+            verifyOnlyFirstSet6(value)
+            XCTAssertNil(value.v7)
+        }
+
+        func verifyOnlyFirstSet8<T: Choose8Type>(_ value: T) {
+            verifyOnlyFirstSet7(value)
+            XCTAssertNil(value.v8)
+        }
+
+        func verifyOnlyFirstSet9<T: Choose9Type>(_ value: T) {
+            verifyOnlyFirstSet8(value)
+            XCTAssertNil(value.v9)
+        }
+
+        func verifyOnlyFirstSet10<T: Choose10Type>(_ value: T) {
+            verifyOnlyFirstSet9(value)
+            XCTAssertNil(value.v10)
+        }
+
+        func roundtrip<T: Codable & Equatable>(_ value: T) {
+            // need to wrap in array because naked values are not legal JSON
+            XCTAssertEqual([value], try JSONDecoder().decode(Array<T>.self, from: JSONEncoder().encode([value])))
+        }
+
+        let c2 = Choose2<String, Int>("X")
+        verifyOnlyFirstSet2(c2)
+        roundtrip(c2)
+        let c3 = Choose3<String, Int, Int>("X")
+        verifyOnlyFirstSet3(c3)
+        roundtrip(c3)
+        let c4 = Choose4<String, Int, Int, Int>("X")
+        verifyOnlyFirstSet4(c4)
+        roundtrip(c4)
+        let c5 = Choose5<String, Int, Int, Int, Int>("X")
+        verifyOnlyFirstSet5(c5)
+        roundtrip(c5)
+        let c6 = Choose6<String, Int, Int, Int, Int, Int>("X")
+        verifyOnlyFirstSet6(c6)
+        roundtrip(c6)
+        let c7 = Choose7<String, Int, Int, Int, Int, Int, Int>("X")
+        verifyOnlyFirstSet7(c7)
+        roundtrip(c7)
+        let c8 = Choose8<String, Int, Int, Int, Int, Int, Int, Int>("X")
+        verifyOnlyFirstSet8(c8)
+        roundtrip(c8)
+        let c9 = Choose9<String, Int, Int, Int, Int, Int, Int, Int, Int>("X")
+        verifyOnlyFirstSet9(c9)
+        roundtrip(c9)
+        let c10 = Choose10<String, Int, Int, Int, Int, Int, Int, Int, Int, Int>("X")
+        verifyOnlyFirstSet10(c10)
+        roundtrip(c10)
+    }
+    
 #if !os(Linux)
     func testStreamExtensions() {
         guard let stream = InputStream(fileAtPath: #file) else {
