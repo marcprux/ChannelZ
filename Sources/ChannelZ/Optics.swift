@@ -71,29 +71,6 @@ public struct Lens<Root, Value> : LensType {
     }
 }
 
-/// A `Lens` that retains the index path of `A`'s collection that was used to arrive at `B`;
-/// an `IndexedLens` can be used to provide enough information for an item to be removed
-/// from an owning collection.
-public struct IndexedLens<Root, C: MutableCollection> : LensType where C.Index : Hashable {
-    public typealias Value = C.Element
-    /// The keypath to the owning collection
-    public let kp: WritableKeyPath<Root, C>
-    /// The index of the target item in the owning collection
-    public let index: C.Index
-
-    @inlinable public init(kp: WritableKeyPath<Root, C>, index: C.Index) {
-        self.kp = kp
-        self.index = index
-    }
-
-    /// The keypath to the item itself
-    public var keyPath: WritableKeyPath<Root, Value> { return kp.appending(path: \.[index]) }
-
-    public func get(_ target: Root) -> Value { return target[keyPath: self.keyPath] }
-
-    public func set(_ target: inout Root, _ value: Value) { target[keyPath: self.keyPath] = value }
-}
-
 /// A `WritableKeyPath` is fundamentally a `Lens`
 extension WritableKeyPath : LensType {
     @inlinable public func get(_ target: Root) -> Value {
