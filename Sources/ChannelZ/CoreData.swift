@@ -6,8 +6,7 @@
 //  License: MIT (or whatever)
 //
 
-#if os(macOS) || os(iOS)
-
+#if canImport(CoreData)
 import CoreData
 
 /// Extension for observableing notications for various Core Data events
@@ -123,5 +122,4 @@ extension NSManagedObjectContext {
 //    }
 
 }
-
 #endif
