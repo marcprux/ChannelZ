@@ -125,6 +125,66 @@ public final class ValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, Transc
     }
 }
 
+#if swift(>=5.1)
+/// A ValueTransceiver wraps any type to make it act as a `Channel` where changes to the underlying
+/// value can be observed as `Mutatation` pulses (provided that changes are made via the
+/// ValueTransceiver's setter).
+@propertyWrapper
+public final class Transceiver<T> {
+    public typealias State = Mutation<T>
+    let receivers = ReceiverQueue<State>()
+
+
+    // Note: not @inlinable because of a swift compiler crash in Release configuration
+
+    /// The underlying value for this tranceiver
+    public var value: T {
+        didSet(old) {
+            receivers.receive(Mutation(old: old, new: value))
+        }
+    }
+
+    public init(initialValue: T) {
+        self.value = initialValue
+    }
+
+    public func transceive() -> Channel<Transceiver<T>, Mutation<T>> {
+        return Channel(source: self) { rcvr in
+            // immediately issue the original value with no previous value
+            rcvr(State(old: Optional<T>.none, new: self.value))
+            return self.receivers.addReceipt(rcvr)
+        }
+    }
+}
+
+extension Transceiver : Equatable where T : Equatable {
+    /// Equatability is contingent only upon the value
+    public static func == (lhs: Transceiver<T>, rhs: Transceiver<T>) -> Bool {
+        return lhs.value == rhs.value
+    }
+}
+
+extension Transceiver : Hashable where T : Hashable {
+    /// Hashability is contingent only upon the value
+    public func hash(into hasher: inout Hasher) {
+        value.hash(into: &hasher)
+    }
+}
+
+extension Transceiver : Encodable where T : Encodable {
+    public func encode(to encoder: Encoder) throws {
+        try self.value.encode(to: encoder)
+    }
+}
+
+extension Transceiver : Decodable where T : Decodable {
+    public convenience init(from decoder: Decoder) throws {
+        self.init(initialValue: try T(from: decoder))
+    }
+}
+
+#endif
+
 /// A transceiver channel is a simplified type that permits state mutation on a type
 public typealias TransceiverChannel<T> = Channel<ValueTransceiver<T>, Mutation<T>>
 

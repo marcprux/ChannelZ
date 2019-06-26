@@ -266,6 +266,31 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(4, items.last?.index) // last enum
     }
 
+    #if swift(>=5.1)
+    func testPropertyWrapperTransceiver() {
+        struct THolder<T: SignedInteger> : Hashable {
+            @Transceiver var x: T
+        }
+
+        var ob = THolder(x: 1)
+
+        var changes = 0
+        ob.$x.transceive().changes().filter({ $0 > 1 }).receive({ _ in changes += 1 })
+
+        XCTAssertEqual(1, ob.x)
+        ob.x += 1
+        XCTAssertEqual(2, ob.x)
+        ob.$x.value += 1
+        XCTAssertEqual(3, ob.x)
+
+        XCTAssertEqual(THolder(x: 3), ob)
+        XCTAssertNotEqual(THolder(x: 4), ob)
+
+        XCTAssertEqual(2, changes)
+
+    }
+    #endif
+
     func testEnumerateCount() {
         let z1 = transceive(1).new()
         let z2 = transceive("1").new()
