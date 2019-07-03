@@ -270,24 +270,29 @@ class ChannelTests : ChannelTestCase {
     func testPropertyWrapperTransceiver() {
         struct THolder<T: SignedInteger> : Hashable {
             @Transceiver var x: T
+
+            var x_: Transceiver<T> { $x }
         }
 
-        var ob = THolder(x: 1)
+        let ob1 = THolder(x: 1)
 
         var changes = 0
-        ob.$x.transceive().changes().filter({ $0 > 1 }).receive({ _ in changes += 1 })
+        ob1.x_.transceive().changes().filter({ $0 > 1 }).receive({ _ in changes += 1 })
 
-        XCTAssertEqual(1, ob.x)
-        ob.x += 1
-        XCTAssertEqual(2, ob.x)
-        ob.$x.value += 1
-        XCTAssertEqual(3, ob.x)
+        XCTAssertEqual(1, ob1.x)
+        ob1.x += 1
+        XCTAssertEqual(2, ob1.x)
+        ob1.x_.wrappedValue += 1
+        XCTAssertEqual(3, ob1.x)
 
-        XCTAssertEqual(THolder(x: 3), ob)
-        XCTAssertNotEqual(THolder(x: 4), ob)
+        XCTAssertEqual(THolder(x: 3), ob1)
+        XCTAssertNotEqual(THolder(x: 4), ob1)
 
         XCTAssertEqual(2, changes)
 
+        let ob2 = THolder(x: 0)
+        ob1.x_.transceive().changes().conduit(ob2.x_.transceive().changes())
+        ob1.x_.transceiveChanges().bind(ob2.x_.transceiveChanges())
     }
     #endif
 

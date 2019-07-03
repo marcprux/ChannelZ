@@ -6,6 +6,94 @@
 //  Copyright © 2016 glimpse.io. All rights reserved.
 //
 
+#if swift(>=5.1)
+
+/// A ValueTransceiver wraps any type to make it act as a `Channel` where changes to the underlying
+/// value can be observed as `Mutatation` pulses (provided that changes are made via the
+/// ValueTransceiver's setter).
+///
+/// This is similar to the `Combine.Published` property wrapper.
+@propertyWrapper
+public final class Transceiver<T> {
+    public typealias State = Mutation<T>
+    let receivers = ReceiverQueue<State>()
+
+    /// The underlying value for this tranceiver
+    public var wrappedValue: T {
+        didSet(old) {
+            receivers.receive(Mutation(old: old, new: wrappedValue))
+        }
+    }
+
+    public init(initialValue: T) {
+        self.wrappedValue = initialValue
+    }
+
+    public func transceive() -> Channel<Transceiver<T>, Mutation<T>> {
+        return Channel(source: self) { rcvr in
+            // immediately issue the original value with no previous value
+            rcvr(State(old: Optional<T>.none, new: self.wrappedValue))
+            return self.receivers.addReceipt(rcvr)
+        }
+    }
+}
+
+extension Transceiver : TransceiverType {
+    public var rawValue: T {
+        get { return self.wrappedValue }
+        set { self.wrappedValue = newValue }
+    }
+
+    public func receive(_ value: T) {
+        self.rawValue = value
+    }
+}
+
+extension Transceiver : Equatable where T : Equatable {
+    /// Equatability is contingent only upon the value
+    public static func == (lhs: Transceiver<T>, rhs: Transceiver<T>) -> Bool {
+        return lhs.wrappedValue == rhs.wrappedValue
+    }
+}
+
+extension Transceiver : Hashable where T : Hashable {
+    /// Hashability is contingent only upon the value
+    public func hash(into hasher: inout Hasher) {
+        self.wrappedValue.hash(into: &hasher)
+    }
+}
+
+extension Transceiver : Encodable where T : Encodable {
+    public func encode(to encoder: Encoder) throws {
+        try self.wrappedValue.encode(to: encoder)
+    }
+}
+
+extension Transceiver : Decodable where T : Decodable {
+    public convenience init(from decoder: Decoder) throws {
+        self.init(initialValue: try T(from: decoder))
+    }
+}
+
+//#if canImport(Combine)
+//import Combine
+//
+//extension Transceiver : Combine.Publisher {
+//    @available(OSXApplicationExtension 10.15, *)
+//    public func receive<S>(subscriber: S) where S : Combine.Subscriber, Transceiver.Failure == S.Failure, Transceiver.Output == S.Input {
+////        receivers.addReceipt(<#T##receptor: (Mutation<T>) -> ()##(Mutation<T>) -> ()#>)
+//    }
+//
+//    public typealias Output = State
+//    public typealias Failure = Never
+//
+//
+//}
+//#endif
+
+#endif
+
+
 /// A `ValuableType` simply encapsulates a value; it is a superset of RawRepresentable, but does not require a constructor
 public protocol ValuableType {
     associatedtype RawValue
@@ -124,66 +212,6 @@ public final class ValueTransceiver<T>: ReceiverQueueSource<Mutation<T>>, Transc
         }
     }
 }
-
-#if swift(>=5.1)
-/// A ValueTransceiver wraps any type to make it act as a `Channel` where changes to the underlying
-/// value can be observed as `Mutatation` pulses (provided that changes are made via the
-/// ValueTransceiver's setter).
-@propertyWrapper
-public final class Transceiver<T> {
-    public typealias State = Mutation<T>
-    let receivers = ReceiverQueue<State>()
-
-
-    // Note: not @inlinable because of a swift compiler crash in Release configuration
-
-    /// The underlying value for this tranceiver
-    public var value: T {
-        didSet(old) {
-            receivers.receive(Mutation(old: old, new: value))
-        }
-    }
-
-    public init(initialValue: T) {
-        self.value = initialValue
-    }
-
-    public func transceive() -> Channel<Transceiver<T>, Mutation<T>> {
-        return Channel(source: self) { rcvr in
-            // immediately issue the original value with no previous value
-            rcvr(State(old: Optional<T>.none, new: self.value))
-            return self.receivers.addReceipt(rcvr)
-        }
-    }
-}
-
-extension Transceiver : Equatable where T : Equatable {
-    /// Equatability is contingent only upon the value
-    public static func == (lhs: Transceiver<T>, rhs: Transceiver<T>) -> Bool {
-        return lhs.value == rhs.value
-    }
-}
-
-extension Transceiver : Hashable where T : Hashable {
-    /// Hashability is contingent only upon the value
-    public func hash(into hasher: inout Hasher) {
-        value.hash(into: &hasher)
-    }
-}
-
-extension Transceiver : Encodable where T : Encodable {
-    public func encode(to encoder: Encoder) throws {
-        try self.value.encode(to: encoder)
-    }
-}
-
-extension Transceiver : Decodable where T : Decodable {
-    public convenience init(from decoder: Decoder) throws {
-        self.init(initialValue: try T(from: decoder))
-    }
-}
-
-#endif
 
 /// A transceiver channel is a simplified type that permits state mutation on a type
 public typealias TransceiverChannel<T> = Channel<ValueTransceiver<T>, Mutation<T>>
