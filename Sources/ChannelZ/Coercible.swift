@@ -39,6 +39,20 @@ public extension _WrapperType {
     }
 }
 
+public extension _WrapperType where Wrapped : Collection {
+    /// Returns the wrapped value or the defaulting value if the wrapped value if nil or empty.
+    subscript(whenEmpty defaultValue: Wrapped) -> Wrapped {
+        get {
+            guard let contents = self.flatMap({ $0 }) else { return defaultValue }
+            return contents.isEmpty ? defaultValue : contents
+        }
+
+        set {
+            self = Self(newValue)
+        }
+    }
+}
+
 public extension _WrapperType where Wrapped : Defaultable {
     /// Returns the current value of the wrapped instance or, if nil, instantiates a default value
     var defaulted: Wrapped {
