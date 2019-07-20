@@ -466,7 +466,7 @@ class OpticsTests : ChannelTestCase {
         }
     }
     
-    #if os(macOS) || os(iOS)
+    #if canImport(AppKit) || os(iOS)
 
     /// Tests optical views into immutable models using channels
     @available(macOS 10.11, iOS 9.0, *) // UndoManager only available
@@ -620,11 +620,11 @@ class OpticsTests : ChannelTestCase {
         }
     }
     
-    #endif // #if os(macOS) || os(iOS)
+    #endif // #if canImport(AppKit) || os(iOS)
 
 }
 
-#if os(macOS) || os(iOS)
+#if canImport(Foundation)
 
 var undoCounter = 0
 
@@ -646,6 +646,6 @@ public extension Optical {
     }
 }
 
-#endif // #if os(macOS) || os(iOS)
+#endif
 
 

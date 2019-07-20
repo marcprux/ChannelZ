@@ -7,11 +7,11 @@
 //
 
 /// Support for AppKit UI channels
-#if os(iOS)
+#if canImport(Foundation)
 import Foundation // workaround for compilation bug when compiling on iOS: «@objc attribute used without importing module 'Foundation'»
 #endif
 
-#if os(macOS)
+#if canImport(AppKit)
 import AppKit
 
 public extension NSObjectProtocol where Self : NSController {
