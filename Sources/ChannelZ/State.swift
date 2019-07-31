@@ -25,8 +25,8 @@ public final class Transceiver<T> {
         }
     }
 
-    public init(initialValue: T) {
-        self.wrappedValue = initialValue
+    public init(wrappedValue: T) {
+        self.wrappedValue = wrappedValue
     }
 
     public func transceive() -> Channel<Transceiver<T>, Mutation<T>> {
@@ -71,7 +71,7 @@ extension Transceiver : Encodable where T : Encodable {
 
 extension Transceiver : Decodable where T : Decodable {
     public convenience init(from decoder: Decoder) throws {
-        self.init(initialValue: try T(from: decoder))
+        self.init(wrappedValue: try T(from: decoder))
     }
 }
 
