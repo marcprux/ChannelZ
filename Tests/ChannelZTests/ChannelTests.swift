@@ -266,35 +266,33 @@ class ChannelTests : ChannelTestCase {
         XCTAssertEqual(4, items.last?.index) // last enum
     }
 
-    #if swift(>=5.1)
-    func testPropertyWrapperTransceiver() {
-        struct THolder<T: SignedInteger> : Hashable {
-            @Transceiver var x: T
-
-            var x_: Transceiver<T> { $x }
-        }
-
-        let ob1 = THolder(x: 1)
-
-        var changes = 0
-        ob1.x_.transceive().changes().filter({ $0 > 1 }).receive({ _ in changes += 1 })
-
-        XCTAssertEqual(1, ob1.x)
-        ob1.x += 1
-        XCTAssertEqual(2, ob1.x)
-        ob1.x_.wrappedValue += 1
-        XCTAssertEqual(3, ob1.x)
-
-        XCTAssertEqual(THolder(x: 3), ob1)
-        XCTAssertNotEqual(THolder(x: 4), ob1)
-
-        XCTAssertEqual(2, changes)
-
-        let ob2 = THolder(x: 0)
-        ob1.x_.transceive().changes().conduit(ob2.x_.transceive().changes())
-        ob1.x_.transceiveChanges().bind(ob2.x_.transceiveChanges())
-    }
-    #endif
+//    #if swift(>=5.1)
+//    func testPropertyWrapperTransceiver() {
+//        struct THolder<T: SignedInteger> : Hashable {
+//            @Transceiver var x: T
+//        }
+//
+//        let ob1 = THolder(x: 1)
+//
+//        var changes = 0
+//        ob1._x.transceive().changes().filter({ $0 > 1 }).receive({ _ in changes += 1 })
+//
+//        XCTAssertEqual(1, ob1.x)
+//        ob1.x += 1
+//        XCTAssertEqual(2, ob1.x)
+//        ob1._x.wrappedValue += 1
+//        XCTAssertEqual(3, ob1.x)
+//
+//        XCTAssertEqual(THolder(x: 3), ob1)
+//        XCTAssertNotEqual(THolder(x: 4), ob1)
+//
+//        XCTAssertEqual(2, changes)
+//
+//        let ob2 = THolder(x: 0)
+//        ob1._x.transceive().changes().conduit(ob2._x.transceive().changes())
+//        ob1._x.transceiveChanges().bind(ob2._x.transceiveChanges())
+//    }
+//    #endif
 
     func testEnumerateCount() {
         let z1 = transceive(1).new()
