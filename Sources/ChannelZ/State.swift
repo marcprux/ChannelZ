@@ -267,12 +267,17 @@ public protocol _WrapperType {
     /// Returns `nil` if `self` is `nil`, `f(self!)` otherwise.
     /// - See Also: `Optional.flatMap`
     func flatMap<U>(_ f: (Wrapped) throws -> U?) rethrows -> U?
+
+    /// Returns the wrapped instance as an optional value.
+    var asOptional: Wrapped? { get }
 }
 
 public protocol _OptionalType : _WrapperType, ExpressibleByNilLiteral {
 }
 
-extension Optional : _OptionalType { }
+extension Optional : _OptionalType {
+    @inlinable public var asOptional: Wrapped? { self }
+}
 
 extension _WrapperType {
     /// Convert this type to an optional; shorthand for `flatMap({ $0 })`
