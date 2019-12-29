@@ -2,6 +2,10 @@
 
 *ChannelZ: Lightweight Reactive Swift*
 
+### DEPRECATED
+
+This library has been archived and should be considered deprecated in favor of Apple's native [Combine](https://developer.apple.com/documentation/combine) framework.
+
 ### Introduction
 
 ChannelZ is a pure Swift framework for simplifying state and event management in iOS and Mac apps. You can create `Channels` to both native Swift properties and Objective-C properties, and connect those `Channels` using `Conduits`, enabling the underlying values of the properties to be automatically synchronized.
