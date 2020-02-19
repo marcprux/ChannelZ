@@ -183,21 +183,21 @@ public final class ReceiverQueue<T> : ReceiverType {
     public typealias Receptor = (T) -> ()
     public let maxdepth: Int
 
-    @usableFromInline var receivers: ContiguousArray<(index: Int64, receptor: Receptor)> = []
-    @usableFromInline let entrancy: Counter = 0
-    @usableFromInline let receptorIndex: Counter = 0
+    var receivers: ContiguousArray<(index: Int64, receptor: Receptor)> = []
+    let entrancy: Counter = 0
+    let receptorIndex: Counter = 0
 
     public var count: Int { return receivers.count }
 
     // os_unfair_lock would probably be faster (albeit unfair), but it seems to crash on forked processes (like when XCode unit tests in parallel; https://forums.developer.apple.com/thread/60622)
-    // @usableFromInline let lock = UnfairLock()
-    @usableFromInline let lock = ReentrantLock()
+    // let lock = UnfairLock()
+    let lock = ReentrantLock()
 
-    @inlinable public init(maxdepth: Int? = nil) {
+    public init(maxdepth: Int? = nil) {
         self.maxdepth = maxdepth ?? ChannelZReentrancyLimit
     }
 
-    @inlinable public func receive(_ element: T) {
+    public func receive(_ element: T) {
         lock.lock()
         defer { lock.unlock() }
 
@@ -212,7 +212,7 @@ public final class ReceiverQueue<T> : ReceiverType {
         }
     }
 
-    @inlinable public func reentrantChannelReception(_ element: Any) {
+    public func reentrantChannelReception(_ element: Any) {
         #if DEBUG_CHANNELZ
             //print("ChannelZ reentrant channel short-circuit; break on \(#function) to debug", type(of: element))
             ChannelZReentrantReceptions.increment()
@@ -220,35 +220,35 @@ public final class ReceiverQueue<T> : ReceiverType {
     }
 
     /// Adds a receiver that will return a receipt that simply removes itself from the list
-    @inlinable public func addReceipt(_ receptor: @escaping Receptor) -> Receipt {
+    public func addReceipt(_ receptor: @escaping Receptor) -> Receipt {
         let token = addReceiver(receptor)
         return ReceiptOf(canceler: { self.removeReceptor(token) })
     }
 
     /// Adds a custom receiver block and returns a token that can later be used to remove the receiver
-    @inlinable public func addReceiver(_ receptor: @escaping Receptor) -> Int64 {
+    public func addReceiver(_ receptor: @escaping Receptor) -> Int64 {
         precondition(entrancy.get() == 0, "cannot add to receivers while they are flowing")
         let index = receptorIndex.increment()
         receivers.append((index, receptor))
         return index
     }
 
-    @inlinable public func removeReceptor(_ index: Int64) {
+    public func removeReceptor(_ index: Int64) {
         receivers = receivers.filter { $0.index != index }
     }
 
     /// Clear all the receivers
-    @inlinable public func clear() {
+    public func clear() {
         receivers = []
     }
 }
 
 open class ReceiverQueueSource<T> {
-    @usableFromInline let receivers = ReceiverQueue<T>()
+    let receivers = ReceiverQueue<T>()
 }
 
 /// A Lock used for synchronizing access to the receiver queue
-public protocol Lock {
+protocol Lock {
     init()
     func lock()
     func unlock()
@@ -257,45 +257,45 @@ public protocol Lock {
 }
 
 /// A no-op `Lock` implementation
-public final class NoLock : Lock {
-    public init() {
+final class NoLock : Lock {
+    init() {
     }
 
-    public func lock() {
+    func lock() {
     }
 
-    public func unlock() {
+    func unlock() {
     }
 
-    public func withLock<T>(_ f: () throws -> T) rethrows -> T {
+    func withLock<T>(_ f: () throws -> T) rethrows -> T {
         return try f()
     }
 
-    public var isReentrant: Bool { return true }
+    var isReentrant: Bool { return true }
 }
 
 /// A `Lock` implementation that uses a `pthread_mutex_t`
-public final class ReentrantLock : Lock {
-    @usableFromInline var mutex = pthread_mutex_t()
-    @usableFromInline var mutexAttr = pthread_mutexattr_t()
+final class ReentrantLock : Lock {
+    var mutex = pthread_mutex_t()
+    var mutexAttr = pthread_mutexattr_t()
 
     #if os(Linux)
-    public typealias PTHREAD_ATTR_TYPE = Int
+    typealias PTHREAD_ATTR_TYPE = Int
     #else
-    public typealias PTHREAD_ATTR_TYPE = Int32
+    typealias PTHREAD_ATTR_TYPE = Int32
     #endif
 
-    @inlinable public convenience init() {
+    convenience init() {
         self.init(attr: PTHREAD_MUTEX_RECURSIVE)
     }
 
-    @inlinable public var isReentrant: Bool {
+    var isReentrant: Bool {
         var attr: Int32 = 0
         assertSuccess(pthread_mutexattr_gettype(&mutexAttr, &attr))
         return attr == PTHREAD_MUTEX_RECURSIVE
     }
 
-    @inlinable public init(attr: PTHREAD_ATTR_TYPE = PTHREAD_MUTEX_RECURSIVE) {
+    init(attr: PTHREAD_ATTR_TYPE = PTHREAD_MUTEX_RECURSIVE) {
         assertSuccess(pthread_mutexattr_init(&mutexAttr))
         assertSuccess(pthread_mutexattr_settype(&mutexAttr, Int32(attr)))
         assertSuccess(pthread_mutex_init(&mutex, &mutexAttr))
@@ -306,21 +306,21 @@ public final class ReentrantLock : Lock {
         assertSuccess(pthread_mutexattr_destroy(&mutexAttr))
     }
 
-    @inlinable public func lock() {
+    func lock() {
         assertSuccess(pthread_mutex_lock(&self.mutex))
     }
 
-    @inlinable public func unlock() {
+    func unlock() {
         assertSuccess(pthread_mutex_unlock(&self.mutex))
     }
 
-    @inlinable public func withLock<T>(_ f: () throws -> T) rethrows -> T {
+    func withLock<T>(_ f: () throws -> T) rethrows -> T {
         assertSuccess(pthread_mutex_lock(&self.mutex))
         defer { assertSuccess(pthread_mutex_unlock(&self.mutex)) }
         return try f()
     }
 
-    @inlinable func assertSuccess(_ f: @autoclosure () -> Int32) {
+    func assertSuccess(_ f: @autoclosure () -> Int32) {
         let success = f()
         assert(success == 0, "critical error – pthread call failed \(success)")
     }
@@ -329,31 +329,31 @@ public final class ReentrantLock : Lock {
 #if !(os(Linux))
 /// A `Lock` implementation that uses an `os_unfair_lock`
 @available(macOS 10.12, iOS 10.0, *)
-public final class UnfairLock : Lock {
-    public var unfairLock = os_unfair_lock_s()
+final class UnfairLock : Lock {
+    var unfairLock = os_unfair_lock_s()
 
-    @inlinable public init() {
+    init() {
     }
 
-    @inlinable public var isReentrant: Bool {
+    var isReentrant: Bool {
         return false
     }
 
-    @inlinable public func lock() {
+    func lock() {
         os_unfair_lock_lock(&unfairLock)
     }
 
-    @inlinable public func unlock() {
+    func unlock() {
         os_unfair_lock_unlock(&unfairLock)
     }
 
-    @inlinable public func withLock<T>(_ f: () throws -> T) rethrows -> T {
+    func withLock<T>(_ f: () throws -> T) rethrows -> T {
         os_unfair_lock_lock(&unfairLock)
         defer { os_unfair_lock_unlock(&unfairLock) }
         return try f()
     }
 
-    @inlinable public func tryLock<T>(_ f: () throws -> T) rethrows -> T? {
+    func tryLock<T>(_ f: () throws -> T) rethrows -> T? {
         if !os_unfair_lock_trylock(&unfairLock) { return nil }
         defer { os_unfair_lock_unlock(&unfairLock) }
         return try f()
