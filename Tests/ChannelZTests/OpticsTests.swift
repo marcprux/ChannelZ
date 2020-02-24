@@ -3,7 +3,7 @@
 //  ChannelZ
 //
 //  Created by Marc Prud'hommeaux on 5/1/16.
-//  Copyright © 2016 glimpse.io. All rights reserved.
+//  Copyright © 2010-2020 glimpse.io. All rights reserved.
 //
 
 import ChannelZ
