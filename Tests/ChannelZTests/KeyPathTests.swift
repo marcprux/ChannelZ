@@ -2058,7 +2058,7 @@ class KeyPathTests : ChannelTestCase {
         
         channel ∞> { _ in count += 1 }
 
-        if { false }() { // something changed in the macOS 10.15.3 -> 10.15.4 upgrade that broke this!
+        if false { // something changed in the macOS 10.15.3 -> 10.15.4 upgrade that broke this!
             assertChanges(count, state.optobj = StatefulObjectSubSubclass())
         }
 
