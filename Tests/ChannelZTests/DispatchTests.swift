@@ -296,13 +296,15 @@ class DispatchTests : ChannelTestCase {
         for _ in 1...channelCount {
             let obv = channelZSink(Int.self)
             let rcpt = obv.map(fib).sync(lock).receive({ fibs += [$0] })
-            var source = NSArray(array: Array(1...fibcount))
+            let source = NSArray(array: Array(1...fibcount))
 
             opq.addOperation({ () -> Void in
                 source.enumerateObjects(options: NSEnumerationOptions.concurrent, using: { (ob, index, stop) -> Void in
                     obv.source.receive(ob as! Int)
                 })
             })
+
+            let _ = rcpt
         }
 
         // we wouldn't need to sync() when we receive through a single source because ReceiptList is itself synchronized...
