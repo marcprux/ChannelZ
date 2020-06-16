@@ -182,6 +182,24 @@ public protocol TransceiverType : StateEmitterType, StateReceiverType {
     var rawValue: RawValue { get nonmutating set }
 }
 
+#if canImport(Combine)
+import Combine
+
+/// Bridge between ChannelZ state channels and SwiftUI Combine bindings. Typical usage:
+///
+/// private class DemoStateModel : StateContainer {
+///   typealias State = DemoState
+///   let (stateChannel, willChange) = transceiveState(State())
+///   let undoManager = Optional.some(UndoManager())
+/// }
+public func transceiveState<T: Equatable>(_ value: T) -> (TransceiverChannel<T>, PassthroughSubject<T, Never>) {
+    let channel = transceive(value)
+    let subject = PassthroughSubject<T, Never>()
+    channel.changes().receive(subject.send) // pass changes to the value through
+    return (channel, subject)
+}
+#endif
+
 /// A ValueTransceiver wraps any type to make it act as a `Channel` where changes to the underlying
 /// value can be observed as `Mutatation` pulses (provided that changes are made via the
 /// ValueTransceiver's setter).
