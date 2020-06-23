@@ -192,6 +192,8 @@ import Combine
 ///   let (stateChannel, willChange) = transceiveState(State())
 ///   let undoManager = Optional.some(UndoManager())
 /// }
+@available(OSXApplicationExtension 10.15, *)
+@available(iOSApplicationExtension 13.0, *)
 public func transceiveState<T: Equatable>(_ value: T) -> (TransceiverChannel<T>, PassthroughSubject<T, Never>) {
     let channel = transceive(value)
     let subject = PassthroughSubject<T, Never>()

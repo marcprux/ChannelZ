@@ -17,19 +17,19 @@ func assertChanges<T>(_ check: @autoclosure ()->T, _ code: @autoclosure ()->(Any
     let start = check()
     _ = code()
     let end = check()
-    XCTAssertNotEqual(start, end, msg ?? "assertChanges failure", file: file, line: line)
+    XCTAssertNotEqual(start, end, msg ?? "assertChanges failure", file: (file), line: line)
 }
 
 func assertRemains<T>(_ check: @autoclosure ()->T, _ code:  @autoclosure ()->(Any), msg: String? = nil, file: StaticString = #file, line: UInt = #line) where T: Equatable {
     let start = check()
     _ = code()
     let end = check()
-    XCTAssertEqual(start, end, msg ?? "assertRemains failure", file: file, line: line)
+    XCTAssertEqual(start, end, msg ?? "assertRemains failure", file: (file), line: line)
 }
 
 func assertSingleChange(_ count: inout Int, msg: String? = nil, file: StaticString = #file, line: UInt = #line) {
     count -= 1
-    XCTAssertTrue(count == 0, msg ?? "single change should have occurred, but got: \(count)", file: file, line: line)
+    XCTAssertTrue(count == 0, msg ?? "single change should have occurred, but got: \(count)", file: (file), line: line)
 }
 
 class ChannelTestCase : XCTestCase {

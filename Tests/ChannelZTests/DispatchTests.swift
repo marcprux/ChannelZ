@@ -64,7 +64,7 @@ let NSEC_PER_SEC = 1000000000
 /// Creates an asynchronous trickle of events for the given generator
 func trickleZ<G: IteratorProtocol>(_ fromx: G, _ interval: TimeInterval, queue: DispatchQueue = DispatchQueue.main) -> Channel<G, G.Element> {
     var from = fromx
-    var receivers = ReceiverQueue<G.Element>()
+    let receivers = ReceiverQueue<G.Element>()
     let delay = Int64(interval * TimeInterval(NSEC_PER_SEC))
     func tick() {
         queue.asyncAfter(deadline: DispatchTime.now() + Double(delay) / Double(NSEC_PER_SEC)) {
@@ -89,7 +89,7 @@ func trickleZProgress<G: Collection>(_ fromx: G, _ interval: TimeInterval, queue
         stopped = true
     }
     var from = fromx.makeIterator()
-    var receivers = ReceiverQueue<G.Element>()
+    let receivers = ReceiverQueue<G.Element>()
     let delay = Int64(interval * TimeInterval(NSEC_PER_SEC))
     func tick() {
         if stopped { return }

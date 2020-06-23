@@ -18,7 +18,7 @@ class KeyPathTests : ChannelTestCase {
         let start = check()
         autoreleasepool(invoking: code)
         let end = check()
-        XCTAssertEqual(start, end, "assertMemoryBlock failure", file: file, line: line)
+        XCTAssertEqual(start, end, "assertMemoryBlock failure", file: (file), line: line)
     }
 
 //    func testMemory() {
