@@ -377,7 +377,9 @@ class DispatchTests : ChannelTestCase {
 //        XCTAssertEqual(vcount, items) // make sure the pulse contained all the items
 //    }
 
-    func XXXtestDispatchFile() throws {
+    func testDispatchFile() throws {
+        throw XCTSkip()
+
         weak var xpc = expectation(description: #function)
 
         let file = #file
