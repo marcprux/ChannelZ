@@ -970,10 +970,10 @@ class ChannelTests : ChannelTestCase {
             let seq3: Channel<T1, (RT3, (RT2, (RT1)))> = seq2.then(go(t3))
             let seq4: Channel<T1, (RT4, (RT3, (RT2, (RT1))))> = seq3.then(go(t4))
 
-            XCTAssertEqual(4, seq4.pullZ().first?.0.value?.x)
-            XCTAssertEqual(3, seq4.pullZ().first?.1.0.value?.x)
-            XCTAssertEqual(2, seq4.pullZ().first?.1.1.0.value?.x)
-            XCTAssertEqual(1, seq4.pullZ().first?.1.1.1.value?.x)
+            XCTAssertEqual(4, seq4.pullZ().first?.0.resultValue?.x)
+            XCTAssertEqual(3, seq4.pullZ().first?.1.0.resultValue?.x)
+            XCTAssertEqual(2, seq4.pullZ().first?.1.1.0.resultValue?.x)
+            XCTAssertEqual(1, seq4.pullZ().first?.1.1.1.resultValue?.x)
         }
         
         do { // try with all errors
@@ -982,10 +982,10 @@ class ChannelTests : ChannelTestCase {
             let seq3: Channel<T1, (RT3, (RT2, (RT1)))> = seq2.then(go(t3))
             let seq4: Channel<T1, (RT4, (RT3, (RT2, (RT1))))> = seq3.then(go(t4))
             
-            XCTAssertNil(seq4.pullZ().first?.0.value)
-            XCTAssertNil(seq4.pullZ().first?.1.0.value)
-            XCTAssertNil(seq4.pullZ().first?.1.1.0.value)
-            XCTAssertNil(seq4.pullZ().first?.1.1.1.value)
+            XCTAssertNil(seq4.pullZ().first?.0.resultValue)
+            XCTAssertNil(seq4.pullZ().first?.1.0.resultValue)
+            XCTAssertNil(seq4.pullZ().first?.1.1.0.resultValue)
+            XCTAssertNil(seq4.pullZ().first?.1.1.1.resultValue)
         }
 
         do { // try with 1 error
@@ -994,10 +994,10 @@ class ChannelTests : ChannelTestCase {
             let seq3: Channel<T1, (RT3, (RT2, (RT1)))> = seq2.then(go(t3))
             let seq4: Channel<T1, (RT4, (RT3, (RT2, (RT1))))> = seq3.then(go(t4))
             
-            XCTAssertNil(seq4.pullZ().first?.0.value)
-            XCTAssertNil(seq4.pullZ().first?.1.0.value)
-            XCTAssertNil(seq4.pullZ().first?.1.1.0.value)
-            XCTAssertEqual(1, seq4.pullZ().first?.1.1.1.value?.x)
+            XCTAssertNil(seq4.pullZ().first?.0.resultValue)
+            XCTAssertNil(seq4.pullZ().first?.1.0.resultValue)
+            XCTAssertNil(seq4.pullZ().first?.1.1.0.resultValue)
+            XCTAssertEqual(1, seq4.pullZ().first?.1.1.1.resultValue?.x)
         }
 
         do { // try with 1 error
@@ -1006,10 +1006,10 @@ class ChannelTests : ChannelTestCase {
             let seq3: Channel<T1, (RT3, (RT2, (RT1)))> = seq2.then(no(t3))
             let seq4: Channel<T1, (RT4, (RT3, (RT2, (RT1))))> = seq3.then(go(t4))
             
-            XCTAssertNil(seq4.pullZ().first?.0.value)
-            XCTAssertNil(seq4.pullZ().first?.1.0.value)
-            XCTAssertEqual(2, seq4.pullZ().first?.1.1.0.value?.x)
-            XCTAssertEqual(1, seq4.pullZ().first?.1.1.1.value?.x)
+            XCTAssertNil(seq4.pullZ().first?.0.resultValue)
+            XCTAssertNil(seq4.pullZ().first?.1.0.resultValue)
+            XCTAssertEqual(2, seq4.pullZ().first?.1.1.0.resultValue?.x)
+            XCTAssertEqual(1, seq4.pullZ().first?.1.1.1.resultValue?.x)
         }
 
 
