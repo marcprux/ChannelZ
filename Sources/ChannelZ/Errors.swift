@@ -14,10 +14,10 @@ public protocol ResultType {
     associatedtype Failure : Error
 
     /// Returns the value for `.success` or nil if this is a `.failure`
-    var value: Success? { get }
+    var resultValue: Success? { get }
 
     /// Returns the error for `.failure` or nil if this is a `.success`
-    var error: Failure? { get }
+    var resultError: Failure? { get }
 
     /// Must be able to initialize with an error
     init(error: Failure)
@@ -38,14 +38,14 @@ extension Result : ResultType {
         self = .failure(error)
     }
 
-    @inlinable public var value: Success? {
+    @inlinable public var resultValue: Success? {
         switch self {
         case .success(let x): return .some(x)
         case .failure: return .none
         }
     }
 
-    @inlinable public var error: Failure? {
+    @inlinable public var resultError: Failure? {
         switch self {
         case .success: return .none
         case .failure(let x): return .some(x)
@@ -191,8 +191,8 @@ public extension ChannelType {
 
     /// Chains one channel to the next only if the result was successful
     @inlinable func successfully<Source2, Pulse2>(_ next: @escaping (Self.Pulse.Success) -> Channel<Source2, Pulse2>) -> Channel<Self.Source, Pulse2> where Self.Pulse : ResultType, Pulse2 : ResultType, Self.Pulse.Failure == Pulse2.Failure {
-        return alternate(to: { next($0.value!).anySource() }, unless: { pulse in
-            if let error = pulse.error {
+        return alternate(to: { next($0.resultValue!).anySource() }, unless: { pulse in
+            if let error = pulse.resultError {
                 return errorChannel(source: (), error: error)
             } else {
                 return .none // continue on to the next channel
@@ -204,7 +204,7 @@ public extension ChannelType {
     /// Chains one channel to the next only if the result was successful
     @inlinable func then<Source2, Pulse2>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Pulse2, Self.Pulse)> where Self.Pulse : ResultType, Pulse2 : ResultType, Self.Pulse.Failure == Pulse2.Failure {
         return alternate(to: { _ in next }, unless: { pulse in
-            if let error = pulse.error {
+            if let error = pulse.resultError {
                 return errorChannel(source: next.source, error: error)
             } else {
                 return .none // continue on to the next channel
@@ -215,7 +215,7 @@ public extension ChannelType {
     /// Chains one channel to the next only if the first result element of the pulse tuple was successful
     @inlinable func then<Source2, Pulse2, R: ResultType, Tuple>(_ next: Channel<Source2, Pulse2>) -> Channel<Self.Source, (Pulse2, Self.Pulse)> where Self.Pulse == (R, Tuple), Pulse2 : ResultType, R.Failure == Pulse2.Failure {
         return alternate(to: { _ in next }, unless: { pulse in
-            if let error = pulse.0.error {
+            if let error = pulse.0.resultError {
                 return errorChannel(source: next.source, error: error)
             } else {
                 return .none // continue on to the next channel
