@@ -1,8 +1,8 @@
 # .gitignore for xcode projects
 
 ## Build generated
-.build/
 build/
+.build/
 DerivedData/
 
 ## Various settings
